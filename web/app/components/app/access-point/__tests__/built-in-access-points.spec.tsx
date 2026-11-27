@@ -1,40 +1,42 @@
 import type {
   AppDetailWithSite,
   AppMode,
+  WorkflowResponse,
   WorkflowTriggerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
 import type { PublishedWorkflow } from '../shared/utils'
-import { screen, within } from '@testing-library/react'
+import { ORPCError } from '@orpc/client'
+import { screen, waitFor, within } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { renderWithConsoleQuery as renderWithConsole } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { createTestQueryClient } from '@/test/query-client'
 import { BuiltInAccessPoints } from '../built-in-access-points'
 
-const workflowState = vi.hoisted(() => ({
-  data: undefined as PublishedWorkflow,
-  isError: false,
-  isPending: false,
-}))
+const fetchPublishedWorkflow = vi.hoisted(() => vi.fn<() => Promise<PublishedWorkflow>>())
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test${path}`,
 }))
 
-// Published workflow retrieval is the query boundary for this availability coordinator.
-vi.mock('@/service/use-workflow', () => ({
-  useAppWorkflow: () => workflowState,
-}))
+// boundary: published workflow retrieval is the network boundary for this availability coordinator.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.publish.get': fetchPublishedWorkflow,
+    }),
+  }
+})
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({ data: undefined }),
   useGetUserCanAccessApp: () => ({ data: { result: true }, refetch: vi.fn() }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
 }))
 
 // These independently tested dialogs do not own card availability or permission state.
@@ -80,6 +82,7 @@ const publishedTrigger: WorkflowTriggerResponse = {
 
 let appInfo: AppDetailWithSite
 let triggers: WorkflowTriggerResponse[]
+let publishedWorkflow: WorkflowResponse | undefined
 
 function createAppInfo(mode: AppMode = 'workflow', overrides: Partial<AppDetailWithSite> = {}) {
   return createAppDetailFixture({
@@ -112,6 +115,7 @@ function render(ui: ReactElement) {
       status: 'inactive',
     },
   )
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.triggers.get.queryKey({
       input: { params: { app_id: 'app-1' } },
@@ -124,6 +128,8 @@ function render(ui: ReactElement) {
     }),
     { data: [] },
   )
+  if (publishedWorkflow)
+    queryClient.setQueryData(appWorkflowQueryOptions('app-1').queryKey, publishedWorkflow)
   return renderWithConsole(ui, {
     queryClient,
     currentWorkspace: { id: 'workspace-1', role: 'owner' },
@@ -149,6 +155,9 @@ function renderAccessPoints(
   )
 }
 
+const forbidden = () => new ORPCError('forbidden', { status: 403, message: 'Forbidden' })
+const pending = () => new Promise<PublishedWorkflow>(() => {})
+
 const getCards = () => ({
   web: screen.getByRole('region', { name: /agentDetail\.access\.webApp\.title/ }),
   api: screen.getByRole('region', { name: /agentDetail\.access\.serviceApi\.title/ }),
@@ -160,15 +169,17 @@ describe('BuiltInAccessPoints', () => {
   beforeEach(() => {
     appInfo = createAppInfo()
     triggers = []
-    workflowState.data = undefined
-    workflowState.isError = false
-    workflowState.isPending = false
+    publishedWorkflow = undefined
+    // The backend answers an unpublished app with a null body.
+    fetchPublishedWorkflow.mockResolvedValue(null)
   })
 
-  it('renders the unpublished state across all access point cards', () => {
+  it('renders the unpublished state across all access point cards', async () => {
     renderAccessPoints({ canManageAccessPoint: false, canReleaseAndVersion: false })
 
-    expect(screen.getByText('deployments.studio.accessPoint.noPublishedTitle')).toBeInTheDocument()
+    expect(
+      await screen.findByText('deployments.studio.accessPoint.noPublishedTitle'),
+    ).toBeInTheDocument()
     const cards = getCards()
     expect(cards.trigger).toBeInTheDocument()
     for (const card of [cards.web, cards.api, cards.mcp, cards.trigger!])
@@ -181,7 +192,7 @@ describe('BuiltInAccessPoints', () => {
   })
 
   it('keeps Trigger unavailable when no trigger node is published', () => {
-    workflowState.data = startWorkflow
+    publishedWorkflow = startWorkflow
     renderAccessPoints({ canManageAccessPoint: false, canReleaseAndVersion: false })
 
     expect(
@@ -199,11 +210,13 @@ describe('BuiltInAccessPoints', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps an unpublished Chatflow unavailable without showing a Trigger card', () => {
+  it('keeps an unpublished Chatflow unavailable without showing a Trigger card', async () => {
     appInfo = createAppInfo('advanced-chat', { enable_site: true, enable_api: true })
     renderAccessPoints()
 
-    expect(screen.getByText('deployments.studio.accessPoint.noPublishedTitle')).toBeInTheDocument()
+    expect(
+      await screen.findByText('deployments.studio.accessPoint.noPublishedTitle'),
+    ).toBeInTheDocument()
     const cards = getCards()
     expect(cards.trigger).not.toBeInTheDocument()
     for (const card of [cards.web, cards.api, cards.mcp])
@@ -213,19 +226,25 @@ describe('BuiltInAccessPoints', () => {
   })
 
   it.each([
-    ['loading', { data: undefined, isError: false, isPending: true }, 'loading'],
-    ['failed', { data: undefined, isError: true, isPending: false }, 'unavailable'],
-    ['published', { data: startWorkflow, isError: false, isPending: false }, 'available'],
-  ] as const)('shows Chatflow access points as %s', (_state, workflow, availability) => {
+    ['loading', 'loading'],
+    ['failed', 'unavailable'],
+    ['published', 'available'],
+  ] as const)('shows Chatflow access points as %s', async (state, availability) => {
     appInfo = createAppInfo('advanced-chat', { enable_site: true, enable_api: true })
-    Object.assign(workflowState, workflow)
+    if (state === 'loading') fetchPublishedWorkflow.mockImplementation(pending)
+    if (state === 'failed') fetchPublishedWorkflow.mockRejectedValue(forbidden())
+    if (state === 'published') publishedWorkflow = startWorkflow
     renderAccessPoints()
 
     const cards = getCards()
     expect(cards.trigger).not.toBeInTheDocument()
+    await waitFor(() => {
+      for (const card of [cards.web, cards.api]) {
+        if (availability === 'loading') expect(card).toHaveAttribute('aria-busy', 'true')
+        else expect(card).not.toHaveAttribute('aria-busy')
+      }
+    })
     for (const card of [cards.web, cards.api]) {
-      if (availability === 'loading') expect(card).toHaveAttribute('aria-busy', 'true')
-      else expect(card).not.toHaveAttribute('aria-busy')
       if (availability === 'unavailable')
         expect(
           within(card).getAllByText('deployments.health.ENVIRONMENT_STATUS_FAILED').length,
@@ -241,7 +260,7 @@ describe('BuiltInAccessPoints', () => {
   })
 
   it('enables access point management controls only with permission', () => {
-    workflowState.data = startWorkflow
+    publishedWorkflow = startWorkflow
     const { rerender } = renderAccessPoints({ canManageAccessPoint: false })
 
     expect(
@@ -277,7 +296,7 @@ describe('BuiltInAccessPoints', () => {
   })
 
   it('enables Trigger and disables the other access points in trigger mode', () => {
-    workflowState.data = triggerWorkflow
+    publishedWorkflow = triggerWorkflow
     triggers = [publishedTrigger]
     renderAccessPoints()
 
@@ -294,7 +313,7 @@ describe('BuiltInAccessPoints', () => {
   })
 
   it('keeps all cards visible while the published workflow is loading', () => {
-    workflowState.isPending = true
+    fetchPublishedWorkflow.mockImplementation(pending)
     renderAccessPoints()
 
     const cards = getCards()
@@ -302,9 +321,15 @@ describe('BuiltInAccessPoints', () => {
       expect(card).toHaveAttribute('aria-busy', 'true')
   })
 
-  it('does not show the unpublished card when loading the published workflow fails', () => {
-    workflowState.isError = true
+  it('does not show the unpublished card when loading the published workflow fails', async () => {
+    fetchPublishedWorkflow.mockRejectedValue(forbidden())
     renderAccessPoints()
+
+    const { web } = getCards()
+    await waitFor(() => expect(web).not.toHaveAttribute('aria-busy'))
+    expect(
+      within(web).getAllByText('deployments.health.ENVIRONMENT_STATUS_FAILED').length,
+    ).toBeGreaterThan(0)
 
     expect(
       screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),

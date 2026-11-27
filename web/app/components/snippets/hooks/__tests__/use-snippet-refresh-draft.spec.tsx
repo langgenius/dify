@@ -7,9 +7,11 @@ import { useReactFlow } from 'reactflow'
 import WorkflowWithDefaultContext, { Workflow } from '@/app/components/workflow'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -26,7 +28,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/snippets/snippet-1',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-vi.mock('@/service/use-snippet-workflows', () => ({ fetchSnippetDraftWorkflow: fetchDraft }))
+vi.mock('@/service/snippet-queries', () => ({ fetchSnippetDraftWorkflow: fetchDraft }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   fetchAllInspectVars: async () => [],
@@ -103,7 +105,10 @@ beforeEach(() => {
     }),
   )
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 it('keeps syncing until the draft arrives, then replaces canvas, fields and version state', async () => {
   const pending = createDeferred<SnippetWorkflow>()
@@ -170,5 +175,25 @@ it('finishes without replacing editor state when no draft exists yet', async () 
   expect(useSnippetDraftStore.getState().inputFields).toEqual(initialFields)
   expect(store.getState().syncWorkflowDraftHash).toBe('existing-hash')
   expect(store.getState().draftUpdatedAt).toBe(1000)
+  expect(onSuccess).not.toHaveBeenCalled()
+})
+
+it('reports a failed refresh and keeps the local draft', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  fetchDraft.mockRejectedValueOnce(
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Draft unavailable' },
+    ),
+  )
+  const onSuccess = vi.fn()
+  const { refresh, store } = setup()
+  expect(await screen.findByText('Local draft')).toBeInTheDocument()
+  act(() => refresh.current!.handleRefreshWorkflowDraft(onSuccess))
+
+  await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+  expect(store.getState().isSyncingWorkflowDraft).toBe(false)
+  expect(screen.getByText('Local draft')).toBeInTheDocument()
+  expect(store.getState().syncWorkflowDraftHash).toBe('existing-hash')
   expect(onSuccess).not.toHaveBeenCalled()
 })

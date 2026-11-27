@@ -1,3 +1,3 @@
-from . import composer, roster
+from . import build_session, composer, roster
 
-__all__ = ["composer", "roster"]
+__all__ = ["build_session", "composer", "roster"]

@@ -52,17 +52,21 @@ export function useToolMarketplacePanel({
   }, [containerRef, onContainerScroll])
 
   useEffect(() => {
+    const container = containerRef.current
     const target = toolListTailRef.current
-    if (!target || marketplaceActivated) return
+    if (!container || !target || marketplaceActivated) return
 
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) return
-      setMarketplaceActivated(true)
-      observer.disconnect()
-    })
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setMarketplaceActivated(true)
+        observer.disconnect()
+      },
+      { root: container },
+    )
     observer.observe(target)
     return () => observer.disconnect()
-  }, [marketplaceActivated])
+  }, [containerRef, marketplaceActivated])
 
   return {
     isMarketplaceArrowVisible,

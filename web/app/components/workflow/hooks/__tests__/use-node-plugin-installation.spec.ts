@@ -282,14 +282,11 @@ describe('useNodePluginInstallation', () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.triggers.get': (input) => mockTriggerPlugins(input),
-    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': (input) => mockTriggerPlugins(input),
       'workspaces.current.tools.builtin.get': (input) => mockBuiltInTools(input),
       'workspaces.current.tools.api.get': (input) => mockCustomTools(input),
       'workspaces.current.tools.workflow.get': (input) => mockWorkflowTools(input),

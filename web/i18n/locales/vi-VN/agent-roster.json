@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Xóa bộ lọc",
   "roster.createAgent": "Tạo tác nhân",
   "roster.createDialog.description": "Tạo một Agent có thể tái sử dụng trong workspace này.",
   "roster.createDialog.title": "Tạo tác nhân",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Chỉnh sửa thông tin",
   "roster.empty": "Chưa có tác nhân nào",
   "roster.emptySearch": "Không có tác nhân phù hợp",
+  "roster.emptySearchDescription": "Hãy thử tìm kiếm khác hoặc xóa các bộ lọc hiện tại.",
   "roster.filters.all": "Tất cả",
   "roster.filters.createdByMe": "Do tôi tạo",
   "roster.filters.drafts": "Bản nháp",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Tạo tác nhân inline thất bại. Làm mới và thử lại.",
   "roster.nodeSelector.dialogLabel": "Chọn một tác nhân",
   "roster.nodeSelector.manageInAgentConsole": "Quản lý trong Agents",
-  "roster.nodeSelector.searchPlaceholder": "Tìm kiếm…",
+  "roster.nodeSelector.searchPlaceholder": "Tìm kiếm tác nhân…",
   "roster.nodeSelector.startFromScratch": "Bắt đầu từ đầu",
   "roster.references.label": "Quy trình làm việc đang dùng {{name}}",
   "roster.references.trigger": "Quy trình làm việc đang dùng {{name}}",

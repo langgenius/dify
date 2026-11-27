@@ -189,7 +189,7 @@ function ParameterItem({
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            className="ms-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal ps-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -222,7 +222,7 @@ function ParameterItem({
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            className="ms-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal ps-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -240,7 +240,7 @@ function ParameterItem({
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            className="ms-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal ps-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -273,7 +273,7 @@ function ParameterItem({
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            className="ms-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal ps-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -321,7 +321,7 @@ function ParameterItem({
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
       if (isInWorkflow && nodesOutputVars) {
         return (
-          <div className="ml-4 w-50 rounded-lg bg-components-input-bg-normal px-2 py-1">
+          <div className="ms-4 w-50 rounded-lg bg-components-input-bg-normal px-2 py-1">
             <PromptEditor
               compact
               className="min-h-5.5 text-[13px]"
@@ -346,7 +346,7 @@ function ParameterItem({
           aria-labelledby={labelId}
           className={cn(
             isInWorkflow ? 'w-37.5' : 'w-full',
-            'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden',
+            'ms-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden',
           )}
           value={renderValue as string}
           onChange={handleStringInputChange}
@@ -357,7 +357,7 @@ function ParameterItem({
     if (parameterRule.type === 'text') {
       if (isInWorkflow && nodesOutputVars) {
         return (
-          <div className="ml-4 w-full rounded-lg bg-components-input-bg-normal px-2 py-1">
+          <div className="ms-4 w-full rounded-lg bg-components-input-bg-normal px-2 py-1">
             <PromptEditor
               compact
               className="min-h-14 text-[13px]"
@@ -379,7 +379,7 @@ function ParameterItem({
       return (
         <textarea
           aria-labelledby={labelId}
-          className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 system-sm-regular text-components-input-text-filled"
+          className="ms-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 system-sm-regular text-components-input-text-filled"
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -430,7 +430,7 @@ function ParameterItem({
       <div className="shrink-0 basis-1/2">
         <div className={cn('flex w-full shrink-0 items-center')}>
           {!parameterRule.required && parameterRule.name !== 'stop' && (
-            <div className="mr-2 w-7">
+            <div className="me-2 w-7">
               <Switch
                 aria-labelledby={labelId}
                 checked={!isNullOrUndefined(value)}
@@ -441,14 +441,14 @@ function ParameterItem({
           )}
           <div
             id={labelId}
-            className="mr-0.5 truncate system-xs-regular text-text-secondary"
+            className="me-0.5 truncate system-xs-regular text-text-secondary"
             title={sliderLabel}
           >
             {sliderLabel}
           </div>
           {parameterRule.help && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="mr-1" />
+              <InfotipTrigger aria-labelledby={labelId} className="me-1" />
               <InfotipContent aria-labelledby={labelId} className="w-37.5 whitespace-pre-wrap">
                 {parameterRule.help[language] || parameterRule.help.en_US}
               </InfotipContent>

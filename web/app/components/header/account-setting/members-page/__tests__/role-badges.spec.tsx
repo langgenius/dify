@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import RoleBadges from '../role-badges'
+import { RoleBadges } from '../role-badges'
 
 describe('RoleBadges', () => {
   it('shows the visible roles and summarizes overflow', () => {

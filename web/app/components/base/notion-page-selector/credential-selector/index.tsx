@@ -41,7 +41,7 @@ const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps)
       <SelectTrigger aria-label={currentDisplayName} className="w-42">
         <span className="flex min-w-0 items-center">
           <CredentialIcon
-            className="mr-2 shrink-0"
+            className="me-2 shrink-0"
             avatarUrl={currentCredential?.workspaceIcon}
             name={currentDisplayName}
             size={20}
@@ -64,7 +64,7 @@ const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps)
                     className="h-9 px-3"
                   >
                     <CredentialIcon
-                      className="mr-2 shrink-0"
+                      className="me-2 shrink-0"
                       avatarUrl={item.workspaceIcon}
                       name={displayName}
                       size={20}

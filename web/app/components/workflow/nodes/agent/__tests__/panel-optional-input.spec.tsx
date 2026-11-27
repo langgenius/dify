@@ -21,11 +21,23 @@ import Panel from '../panel'
 import { createProvider, createStrategy } from './strategy-fixture'
 
 // Only external plugin metadata is mocked; the panel, form and variable picker stay real.
-vi.mock('@/service/use-plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
-  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
-  useCheckInstalled: () => ({ data: { plugins: [] } }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
+
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: async () => ({ data: { plugins: [], total: 0 } }),
+  })
+})
 
 const inputParameter: AgentStrategyParameter = {
   name: 'context',

@@ -36,16 +36,12 @@ const api = vi.hoisted(() => ({
       typeof import('@/service/console').consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.list.get
     >(),
   credentials: vi.fn<
-    (url: string) => Promise<{
+    (input: { params: { provider: string } }) => Promise<{
       supported_credential_types: string[]
       credentials: Credential[]
       is_oauth_custom_client_enabled: boolean
     }>
   >(),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: api.credentials,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -54,16 +50,13 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': api.credentials,
+      'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,
       'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.toolProviders.get': api.providers,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
-      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
-      'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
-      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
@@ -77,6 +70,11 @@ vi.mock('@/service/console', async (importOriginal) => {
           exclude_plugins: [],
         },
       }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
     }),
   }
 })
@@ -204,8 +202,7 @@ beforeEach(() => {
   api.providers.mockReset().mockResolvedValue([provider])
   api.trigger.mockReset().mockImplementation(async ({ params }) => triggerProvider(params.provider))
   api.subscriptions.mockReset().mockResolvedValue([])
-  api.credentials.mockReset().mockImplementation(async (url) => {
-    if (!url.endsWith('/credential/info')) throw new Error(`Unexpected credential request: ${url}`)
+  api.credentials.mockReset().mockImplementation(async () => {
     return {
       supported_credential_types: ['api-key'],
       is_oauth_custom_client_enabled: false,
@@ -233,9 +230,7 @@ it('loads the selected tool provider, opens its real read-only settings, and pre
   await user.click(await screen.findByRole('button', { name: 'Search' }))
   expect(await screen.findByText('Query')).toBeInTheDocument()
   expect(api.tools).toHaveBeenCalledWith({ params: { provider: provider.name } })
-  expect(api.credentials).toHaveBeenCalledWith(
-    `/workspaces/current/tool-provider/builtin/${provider.name}/credential/info`,
-  )
+  expect(api.credentials).toHaveBeenCalledWith({ params: { provider: provider.name } })
   expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.back' }))
   await waitFor(() => expect(screen.queryByText('Query')).not.toBeInTheDocument())

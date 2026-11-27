@@ -49,8 +49,20 @@ class WorkflowAgentBindingResolver:
         binding_id: str | None = None,
         snapshot_id: str | None = None,
         conversation_id: str | None = None,
+        workflow_run_id: str | None = None,
+        node_execution_id: str | None = None,
+        continue_agent_session: bool = True,
+        session_generation: str = "",
+        session_branch: str = "",
     ) -> WorkflowAgentBindingBundle:
-        """Resolve the generation pinned by an execution or a Chatflow conversation participant."""
+        """Resolve an owned config generation within the frozen session policy.
+
+        Pre: caller identity and policy came from the run graph or a persisted
+        execution; explicit binding and snapshot must be supplied together.
+        Post: Chatflow participants pin config only within their allowed
+        conversation/run generation. Disabled runs never inherit a previous
+        message's participant. Unavailable identities fail closed.
+        """
 
         if (binding_id is None) != (snapshot_id is None):
             raise WorkflowAgentBindingError(
@@ -92,18 +104,25 @@ class WorkflowAgentBindingResolver:
                     f"Agent {binding.agent_id} is not available or has not been published.",
                 )
 
-            # A new node execution in the same conversation must keep its participant's
-            # config/Home generation even after the roster Agent publishes a new version.
-            if snapshot_id is None and conversation_id:
+            # Keep the participant's config/Home generation within its allowed
+            # lifetime, including sequential repeated executions in a disabled run.
+            can_resolve_participant = (
+                continue_agent_session or workflow_run_id is not None or node_execution_id is not None
+            )
+            if snapshot_id is None and conversation_id and can_resolve_participant:
                 participant = WorkflowAgentWorkspaceStore.load_active_participant(
                     session=session,
                     scope=resolve_workflow_agent_workspace_owner_scope(
                         tenant_id=tenant_id,
                         app_id=app_id,
                         conversation_id=conversation_id,
-                        workflow_run_id=None,
+                        workflow_run_id=workflow_run_id,
                         node_id=node_id,
                         workflow_agent_binding_id=binding.id,
+                        node_execution_id=node_execution_id,
+                        continue_agent_session=continue_agent_session,
+                        session_generation=session_generation,
+                        session_branch=session_branch,
                     ),
                     agent_id=agent.id,
                 )

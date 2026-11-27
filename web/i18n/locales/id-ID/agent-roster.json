@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Hapus filter",
   "roster.createAgent": "Buat agen",
   "roster.createDialog.description": "Buat Agent yang dapat digunakan kembali di ruang kerja ini.",
   "roster.createDialog.title": "Buat agen",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Edit Info",
   "roster.empty": "Belum ada agen",
   "roster.emptySearch": "Tidak ada agen yang cocok",
+  "roster.emptySearchDescription": "Coba pencarian lain atau hapus filter saat ini.",
   "roster.filters.all": "Semua",
   "roster.filters.createdByMe": "Dibuat oleh saya",
   "roster.filters.drafts": "Draf",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Gagal membuat agen inline. Segarkan dan coba lagi.",
   "roster.nodeSelector.dialogLabel": "Pilih agen",
   "roster.nodeSelector.manageInAgentConsole": "Kelola di Agents",
-  "roster.nodeSelector.searchPlaceholder": "Cari…",
+  "roster.nodeSelector.searchPlaceholder": "Cari agen…",
   "roster.nodeSelector.startFromScratch": "Mulai dari Awal",
   "roster.references.label": "Alur kerja yang menggunakan {{name}}",
   "roster.references.trigger": "Alur kerja yang menggunakan {{name}}",

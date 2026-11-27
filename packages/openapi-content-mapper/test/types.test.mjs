@@ -289,7 +289,7 @@ test('compatibility modules retain existing contracts imports, names and request
     },
     components: {
       schemas: {
-        TagType: { type: 'string', enum: ['app', 'knowledge', 'skill', 'snippet'] },
+        TagType: { type: 'string', enum: ['agent', 'app', 'knowledge', 'skill', 'snippet'] },
         console_TagResponse: {
           type: 'object',
           required: ['id', 'name'],
@@ -330,6 +330,8 @@ const tag: TagResponse = null! as Previous.TagResponse;
 const oldTag: Previous.TagResponse = null! as TagResponse;
 const input: GetTagsData = null! as Previous.GetTagsData;
 const oldInput: Previous.GetTagsData = null! as GetTagsData;
+const agentInput: GetTagsData = {query: {type: 'agent'}, url: '/tags'};
+const oldAgentInput: Previous.GetTagsData = agentInput;
 const output: GetTagsResponse = null! as Previous.GetTagsResponse;
 const oldOutput: Previous.GetTagsResponse = null! as GetTagsResponse;
 const deletion: DeleteTagsByTagIdData = null! as Previous.DeleteTagsByTagIdData;

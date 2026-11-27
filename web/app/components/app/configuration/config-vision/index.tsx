@@ -66,7 +66,7 @@ const ConfigVision: FC = () => {
   if (!isShowVisionConfig || (readonly && !isImageEnabled)) return null
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
+    <div className="mt-2 flex items-center gap-2 rounded-xl border-s-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
           <span
@@ -76,7 +76,7 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <h2 id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
+        <h2 id={titleId} className="me-1 system-sm-semibold text-text-secondary">
           {t(($) => $['vision.name'], { ns: 'fileUpload' })}
         </h2>
         <Infotip>
@@ -89,7 +89,7 @@ const ConfigVision: FC = () => {
       <div className="flex shrink-0 items-center">
         {readonly ? (
           <>
-            <div className="mr-2 flex items-center gap-0.5">
+            <div className="me-2 flex items-center gap-0.5">
               <div id={resolutionLabelId} className="system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['vision.visionSettings.resolution'], { ns: 'fileUpload' })}
               </div>
@@ -129,7 +129,7 @@ const ConfigVision: FC = () => {
         ) : (
           <>
             <ParamConfig />
-            <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
+            <div className="ms-1 me-3 h-3.5 w-px bg-divider-regular"></div>
             <Switch
               aria-labelledby={titleId}
               checked={isImageEnabled}

@@ -1,7 +1,7 @@
 import { screen, waitForElementToBeRemoved, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
-import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
+import { AgentPreviewHeader } from '@/features/agent-v2/agent-editor/preview/header'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentRosterField } from '../agent-roster-field'
 

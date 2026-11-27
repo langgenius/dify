@@ -83,17 +83,20 @@ def _app_rule(rule: SensitiveWordAvoidanceEntity) -> ModerationRule:
 
 
 def evaluate_app_input(
-    app_config: AppConfig, inputs: Mapping[str, object], query: str
+    app_config: AppConfig, inputs: Mapping[str, object], query: str, *, platform_owned: bool
 ) -> ModerationInputsResult | None:
     """Evaluate an admitted app rule, exposing backend failures only as safe unavailable errors.
 
-    Disabled and OpenAI app rules perform no backend I/O. Keyword/API failures
-    retain their private cause in logs and never become approvals or preset replies.
+    Disabled phases perform no backend I/O. When platform guards own this
+    invocation's OpenAI checks, an OpenAI app rule performs no backend I/O and
+    only supplies replacement text. Keyword, API, and tenant-owned OpenAI
+    failures retain their private cause in logs and never become approvals or
+    preset replies.
     """
     rule = app_config.sensitive_word_avoidance
     if rule is None:
         return None
-    if not _phase_enabled(rule, "input") or rule.type == "openai_moderation":
+    if not _phase_enabled(rule, "input") or (rule.type == "openai_moderation" and platform_owned):
         return ModerationInputsResult(
             flagged=False,
             action=ModerationAction.DIRECT_OUTPUT,
@@ -115,14 +118,17 @@ def evaluate_app_input(
     return _inputs_result_from_verdict(verdict, inputs, query)
 
 
-def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None:
+def app_output_evaluator(
+    app_config: AppConfig, *, platform_owned: bool
+) -> Callable[[str], ModerationOutputsResult | None] | None:
     """Capture an admitted app rule and adapt output failures to a safe invocation error.
 
-    OpenAI rules receive no evaluator. Backend and configuration failures are
-    never approvals or preset replies; provider diagnostics remain in logs only.
+    When platform guards own this invocation's OpenAI checks, an OpenAI rule
+    receives no evaluator. Backend and configuration failures are never
+    approvals or preset replies; provider diagnostics remain in logs only.
     """
     rule = app_config.sensitive_word_avoidance
-    if rule is None or rule.type == "openai_moderation":
+    if rule is None or (rule.type == "openai_moderation" and platform_owned):
         return None
 
     def evaluate(text: str) -> ModerationOutputsResult | None:

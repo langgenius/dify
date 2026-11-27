@@ -27,6 +27,7 @@ import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
@@ -270,7 +271,7 @@ export function SearchSession({ surface, inputRef, onClose, onInstallPlugin }: S
   )
   const pluginSearchQuery = useMarketplacePluginSearch(debouncedSearchTerm, {
     enabled: pluginSearchEnabled,
-    select: (plugins) => parsePluginSearchResults(plugins, defaultLocale),
+    select: (plugins) => parsePluginSearchResults(plugins.map(toPluginCard), defaultLocale),
   })
   const skillSearchQuery = useQuery(
     skillSearchQueryOptions(debouncedSearchTerm, {

@@ -55,7 +55,7 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
 }))
 
 const render: typeof renderWorkflowFlowComponent = (ui, options) => {
-  const { queryClient } = createConsoleQueryWrapper()
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
   return renderWorkflowFlowComponent(ui, { ...options, queryClient })
 }
 

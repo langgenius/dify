@@ -40,6 +40,7 @@ import {
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
+import { createTestNavigation } from '@/test/next-navigation'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 
@@ -265,16 +266,22 @@ export async function renderDeploy({
     }
   }
   const { wrapper: Wrapper } = createConsoleQueryWrapper({ queryClient: client })
+  const { NavigationProvider } = createTestNavigation({
+    url: '/app/deploy-audit/deploy',
+    params: { appId: 'deploy-audit' },
+  })
   const screen = await render(
-    <Wrapper>
-      <NuqsTestingAdapter>
-        <I18nextProvider i18n={i18n}>
-          <main aria-label="Deploy" className="isolate h-dvh min-w-0 overflow-hidden">
-            <AppDeploy />
-          </main>
-        </I18nextProvider>
-      </NuqsTestingAdapter>
-    </Wrapper>,
+    <NavigationProvider>
+      <Wrapper>
+        <NuqsTestingAdapter>
+          <I18nextProvider i18n={i18n}>
+            <main aria-label="Deploy" className="isolate h-dvh min-w-0 overflow-hidden">
+              <AppDeploy />
+            </main>
+          </I18nextProvider>
+        </NuqsTestingAdapter>
+      </Wrapper>
+    </NavigationProvider>,
   )
   await expect
     .element(screen.getByRole('region', { name: 'Environments', exact: true }))

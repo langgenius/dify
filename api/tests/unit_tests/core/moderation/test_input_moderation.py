@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
@@ -11,8 +12,11 @@ from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
 from core.moderation.factory import get_app_moderation
 from core.moderation.input_moderation import InputModeration
+from enums import DeploymentEdition
 from extensions.application_services.app_moderation import AppModeration
+from extensions.ext_code_based_extension import code_based_extension
 from models.model import AppMode
+from tests.helpers.unit.core.model_moderation_fixtures import make_tenant_moderation_provider
 
 
 class _Recorder:
@@ -77,14 +81,24 @@ class TestInputModeration:
         assert final_inputs == inputs
         assert final_query == query
 
-    def test_app_openai_toggle_without_a_container_never_selects_a_tenant_provider(
-        self, app_config: AppConfig, input_moderation: InputModeration
+    @pytest.mark.parametrize("platform_enabled", [False, True])
+    def test_standalone_app_openai_uses_deployment_gate_without_a_model_bundle(
+        self,
+        app_config: AppConfig,
+        input_moderation: InputModeration,
+        config_overrides: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
+        platform_enabled: bool,
     ) -> None:
-        app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(type="openai_moderation", config={})
-        with (
-            patch("core.moderation.input_moderation.get_app_moderation", return_value=None),
-            patch("core.moderation.input_moderation.ModerationFactory") as factory,
-        ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=platform_enabled)
+        code_based_extension.init()
+        provider, client = make_tenant_moderation_provider()
+        monkeypatch.setattr("core.model_manager.create_plugin_provider_manager", lambda **_: provider)
+        app_config.tenant_id = provider.bundle.configuration.tenant_id
+        app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+            type="openai_moderation", config={"inputs_config": {"enabled": True, "preset_response": "Blocked"}}
+        )
+        with Flask(__name__).app_context():
             result = input_moderation.check(
                 app_id=app_config.app_id,
                 tenant_id=app_config.tenant_id,
@@ -95,7 +109,7 @@ class TestInputModeration:
                 trace_scope=None,
             )
         assert result == (False, {}, "query")
-        factory.assert_not_called()
+        assert [call[5] for call in client.calls] == ([] if platform_enabled else ["query"])
 
     @patch("core.moderation.input_moderation.evaluate_app_input")
     def test_check_not_flagged(
@@ -128,7 +142,7 @@ class TestInputModeration:
         assert flagged is False
         assert final_inputs == inputs
         assert final_query == query
-        mock_factory_cls.assert_called_once_with(app_config, dict(inputs), query)
+        mock_factory_cls.assert_called_once_with(app_config, dict(inputs), query, platform_owned=False)
 
     def test_check_without_sensitive_word_avoidance_emits_nothing(
         self, app_config: AppConfig, input_moderation: InputModeration

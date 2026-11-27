@@ -9,7 +9,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
 import { consoleQuery } from '@/service/console'
-import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import {
@@ -148,8 +148,8 @@ const useTriggerInstallation = (
   enabled: boolean,
   canInstallPlugin: boolean,
 ): InstallationState => {
-  const triggerPluginsQuery = useAllTriggerPlugins(enabled)
-  const invalidateTriggers = useInvalidateAllTriggerPlugins()
+  const triggerPluginsQuery = useQuery(allTriggerPluginsQueryOptions(enabled))
+  const queryClient = useQueryClient()
 
   const triggerProviders = triggerPluginsQuery.data
   const isLoading = triggerPluginsQuery.isLoading
@@ -165,8 +165,10 @@ const useTriggerInstallation = (
   const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
-    invalidateTriggers()
-  }, [invalidateTriggers])
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
+    })
+  }, [queryClient])
 
   const shouldDim = isLoading || (!isLoading && !!triggerProviders && !matchedProvider)
 

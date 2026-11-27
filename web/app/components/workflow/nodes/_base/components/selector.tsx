@@ -55,7 +55,7 @@ const TypeSelector: FC<Props> = ({
   }, ref)
   return (
     <div
-      className={cn(!trigger && !noLeft && '-left-2', 'relative select-none', className)}
+      className={cn(!trigger && !noLeft && '-inset-s-2', 'relative select-none', className)}
       ref={ref}
     >
       {trigger ? (
@@ -70,7 +70,7 @@ const TypeSelector: FC<Props> = ({
           onClick={() => setShowOption((isShown) => !isShown)}
           className={cn(
             showOption && 'bg-state-base-hover',
-            'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover',
+            'flex h-5 cursor-pointer items-center rounded-md ps-1 pe-0.5 text-xs font-semibold text-text-secondary hover:bg-state-base-hover',
           )}
         >
           <div

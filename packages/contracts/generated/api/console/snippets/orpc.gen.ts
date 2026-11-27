@@ -361,12 +361,16 @@ export const loop = {
   nodes: nodes2,
 }
 
+/**
+ * Return candidates for the admitted workflow or snippet node
+ */
 export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidates',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates',
+    summary: 'Return candidates for the admitted workflow or snippet node',
     tags: ['console'],
   })
   .input(
@@ -380,12 +384,16 @@ export const candidates = {
   get: get8,
 }
 
+/**
+ * Copy the admitted node’s roster Agent into an inline Agent
+ */
 export const post4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoster',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster',
+    summary: 'Copy the admitted node’s roster Agent into an inline Agent',
     tags: ['console'],
   })
   .input(
@@ -406,12 +414,16 @@ export const copyFromRoster = {
   post: post4,
 }
 
+/**
+ * Return the number of workflow nodes using the selected snapshot
+ */
 export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpact',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact',
+    summary: 'Return the number of workflow nodes using the selected snapshot',
     tags: ['console'],
   })
   .input(
@@ -426,12 +438,16 @@ export const impact = {
   post: post5,
 }
 
+/**
+ * Save the admitted workflow or snippet node’s configuration
+ */
 export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRoster',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster',
+    summary: 'Save the admitted workflow or snippet node’s configuration',
     tags: ['console'],
   })
   .input(
@@ -454,12 +470,16 @@ export const saveToRoster = {
   post: post6,
 }
 
+/**
+ * Validate the configuration for the admitted workflow or snippet
+ */
 export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidate',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate',
+    summary: 'Validate the configuration for the admitted workflow or snippet',
     tags: ['console'],
   })
   .input(
@@ -479,12 +499,16 @@ export const validate = {
   post: post7,
 }
 
+/**
+ * Return the Composer state for the admitted workflow or snippet node
+ */
 export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposer',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer',
+    summary: 'Return the Composer state for the admitted workflow or snippet node',
     tags: ['console'],
   })
   .input(
@@ -499,12 +523,16 @@ export const get9 = oc
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   })
 
+/**
+ * Save the admitted workflow or snippet node’s configuration
+ */
 export const put = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposer',
     path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer',
+    summary: 'Save the admitted workflow or snippet node’s configuration',
     tags: ['console'],
   })
   .input(

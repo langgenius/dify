@@ -4,6 +4,7 @@ import type {
   RegistrationMethod,
 } from './registration-session-state'
 import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
+import { v4 as uuid4 } from 'uuid'
 import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { getIsAmplitudeInitialized } from './init'
 import {
@@ -58,13 +59,7 @@ const notifyRegistrationMarkerStored = () => {
   registrationListeners.forEach((listener) => listener())
 }
 
-const createRegistrationId = () => {
-  try {
-    return globalThis.crypto.randomUUID()
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  }
-}
+const createRegistrationId = () => uuid4()
 
 export const normalizeRegistrationAttribution = (
   value?: Record<string, unknown> | null,

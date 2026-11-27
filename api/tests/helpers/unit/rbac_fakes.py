@@ -1,6 +1,7 @@
 """Explicit RBAC transport and task fakes for exercising real application services."""
 
 from dataclasses import dataclass, field
+from unittest.mock import create_autospec
 
 import pytest
 from pydantic import JsonValue
@@ -8,10 +9,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.workspace import build_workspace_membership_services
+from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.account.adapters import RedisInvitationTokenStore
 from services.enterprise.base import EnterpriseRequest
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -85,8 +88,12 @@ def build_rbac_domain(sessions: sessionmaker[Session], monkeypatch: pytest.Monke
     monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
     monkeypatch.setattr(initialize_created_app_rbac_access_task, "delay", tasks.delay)
     workspaces = WorkspaceRepository(sessions)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     members, _ = build_workspace_membership_services(
-        workspaces=workspaces, accounts=SQLAlchemyAccountRepository(sessions)
+        workspaces=workspaces,
+        accounts=SQLAlchemyAccountRepository(sessions),
+        invitation_tokens=RedisInvitationTokenStore(redis=redis),
+        redis=redis,
     )
     return RBACDomain(
         rbac=build_rbac_services(

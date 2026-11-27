@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { DeploymentConfiguration } from '../index'
 
 const APP_ID = 'app-1'
@@ -51,55 +52,51 @@ async function renderConfiguration() {
   )
 }
 
+const notDeployable = (message: string) =>
+  apiError({
+    status: 422,
+    message,
+    code: 'APPDEPLOY_WORKFLOW_NOT_DEPLOYABLE',
+    details: { metadata: {}, reason: 'APPDEPLOY_WORKFLOW_NOT_DEPLOYABLE' },
+  })
+
+const fake = setupFakeApi({
+  console: {
+    enterprise: {
+      appDeploy: {
+        deploymentService: {
+          precheckWorkflowDeployment: () => ({ unsupported_nodes: [] }),
+          getWorkflowDeploymentOptions: () => ({
+            credential_slots: [],
+            environment_variable_groups: [],
+          }),
+        },
+      },
+    },
+  },
+})
+
 beforeEach(async () => {
   await page.viewport(1000, 800)
-  onTestFinished(() => {
-    vi.restoreAllMocks()
-  })
 })
 
 describe('DeploymentConfiguration query freshness', () => {
   it('fetches precheck and deployment options again whenever the form is reopened', async () => {
-    const requestCounts = {
-      deploymentOptions: 0,
-      precheck: 0,
+    const { precheckWorkflowDeployment, getWorkflowDeploymentOptions } =
+      fake.console.enterprise.appDeploy.deploymentService
+    const optionsParams = {
+      app_id: APP_ID,
+      workflow_id: WORKFLOW_ID,
+      environment_id: ENVIRONMENT_ID,
     }
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init)
-      const pathname = new URL(request.url).pathname
-
-      if (
-        pathname.endsWith(`/enterprise/app-deploy/apps/${APP_ID}/workflows/${WORKFLOW_ID}:precheck`)
-      ) {
-        requestCounts.precheck += 1
-        return new Response(JSON.stringify({ unsupported_nodes: [] }), {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200,
-        })
-      }
-
-      if (
-        pathname.endsWith(
-          `/enterprise/app-deploy/apps/${APP_ID}/workflows/${WORKFLOW_ID}/environments/${ENVIRONMENT_ID}/deployment-options`,
-        )
-      ) {
-        requestCounts.deploymentOptions += 1
-        return new Response(
-          JSON.stringify({ credential_slots: [], environment_variable_groups: [] }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          },
-        )
-      }
-
-      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
-    })
 
     await renderConfiguration()
     const deploy = page.getByRole('button', { name: 'common.appMenus.deploy' })
     await expect.element(deploy).toBeEnabled()
-    expect(requestCounts).toEqual({ deploymentOptions: 1, precheck: 1 })
+    expect(precheckWorkflowDeployment.mock.calls).toEqual([
+      [{ params: { app_id: APP_ID, workflow_id: WORKFLOW_ID } }],
+    ])
+    expect(getWorkflowDeploymentOptions.mock.calls).toEqual([[{ params: optionsParams }]])
 
     await page.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect
@@ -108,33 +105,17 @@ describe('DeploymentConfiguration query freshness', () => {
     await page.getByRole('button', { name: 'Configure deployment' }).click()
 
     await expect.element(deploy).toBeEnabled()
-    await expect.poll(() => requestCounts).toEqual({ deploymentOptions: 2, precheck: 2 })
+    await expect.poll(() => precheckWorkflowDeployment).toHaveBeenCalledTimes(2)
+    await expect.poll(() => getWorkflowDeploymentOptions).toHaveBeenCalledTimes(2)
+    expect(getWorkflowDeploymentOptions).toHaveBeenLastCalledWith({ params: optionsParams })
   })
 
   it('shows the backend message when precheck fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init)
-      const pathname = new URL(request.url).pathname
-
-      if (
-        pathname.endsWith(`/enterprise/app-deploy/apps/${APP_ID}/workflows/${WORKFLOW_ID}:precheck`)
-      ) {
-        return new Response(
-          JSON.stringify({
-            code: 422,
-            message: 'workflow tool dependencies form a cycle',
-            metadata: {},
-            reason: 'APPDEPLOY_WORKFLOW_NOT_DEPLOYABLE',
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 422,
-          },
-        )
-      }
-
-      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
-    })
+    fake.console.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.mockImplementation(
+      () => {
+        throw notDeployable('workflow tool dependencies form a cycle')
+      },
+    )
 
     await renderConfiguration()
 
@@ -144,40 +125,11 @@ describe('DeploymentConfiguration query freshness', () => {
   })
 
   it('shows the backend message when deployment options fail', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init)
-      const pathname = new URL(request.url).pathname
-
-      if (
-        pathname.endsWith(`/enterprise/app-deploy/apps/${APP_ID}/workflows/${WORKFLOW_ID}:precheck`)
-      ) {
-        return new Response(JSON.stringify({ unsupported_nodes: [] }), {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200,
-        })
-      }
-
-      if (
-        pathname.endsWith(
-          `/enterprise/app-deploy/apps/${APP_ID}/workflows/${WORKFLOW_ID}/environments/${ENVIRONMENT_ID}/deployment-options`,
-        )
-      ) {
-        return new Response(
-          JSON.stringify({
-            code: 422,
-            message: 'workflow deployment options are invalid',
-            metadata: {},
-            reason: 'APPDEPLOY_WORKFLOW_NOT_DEPLOYABLE',
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 422,
-          },
-        )
-      }
-
-      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
-    })
+    fake.console.enterprise.appDeploy.deploymentService.getWorkflowDeploymentOptions.mockImplementation(
+      () => {
+        throw notDeployable('workflow deployment options are invalid')
+      },
+    )
 
     await renderConfiguration()
 

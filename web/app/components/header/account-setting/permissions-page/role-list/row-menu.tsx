@@ -1,15 +1,5 @@
 'use client'
 import type { Role, RoleCategory } from '@/models/access-control'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
@@ -26,11 +16,11 @@ type RowMenuProps = {
   role: Role
   onView?: (role: Role) => void
   onEdit?: (role: Role) => void
+  onDelete: (role: Role) => void
 }
 
-const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
+const RowMenu = ({ roleCategory, role, onView, onEdit, onDelete }: RowMenuProps) => {
   const { t } = useTranslation(['common', 'permission'])
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)
 
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -69,29 +59,6 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     },
     [canManageRoles, copyRole, role.id],
   )
-
-  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useMutation(
-    consoleQuery.workspaces.current.rbac.roles.byRoleId.delete.mutationOptions(),
-  )
-
-  const openDeleteConfirm = useCallback(() => {
-    if (!canManageRoles) return
-
-    setShowDeleteConfirm(true)
-  }, [canManageRoles])
-
-  const handleDelete = useCallback(() => {
-    if (!canManageRoles) return
-
-    deleteRole(
-      { params: { role_id: role.id } },
-      {
-        onSuccess: () => {
-          setShowDeleteConfirm(false)
-        },
-      },
-    )
-  }, [canManageRoles, deleteRole, role.id])
 
   const hasViewAction = roleCategory === 'global_system_default'
   const hasEditAction = roleCategory === 'global_custom'
@@ -140,7 +107,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
                 disabled={!canManageRoles}
                 variant="destructive"
                 className="system-sm-semibold"
-                onClick={openDeleteConfirm}
+                onClick={() => onDelete(role)}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
               </MenuItem>
@@ -148,29 +115,6 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
           )}
         </MenuContent>
       </Menu>
-      <AlertDialog
-        open={showDeleteConfirm}
-        onOpenChange={(open) => !open && setShowDeleteConfirm(false)}
-      >
-        <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['role.deleteTitle'], { ns: 'permission', name: role.name })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['role.deleteDescription'], { ns: 'permission' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={isDeletingRole} onClick={handleDelete}>
-              {t(($) => $['operation.delete'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       {showCopyMembersConfirm && (
         <CopyMembersConfirmDialog
           role={role}

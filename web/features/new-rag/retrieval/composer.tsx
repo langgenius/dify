@@ -2,26 +2,23 @@
 
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
-import { useMutation } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
-import { consoleQuery } from '@/service/console'
-import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { QueryImageThumbnail } from './query-image-thumbnail'
 import {
-  commitRetrievalComposerUploadAtom,
   retrievalComposerFactsAtom,
   updateRetrievalComposerImagesAtom,
   updateRetrievalComposerModeAtom,
   updateRetrievalComposerQueryAtom,
 } from './state/graph'
 import { runRetrievalAtom } from './state/runtime'
-import { retrievalComposerUploadPendingAtom } from './state/scoped'
+import { useQueryImageUploads } from './use-query-image-uploads'
 
 const runRetrievalHotkey = 'Mod+Enter' satisfies Hotkey
 const queryImageMaxBytes = 10 * 1024 * 1024
@@ -29,28 +26,29 @@ const queryImagesMaxBytes = 32 * 1024 * 1024
 const queryImageTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp'])
 
 export function RetrievalComposer() {
-  const { t } = useTranslation(['knowledgeRetrieval', 'knowledgeSpace'])
-  const { disabled, images, mode, query, runnable, selectionKey, uploading } = useAtomValueRawSync(
+  const { t } = useTranslation(['knowledgeRetrieval', 'knowledgeSpace', 'common', 'custom'])
+  const { disabled, images, mode, query, runnable, uploads } = useAtomValueRawSync(
     retrievalComposerFactsAtom,
   )
   const updateQuery = useSetAtom(updateRetrievalComposerQueryAtom)
   const updateMode = useSetAtom(updateRetrievalComposerModeAtom)
   const updateImages = useSetAtom(updateRetrievalComposerImagesAtom)
-  const commitUpload = useSetAtom(commitRetrievalComposerUploadAtom)
-  const setUploading = useSetAtom(retrievalComposerUploadPendingAtom)
   const run = useSetAtom(runRetrievalAtom)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const upload = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
-  )
+  const upload = useQueryImageUploads()
+  const [validationError, setValidationError] = useState<string>()
+  const imageCount = images.length + uploads.length
+  const hasFailedUploads = uploads.some((item) => item.status === 'failed')
 
-  const selectImages = async (files: FileList | null) => {
-    if (!files?.length || disabled || uploading) return
-    const available = Math.max(0, 4 - images.length)
-    const candidates = [...files].slice(0, available)
+  const selectImages = (files: FileList | null) => {
+    if (!files?.length || disabled) return
+    setValidationError(undefined)
+    const candidates = [...files].slice(0, Math.max(0, 4 - imageCount))
     if (candidates.length < files.length)
-      toast.error(t(($) => $['retrievalTest.imageLimit'], { ns: 'knowledgeRetrieval' }))
-    let aggregateBytes = images.reduce((total, image) => total + image.sizeBytes, 0)
+      setValidationError(t(($) => $['retrievalTest.imageLimit'], { ns: 'knowledgeRetrieval' }))
+    let aggregateBytes =
+      images.reduce((total, image) => total + image.sizeBytes, 0) +
+      uploads.reduce((total, item) => total + item.file.size, 0)
     const accepted = candidates.filter((file) => {
       const valid =
         queryImageTypes.has(file.type) &&
@@ -61,25 +59,9 @@ export function RetrievalComposer() {
       return valid
     })
     if (accepted.length !== candidates.length)
-      toast.error(t(($) => $['retrievalTest.imageInvalid'], { ns: 'knowledgeRetrieval' }))
-    // Preview URLs are only created once the result is known to belong to this record.
-    const uploaded: Array<{ file: File; uploadFileId: string }> = []
-    setUploading(true)
-    try {
-      for (const file of accepted) {
-        const result = await upload.mutateAsync({ body: { file } })
-        uploaded.push({ file, uploadFileId: result.id })
-      }
-      commitUpload({ baseImages: images, selectionKey, uploaded })
-    } catch (error) {
-      toast.error(
-        getErrorMessage(error) ??
-          t(($) => $['retrievalTest.imageUploadFailed'], { ns: 'knowledgeRetrieval' }),
-      )
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
+      setValidationError(t(($) => $['retrievalTest.imageInvalid'], { ns: 'knowledgeRetrieval' }))
+    upload.add(accepted)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const removeImage = (uploadFileId: string) => {
@@ -107,10 +89,10 @@ export function RetrievalComposer() {
             }
           }}
         />
-        {images.length > 0 && (
+        {imageCount > 0 && (
           <ul
             aria-label={t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
-            className="flex gap-2 overflow-x-auto px-3.5 pb-2"
+            className="flex gap-2 overflow-x-auto px-3.5 pt-1.5 pb-2"
           >
             {images.map((image) => (
               <li key={image.uploadFileId} className="relative shrink-0">
@@ -118,19 +100,86 @@ export function RetrievalComposer() {
                 <IconButton
                   type="button"
                   size="sm"
+                  variant="secondary"
                   aria-label={t(($) => $['retrievalTest.removeImage'], {
                     ns: 'knowledgeRetrieval',
                     name: image.name,
                   })}
-                  className="absolute -top-1 -right-1 shadow-xs"
-                  disabled={disabled || uploading}
+                  className="absolute -inset-e-1 -top-1 rounded-full shadow-xs"
+                  disabled={disabled}
                   onClick={() => removeImage(image.uploadFileId)}
                 >
                   <span aria-hidden className="i-ri-close-line size-3.5" />
                 </IconButton>
               </li>
             ))}
+            {uploads.map((item) => (
+              <li key={item.id} className="relative shrink-0" aria-label={item.file.name}>
+                <QueryImageThumbnail
+                  image={{ name: item.file.name, previewUrl: item.previewUrl }}
+                  className="size-16"
+                />
+                <div
+                  className={cn(
+                    'absolute inset-0 flex items-center justify-center rounded-lg',
+                    item.status === 'failed'
+                      ? 'bg-background-overlay-destructive ring-2 ring-state-destructive-border ring-inset'
+                      : 'bg-background-overlay-alt',
+                  )}
+                >
+                  {item.status === 'uploading' ? (
+                    <ProgressCircle
+                      value={item.progress}
+                      color="white"
+                      size="large"
+                      aria-label={`${t(($) => $.uploading, { ns: 'custom' })} ${item.file.name}`}
+                    />
+                  ) : (
+                    <IconButton
+                      type="button"
+                      aria-label={`${t(($) => $['operation.retry'], { ns: 'common' })} ${item.file.name}`}
+                      aria-describedby="retrieval-image-upload-error"
+                      disabled={disabled}
+                      onClick={() => upload.retry(item)}
+                    >
+                      <span
+                        aria-hidden
+                        className="i-ri-restart-line size-5 text-text-primary-on-surface"
+                      />
+                    </IconButton>
+                  )}
+                </div>
+                <IconButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  aria-label={t(($) => $['retrievalTest.removeImage'], {
+                    ns: 'knowledgeRetrieval',
+                    name: item.file.name,
+                  })}
+                  className="absolute -inset-e-1 -top-1 rounded-full shadow-xs"
+                  disabled={disabled}
+                  onClick={() => upload.remove(item.id)}
+                >
+                  <span aria-hidden className="i-ri-close-line size-3.5" />
+                </IconButton>
+              </li>
+            ))}
           </ul>
+        )}
+        {validationError && (
+          <p role="alert" className="px-3.5 pb-2 text-sm text-text-destructive">
+            {validationError}
+          </p>
+        )}
+        {hasFailedUploads && (
+          <p
+            id="retrieval-image-upload-error"
+            role="alert"
+            className="px-3.5 pb-2 text-sm text-text-destructive"
+          >
+            {t(($) => $['retrievalTest.imageUploadFailed'], { ns: 'knowledgeRetrieval' })}
+          </p>
         )}
         <div className="flex min-h-13 items-center justify-between gap-3 p-2.5">
           <RetrievalModeSegmentedControl
@@ -146,14 +195,14 @@ export function RetrievalComposer() {
               aria-label={t(($) => $['retrievalTest.addImages'], { ns: 'knowledgeRetrieval' })}
               accept="image/gif,image/jpeg,image/png,image/webp"
               className="sr-only"
-              disabled={disabled || uploading || images.length >= 4}
+              disabled={disabled || imageCount >= 4}
               multiple
               type="file"
-              onChange={(event) => void selectImages(event.target.files)}
+              onChange={(event) => selectImages(event.target.files)}
             />
             <Button
               variant="secondary"
-              disabled={disabled || uploading || images.length >= 4}
+              disabled={disabled || imageCount >= 4}
               onClick={() => fileInputRef.current?.click()}
             >
               <span aria-hidden className="i-ri-image-add-line size-4" />

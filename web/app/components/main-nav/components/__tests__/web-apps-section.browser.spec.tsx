@@ -1,33 +1,12 @@
-import type {
-  InstalledAppListResponse,
-  InstalledAppResponse,
-} from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { Suspense } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import WebAppsSection from '../web-apps-section'
-
-const service = vi.hoisted(() => ({
-  list: vi.fn<() => Promise<InstalledAppListResponse>>(),
-  pin: vi.fn<() => Promise<void>>(),
-}))
-
-// boundary: Browser Mode has no Next App Router; the list consumes the current pathname.
-vi.mock('@/next/navigation', () => ({ usePathname: () => '/' }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'installedApps.get': () => service.list(),
-      'installedApps.byInstalledAppId.patch': () => service.pin(),
-    }),
-  }
-})
 
 function createApp(index: number): InstalledAppResponse {
   return {
@@ -51,15 +30,22 @@ function createApp(index: number): InstalledAppResponse {
 }
 
 async function renderSection(count = 40) {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        installedApps: {
+          get: () => ({
+            installed_apps: Array.from({ length: count }, (_, index) => createApp(index)),
+            has_more: false,
+            next_cursor: null,
+          }),
+        },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
     workspacePermissionKeys: ['app_library.access'],
-  })
-  service.list.mockResolvedValue({
-    installed_apps: Array.from({ length: count }, (_, index) => createApp(index)),
-    has_more: false,
-    next_cursor: null,
   })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -70,6 +56,7 @@ async function renderSection(count = 40) {
       </div>
       <button type="button">After apps</button>
     </QueryClientTestProvider>,
+    { wrapper: createTestNavigation().NavigationProvider },
   )
   await expect
     .element(
@@ -81,11 +68,6 @@ async function renderSection(count = 40) {
     .toBeVisible()
   return { screen, queryClient }
 }
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  service.pin.mockResolvedValue(undefined)
-})
 
 it('keeps a focused app mounted when the list scrolls away', async () => {
   const { screen } = await renderSection()

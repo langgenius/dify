@@ -51,7 +51,7 @@ const ImageItem = ({ file, showDeleteAction, onRemove, onReUpload, onPreview }: 
           aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
           variant="secondary"
           size="sm"
-          className="absolute -top-1.5 -right-1.5 z-11 hidden rounded-full group-hover/file-image:flex"
+          className="absolute -inset-e-1.5 -top-1.5 z-11 hidden rounded-full group-hover/file-image:flex"
           onClick={handleRemove}
         >
           <span

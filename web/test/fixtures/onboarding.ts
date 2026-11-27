@@ -1,6 +1,7 @@
 import type { StepByStepTourStatePatchPayload } from '@dify/contracts/api/console/onboarding/types.gen'
 import type { consoleClient } from '@/service/console'
 import { vi } from 'vite-plus/test'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 
 type StepByStepTourStateResponse = Awaited<
   ReturnType<typeof consoleClient.onboarding.stepByStepTour.state.get>
@@ -9,7 +10,7 @@ type StepByStepTourStateResponse = Awaited<
 /** In-memory responses for the onboarding API, shared by its independent UI consumers. */
 export function createStepByStepTourService(
   defaults: Partial<StepByStepTourStateResponse> = {},
-  workspaceId = 'workspace-1',
+  workspaceId = TEST_WORKSPACE_ID,
 ) {
   const createState = (
     overrides: Partial<StepByStepTourStateResponse> = {},

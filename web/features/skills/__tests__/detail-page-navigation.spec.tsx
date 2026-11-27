@@ -133,7 +133,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('opens another skill in its editable draft without retaining the original view state', async () => {
-    const { default: SkillDetailPageRoute } = await import('../detail-page')
+    const { default: SkillDetailPageRoute } = await import('../detail/route')
     const user = userEvent.setup()
     const version = createSkillVersion({ id: 'original-version', version_name: 'Original version' })
     mocks.skillVersionsQueryOptions.mockImplementation(() => ({

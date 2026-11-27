@@ -1,11 +1,12 @@
 'use client'
 
 import type { Plugin } from '@/app/components/plugins/types'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { TaskStatus } from '@/app/components/plugins/types'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
 
 export type SilentMarketplaceInstallResult =
   | { status: 'failed'; error?: string }
@@ -20,7 +21,9 @@ const toErrorMessage = (error: unknown) => {
 }
 
 export const useSilentMarketplaceInstall = () => {
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const { mutateAsync: installPackageFromMarketPlace } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
+  )
   const { refreshPluginList } = useRefreshPluginList()
 
   const install = useCallback(
@@ -31,7 +34,9 @@ export const useSilentMarketplaceInstall = () => {
 
       const pending = (async (): Promise<SilentMarketplaceInstallResult> => {
         try {
-          const response = await installPackageFromMarketPlace(uniqueIdentifier)
+          const response = await installPackageFromMarketPlace({
+            body: { plugin_unique_identifiers: [uniqueIdentifier] },
+          })
           if (response.all_installed) {
             refreshPluginList(plugin)
             return { status: 'success' }

@@ -60,7 +60,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
             <Popover>
               <PopoverTrigger
                 openOnHover
-                className="flex-1 truncate border-0 bg-transparent p-0 text-left system-xs-regular text-text-tertiary"
+                className="flex-1 truncate border-0 bg-transparent p-0 text-start system-xs-regular text-text-tertiary"
               >
                 {data.endpoint}
               </PopoverTrigger>

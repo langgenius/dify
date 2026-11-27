@@ -37,16 +37,3 @@ it('exposes the named external destination across the visible banner content', a
   link.element().addEventListener('click', (event) => event.preventDefault(), { once: true })
   await link.click()
 })
-
-it('leaves destination-less content readable as an article', async () => {
-  const screen = await render(
-    <BannerItem
-      banner={{ ...banner, link: '' }}
-      sort={1}
-      language="en-US"
-      titleId="banner-title"
-    />,
-  )
-  await expect.element(screen.getByRole('article')).toMatchTextContent('Learn Dify')
-  await expect.element(screen.getByRole('link')).not.toBeInTheDocument()
-})

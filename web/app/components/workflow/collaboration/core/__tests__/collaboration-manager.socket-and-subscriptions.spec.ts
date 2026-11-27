@@ -62,6 +62,54 @@ it('starts joining before notifying connection listeners', async () => {
   expect(onStateChange).toHaveBeenCalledWith({ isConnected: true })
 })
 
+it('resolves avatar URLs over the active room socket without sending file or account IDs', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  expect(emit).toHaveBeenCalledWith('get_online_user_avatars', expect.any(Function))
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  const avatars = { 'other-sid': 'https://example.com/signed-avatar.png' }
+  ack(null, avatars)
+  await expect(pending).resolves.toEqual(avatars)
+  await expect(manager.getOnlineUserAvatars('another-editor')).resolves.toEqual({})
+  expect(emit).toHaveBeenCalledTimes(1)
+})
+
+it('resolves a successful empty avatar acknowledgement without treating it as a failure', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  ack(null, {})
+  await expect(pending).resolves.toEqual({})
+})
+
+it('rejects an avatar request when the active socket acknowledgement fails', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  ack(new Error('avatar acknowledgement timed out'))
+  await expect(pending).rejects.toThrow('avatar acknowledgement timed out')
+})
+
+it('drops an avatar acknowledgement that completes after the active room switches', async () => {
+  const { manager, store, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  const next = createSocket('socket-other-editor')
+  transports.set('other-editor', next)
+  await connect(manager, 'other-editor', store)
+  ack(null, { 'old-room-sid': 'https://example.com/old-room-avatar.png' })
+
+  await expect(pending).resolves.toEqual({})
+})
+
 it('handles a status and join acknowledgement delivered synchronously', async () => {
   const { manager, receive, emit, socket } = await createSession({
     connected: false,
@@ -80,7 +128,7 @@ it('handles a status and join acknowledgement delivered synchronously', async ()
   expect(manager.canPersistLocalGraph()).toBe(true)
 })
 
-it('ignores the old join acknowledgement after a socket reconnects', async () => {
+it('resumes the same page on reconnect and ignores the old join acknowledgement', async () => {
   const { manager, receive, acknowledge, emit, socket } = await createSession({
     connected: false,
     role: 'pending',
@@ -88,19 +136,38 @@ it('ignores the old join acknowledgement after a socket reconnects', async () =>
   const failures = vi.fn()
   manager.onJoinFailure(failures)
   receive('connect')
-  const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
+  const initialJoin = emit.mock.calls.find(([event]) => event === 'user_connect')
+  const oldAck = initialJoin?.[2]
   if (typeof oldAck !== 'function') throw new TypeError('Missing initial join acknowledgement')
 
   receive('disconnect', 'transport close')
   socket.id = 'new-session'
   receive('connect')
-  expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
+  const joins = emit.mock.calls.filter(([event]) => event === 'user_connect')
+  expect(joins).toHaveLength(2)
+  const initialResume = initialJoin?.[1].resume
+  const resumed = joins[1]?.[1].resume
+  expect(initialResume.page_id).toEqual(expect.any(String))
+  expect(resumed.page_id).toBe(initialResume.page_id)
+  expect(resumed.sequence).toBeGreaterThan(initialResume.sequence)
   receive('status', { isLeader: true })
   acknowledge('user_connect', { msg: 'connected' })
   oldAck({ msg: 'not_entitled' }, 403)
   expect(failures).toHaveBeenLastCalledWith(null)
   // A fresh CRDT must still recover the authoritative graph after reconnect.
   expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('joins with a different page credential when the workflow is opened in a new page', async () => {
+  const appId = 'same-workflow'
+  const first = await createSession({ appId, preserveEmits: true })
+  const firstJoin = first.emit.mock.calls.find(([event]) => event === 'user_connect')?.[1]
+  first.manager.disconnect(first.connectionId)
+
+  const second = await createSession({ appId, preserveEmits: true })
+  const secondJoin = second.emit.mock.calls.find(([event]) => event === 'user_connect')?.[1]
+  expect(secondJoin.resume.page_id).toEqual(expect.any(String))
+  expect(secondJoin.resume.page_id).not.toBe(firstJoin.resume.page_id)
 })
 
 it('keeps the existing canvas blocked when an established session cannot rejoin', async () => {
@@ -514,30 +581,37 @@ it('shares workflow connections and ignores old releases after switching workflo
   expect(manager.isConnected()).toBe(false)
 })
 
-it('reloads a re-elected leader from the authoritative graph before broadcasting', async () => {
-  const { manager, receive, update, emit, state } = await createSession({
-    nodes: [createNode('stale')],
-  })
-  receive('disconnect', 'transport close')
-  expect(manager.canPersistLocalGraph()).toBe(false)
-  receive('connect')
-  expect(manager.getNodes()).toEqual([])
-  receive('status', { isLeader: true })
-  const reload = vi.fn<(request: GraphReloadRequest) => void>()
-  manager.onGraphReloadRequired(reload)
-  expect(reload).toHaveBeenCalledOnce()
-  const request = reload.mock.calls[0]![0]
-  expect(manager.isGraphReloadCurrent(request)).toBe(true)
-  expect(manager.canPersistLocalGraph()).toBe(false)
-  update('graph_resync_request', {})
-  expect(emit.mock.calls.filter(([event]) => event === 'graph_event')).toHaveLength(0)
-  const latest = createNode('latest', 'Latest HTTP draft')
-  state.setNodes([latest])
-  expect(manager.replaceGraphFromReactFlow(request)).toBe(true)
-  expect(manager.getNodes()).toEqual([expect.objectContaining(latest)])
-  expect(manager.canPersistLocalGraph()).toBe(true)
-  expect(emit).toHaveBeenCalledWith('graph_event', expect.any(Uint8Array), expect.any(Function))
-})
+it.each(['transport reconnect', 'editor reentry'] as const)(
+  'reloads the new leader from the authoritative graph after %s',
+  async (entry) => {
+    const reentering = entry === 'editor reentry'
+    const { manager, receive, update, emit, state } = await createSession({
+      nodes: [createNode('stale')],
+      role: reentering ? 'pending' : 'leader',
+    })
+    if (!reentering) {
+      receive('disconnect', 'transport close')
+      expect(manager.canPersistLocalGraph()).toBe(false)
+      receive('connect')
+      expect(manager.getNodes()).toEqual([])
+    }
+    receive('status', { isLeader: true, requiresGraphReload: reentering })
+    const reload = vi.fn<(request: GraphReloadRequest) => void>()
+    manager.onGraphReloadRequired(reload)
+    expect(reload).toHaveBeenCalledOnce()
+    const request = reload.mock.calls[0]![0]
+    expect(manager.isGraphReloadCurrent(request)).toBe(true)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    update('graph_resync_request', {})
+    expect(emit.mock.calls.filter(([event]) => event === 'graph_event')).toHaveLength(0)
+    const latest = createNode('latest', 'Latest HTTP draft')
+    state.setNodes([latest])
+    expect(manager.replaceGraphFromReactFlow(request)).toBe(true)
+    expect(manager.getNodes()).toEqual([expect.objectContaining(latest)])
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(emit).toHaveBeenCalledWith('graph_event', expect.any(Uint8Array), expect.any(Function))
+  },
+)
 
 it('keeps a promoted follower blocked until an authoritative snapshot or reload arrives', async () => {
   const { manager, receive } = await createSession({ nodes: [createNode('stale')] })

@@ -34,30 +34,60 @@ import Debug from '../index'
 
 type DebugProps = ComponentProps<typeof Debug>
 const api = vi.hoisted(() => ({
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  upload: vi.fn<typeof import('@/service/base').upload>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
   suggestions:
     vi.fn<typeof consoleClient.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get>(),
   message: vi.fn<typeof consoleClient.apps.byAppId.messages.byMessageId.get>(),
   agentLog: vi.fn<typeof consoleClient.apps.byAppId.agent.logs.get>(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
-  upload: api.upload,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: api.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
+}))
+// Completion requests use the generated client stream; record them with the chat stream calls.
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  sendCompletionMessage: (
+    appId: string,
+    body: Record<string, unknown>,
+    handlers: Parameters<typeof import('@/service/debug').sendCompletionMessage>[2],
+  ) =>
+    api.stream(
+      `apps/${appId}/completion-messages`,
+      { body: { ...body, response_mode: 'streaming' } },
+      handlers,
+    ),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get': (input) =>
         api.suggestions(input),
       'apps.byAppId.messages.byMessageId.get': (input) => api.message(input),
-      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
     }),
   }
 })
@@ -235,7 +265,7 @@ const createMessage = (
 beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset()
   api.stream.mockResolvedValue(undefined)
-  api.upload.mockResolvedValue({ id: 'uploaded-image' })
+  api.upload.mockResolvedValue({ id: 'uploaded-image', name: 'upload', size: 1 })
   api.messages.mockResolvedValue({ data: [], has_more: false, limit: 10 })
   api.suggestions.mockResolvedValue({ data: [] })
   api.message.mockImplementation(async ({ params }) => createMessage(params.message_id))
@@ -438,7 +468,7 @@ it('validates a required completion input and sends the corrected value', async 
   expect(screen.queryByText('First draft')).not.toBeInTheDocument()
 })
 it('waits for a local image upload and sends its server id', async () => {
-  const upload = createDeferred<{ id: string }>()
+  const upload = createDeferred<{ id: string; name: string; size: number }>()
   api.upload.mockReturnValue(upload.promise)
   const { user } = setup({
     context: {
@@ -454,10 +484,10 @@ it('waits for a local image upload and sends its server id', async () => {
   await run(user)
   expect(await screen.findByText('appDebug.errorMessage.waitForFileUpload')).toBeVisible()
   expect(api.stream).not.toHaveBeenCalled()
-  await act(async () => upload.resolve({ id: 'uploaded-image' }))
+  await act(async () => upload.resolve({ id: 'uploaded-image', name: 'upload', size: 1 }))
   await run(user)
   expect(api.stream).toHaveBeenCalledTimes(1)
-  expect(api.upload.mock.lastCall![0].data.get('file')).toEqual(file)
+  expect(api.upload.mock.lastCall![0].body.file).toEqual(file)
   expect(api.stream.mock.lastCall![1].body).toHaveProperty('files', [
     {
       type: 'image',

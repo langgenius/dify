@@ -3,7 +3,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dif
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MemberRow from '../member-row'
+import { MemberRow } from '../member-row'
 
 const member: AccountWithRoleResponse = {
   id: 'member-1',
@@ -12,7 +12,7 @@ const member: AccountWithRoleResponse = {
   avatar: '',
   avatar_url: '',
   role: 'normal',
-  roles: [],
+  roles: [{ id: 'role-1', name: 'Editor' }],
   last_active_at: 1731000000,
   last_login_at: 1731000000,
   created_at: 1731000000,
@@ -29,7 +29,6 @@ const renderMemberRow = (onRemove = vi.fn()) => {
               <MemberRow
                 onRemove={onRemove}
                 member={member}
-                roles={[{ id: 'role-1', name: 'Editor' }]}
                 isCurrentUser={false}
                 canManage
                 canTransferOwnership={false}

@@ -1102,6 +1102,13 @@ export const zSkillListResponse = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * SkillFilePreviewResponse
  */
 export const zSkillFilePreviewResponse = z.object({
@@ -1519,6 +1526,25 @@ export const zAccountNotLinkTenantError = zErrorResponse.and(
   z.object({
     code: z.literal('account_not_link_tenant'),
     status: z.literal(403),
+  }),
+)
+
+/**
+ * PendingInvitationRevokePayload
+ */
+export const zPendingInvitationRevokePayload = z.object({
+  email: z.string(),
+})
+
+/**
+ * PendingInvitationNotFoundError
+ *
+ * No live invitation exists for this email in the workspace.
+ */
+export const zPendingInvitationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pending_invitation_not_found'),
+    status: z.literal(404),
   }),
 )
 
@@ -2034,7 +2060,7 @@ export const zParserDeleteModels = z.object({
  * LoadBalancingCredentialPayload
  */
 export const zLoadBalancingCredentialPayload = z.object({
-  credentials: z.record(z.string(), z.unknown()),
+  credentials: z.record(z.string(), z.union([z.string(), z.boolean()])),
   model: z.string(),
   model_type: zModelType,
 })
@@ -2879,6 +2905,22 @@ export const zWorkspaceTenantResultResponse = z.object({
 export const zSwitchWorkspaceResponse = z.object({
   new_tenant: zTenantInfoResponse,
   result: z.string(),
+})
+
+/**
+ * PendingWorkspaceInvitationResponse
+ */
+export const zPendingWorkspaceInvitationResponse = z.object({
+  email: z.string(),
+  expires_at: z.iso.datetime(),
+  role: zTenantAccountRole,
+})
+
+/**
+ * PendingWorkspaceInvitationListResponse
+ */
+export const zPendingWorkspaceInvitationListResponse = z.object({
+  invitations: z.array(zPendingWorkspaceInvitationResponse),
 })
 
 /**
@@ -7759,6 +7801,10 @@ export const zPostWorkspacesCurrentPluginUpgradeMarketplaceBody = zParserMarketp
 export const zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse =
   zPluginInstallTaskStartResponse
 
+export const zPostWorkspacesCurrentPluginUploadBundleBody = z.object({
+  bundle: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -8597,7 +8643,7 @@ export const zGetWorkspacesCurrentSkillsBySkillIdExportPath = z.object({
 /**
  * Draft Skill zip archive
  */
-export const zGetWorkspacesCurrentSkillsBySkillIdExportResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentSkillsBySkillIdExportResponse = zBinaryFileResponse
 
 export const zPatchWorkspacesCurrentSkillsBySkillIdFilesBody = zSkillDraftFileOperationPayload
 
@@ -9346,3 +9392,26 @@ export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangRes
   z.string(),
   z.unknown(),
 )
+
+export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath = z.object({
+  workspace_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
+  zPendingWorkspaceInvitationListResponse
+
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody =
+  zPendingInvitationRevokePayload
+
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath = z.object({
+  workspace_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse =
+  zSimpleResultResponse

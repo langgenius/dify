@@ -27,6 +27,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { ContactImCallbackSetup } from './callback-setup'
 import { canRetainCredential } from './credential-draft'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
@@ -40,7 +41,6 @@ import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
 } from './types'
-import { useChannelDocLink } from './use-channel-doc-link'
 
 type CredentialValues = Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 
@@ -61,7 +61,7 @@ export function ContactImBindingContent({
 }: ContactImBindingDialogProps) {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
-  const docLink = useChannelDocLink()
+  const docLink = useDocLink()
   const adapter = resolveContactImProviderFormAdapter(provider)
   const setupGuideUrl = docLink(adapter.setupGuidePath)
   const saveCredentials = useSaveContactImCredentials()

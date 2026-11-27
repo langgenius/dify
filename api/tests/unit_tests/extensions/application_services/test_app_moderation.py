@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -6,6 +7,7 @@ from threading import Barrier
 from time import perf_counter
 from typing import Literal, override
 
+import httpx
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,6 +30,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 )
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, ChatAppGenerateEntity, InvokeFrom
@@ -42,12 +45,17 @@ from core.app.entities.task_entities import (
     MessageReplaceStreamResponse,
     MessageStreamResponse,
 )
+from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from core.model_manager import ModelManager
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
+from core.helper import ssrf_proxy as ssrf_module
+from core.model_manager import ModelInstance
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.factory import get_app_moderation
 from core.moderation.input_moderation import InputModeration
 from core.moderation.output_moderation import ModerationRule as OutputModerationRule
 from core.moderation.output_moderation import OutputModeration
+from enums import DeploymentEdition
 from events.message_event import message_was_created
 from extensions.application_services.app_moderation import (
     DEFAULT_CHAT_MODERATION_REPLY,
@@ -56,13 +64,16 @@ from extensions.application_services.app_moderation import (
     app_rejection_replacement,
     evaluate_app_input,
 )
-from extensions.application_services.moderation import build_llm_moderation_guard
+from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
+from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.runtime import RuntimeState
 from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
+from models.provider import ProviderType
 from services.moderation_adapters import LLMModerationGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
@@ -78,6 +89,7 @@ from services.moderation_service import (
     ModerationVerdict,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingLLM, make_tenant_moderation_provider
 from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -210,7 +222,8 @@ def app_config(backend: str = "openai_moderation") -> AppConfig:
     )
 
 
-def test_model_owns_input_checks_and_app_only_renders_rejection() -> None:
+def test_model_owns_input_checks_and_app_only_renders_rejection(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
     gateway = RecordingGateway()
     service = ModerationService(gateway=gateway)
     rule = ModerationRule(
@@ -221,7 +234,7 @@ def test_model_owns_input_checks_and_app_only_renders_rejection() -> None:
         AppRequestContext(tenant_id="tenant-1", app_id="app-1"), service=service, rule=rule, platform=True
     )
     config = app_config()
-    app_result = evaluate_app_input(config, {}, "safe")
+    app_result = evaluate_app_input(config, {}, "safe", platform_owned=True)
     assert app_result is not None
     assert not app_result.flagged
     guard.check_inputs([UserPromptMessage(content="safe")])
@@ -229,7 +242,7 @@ def test_model_owns_input_checks_and_app_only_renders_rejection() -> None:
     with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
         guard.check_inputs([UserPromptMessage(content="blocked")])
     assert app_rejection_replacement(config, rejected.value) == ("App input replacement", "input")
-    app_result = evaluate_app_input(config, {}, "blocked")
+    app_result = evaluate_app_input(config, {}, "blocked", platform_owned=True)
     assert app_result is not None
     assert not app_result.flagged
     assert gateway.calls == [("safe", "input"), ("blocked", "input")]
@@ -269,8 +282,8 @@ def test_disabled_or_invalid_app_phases_do_not_resolve_a_backend(
 
     def evaluate() -> ModerationInputsResult | ModerationOutputsResult | None:
         if phase == "input":
-            return evaluate_app_input(config, {"key": "value"}, "query")
-        evaluator = app_output_evaluator(config)
+            return evaluate_app_input(config, {"key": "value"}, "query", platform_owned=False)
+        evaluator = app_output_evaluator(config, platform_owned=False)
         return evaluator("output") if evaluator is not None else None
 
     if scenario == "invalid_phase":
@@ -289,7 +302,7 @@ def test_app_input_evaluation_uses_the_shared_use_case(monkeypatch: pytest.Monke
     service = RecordingAppService()
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
     config = app_config("keywords")
-    result = evaluate_app_input(config, {"input_key": "value"}, "query")
+    result = evaluate_app_input(config, {"input_key": "value"}, "query", platform_owned=False)
 
     assert result is not None
     assert result.flagged is True
@@ -306,7 +319,7 @@ def test_app_output_evaluation_uses_the_shared_use_case(monkeypatch: pytest.Monk
     service = RecordingAppService()
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
     config = app_config("keywords")
-    evaluator = app_output_evaluator(config)
+    evaluator = app_output_evaluator(config, platform_owned=False)
     assert evaluator is not None
     result = evaluator("model output")
 
@@ -429,32 +442,139 @@ def test_independent_model_checks_do_not_serialize_or_deduplicate(same_text: boo
     assert sorted(gateway.calls) == sorted((text, "input") for text in texts)
 
 
-def test_app_model_rule_does_not_select_a_tenant_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    def tenant_factory(*_args: object, **_kwargs: object) -> ModelManager:
-        raise AssertionError("App moderation must not resolve a tenant provider")
-
-    monkeypatch.setattr(ModelManager, "for_tenant", tenant_factory)
-    config = app_config()
-    flagged, inputs, query = InputModeration().check(
-        app_id="app-1",
-        tenant_id="tenant-1",
-        app_config=config,
-        inputs={},
-        query="safe input",
-        message_id="message-1",
-        trace_scope=None,
+@pytest.mark.parametrize(
+    ("edition", "enabled", "provider_type", "quota_unit", "hosted"),
+    [
+        (DeploymentEdition.COMMUNITY, True, ProviderType.CUSTOM, QuotaUnit.CREDITS, False),
+        (DeploymentEdition.ENTERPRISE, False, ProviderType.CUSTOM, QuotaUnit.CREDITS, False),
+        (DeploymentEdition.CLOUD, False, ProviderType.SYSTEM, QuotaUnit.CREDITS, False),
+        (DeploymentEdition.CLOUD, True, ProviderType.CUSTOM, QuotaUnit.CREDITS, False),
+        (DeploymentEdition.CLOUD, True, ProviderType.SYSTEM, QuotaUnit.TOKENS, False),
+        (DeploymentEdition.CLOUD, True, ProviderType.SYSTEM, QuotaUnit.CREDITS, True),
+    ],
+)
+@pytest.mark.parametrize("registered", [False, True], ids=["standalone", "registered"])
+def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    unbound_session_factory: sessionmaker[Session],
+    edition: DeploymentEdition,
+    enabled: bool,
+    provider_type: ProviderType,
+    quota_unit: QuotaUnit,
+    hosted: bool,
+    registered: bool,
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=edition,
+        HOSTED_MODERATION_ENABLED=enabled,
+        HOSTED_OPENAI_API_KEY="platform-key",
+        HOSTED_MODERATION_CACHE_TTL=0,
     )
-    assert not flagged
-    assert inputs == {}
-    assert query == "safe input"
-    assert app_output_evaluator(config) is None
+    code_based_extension.init()
+    tenant_provider, tenant_client = make_tenant_moderation_provider()
+    monkeypatch.setattr("core.model_manager.create_plugin_provider_manager", lambda **_: tenant_provider)
+    hosted_batches: list[list[str]] = []
+
+    def moderate(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer platform-key"
+        texts: list[str] = json.loads(request.content)["input"]
+        hosted_batches.append(texts)
+        return httpx.Response(200, json={"results": [{"flagged": "blocked" in text} for text in texts]})
+
+    flask_app = Flask(__name__)
+    monkeypatch.setattr("core.moderation.input_moderation.get_app_moderation", get_app_moderation)
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", get_app_moderation)
+    if registered:
+        flask_app.extensions["app_moderation"] = AppModeration()
+        flask_app.extensions["application_services"] = ModerationServices(
+            build_moderation_service(database_client=unbound_session_factory)
+        )
+
+    model_conf = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    bundle = model_conf.provider_model_bundle
+    template = bundle.model_type_instance
+    assert isinstance(template, LargeLanguageModel)
+    bundle.model_type_instance = RecordingLLM(template, ["blocked output"])
+    bundle.configuration.using_provider_type = provider_type
+    system = bundle.configuration.system_configuration
+    system.current_quota_type = ProviderQuotaType.PAID
+    system.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.PAID, quota_unit=quota_unit, quota_limit=100, quota_used=0, is_valid=True
+        )
+    ]
+    config = EasyUIBasedAppConfig(
+        **app_config().model_copy(update={"tenant_id": bundle.configuration.tenant_id}).model_dump(),
+        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+        app_model_config_dict={},
+        model=ModelConfigEntity(provider="test-provider", model="test-model"),
+        prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+    )
+    entity = ChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=config,
+        model_conf=model_conf,
+        inputs={},
+        files=[],
+        user_id="account-1",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+    queue = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=entity.user_id,
+        invoke_from=entity.invoke_from,
+        conversation_id="conversation-1",
+        app_mode=AppMode.CHAT,
+        message_id="message-1",
+    )
+    with httpx.Client(transport=httpx.MockTransport(moderate)) as transport, flask_app.app_context():
+        monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: transport)
+        pipeline = BasedGenerateTaskPipeline(application_generate_entity=entity, queue_manager=queue, stream=False)
+        assert AppRunner().moderation_for_inputs(
+            app_id=config.app_id,
+            tenant_id=config.tenant_id,
+            app_generate_entity=entity,
+            inputs={},
+            query="safe input",
+            message_id="message-1",
+        ) == (False, {}, "safe input")
+        model = ModelInstance(bundle, model_conf.model, credentials={})
+        prompt: list[PromptMessage] = [UserPromptMessage(content="safe input")]
+        if hosted:
+            assert pipeline.output_moderation_handler is None
+            with pytest.raises(PlatformModerationRejectedInvocationError) as rejection:
+                model.invoke_llm(prompt, stream=False)
+            replacement = ("App output replacement", "output") if registered else None
+            assert pipeline.moderation_replacement(rejection.value) == replacement
+        else:
+            result = model.invoke_llm(prompt, stream=False)
+            assert isinstance(result, LLMResult)
+            assert pipeline.handle_output_moderation_when_task_finished(result.message.get_text_content()) == (
+                "App output replacement"
+            )
+
+    if hosted:
+        assert hosted_batches == [["safe input"], ["blocked output"]]
+        assert not tenant_client.calls
+    else:
+        assert not hosted_batches
+        assert [(credentials, text) for _, _, _, _, credentials, text, _ in tenant_client.calls] == [
+            ({"openai_api_key": "tenant-key"}, "safe input"),
+            ({"openai_api_key": "tenant-key"}, "blocked output"),
+        ]
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
 @pytest.mark.parametrize("previous_answer", ["", "safe prefix"])
 def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events(
-    monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, previous_answer: str
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    phase: ModerationPhase,
+    previous_answer: str,
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
     config = EasyUIBasedAppConfig(
         **app_config().model_dump(),
         app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
@@ -649,7 +769,7 @@ def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
         tenant_id="tenant-1",
         app_id="app-1",
         rule=OutputModerationRule(type=rule.type, config=rule.config),
-        output_evaluator=app_output_evaluator(config),
+        output_evaluator=app_output_evaluator(config, platform_owned=False),
     )
     with flask_app.app_context():
         with pytest.raises(ModerationUnavailableInvocationError) as failure:

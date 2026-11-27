@@ -24,12 +24,10 @@ const app: ComponentProps<typeof AppMetadataForm>['appDetail'] = {
 function setup({
   source = app,
   onConfirm = vi.fn<(body: UpdateAppPayload) => Promise<void>>().mockResolvedValue(undefined),
-  cloud = false,
   quota = { size: 1, limit: 10 },
 }: {
   source?: ComponentProps<typeof AppMetadataForm>['appDetail']
   onConfirm?: Mock<(body: UpdateAppPayload) => Promise<void>>
-  cloud?: boolean
   quota?: { size: number; limit: number }
 } = {}) {
   function Entry() {
@@ -71,7 +69,6 @@ function setup({
       <Entry />
     </UrlState>,
     {
-      systemFeatures: { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY' },
       features: { apps: quota },
     },
   )
@@ -192,17 +189,13 @@ it.each([
 )
 
 it.each([
-  { cloud: true, quota: { size: 10, limit: 10 }, disabled: true },
-  { cloud: true, quota: { size: 10, limit: 0 }, disabled: false },
-  { cloud: false, quota: { size: 10, limit: 10 }, disabled: false },
-])(
-  'applies cloud creation quota without treating zero as a limit: %j',
-  async ({ cloud, quota, disabled }) => {
-    setup({ cloud, quota })
-    const create = await screen.findByRole('button', { name: /common.operation.create/ })
-    if (disabled) expect(create).toBeDisabled()
-    else expect(create).toBeEnabled()
-  },
-)
+  { quota: { size: 10, limit: 10 }, disabled: true },
+  { quota: { size: 10, limit: 0 }, disabled: false },
+])('applies creation quota without treating zero as a limit: %j', async ({ quota, disabled }) => {
+  setup({ quota })
+  const create = await screen.findByRole('button', { name: /common.operation.create/ })
+  if (disabled) expect(create).toBeDisabled()
+  else expect(create).toBeEnabled()
+})
 
 mockEmojiData()

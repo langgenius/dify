@@ -25,8 +25,10 @@ from services.workflow_app_log_query_service import (
 
 
 class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(self, *, session_factory: sessionmaker[Session], include_evaluation: bool = False) -> None:
+        """Configure the log reader and whether it loads completed Evaluation metrics."""
         self._session_factory = session_factory
+        self._include_evaluation = include_evaluation
 
     @override
     def get_paginated(
@@ -44,6 +46,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         created_by_end_user_session_id: str | None = None,
         created_by_account: str | None = None,
     ) -> WorkflowAppLogPage:
+        """Return the requested tenant and app's log page, enriching it with metrics when enabled."""
         with self._session_factory() as session:
             workflow_run = aliased(WorkflowRun)
             stmt = (
@@ -182,11 +185,15 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 .limit(limit)
             )
             rows = session.execute(paginated_stmt).mappings().all()
-            evaluation_by_run_id = self._batch_query_evaluation_metrics(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                workflow_run_ids=[str(row["run_id"]) for row in rows if row["run_id"] is not None],
+            evaluation_by_run_id = (
+                self._batch_query_evaluation_metrics(
+                    session=session,
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    workflow_run_ids=[str(row["run_id"]) for row in rows if row["run_id"] is not None],
+                )
+                if self._include_evaluation
+                else {}
             )
 
             return WorkflowAppLogPage(

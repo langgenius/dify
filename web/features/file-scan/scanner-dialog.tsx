@@ -94,11 +94,13 @@ export function FileScanProviderDialog({
     provider?.config.private_processing === true,
   )
   const createMutation = useMutation(
-    consoleQuery.fileScan.providers.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.fileScan.providers.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const updateMutation = useMutation(
     consoleQuery.fileScan.providers.byProviderId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const isSaving = createMutation.isPending || updateMutation.isPending

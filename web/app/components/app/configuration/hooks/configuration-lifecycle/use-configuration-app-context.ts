@@ -31,14 +31,7 @@ export function useConfigurationAppContext() {
     [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const { mutateAsync: updateModelConfig } = useMutation(
-    consoleQuery.apps.byAppId.modelConfig.post.mutationOptions({
-      onSuccess: (_data, variables, _onMutateResult, context) =>
-        context.client.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.get.queryKey({
-            input: { params: { app_id: variables.params.app_id } },
-          }),
-        }),
-    }),
+    consoleQuery.apps.byAppId.modelConfig.post.mutationOptions(),
   )
 
   return {

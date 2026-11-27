@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from core.logging.context import get_request_id, get_trace_id
 from machinery.context import RequestContext
+from machinery.scope import UNRESTRICTED, IdScope
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
 
@@ -47,8 +48,8 @@ class Context:
     # None means the endpoint has not opted into PAT access; PAT admission must deny it.
     pat_policy: PersonalAccessTokenPolicy | None = field(default=None, kw_only=True)
     resource_app_ids: frozenset[str] | None = field(default=None, init=False)
-    personal_workspace_ids: frozenset[str] | None = field(default=None, init=False)
-    personal_app_ids: frozenset[str] | None = field(default=None, init=False)
+    personal_workspace_ids: IdScope = field(default=UNRESTRICTED, init=False)
+    personal_app_ids: IdScope = field(default=UNRESTRICTED, init=False)
     _app: App | None = field(default=None, init=False)
     _workspace: Tenant | None = field(default=None, init=False)
     _workspace_role: TenantAccountRole | None = field(default=None, init=False)

@@ -65,7 +65,7 @@ function formatDateOnly(value: string | undefined, locale: string) {
 
 function ChunkMarker({ label }: { label: string }) {
   return (
-    <span className="float-left mt-0.75 mr-1 inline-flex shrink-0 rounded bg-background-section-burn px-1 py-0.5 system-2xs-medium text-text-tertiary">
+    <span className="float-start me-1 mt-0.75 inline-flex shrink-0 rounded bg-background-section-burn px-1 py-0.5 system-2xs-medium text-text-tertiary">
       {label}
     </span>
   )
@@ -97,7 +97,7 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
       <button
         aria-expanded={expanded}
         className={cn(
-          'flex w-full items-center gap-1.5 px-3.5 pt-3 text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'flex w-full items-center gap-1.5 px-3.5 pt-3 text-start system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           !expanded && 'pb-3',
         )}
         type="button"
@@ -215,7 +215,7 @@ export function DocumentReadingPane() {
                     </div>
                     <IconButton
                       aria-label={tCommon(($) => $['operation.copy'])}
-                      className="absolute top-1 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                      className="absolute inset-e-0 top-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
                       onClick={() => {
                         copy(chunk.text)
                         toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
@@ -304,7 +304,7 @@ export function DocumentFactsSidebar() {
       : undefined
 
   return (
-    <aside className="min-w-0 space-y-6 xl:pt-3 xl:pl-6">
+    <aside className="min-w-0 space-y-6 xl:ps-6 xl:pt-3">
       <DocumentMetadataCard />
       <section>
         <dl className="space-y-3">

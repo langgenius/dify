@@ -18,7 +18,7 @@ function LicenseBadge() {
       <PremiumBadge color="orange" className="select-none">
         <span
           className={
-            'i-ri-hourglass-2-fill flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0'
+            'i-ri-hourglass-2-fill flex size-3 items-center ps-0.5 text-components-premium-badge-indigo-text-stop-0'
           }
           aria-hidden="true"
         />

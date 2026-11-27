@@ -13,10 +13,10 @@ const iconClassNames = {
   warning: 'i-ri-error-warning-line',
 } as const
 
-const iconSizeClassNames = {
-  small: 'size-3',
-  medium: 'size-3.5',
-  large: 'size-4',
+const sizeClassNames = {
+  sm: { trigger: 'size-3 before:-inset-1.5', icon: 'size-3' },
+  md: { trigger: 'size-4 before:-inset-1', icon: 'size-3.5' },
+  lg: { trigger: 'size-4 before:-inset-1', icon: 'size-4' },
 } as const
 
 const Infotip = BasePopover.Root
@@ -37,13 +37,13 @@ type InfotipTriggerProps<Payload = unknown> = Omit<
     | { 'aria-label'?: never; 'aria-labelledby': string }
   ) & {
     iconVariant?: keyof typeof iconClassNames
-    iconSize?: keyof typeof iconSizeClassNames
+    size?: keyof typeof sizeClassNames
   }
 
 function InfotipTrigger<Payload = unknown>({
   className,
   iconVariant = 'question',
-  iconSize = 'medium',
+  size = 'md',
   openOnHover = true,
   delay = 300,
   closeDelay = 200,
@@ -63,12 +63,13 @@ function InfotipTrigger<Payload = unknown>({
       className={(state) =>
         cn(
           iconButtonVariants({ variant: null, size: 'xs' }),
-          'shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden hover:text-text-tertiary',
+          sizeClassNames[size].trigger,
+          'relative shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden before:absolute hover:text-text-tertiary',
           resolveClassName(className, state),
         )
       }
     >
-      <span aria-hidden className={cn(iconClassNames[iconVariant], iconSizeClassNames[iconSize])} />
+      <span aria-hidden className={cn(iconClassNames[iconVariant], sizeClassNames[size].icon)} />
     </BasePopover.Trigger>
   )
 }

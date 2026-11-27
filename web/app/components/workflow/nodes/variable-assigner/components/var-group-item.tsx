@@ -110,7 +110,7 @@ const VarGroupItem: FC<Props> = ({
         groupEnabled ? (
           <div className="flex items-center">
             <div className="flex items-center normal-case!">
-              <span aria-hidden className="mr-0.5 i-custom-vender-line-files-folder size-3.5" />
+              <span aria-hidden className="me-0.5 i-custom-vender-line-files-folder size-3.5" />
               {!isEditGroupName ? (
                 <div
                   className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"
@@ -139,7 +139,7 @@ const VarGroupItem: FC<Props> = ({
             </div>
             {canRemove && (
               <div
-                className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
+                className="ms-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
                 onClick={onRemove}
               >
                 <RiDeleteBinLine className="size-4" />

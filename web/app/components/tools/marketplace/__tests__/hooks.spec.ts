@@ -22,21 +22,13 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collections: requests.collections,
-      collectionPlugins: requests.collectionPlugins,
-    },
-  }
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    collections: requests.collections,
+    collectionPlugins: requests.collectionPlugins,
+    searchAdvanced: requests.search,
+  })
 })
-// The legacy search owner uses this transport; its query state and formatting stay real.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal()),
-  postMarketplace: requests.search,
-}))
 const plugin = createMarketplacePluginFixture()
 const collection: MarketplaceCollection = {
   rule: '',
@@ -96,20 +88,22 @@ it.each([
   await waitFor(() =>
     expect(result.current.plugins).toMatchObject([{ plugin_id: plugin.plugin_id }]),
   )
-  expect(requests.search).toHaveBeenCalledWith('/plugins/search/advanced', {
-    body: {
-      category: 'tool',
-      query: search,
-      tags,
-      exclude: ['installed-tool'],
-      type: 'plugin',
-      page: 1,
-      page_size: 40,
-      sort_by: undefined,
-      sort_order: undefined,
+  expect(requests.search).toHaveBeenCalledWith(
+    {
+      params: { kind: 'plugins' },
+      body: {
+        category: 'tool',
+        query: search,
+        tags,
+        exclude: ['installed-tool'],
+        page: 1,
+        page_size: 40,
+        sort_by: undefined,
+        sort_order: undefined,
+      },
     },
-    signal: expect.any(AbortSignal),
-  })
+    { signal: expect.any(AbortSignal) },
+  )
   expect(requests.collections).not.toHaveBeenCalled()
 })
 it('clears search results and restores collections when filters are removed', async () => {
@@ -162,8 +156,8 @@ it('appends the next search page on scroll and stops paging after filters are cl
   )
   expect(result.current.page).toBe(2)
   expect(requests.search).toHaveBeenLastCalledWith(
-    '/plugins/search/advanced',
     expect.objectContaining({ body: expect.objectContaining({ page: 2, query: 'alpha' }) }),
+    expect.anything(),
   )
   rerender({ search: '', tags: [], enabled: true })
   await waitFor(() => expect(result.current.marketplaceCollections).toEqual([collection]))

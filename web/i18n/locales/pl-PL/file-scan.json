@@ -50,7 +50,7 @@
   "scanner.lastTested": "Ostatni test: {{time}}",
   "scanner.loadFailed": "Nie udało się wczytać skanerów.",
   "scanner.neverTested": "Jeszcze nie testowano",
-  "scanner.readOnly": "Skanerami mogą zarządzać tylko właściciele i administratorzy obszaru roboczego.",
+  "scanner.readOnly": "Nie masz uprawnień do zarządzania skanerami.",
   "scanner.status.active": "Aktywny",
   "scanner.status.error": "Błąd",
   "scanner.test": "Testuj",

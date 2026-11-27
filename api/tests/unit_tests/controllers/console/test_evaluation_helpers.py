@@ -10,9 +10,15 @@ from uuid import UUID, uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import evaluation as controller
+from controllers.console.error import (
+    EvaluationConfigInvalidHTTPError,
+    EvaluationDatasetInvalidHTTPError,
+    EvaluationFrameworkNotConfiguredHTTPError,
+    EvaluationMaxConcurrentRunsHTTPError,
+)
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import DefaultMetric, NodeInfo
 from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
@@ -143,12 +149,12 @@ def test_load_evaluation_dataset_rejects_missing_and_unreadable_files(
 @pytest.mark.parametrize(
     ("error", "http_error"),
     [
-        (EvaluationFrameworkNotConfiguredError(), BadRequest),
-        (EvaluationDatasetInvalidError(), BadRequest),
+        (EvaluationFrameworkNotConfiguredError(), EvaluationFrameworkNotConfiguredHTTPError),
+        (EvaluationDatasetInvalidError(), EvaluationDatasetInvalidHTTPError),
         (EvaluationNotFoundError(), NotFound),
-        (EvaluationMaxConcurrentRunsError(), TooManyRequests),
+        (EvaluationMaxConcurrentRunsError(), EvaluationMaxConcurrentRunsHTTPError),
         (NoPermissionError("denied"), Forbidden),
-        (ValueError("invalid target"), BadRequest),
+        (ValueError("invalid target"), EvaluationConfigInvalidHTTPError),
     ],
 )
 def test_start_run_maps_service_errors_to_http_status(
@@ -176,8 +182,70 @@ def test_start_run_maps_service_errors_to_http_status(
         )
 
 
+def test_start_run_keeps_the_dataset_reason_under_its_own_code(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    upload = make_upload_file(file_id="file-1", name="dataset.csv")
+    sqlite_session.add(upload)
+    sqlite_session.flush()
+    monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
+    reason = "Dataset input 'temperature' must be a number; invalid row: 7."
+
+    def fail_run(**_kwargs: object) -> EvaluationRun:
+        raise EvaluationDatasetInvalidError(reason)
+
+    monkeypatch.setattr(EvaluationService, "start_evaluation_run", fail_run)
+
+    with pytest.raises(EvaluationDatasetInvalidHTTPError) as raised:
+        controller._start_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="target-1",
+            account_id="account-1",
+            payload=controller.EvaluationRunPayload(file_id=upload.id),
+        )
+
+    assert raised.value.data == {"code": "evaluation_dataset_invalid", "message": reason, "status": 400}
+
+
+def test_start_run_reports_the_concurrent_run_limit(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    upload = make_upload_file(file_id="file-1", name="dataset.csv")
+    sqlite_session.add(upload)
+    sqlite_session.flush()
+    monkeypatch.setattr(controller.storage, "load_once", lambda _key: b"index,query\n1,hello\n")
+
+    def fail_run(**_kwargs: object) -> EvaluationRun:
+        raise EvaluationMaxConcurrentRunsError("Maximum concurrent runs (3) reached.", limit=3)
+
+    monkeypatch.setattr(EvaluationService, "start_evaluation_run", fail_run)
+
+    with pytest.raises(EvaluationMaxConcurrentRunsHTTPError) as raised:
+        controller._start_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="target-1",
+            account_id="account-1",
+            payload=controller.EvaluationRunPayload(file_id=upload.id),
+        )
+
+    assert raised.value.code == 429
+    assert raised.value.data == {
+        "code": "evaluation_max_concurrent_runs",
+        "message": "Maximum concurrent runs (3) reached.",
+        "status": 429,
+        "details": {"limit": 3},
+    }
+
+
 def test_run_detail_and_cancel_use_persisted_scoped_run(sqlite_session: Session) -> None:
     run = _evaluation_run(sqlite_session, target_type=EvaluationTargetType.KNOWLEDGE_BASE)
+    run.config_snapshot = json.dumps({"evaluation_model_provider": "provider-1", "evaluation_model": "run-model"})
+    config = sqlite_session.get(EvaluationConfiguration, run.evaluation_config_id)
+    assert config is not None
+    config.evaluation_model_provider = "provider-2"
+    config.evaluation_model = "current-model"
     item = EvaluationRunItem(
         evaluation_run_id=run.id,
         item_index=1,
@@ -197,6 +265,8 @@ def test_run_detail_and_cancel_use_persisted_scoped_run(sqlite_session: Session)
         query=controller.EvaluationRunDetailQuery(),
     )
     assert detail["run"]["id"] == run.id
+    assert detail["run"]["evaluation_model_provider"] == "provider-1"
+    assert detail["run"]["evaluation_model"] == "run-model"
     assert detail["items"]["data"][0]["inputs"] == {"query": "hello"}
 
     cancelled = controller._cancel_run(
@@ -397,11 +467,11 @@ def test_retry_run_rejects_missing_dataset_file(sqlite_session: Session) -> None
 @pytest.mark.parametrize(
     ("error", "http_error"),
     [
-        (EvaluationFrameworkNotConfiguredError(), BadRequest),
-        (EvaluationDatasetInvalidError(), BadRequest),
-        (EvaluationMaxConcurrentRunsError(), TooManyRequests),
+        (EvaluationFrameworkNotConfiguredError(), EvaluationFrameworkNotConfiguredHTTPError),
+        (EvaluationDatasetInvalidError(), EvaluationDatasetInvalidHTTPError),
+        (EvaluationMaxConcurrentRunsError(), EvaluationMaxConcurrentRunsHTTPError),
         (NoPermissionError("denied"), Forbidden),
-        (ValueError("invalid target"), BadRequest),
+        (ValueError("invalid target"), EvaluationConfigInvalidHTTPError),
     ],
 )
 def test_retry_run_maps_service_errors(
@@ -641,22 +711,55 @@ def test_evaluation_configuration_routes_report_invalid_target_configuration(
     monkeypatch.setattr(EvaluationService, "get_dataset_column_names", invalid_config)
     flask_app = Flask(__name__)
     with flask_app.test_request_context("/", json={}):
-        for route in (
-            lambda: unwrap(controller.EvaluationDatasetTemplateDownloadApi.post)(
-                controller.EvaluationDatasetTemplateDownloadApi(), sqlite_session, app, "apps"
+        for route, http_error in (
+            (
+                lambda: unwrap(controller.EvaluationDatasetTemplateDownloadApi.post)(
+                    controller.EvaluationDatasetTemplateDownloadApi(), sqlite_session, app, "apps"
+                ),
+                EvaluationDatasetInvalidHTTPError,
             ),
-            lambda: unwrap(controller.EvaluationDetailApi.put)(
-                controller.EvaluationDetailApi(), sqlite_session, app, "apps"
+            (
+                lambda: unwrap(controller.EvaluationDetailApi.put)(
+                    controller.EvaluationDetailApi(), sqlite_session, app, "apps"
+                ),
+                EvaluationConfigInvalidHTTPError,
             ),
-            lambda: unwrap(controller.EvaluationTemplateColumnsApi.post)(
-                controller.EvaluationTemplateColumnsApi(), sqlite_session, app, "apps"
+            (
+                lambda: unwrap(controller.EvaluationTemplateColumnsApi.post)(
+                    controller.EvaluationTemplateColumnsApi(), sqlite_session, app, "apps"
+                ),
+                EvaluationDatasetInvalidHTTPError,
             ),
-            lambda: unwrap(controller.DatasetEvaluationDetailApi.put)(
-                controller.DatasetEvaluationDetailApi(), sqlite_session, UUID(dataset.id)
+            (
+                lambda: unwrap(controller.DatasetEvaluationDetailApi.put)(
+                    controller.DatasetEvaluationDetailApi(), sqlite_session, UUID(dataset.id)
+                ),
+                EvaluationConfigInvalidHTTPError,
             ),
         ):
-            with pytest.raises(BadRequest, match="invalid evaluation configuration"):
+            with pytest.raises(http_error, match="invalid evaluation configuration"):
                 route()
+
+
+def test_saving_an_invalid_configuration_keeps_its_reason_under_its_own_code(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = make_account()
+    app = make_app(app_id="target-1", mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    reason = "answer_relevancy needs a default embedding model."
+
+    def invalid_config(*_args: object, **_kwargs: object) -> None:
+        raise ValueError(reason)
+
+    monkeypatch.setattr(EvaluationService, "save_evaluation_config", invalid_config)
+    with Flask(__name__).test_request_context("/", json={}):
+        with pytest.raises(EvaluationConfigInvalidHTTPError) as raised:
+            unwrap(controller.EvaluationDetailApi.put)(controller.EvaluationDetailApi(), sqlite_session, app, "apps")
+
+    assert raised.value.data == {"code": "evaluation_config_invalid", "message": reason, "status": 400}
 
 
 def test_dataset_routes_scope_config_runs_and_files_to_the_dataset(

@@ -1,7 +1,6 @@
 {
   "appCard.try": "详情",
   "appCustomize.nameRequired": "应用程序名称不能为空",
-  "appCustomize.subTitle": "应用程序图标和名称",
   "appCustomize.title": "从 {{name}} 创建应用程序",
   "apps.allCategories": "所有",
   "apps.description": "来自社区和 Dify 团队的开箱即用模板。",

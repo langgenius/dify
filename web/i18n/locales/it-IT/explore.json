@@ -1,7 +1,6 @@
 {
   "appCard.try": "Dettagli",
   "appCustomize.nameRequired": "Il nome dell'app è obbligatorio",
-  "appCustomize.subTitle": "Icona & nome dell'app",
   "appCustomize.title": "Crea app da {{name}}",
   "apps.allCategories": "Tutti",
   "apps.description": "Modelli pronti all'uso dalla community e dal team Dify.",

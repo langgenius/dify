@@ -104,7 +104,7 @@ export default function CreatorProfileView({
           <div
             className={cn(
               'grid min-w-0 grid-cols-1 gap-8 md:grid-cols-[234px_minmax(0,1fr)]',
-              isMarketplacePlatform ? 'md:pl-4' : 'md:pl-9',
+              isMarketplacePlatform ? 'md:ps-4' : 'md:ps-9',
             )}
           >
             <CreatorSidebar profile={profile.profile} />

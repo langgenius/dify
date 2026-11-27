@@ -19,7 +19,7 @@ export function AgentDetailSectionSurface({
   return (
     <section
       aria-label={label}
-      className={cn('flex h-full min-w-0 flex-1 overflow-hidden py-1 pr-1 pl-0', className)}
+      className={cn('flex h-full min-w-0 flex-1 overflow-hidden py-1 ps-0 pe-1', className)}
     >
       <div
         className={cn(

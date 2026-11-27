@@ -1,11 +1,9 @@
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiFileUploadLine } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-options/create-from-dsl-modal'
 
 const Footer = () => {
@@ -16,10 +14,6 @@ const Footer = () => {
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
-  const queryClient = useQueryClient()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
 
   const activeTab = useMemo(() => {
     if (dslUrl) return CreateFromDSLModalTab.FROM_URL
@@ -36,12 +30,8 @@ const Footer = () => {
     if (dslUrl) replace('/datasets/create-from-pipeline')
   }, [dslUrl, replace])
 
-  const onImportFromDSLSuccess = useCallback(() => {
-    invalidDatasetList()
-  }, [invalidDatasetList])
-
   return (
-    <div className="absolute right-0 bottom-0 left-0 z-10 flex flex-col gap-y-4 bg-knowledge-pipeline-creation-footer-bg px-16 pb-6 backdrop-blur-[6px]">
+    <div className="absolute inset-s-0 inset-e-0 bottom-0 z-10 flex flex-col gap-y-4 bg-knowledge-pipeline-creation-footer-bg px-16 pb-6 backdrop-blur-[6px]">
       <Separator orientation="horizontal" className="my-0 h-[0.5px] w-8" />
       <button
         type="button"
@@ -56,7 +46,6 @@ const Footer = () => {
         onClose={onCloseImportModal}
         activeTab={activeTab}
         dslUrl={dslUrl}
-        onSuccess={onImportFromDSLSuccess}
       />
     </div>
   )

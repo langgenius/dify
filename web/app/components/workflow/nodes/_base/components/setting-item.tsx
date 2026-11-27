@@ -29,14 +29,12 @@ export const SettingItem = memo(({ label, children, status, tooltip }: SettingIt
         <TooltipTrigger
           disabled={!needTooltip}
           render={
-            <div className="truncate text-right system-xs-medium text-text-secondary">
-              {children}
-            </div>
+            <div className="truncate text-end system-xs-medium text-text-secondary">{children}</div>
           }
         />
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
-      {indicator && <StatusDot status={indicator} className="absolute -top-0.5 -right-0.5" />}
+      {indicator && <StatusDot status={indicator} className="absolute -inset-e-0.5 -top-0.5" />}
     </div>
   )
 })

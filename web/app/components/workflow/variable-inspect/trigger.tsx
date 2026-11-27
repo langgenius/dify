@@ -66,7 +66,11 @@ const VariableInspectTrigger: FC = () => {
 
   // React Flow reserves Space for panning unless the target is inside .nokey.
   return (
-    <div className={cn('nokey flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap')}>
+    <div
+      className={cn(
+        'nokey pointer-events-auto flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap',
+      )}
+    >
       {!isRunning && !currentVars.length && (
         <Button
           size="small"

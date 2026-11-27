@@ -88,6 +88,7 @@ class EmailCodeLoginPayload(BaseModel):
     email: EmailStr = Field(...)
     code: str
     token: UUID
+    invite_token: str | None = Field(default=None, description="Invitation link token being accepted.")
     turnstile_token: str | None = Field(
         default=None,
         max_length=2048,
@@ -264,6 +265,7 @@ class EmailCodeLoginApi(Resource):
                     language=req_data.language,
                     timezone=req_data.timezone,
                     ip_address=extract_remote_ip(request),
+                    invite_token=req_data.invite_token,
                 )
             )
         except account_errors.AccountApplicationError as error:
@@ -352,7 +354,7 @@ def _raise_email_code_send_error(error: account_errors.AccountApplicationError) 
 def _raise_email_code_login_error(error: account_errors.AccountApplicationError) -> Never:
     if isinstance(error, account_errors.InvalidEmailCodeTokenError):
         raise InvalidTokenError() from error
-    if isinstance(error, account_errors.EmailCodeEmailMismatchError):
+    if isinstance(error, (account_errors.EmailCodeEmailMismatchError, account_errors.InvalidLoginInvitationEmailError)):
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.InvalidEmailCodeError):
         raise EmailCodeError() from error

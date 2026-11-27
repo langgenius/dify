@@ -12,6 +12,7 @@ import { editorResourceAtom } from '@/app/components/workflow/editor-resource/st
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { isHumanInputV2NodeData } from '../../human-input-v2/types'
 import { selectHumanInputFormPreview } from '../query-select'
@@ -38,15 +39,16 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { mutateAsync: submitWorkflowForm } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const { mutateAsync: submitChatflowForm } = useMutation(
     consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { inputs } = useNodeCrud<HumanInputSharedNodeType>(id, payload)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const generatedInputs = useMemo(() => {
@@ -112,7 +114,12 @@ const useSingleRunFormParams = ({
     },
     onError: (error) => {
       if (error instanceof HumanInputDraftSyncError)
-        toast.error(t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }))
+        toast.error(
+          describeRequestError(
+            error.cause,
+            t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }),
+          ),
+        )
     },
   })
   const { mutate: generate, mutateAsync: generateAsync, reset: resetGeneration } = generation

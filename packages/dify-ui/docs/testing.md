@@ -4,6 +4,9 @@ Run `vp check packages/dify-ui` from the repository root for formatting, lint, a
 diagnostics. Run the remaining commands from `packages/dify-ui/`:
 
 - `vp test --project unit` runs primitive unit tests.
+- `vp test run --project unit --changed=origin/main` runs only unit tests affected by this branch
+  and uncommitted changes. Pull request CI runs this selection without coverage; the merge queue
+  runs the full project with coverage.
 - `vp run storybook` starts Storybook.
 - `vp test --project storybook --run` runs Storybook component tests in browser mode.
 - `vp test` runs both test projects.

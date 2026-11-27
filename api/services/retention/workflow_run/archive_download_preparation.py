@@ -8,12 +8,16 @@ stable download id before packaging archive Parquet objects into one user-facing
 
 import datetime
 import hashlib
-import io
 import logging
 import re
+import tempfile
+import uuid
 import zipfile
 from collections.abc import Callable, Sequence
+from contextlib import ExitStack, closing
 from functools import partial
+from pathlib import Path
+from typing import IO
 
 import gevent
 import gevent.monkey
@@ -31,6 +35,7 @@ from services.retention.workflow_run.archive_bundle_index import (
     decode_archive_bundle_manifest,
 )
 from services.retention.workflow_run.archive_download_task import (
+    MAX_ARCHIVE_DOWNLOAD_ATTEMPTS,
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
     build_archive_download_id,
@@ -40,7 +45,7 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveBundleRecord,
     WorkflowRunArchiveDownloadTaskStore,
 )
-from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLock
+from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease, WorkflowRunArchiveMonthLock
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
     ARCHIVE_BUNDLE_MANIFEST_NAME,
@@ -50,6 +55,7 @@ from services.retention.workflow_run.constants import (
 logger = logging.getLogger(__name__)
 
 ARCHIVE_DOWNLOAD_ROOT_PREFIX = "workflow-runs/downloads/v1/"
+_PARQUET_BATCH_SIZE = 128
 _CSV_FORMULA_PREFIX_PATTERN = f"^[{re.escape(''.join(CSVSanitizer.FORMULA_CHARS))}]"
 
 
@@ -57,10 +63,10 @@ class WorkflowRunArchiveDownloadPreparer:
     """
     Build one ready-to-download CSV ZIP for a Redis archive download task.
 
-    The output object is deterministic for a given `download_id`, so retrying a failed task overwrites the same
-    temporary object instead of creating unbounded duplicate files. Source archive bundles are read from the archive
-    bucket, while the prepared ZIP is written to the export bucket so object lifecycle policies can expire downloads
-    without touching long-lived archives.
+    A renewable month lease serializes attempts and deletion. Each execution has a unique ZIP key and may only
+    publish its own task state, so a worker that loses its lease cannot overwrite a newer result. Parquet objects
+    and the ZIP use temporary disk files; only one Arrow batch and bounded transfer buffers stay in memory. The
+    export bucket lifecycle expires interrupted attempts without touching long-lived archives.
     """
 
     _archive_storage_provider: Callable[[], ArchiveStorage]
@@ -83,39 +89,94 @@ class WorkflowRunArchiveDownloadPreparer:
         self.cache = cache
         self._month_lock = month_lock
 
-    def prepare(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
-        """Prepare a ZIP for an existing Redis task and persist terminal task state."""
-        with self.cache.lock(tenant_id=tenant_id, download_id=download_id):
-            task = self.cache.get(tenant_id=tenant_id, download_id=download_id)
-            if task is None:
-                logger.info("Workflow run archive download task expired before preparation: %s", download_id)
-                return None
-            if task.status != WorkflowRunArchiveDownloadStatus.PENDING:
-                logger.info("Skipping workflow run archive download task in %s state: %s", task.status, download_id)
-                return task
-            processing_task = self._mark_processing(task)
-        try:
-            with self._month_lock(tenant_id=tenant_id, year=processing_task.year, month=processing_task.month) as lease:
-                lease.assert_owned()
-                bundles = self._get_task_bundles(processing_task)
-                archive_storage = self._archive_storage_provider()
-                download_storage = self._download_storage_provider()
-                payload = self._build_zip_payload(archive_storage, processing_task, bundles)
-                storage_key = build_archive_download_storage_key(processing_task)
-                lease.assert_owned()
-                download_storage.put_object(storage_key, payload)
-                try:
-                    # A deletion request may be committed during ZIP preparation. The deleter waits on this month
-                    # lease and cleans the ZIP even if compensation fails or this worker crashes after uploading.
-                    self._get_task_bundles(processing_task)
-                    lease.assert_owned()
-                except Exception:
+    def prepare(
+        self, *, tenant_id: str, download_id: str, celery_task_id: str
+    ) -> WorkflowRunArchiveDownloadTask | None:
+        """Run or recover a matching queued claim under the month lease, up to the persisted attempt limit.
+
+        Terminal or superseded messages are no-ops. A busy month raises for bounded Celery retry. After claiming,
+        ordinary failures persist FAILED; process death leaves PROCESSING recoverable by late-ack redelivery.
+        """
+        task = self.cache.get(tenant_id=tenant_id, download_id=download_id)
+        if task is None:
+            logger.info("Workflow run archive download task expired before preparation: %s", download_id)
+            return None
+        if task.celery_task_id != celery_task_id or task.status not in (
+            WorkflowRunArchiveDownloadStatus.PENDING,
+            WorkflowRunArchiveDownloadStatus.PROCESSING,
+        ):
+            return task
+        with self._month_lock(tenant_id=tenant_id, year=task.year, month=task.month) as lease:
+            lease.assert_owned()
+            with self.cache.lock(tenant_id=tenant_id, download_id=download_id):
+                current = self.cache.get(tenant_id=tenant_id, download_id=download_id)
+                if (
+                    current is None
+                    or current.celery_task_id != celery_task_id
+                    or current.status
+                    not in (
+                        WorkflowRunArchiveDownloadStatus.PENDING,
+                        WorkflowRunArchiveDownloadStatus.PROCESSING,
+                    )
+                ):
+                    return current
+                processing_task = self._mark_processing(current)
+            if processing_task.status == WorkflowRunArchiveDownloadStatus.FAILED:
+                return processing_task
+            try:
+                return self._prepare_claimed(processing_task, lease)
+            except Exception as exc:
+                logger.exception(
+                    "Failed to prepare workflow run archive download: tenant=%s download_id=%s execution_id=%s",
+                    tenant_id,
+                    download_id,
+                    processing_task.execution_id,
+                )
+                return self._mark_failed(processing_task, error=str(exc))
+
+    def _prepare_claimed(
+        self, task: WorkflowRunArchiveDownloadTask, lease: WorkflowRunArchiveMonthLease
+    ) -> WorkflowRunArchiveDownloadTask:
+        """Build and upload this execution's ZIP; publish only while its cache claim and month lease remain owned.
+
+        The caller holds the month lease. Temporary files are removed on return or exception; a rejected upload is
+        deleted by its unique execution key and can never delete another attempt's published ZIP.
+        """
+        bundles = self._get_task_bundles(task)
+        archive_storage = self._archive_storage_provider()
+        download_storage = self._download_storage_provider()
+        with tempfile.TemporaryDirectory(prefix="workflow-run-archive-") as directory:
+            zip_path = Path(directory) / "archive.zip"
+            self._build_zip_file(archive_storage, task, bundles, zip_path=zip_path, lease=lease)
+            file_size = zip_path.stat().st_size
+            storage_key = build_archive_download_storage_key(task)
+            self._assert_execution_owned(task, lease)
+            try:
+                download_storage.upload_file(storage_key, str(zip_path))
+                # Deletion may be requested during upload; it waits for this lease before cleaning the month.
+                self._get_task_bundles(task)
+                self._assert_execution_owned(task, lease)
+                result = self._mark_ready(task, storage_key=storage_key, file_size_bytes=file_size)
+                if result.storage_key != storage_key:
                     download_storage.delete_object(storage_key)
-                    raise
-                return self._mark_ready(processing_task, storage_key=storage_key, file_size_bytes=len(payload))
-        except Exception as exc:
-            logger.exception("Failed to prepare workflow run archive download %s", download_id)
-            return self._mark_failed(processing_task, error=str(exc))
+                return result
+            except Exception:
+                download_storage.delete_object(storage_key)
+                raise
+
+    def _assert_execution_owned(
+        self, task: WorkflowRunArchiveDownloadTask, lease: WorkflowRunArchiveMonthLease
+    ) -> None:
+        """Require a live month lease and the exact PROCESSING execution; raise before publishing stale work."""
+        lease.assert_owned()
+        current = self.cache.get(tenant_id=task.tenant_id, download_id=task.download_id)
+        if (
+            current is None
+            or current.status != WorkflowRunArchiveDownloadStatus.PROCESSING
+            or current.celery_task_id != task.celery_task_id
+            or current.execution_id != task.execution_id
+        ):
+            raise RuntimeError("Workflow run archive download execution was superseded or expired")
 
     def _get_task_bundles(self, task: WorkflowRunArchiveDownloadTask) -> list[WorkflowRunArchiveBundleRecord]:
         indexed_bundles = self._bundles.list_for_tenant_month(
@@ -125,49 +186,95 @@ class WorkflowRunArchiveDownloadPreparer:
         )
         return _select_task_bundles(indexed_bundles, task)
 
-    def _build_zip_payload(
+    def _build_zip_file(
         self,
         storage: ArchiveStorage,
         task: WorkflowRunArchiveDownloadTask,
         bundles: Sequence[WorkflowRunArchiveBundleRecord],
-    ) -> bytes:
-        zip_root = f"workflow-run-logs-{task.year:04d}-{task.month:02d}"
-        csv_buffers: dict[str, io.BytesIO] = {}
-        csv_headers_written: set[str] = set()
+        *,
+        zip_path: Path,
+        lease: WorkflowRunArchiveMonthLease,
+    ) -> None:
+        """Write ordered monthly CSV entries directly into a disk ZIP, using one temporary Parquet file.
 
+        Indexed manifests and checksums must validate. On failure the caller removes the partial files; source
+        archives stay unchanged. CSV headers, bundle row order and formula escaping match the existing export.
+        """
+        tables: dict[str, list[ArchiveBundleTableManifestEntry]] = {}
         for bundle in bundles:
+            self._assert_execution_owned(task, lease)
             object_prefix = _build_archive_bundle_object_prefix(task, bundle)
             _, manifest = _load_and_validate_manifest(storage, task, bundle, object_prefix)
-            for table_name in sorted(manifest["tables"]):
-                entry = manifest["tables"][table_name]
-                object_key = entry["object_key"]
-                table_payload = storage.get_object(object_key)
-                _validate_table_payload(object_key=object_key, entry=entry, payload=table_payload)
-                csv_payload = _run_archive_cpu_work(
-                    partial(
-                        _parquet_payload_to_csv,
-                        table_payload,
-                        include_header=table_name not in csv_headers_written,
-                    )
-                )
-                if not csv_payload:
-                    continue
-                csv_buffers.setdefault(table_name, io.BytesIO()).write(csv_payload)
-                csv_headers_written.add(table_name)
+            for table_name, entry in manifest["tables"].items():
+                tables.setdefault(table_name, []).append(entry)
 
-        return _run_archive_cpu_work(lambda: _zip_csv_buffers(csv_buffers, zip_root=zip_root))
+        zip_root = f"workflow-run-logs-{task.year:04d}-{task.month:02d}"
+        parquet_path = zip_path.with_suffix(".parquet")
+        with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for table_name, entries in sorted(tables.items()):
+                with ExitStack() as outputs:
+                    output: IO[bytes] | None = None
+                    header_written = False
+                    for entry in entries:
+                        self._assert_execution_owned(task, lease)
+                        _download_parquet(storage, entry, parquet_path)
+                        if len(_run_archive_cpu_work(lambda: pq.read_schema(parquet_path))) > 0:
+                            if output is None:
+                                output = outputs.enter_context(
+                                    archive.open(f"{zip_root}/{table_name}.csv", mode="w", force_zip64=True)
+                                )
+                            wrote_csv = _run_archive_cpu_work(
+                                partial(
+                                    _append_parquet_csv,
+                                    parquet_path,
+                                    output,
+                                    include_header=not header_written,
+                                )
+                            )
+                            header_written = header_written or wrote_csv
+        parquet_path.unlink(missing_ok=True)
 
     def _mark_processing(self, task: WorkflowRunArchiveDownloadTask) -> WorkflowRunArchiveDownloadTask:
+        """With the cache lock and month lease held, persist a new execution or terminalize an exhausted claim."""
         now = datetime.datetime.now(datetime.UTC)
+        if task.attempt_count >= MAX_ARCHIVE_DOWNLOAD_ATTEMPTS:
+            failed = task.model_copy(
+                update={
+                    "status": WorkflowRunArchiveDownloadStatus.FAILED,
+                    "error": "Archive download preparation was interrupted too many times. Please retry.",
+                    "updated_at": now,
+                    "finished_at": now,
+                }
+            )
+            self.cache.save(failed)
+            logger.warning(
+                "Workflow run archive download attempt limit reached: tenant=%s download_id=%s attempts=%s",
+                task.tenant_id,
+                task.download_id,
+                task.attempt_count,
+            )
+            return failed
         processing_task = task.model_copy(
             update={
                 "status": WorkflowRunArchiveDownloadStatus.PROCESSING,
+                "execution_id": uuid.uuid4().hex,
+                "attempt_count": task.attempt_count + 1,
                 "error": None,
                 "updated_at": now,
-                "started_at": task.started_at or now,
+                "started_at": now,
+                "finished_at": None,
             }
         )
         self.cache.save(processing_task)
+        logger.info(
+            "Preparing workflow run archive download: tenant=%s download_id=%s execution_id=%s attempt=%s "
+            "previous_status=%s",
+            processing_task.tenant_id,
+            processing_task.download_id,
+            processing_task.execution_id,
+            processing_task.attempt_count,
+            task.status,
+        )
         return processing_task
 
     def _mark_ready(
@@ -217,6 +324,7 @@ class WorkflowRunArchiveDownloadPreparer:
                 current is None
                 or current.status != WorkflowRunArchiveDownloadStatus.PROCESSING
                 or current.celery_task_id != processing_task.celery_task_id
+                or current.execution_id != processing_task.execution_id
             ):
                 return current or terminal_task
             self.cache.save(terminal_task)
@@ -229,9 +337,11 @@ def build_archive_download_file_name(task: WorkflowRunArchiveDownloadTask) -> st
 
 
 def build_archive_download_storage_key(task: WorkflowRunArchiveDownloadTask) -> str:
-    """Return the deterministic object-store key for a prepared download ZIP."""
+    """Require a claimed execution and return its isolated ZIP key under the monthly deletion prefix."""
+    if not task.execution_id:
+        raise ValueError("execution_id is required before archive upload")
     prefix = build_archive_download_month_prefix(tenant_id=task.tenant_id, year=task.year, month=task.month)
-    return f"{prefix}{task.download_id}.zip"
+    return f"{prefix}{task.download_id}/{task.execution_id}.zip"
 
 
 def build_archive_download_month_prefix(*, tenant_id: str, year: int, month: int) -> str:
@@ -336,47 +446,51 @@ def _validate_manifest(
             )
 
 
-def _validate_table_payload(
+def _download_parquet(storage: ArchiveStorage, entry: ArchiveBundleTableManifestEntry, path: Path) -> None:
+    """Stream one indexed object to disk and verify its size and checksum before decoding; raise on corruption."""
+    checksum = hashlib.md5()
+    size = 0
+    with path.open("wb") as output, closing(storage.get_object_stream(entry["object_key"])) as chunks:
+        for chunk in chunks:
+            size += len(chunk)
+            if size > entry["size_bytes"]:
+                raise ValueError(f"archive object size mismatch for {entry['object_key']}")
+            checksum.update(chunk)
+            output.write(chunk)
+    if size != entry["size_bytes"]:
+        raise ValueError(f"archive object size mismatch for {entry['object_key']}")
+    if checksum.hexdigest() != entry["checksum"]:
+        raise ValueError(f"archive object checksum mismatch for {entry['object_key']}")
+
+
+def _append_parquet_csv(
+    path: Path,
+    output: IO[bytes],
     *,
-    object_key: str,
-    entry: ArchiveBundleTableManifestEntry,
-    payload: bytes,
-) -> None:
-    if len(payload) != entry["size_bytes"]:
-        raise ValueError(f"archive object size mismatch for {object_key}")
-    checksum = hashlib.md5(payload).hexdigest()
-    if checksum != entry["checksum"]:
-        raise ValueError(f"archive object checksum mismatch for {object_key}")
+    include_header: bool,
+) -> bool:
+    """Append bounded Arrow batches to an open ZIP entry, preserving CSV escaping and optional headers.
 
-
-def _parquet_payload_to_csv(payload: bytes, *, include_header: bool) -> bytes:
-    table = pq.read_table(io.BytesIO(payload))
-    if table.num_columns == 0:
-        return b""
-    for index, field in enumerate(table.schema):
-        if pa.types.is_string(field.type) or pa.types.is_large_string(field.type):
-            sanitized_column = pc.replace_substring_regex(  # pyrefly: ignore[missing-attribute]
-                table.column(index),
-                pattern=_CSV_FORMULA_PREFIX_PATTERN,
-                replacement=r"'\0",
-                max_replacements=1,
-            )
-            table = table.set_column(index, field, sanitized_column)
-    buffer = io.BytesIO()
-    pa_csv.write_csv(
-        table,
-        buffer,
-        write_options=pa_csv.WriteOptions(include_header=include_header),
-    )
-    return buffer.getvalue()
-
-
-def _zip_csv_buffers(csv_buffers: dict[str, io.BytesIO], *, zip_root: str) -> bytes:
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for table_name, csv_buffer in sorted(csv_buffers.items()):
-            archive.writestr(f"{zip_root}/{table_name}.csv", csv_buffer.getvalue())
-    return buffer.getvalue()
+    The Parquet file is already verified. Return whether a CSV schema was written; leave the caller's output open.
+    """
+    with pq.ParquetFile(path, pre_buffer=False, buffer_size=64 * 1024) as parquet:
+        if len(parquet.schema_arrow) == 0:
+            return False
+        with pa_csv.CSVWriter(
+            output, parquet.schema_arrow, write_options=pa_csv.WriteOptions(include_header=include_header)
+        ) as writer:
+            for batch in parquet.iter_batches(batch_size=_PARQUET_BATCH_SIZE, use_threads=False):
+                for column_index, field in enumerate(batch.schema):
+                    if pa.types.is_string(field.type) or pa.types.is_large_string(field.type):
+                        sanitized = pc.replace_substring_regex(  # pyrefly: ignore[missing-attribute]
+                            batch.column(column_index),
+                            pattern=_CSV_FORMULA_PREFIX_PATTERN,
+                            replacement=r"'\0",
+                            max_replacements=1,
+                        )
+                        batch = batch.set_column(column_index, field, sanitized)
+                writer.write_batch(batch)
+    return True
 
 
 def _run_archive_cpu_work[T](work: Callable[[], T]) -> T:

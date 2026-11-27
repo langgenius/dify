@@ -1,7 +1,6 @@
 {
   "appCard.try": "세부 정보",
   "appCustomize.nameRequired": "앱 이름은 필수입니다",
-  "appCustomize.subTitle": "앱 아이콘 및 이름",
   "appCustomize.title": "{{name}}으로 앱 만들기",
   "apps.allCategories": "전체",
   "apps.description": "커뮤니티와 Dify 팀이 만든 바로 사용할 수 있는 템플릿입니다.",

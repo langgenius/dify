@@ -4,49 +4,11 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { marketplaceLinks } from '@/features/marketplace/links'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { BuiltinMarketplacePanel } from '../builtin-marketplace-panel'
-
-const requests = vi.hoisted(() => ({
-  installed: vi.fn(),
-  search: vi.fn(),
-  collections: vi.fn(),
-  collectionPlugins: vi.fn(),
-}))
-// boundary: Next routing is unavailable in the standalone browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.installedIds.get': requests.installed,
-      'workspaces.current.plugin.list.installations.ids.post': () => ({ plugins: [] }),
-    }),
-  }
-})
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collections: requests.collections,
-      collectionPlugins: requests.collectionPlugins,
-    },
-  }
-})
-vi.mock('@/service/base', () => ({ postMarketplace: requests.search }))
 
 const plugin = createMarketplacePluginFixture({ label: { en_US: 'Weather Tool' }, tags: [] })
 const collection: MarketplaceCollection = {
@@ -60,14 +22,28 @@ const collection: MarketplaceCollection = {
   search_params: {},
 }
 
-beforeEach(() => {
-  requests.installed.mockReset().mockResolvedValue({ plugin_ids: [] })
-  requests.search.mockReset().mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-  requests.collections.mockReset().mockResolvedValue({ data: { collections: [collection] } })
-  requests.collectionPlugins
-    .mockReset()
-    .mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: {
+          permission: {
+            fetch: {
+              get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
+            },
+          },
+          installedIds: { get: () => ({ plugin_ids: [] }) },
+          list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
+        },
+      },
+    },
+  },
+  marketplace: {
+    collections: () => ({ data: { collections: [collection] } }),
+    collectionPlugins: () => ({ data: { plugins: [plugin], total: 1 } }),
+    searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+  },
+}))
 
 beforeEach(async () => {
   await page.viewport(1200, 800)
@@ -100,6 +76,7 @@ async function renderPanel(keywords = '', tagFilterValue: string[] = [], belowFo
         </div>
       </UrlState>
     </Providers>,
+    { wrapper: createTestNavigation({ url: '/tools' }).NavigationProvider },
   )
   return screen
 }
@@ -107,8 +84,8 @@ async function renderPanel(keywords = '', tagFilterValue: string[] = [], belowFo
 it('loads marketplace tools when native scrolling reveals the catalog', async () => {
   const screen = await renderPanel('', [], true)
   await expect.element(screen.getByText('Installed tools')).toBeVisible()
-  expect(requests.installed).not.toHaveBeenCalled()
-  expect(requests.collections).not.toHaveBeenCalled()
+  expect(fake.console.workspaces.current.plugin.installedIds.get).not.toHaveBeenCalled()
+  expect(fake.marketplace.collections).not.toHaveBeenCalled()
   const tools = screen.getByRole('region', { name: 'Tools' })
   tools.element().scrollTo({ top: tools.element().scrollHeight })
   await expect.element(screen.getByText('Weather Tool', { exact: true })).toBeVisible()
@@ -123,13 +100,13 @@ it.each([
   async ({ keywords, tags }) => {
     const screen = await renderPanel(keywords, tags, true)
     await expect.element(screen.getByText('Weather Tool', { exact: true })).toBeInTheDocument()
-    expect(requests.search).toHaveBeenCalledWith(
-      '/plugins/search/advanced',
+    expect(fake.marketplace.searchAdvanced).toHaveBeenCalledWith(
       expect.objectContaining({
+        params: { kind: 'plugins' },
         body: expect.objectContaining({ query: keywords, tags, category: 'tool' }),
       }),
     )
-    expect(requests.collections).not.toHaveBeenCalled()
+    expect(fake.marketplace.collections).not.toHaveBeenCalled()
   },
 )
 
@@ -148,8 +125,4 @@ it('scrolls the catalog into view from the real marketplace arrow', async () => 
     .poll(() => heading.element().getBoundingClientRect().top)
     .toBeGreaterThanOrEqual(bounds.top)
   expect(heading.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(bounds.bottom)
-})
-
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
 })

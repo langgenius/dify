@@ -13,12 +13,12 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({ nodeKey }) => {
 
   return (
     <div
-      className={`inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pr-0.5 pl-1 hover:bg-[#FFEAD5] ${isSelected && 'border-[#FD853A]!'} `}
+      className={`inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] ps-1 pe-0.5 hover:bg-[#FFEAD5] ${isSelected && 'border-[#FD853A]!'} `}
       ref={ref}
     >
       <span
         aria-hidden
-        className="mr-1 i-custom-vender-solid-users-user-edit-02 h-3.5 w-3.5 text-[#FD853A]"
+        className="me-1 i-custom-vender-solid-users-user-edit-02 h-3.5 w-3.5 text-[#FD853A]"
       />
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'{{'}</div>
       <div className="text-xs font-medium text-[#EC4A0A]">

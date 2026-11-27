@@ -1,63 +1,68 @@
-const consolePost = vi.hoisted(() => vi.fn())
-const publicPost = vi.hoisted(() => vi.fn())
+const request = vi.hoisted(() =>
+  vi.fn<
+    (
+      url: string,
+      init: unknown,
+      options?: { isPublicAPI?: boolean; request?: Request },
+    ) => Promise<Response>
+  >(),
+)
 
 vi.mock('../base', () => ({
-  del: vi.fn(),
-  get: vi.fn(),
-  patch: vi.fn(),
-  post: (...args: unknown[]) => consolePost(...args),
-  delPublic: vi.fn(),
   getPublic: vi.fn(),
-  patchPublic: vi.fn(),
-  postPublic: (...args: unknown[]) => publicPost(...args),
-  ssePost: vi.fn(),
-  upload: vi.fn(),
+  request,
 }))
 
 vi.mock('../webapp-auth', () => ({
+  getOrCreateWebAppSessionId: vi.fn(() => 'webapp-session-1'),
   getWebAppAccessToken: vi.fn(),
 }))
 
+const sentRequest = (index = 0) => {
+  const [url, , options] = request.mock.calls[index]!
+  return { url, options, request: options!.request! }
+}
+
 describe('audioToText', () => {
   beforeEach(() => {
-    consolePost.mockReset().mockResolvedValue({ text: 'transcript' })
-    publicPost.mockReset().mockResolvedValue({ text: 'transcript' })
+    request.mockReset().mockImplementation(async () => Response.json({ text: 'transcript' }))
   })
 
   // Each chat owner maps to one concrete backend route instead of route-param guessing.
   describe('Endpoint mapping', () => {
     it.each([
-      ['installed app', 'installedApp', 'installed-apps/app-1/audio-to-text'],
-      ['trial app', 'tryApp', 'trial-apps/app-1/audio-to-text'],
-    ] as const)('should use the %s endpoint', async (_label, source, expectedUrl) => {
+      ['installed app', 'installedApp', '/console/api/installed-apps/app-1/audio-to-text'],
+      ['trial app', 'tryApp', '/console/api/trial-apps/app-1/audio-to-text'],
+    ] as const)('should upload to the %s endpoint', async (_label, source, expectedPath) => {
       const { AppSourceType, audioToText } = await import('../share')
-      const formData = new FormData()
-
+      const file = new File(['audio'], 'recording.mp3', { type: 'audio/mp3' })
       const { signal } = new AbortController()
-      const result = await audioToText(AppSourceType[source], 'app-1', formData, signal)
 
-      expect(result).toEqual({ text: 'transcript' })
+      await expect(audioToText(AppSourceType[source], 'app-1', file, signal)).resolves.toEqual({
+        text: 'transcript',
+      })
 
-      expect(consolePost).toHaveBeenCalledWith(
-        expectedUrl,
-        { body: formData, signal },
-        { bodyStringify: false, deleteContentType: true },
+      const sent = sentRequest()
+      expect(new URL(sent.url).pathname).toBe(expectedPath)
+      expect(sent.request.method).toBe('POST')
+      expect((await sent.request.formData()).get('file')).toEqual(
+        expect.objectContaining({ name: 'recording.mp3' }),
       )
-      expect(publicPost).not.toHaveBeenCalled()
+      expect(sent.options?.isPublicAPI).toBeUndefined()
     })
 
-    it('should use the public web app endpoint', async () => {
+    it('should upload to the public web app endpoint', async () => {
       const { AppSourceType, audioToText } = await import('../share')
-      const formData = new FormData()
+      const file = new File(['audio'], 'recording.mp3', { type: 'audio/mp3' })
 
-      await audioToText(AppSourceType.webApp, undefined, formData)
+      await audioToText(AppSourceType.webApp, undefined, file)
 
-      expect(publicPost).toHaveBeenCalledWith(
-        '/audio-to-text',
-        { body: formData, signal: undefined },
-        { bodyStringify: false, deleteContentType: true },
+      const sent = sentRequest()
+      expect(sent.url).toBe('/audio-to-text')
+      expect(sent.options?.isPublicAPI).toBe(true)
+      expect((await sent.request.formData()).get('file')).toEqual(
+        expect.objectContaining({ name: 'recording.mp3' }),
       )
-      expect(consolePost).not.toHaveBeenCalled()
     })
   })
 
@@ -66,10 +71,10 @@ describe('audioToText', () => {
     it('should reject an installed app request without an app ID', async () => {
       const { AppSourceType, audioToText } = await import('../share')
 
-      expect(() => audioToText(AppSourceType.installedApp, undefined, new FormData())).toThrow(
-        'app ID is required',
-      )
-      expect(consolePost).not.toHaveBeenCalled()
+      expect(() =>
+        audioToText(AppSourceType.installedApp, undefined, new File(['audio'], 'a.mp3')),
+      ).toThrow('app ID is required')
+      expect(request).not.toHaveBeenCalled()
     })
   })
 })

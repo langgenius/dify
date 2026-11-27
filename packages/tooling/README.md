@@ -205,6 +205,11 @@ Web uses native Oxlint rules to discourage deprecated APIs and new handwritten r
 - `no-restricted-imports` rejects new value imports from common HTTP packages
   (including Ky, Axios, Undici and Node http/https). Type-only imports remain allowed.
   Existing legacy-service and localStorage import/access restrictions remain active.
+- `no-restricted-properties` also rejects any `randomUUID` property access, such as
+  `crypto.randomUUID()` or `globalThis.crypto?.randomUUID?.()`. Browsers expose it only
+  in secure contexts, so it is undefined on self-hosted consoles opened over plain HTTP.
+  Use `v4` from `uuid`, which calls the native API when available and falls back to
+  `crypto.getRandomValues`. Server-only code may disable the rule inline with a reason.
 
 `typescript/no-deprecated` applies throughout Web, including tests, mocks, stories,
 test infrastructure, and maintenance scripts. The raw transport and HTTP-client import

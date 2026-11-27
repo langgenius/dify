@@ -1,7 +1,6 @@
 import json
 import logging
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
@@ -64,8 +63,10 @@ class TestRagPipelineTaskProxyCases:
         upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
         send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
-        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.SANDBOX)))
-        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+        mocker.patch(
+            "services.rag_pipeline.rag_pipeline_task_proxy.FeatureService.get_workspace_plan",
+            return_value=CloudPlan.SANDBOX,
+        )
 
         proxy._dispatch()
 
@@ -78,8 +79,10 @@ class TestRagPipelineTaskProxyCases:
         upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
         send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
 
-        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL)))
-        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+        mocker.patch(
+            "services.rag_pipeline.rag_pipeline_task_proxy.FeatureService.get_workspace_plan",
+            return_value=CloudPlan.PROFESSIONAL,
+        )
 
         proxy._dispatch()
 
@@ -92,8 +95,9 @@ class TestRagPipelineTaskProxyCases:
         upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
         send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
 
-        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
-        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+        mocker.patch(
+            "services.rag_pipeline.rag_pipeline_task_proxy.FeatureService.get_workspace_plan", return_value=None
+        )
 
         proxy._dispatch()
 
@@ -105,8 +109,9 @@ class TestRagPipelineTaskProxyCases:
     def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy) -> None:
         mocker.patch.object(proxy, "_upload_invoke_entities", return_value="")
 
-        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
-        mocker.patch.object(type(proxy), "features", new_callable=lambda: property(lambda self: features))
+        mocker.patch(
+            "services.rag_pipeline.rag_pipeline_task_proxy.FeatureService.get_workspace_plan", return_value=None
+        )
 
         with pytest.raises(ValueError, match="upload_file_id is empty"):
             proxy._dispatch()
@@ -167,15 +172,6 @@ class TestRagPipelineTaskProxyCases:
 
 class RagPipelineTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for RagPipelineTaskProxy tests."""
-
-    @staticmethod
-    def create_mock_features(plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
-        """Create mock features with billing configuration."""
-        features = Mock()
-        features.billing = Mock()
-        features.billing.subscription = Mock()
-        features.billing.subscription.plan = plan
-        return features
 
     @staticmethod
     def create_rag_pipeline_invoke_entity(
@@ -286,24 +282,6 @@ class TestRagPipelineTaskProxyCasesServices:
             assert proxy._rag_pipeline_invoke_entities[0].pipeline_id == "pipeline-1"
             assert proxy._rag_pipeline_invoke_entities[1].pipeline_id == "pipeline-2"
             assert proxy._rag_pipeline_invoke_entities[2].pipeline_id == "pipeline-3"
-
-        @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
-        def test_features_property(self, mock_feature_service: MagicMock):
-            """Test cached_property features."""
-            # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features()
-            mock_feature_service.get_features.return_value = mock_features
-            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-
-            # Act
-            features1 = proxy.features
-            features2 = proxy.features  # Second call should use cached property
-
-            # Assert
-            assert features1 == mock_features
-            assert features2 == mock_features
-            assert features1 is features2  # Should be the same instance due to caching
-            mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
@@ -487,8 +465,7 @@ class TestRagPipelineTaskProxyCasesServices:
         ):
             """Test _dispatch method in Cloud with Sandbox plan."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
-            mock_feature_service.get_features.return_value = mock_features
+            mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
             proxy._send_to_default_tenant_queue = Mock()
 
@@ -510,8 +487,7 @@ class TestRagPipelineTaskProxyCasesServices:
         def test_dispatch_with_cloud_paid_plan(self, mock_db, mock_file_service_class, mock_feature_service):
             """Test _dispatch method in Cloud with a paid plan."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.TEAM)
-            mock_feature_service.get_features.return_value = mock_features
+            mock_feature_service.get_workspace_plan.return_value = CloudPlan.TEAM
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
             proxy._send_to_priority_tenant_queue = Mock()
 
@@ -535,8 +511,7 @@ class TestRagPipelineTaskProxyCasesServices:
         ):
             """Test _dispatch method outside Cloud."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features()
-            mock_feature_service.get_features.return_value = mock_features
+            mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
             proxy._send_to_priority_direct_queue = Mock()
 
@@ -576,8 +551,7 @@ class TestRagPipelineTaskProxyCasesServices:
         ):
             """Test _dispatch method with empty plan string."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan="")
-            mock_feature_service.get_features.return_value = mock_features
+            mock_feature_service.get_workspace_plan.return_value = ""
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
             proxy._send_to_priority_tenant_queue = Mock()
 
@@ -601,8 +575,7 @@ class TestRagPipelineTaskProxyCasesServices:
         ):
             """Test _dispatch method with None plan."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=None)
-            mock_feature_service.get_features.return_value = mock_features
+            mock_feature_service.get_workspace_plan.return_value = None
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
             proxy._send_to_priority_tenant_queue = Mock()
 
@@ -626,8 +599,7 @@ class TestRagPipelineTaskProxyCasesServices:
         ):
             """Test delay method integration."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
-            mock_feature_service.get_features.return_value = mock_features
+            mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
             proxy._dispatch = Mock()
 

@@ -97,7 +97,7 @@ const Website: FC<Props> = ({
                   : `border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
               )}
             >
-              <span className={cn(s.jinaLogo, 'mr-2')} />
+              <span className={cn(s.jinaLogo, 'me-2')} />
               <span>Jina Reader</span>
             </RadioItem>
           )}
@@ -124,7 +124,7 @@ const Website: FC<Props> = ({
                   : `border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
               )}
             >
-              <span className={cn(s.watercrawlLogo, 'mr-2')} />
+              <span className={cn(s.watercrawlLogo, 'me-2')} />
               <span>WaterCrawl</span>
             </RadioItem>
           )}

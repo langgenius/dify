@@ -1,32 +1,25 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoOperation } from './app-info-modals'
+import type { AppInfoDialogHandles } from './app-info-dialog-handles'
 import type { Operation } from './app-operations'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
-import AppInfoHeader from './app-info-header'
+import { AppInfoHeader } from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
 
 type AppInfoTriggerProps = {
   appDetail: AppDetailWithSite
   expand: boolean
-  openModal: (modal: AppInfoOperation) => void
-  isExporting: boolean
-  exportCheck: () => void
+  handles: AppInfoDialogHandles
 }
 
-const AppInfoTrigger = ({
-  appDetail,
-  expand,
-  openModal,
-  isExporting,
-  exportCheck,
-}: AppInfoTriggerProps) => {
+export function AppInfoTrigger({ appDetail, expand, handles }: AppInfoTriggerProps) {
   const { t } = useTranslation(['app', 'common', 'workflow'])
+  const { exportAppDsl, isExporting } = useExportAppDsl()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -47,7 +40,7 @@ const AppInfoTrigger = ({
             id: 'edit',
             title: t(($) => $.editApp, { ns: 'app' }),
             icon: 'i-ri-edit-line',
-            onClick: () => openModal('edit'),
+            onClick: () => handles.edit.open(null),
           },
         ]
       : []),
@@ -57,7 +50,7 @@ const AppInfoTrigger = ({
             id: 'duplicate',
             title: t(($) => $.duplicate, { ns: 'app' }),
             icon: 'i-ri-file-copy-2-line',
-            onClick: () => openModal('duplicate'),
+            onClick: () => handles.duplicate.open(null),
           },
         ]
       : []),
@@ -67,7 +60,11 @@ const AppInfoTrigger = ({
             id: 'export',
             title: t(($) => $.exportApp, { ns: 'app' }),
             icon: 'i-ri-file-download-line',
-            onClick: exportCheck,
+            onClick: () => {
+              if (appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat')
+                handles.export.openWithPayload(null)
+              else void exportAppDsl({ appId: appDetail.id, appName: appDetail.name })
+            },
             loading: isExporting,
           },
         ]
@@ -79,7 +76,7 @@ const AppInfoTrigger = ({
             id: 'import',
             title: t(($) => $.importApp, { ns: 'app' }),
             icon: 'i-ri-file-upload-line',
-            onClick: () => openModal('importDSL'),
+            onClick: () => handles.importDSL.open(null),
           },
         ]
       : []),
@@ -91,7 +88,7 @@ const AppInfoTrigger = ({
           id: 'delete',
           title: t(($) => $['operation.delete'], { ns: 'common' }),
           icon: 'i-ri-delete-bin-line',
-          onClick: () => openModal('delete'),
+          onClick: () => handles.delete.open(null),
           variant: 'destructive',
         },
       ]
@@ -104,7 +101,7 @@ const AppInfoTrigger = ({
             id: 'switch',
             title: t(($) => $.switch, { ns: 'app' }),
             icon: 'i-ri-exchange-2-line',
-            onClick: () => openModal('switch'),
+            onClick: () => handles.switchApp.open(null),
           },
         ]
       : []
@@ -119,5 +116,3 @@ const AppInfoTrigger = ({
     />
   )
 }
-
-export default React.memo(AppInfoTrigger)

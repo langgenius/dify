@@ -6,6 +6,7 @@ import {
   analyzeBrowserSpec,
   checkBrowserSpecPolicy,
   isOwnedMockSpecifier,
+  isServiceMockSpecifier,
   MAX_BROWSER_SPEC_LINES,
   reportPolicyResult,
   runBrowserSpecPolicy,
@@ -81,6 +82,173 @@ describe('Browser spec policy', () => {
     expect(result.violations).toEqual([])
   })
 
+  it.each(['@/service/console', '@/service/base', '@/service/use-common'])(
+    'treats %s as a service mock',
+    (specifier) => {
+      expect(isServiceMockSpecifier(specifier)).toBe(true)
+    },
+  )
+
+  it('resolves relative mock paths before deciding whether they name the service layer', () => {
+    expect(
+      isServiceMockSpecifier('../../service/console', 'app/components/example.browser.spec.tsx'),
+    ).toBe(true)
+    expect(
+      isServiceMockSpecifier(
+        '../../../service/base.ts',
+        'app/components/x/example.browser.spec.tsx',
+      ),
+    ).toBe(true)
+    expect(
+      isServiceMockSpecifier('../service-fixture', 'app/components/example.browser.spec.tsx'),
+    ).toBe(false)
+    expect(isServiceMockSpecifier('./service', 'app/components/example.browser.spec.tsx')).toBe(
+      false,
+    )
+
+    const result = analyzeBrowserSpec(
+      'app/components/example.browser.spec.tsx',
+      ['// boundary: control the API', "vi.mock('../../service/console', () => ({}))"].join('\n'),
+    )
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        kind: 'service-mock',
+        line: 2,
+        specifier: '../../service/console',
+      }),
+    ])
+  })
+
+  it('rejects navigation mocks unless the spec is allowlisted', () => {
+    const source = [
+      "vi.mock('@/next/navigation', () => ({}))",
+      "vi.mock('next/navigation', () => ({}))",
+      "vi.mock('../../next/navigation', () => ({}))",
+    ].join('\n')
+    const rejected = analyzeBrowserSpec('app/x/example.browser.spec.tsx', source)
+    const allowed = analyzeBrowserSpec('app/x/example.browser.spec.tsx', source, {
+      navigationMockAllowlist: [{ path: 'app/x/example.browser.spec.tsx', reason: 'SSR flush' }],
+    })
+
+    expect(rejected.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['navigation-mock', 1],
+      ['navigation-mock', 2],
+      ['navigation-mock', 3],
+    ])
+    expect(allowed.violations).toEqual([])
+    expect(allowed.observedNavigationAllowance).toBe(true)
+  })
+
+  it('rejects service mocks even with a boundary reason', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      ['// boundary: control the API', "vi.mock('@/service/console', () => ({}))"].join('\n'),
+    )
+
+    expect(result.violations).toEqual([
+      expect.objectContaining({ kind: 'service-mock', line: 2, specifier: '@/service/console' }),
+    ])
+  })
+
+  it('reads the type-safe import() form of vi.mock and vi.doMock', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "vi.mock(import('@/service/console'), async (importOriginal) => importOriginal())",
+        "vi.doMock(import('@/service/base'))",
+        "vi.mock(import('../owner'))",
+      ].join('\n'),
+    )
+
+    expect(result.violations.map(({ kind, line, specifier }) => [kind, line, specifier])).toEqual([
+      ['service-mock', 1, '@/service/console'],
+      ['service-mock', 2, '@/service/base'],
+      ['missing-boundary-comment', 3, '../owner'],
+    ])
+  })
+
+  it('rejects it.fails only in specs that use the fake API', () => {
+    const fails = [
+      "it.fails('known bug', async () => {})",
+      "test.fails('known bug', () => {})",
+      "it.fails.each([1, 2])('known bug %s', async () => {})",
+      "test.concurrent.fails('known bug', async () => {})",
+      "it.fails.each`value | 1`('known bug $value', async () => {})",
+    ]
+    const withFake = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      ["import { setupFakeApi } from '@/test/fake-api'", ...fails].join('\n'),
+    )
+    const withoutFake = analyzeBrowserSpec('app/example.browser.spec.tsx', fails.join('\n'))
+
+    expect(withFake.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['expected-failure-with-fake-api', 2],
+      ['expected-failure-with-fake-api', 3],
+      ['expected-failure-with-fake-api', 4],
+      ['expected-failure-with-fake-api', 5],
+      ['expected-failure-with-fake-api', 6],
+    ])
+    expect(withoutFake.violations).toEqual([])
+  })
+
+  it('rejects the fails option and relative fake API imports, but not fails: false', () => {
+    const relative = analyzeBrowserSpec(
+      'test/__tests__/example.browser.spec.tsx',
+      [
+        "import { installFakeApi } from '../fake-api'",
+        "it('known bug', { fails: true }, async () => {})",
+        "describe('known bugs', { fails: true }, () => {})",
+        "it.each([1])('known bug %s', { fails: true }, async () => {})",
+        "it('passing', { fails: false }, async () => {})",
+        "it.fails('known bug', async () => {})",
+      ].join('\n'),
+    )
+    const sourceHelper = analyzeBrowserSpec(
+      'features/new-rag/sources/__tests__/example.browser.spec.tsx',
+      [
+        "import { resetSourceServer } from './source-server'",
+        "it.fails('known bug', () => {})",
+      ].join('\n'),
+    )
+    const unrelated = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "import { api } from './fake-api-fixtures'",
+        "it('known bug', { fails: true }, () => {})",
+      ].join('\n'),
+    )
+
+    expect(relative.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['expected-failure-with-fake-api', 2],
+      ['expected-failure-with-fake-api', 3],
+      ['expected-failure-with-fake-api', 4],
+      ['expected-failure-with-fake-api', 6],
+    ])
+    expect(sourceHelper.violations.map(({ line }) => line)).toEqual([2])
+    expect(unrelated.violations).toEqual([])
+  })
+
+  it('rejects raw fetch and XMLHttpRequest stubs, but not other globals', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "vi.stubGlobal('fetch', vi.fn())",
+        "vi.stubGlobal('XMLHttpRequest', FakeXhr)",
+        "vi.spyOn(globalThis, 'fetch')",
+        'window.fetch = vi.fn()',
+        "vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)",
+        "vi.spyOn(window, 'open')",
+      ].join('\n'),
+    )
+
+    expect(result.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['raw-network-stub', 1],
+      ['raw-network-stub', 2],
+      ['raw-network-stub', 3],
+      ['raw-network-stub', 4],
+    ])
+  })
+
   it('allows only the exact occurrence recorded as existing debt', () => {
     const path = 'app/example.browser.spec.tsx'
     const result = analyzeBrowserSpec(
@@ -154,6 +322,7 @@ describe('Browser spec policy', () => {
           },
         ],
         lineAllowlist: [],
+        navigationMockAllowlist: [],
       })
 
       expect(result).toEqual({ violations: [], staleAllowances: [] })
@@ -186,6 +355,9 @@ describe('Browser spec policy', () => {
         lineAllowlist: [
           { path: 'app/missing.browser.spec.ts', reason: 'legacy missing oversized suite' },
         ],
+        navigationMockAllowlist: [
+          { path: 'app/missing.browser.spec.ts', reason: 'legacy missing navigation mock' },
+        ],
       })
 
       expect(result.violations).toEqual([
@@ -195,6 +367,7 @@ describe('Browser spec policy', () => {
       expect(result.staleAllowances).toEqual([
         'stale mock allowlist: app/missing.browser.spec.ts :: ../missing #1',
         'stale line allowlist: app/missing.browser.spec.ts',
+        'stale navigation mock allowlist: app/missing.browser.spec.ts',
       ])
     } finally {
       rmSync(webRoot, { recursive: true, force: true })

@@ -4,8 +4,8 @@ import type { NetworkAccessGroupCurrentIpCheckResponse } from '@dify/contracts/a
 import type { SubmitEvent } from 'react'
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import type { AccessControlAnalyticsContext } from '@/features/network-access/analytics'
+import type { AccessPoint } from '@/models/app-access-point'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -24,6 +24,7 @@ type AccessControlConfigPanelProps = {
   policies: readonly AccessControlPolicy[]
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   ipCheckStatus?: 'loading' | 'error'
+  ipCheckErrorMessage?: string
   onRetryIpCheck?: () => void
   policySelectOpen?: boolean
   onPolicySelectOpenChange?: (open: boolean) => void
@@ -48,6 +49,7 @@ export function AccessControlConfigPanel({
   policies,
   ipCheck,
   ipCheckStatus,
+  ipCheckErrorMessage,
   onRetryIpCheck,
   policySelectOpen,
   onPolicySelectOpenChange,
@@ -90,8 +92,8 @@ export function AccessControlConfigPanel({
     <form className="flex w-100 flex-col" onSubmit={handleSubmit}>
       <div
         className={cn(
-          'flex items-center overflow-hidden pt-4 pr-4 pb-3',
-          showBack ? 'pl-2' : 'pl-4',
+          'flex items-center overflow-hidden pe-4 pt-4 pb-3',
+          showBack ? 'ps-2' : 'ps-4',
         )}
       >
         <div className="flex w-full items-center gap-2 overflow-hidden">
@@ -137,6 +139,7 @@ export function AccessControlConfigPanel({
             selectedPolicyId={draft.selectedPolicyId}
             ipCheck={ipCheck}
             ipCheckStatus={ipCheckStatus}
+            ipCheckErrorMessage={ipCheckErrorMessage}
             onRetryIpCheck={onRetryIpCheck}
             open={policySelectOpen}
             onOpenChange={onPolicySelectOpenChange}

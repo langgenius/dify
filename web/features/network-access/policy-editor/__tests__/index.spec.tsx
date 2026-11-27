@@ -177,7 +177,7 @@ describe('trusted current IP and allowlist editing', () => {
     expect(status).toHaveTextContent('Checking your IP address…')
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
 
-    firstResponse.resolve(Response.json({ message: 'IP unavailable' }, { status: 503 }))
+    firstResponse.resolve(new Response(null, { status: 503 }))
     const retry = await screen.findByRole('button', { name: 'Retry' })
     expect(screen.getByRole('status')).toBe(status)
     expect(status).toHaveTextContent('Unable to check your IP address. Please try again.')

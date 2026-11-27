@@ -32,7 +32,7 @@ function GuideMenuItem({ href, icon, text }: GuideMenuItemProps) {
     >
       {icon}
       <span className="system-sm-medium text-text-secondary">{text}</span>
-      <span className="ml-auto i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
+      <span className="ms-auto i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
     </MenuLinkItem>
   )
 }

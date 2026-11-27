@@ -42,16 +42,9 @@ export function KnowledgeUpgradeCard({
     consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryOptions({
       input: jobInput,
     })
-  const retryMutation = useMutation({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.post.mutationOptions(),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: jobQueryOptions.queryKey })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-      })
-    },
-  })
+  const retryMutation = useMutation(
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.post.mutationOptions(),
+  )
   const { data: job } = useQuery({
     ...jobQueryOptions,
     enabled: isActiveUpgrade(upgrade.job.status) || retryMutation.isSuccess,
@@ -167,7 +160,7 @@ export function KnowledgeUpgradeCard({
       {(active || failed) && (
         <div
           className={cn(
-            'absolute top-0 right-0 flex h-5 items-center gap-0.5 rounded-bl-lg px-2 system-2xs-medium-uppercase',
+            'absolute inset-e-0 top-0 flex h-5 items-center gap-0.5 rounded-es-lg px-2 system-2xs-medium-uppercase',
             active
               ? 'bg-util-colors-indigo-indigo-200 text-util-colors-indigo-indigo-700'
               : 'bg-util-colors-red-red-100 text-util-colors-red-red-600',

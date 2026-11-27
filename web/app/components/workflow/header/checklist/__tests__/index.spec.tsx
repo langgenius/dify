@@ -19,10 +19,12 @@ import llmDefault from '../../../nodes/llm/default'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: vi.fn().mockResolvedValue({ data: { list: [] } }),
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByVersions: async () => ({ data: { list: [] } }),
+  })
+})
 
 function createChecklistQueryClient() {
   const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })

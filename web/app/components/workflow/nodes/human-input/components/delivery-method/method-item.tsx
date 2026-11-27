@@ -90,7 +90,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     <>
       <div
         className={cn(
-          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-2 pl-1.5 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg ps-1.5 pe-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
           isHovering &&
             'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
         )}
@@ -180,7 +180,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
           {method.type === DeliveryMethodType.Email && !method.config && (
             <Button
-              className="-mr-1"
+              className="-me-1"
               size="small"
               onClick={() => setShowEmailModal(true)}
               disabled={readonly}

@@ -36,6 +36,14 @@ export function getHttpErrorBodyMessage(body: unknown): string | undefined {
   return nonEmptyString(data?.message) ?? nonEmptyString(data?.error)
 }
 
+/**
+ * The server's message for a failed request, for an owner that presents the failure itself and
+ * falls back to its own text. Client-side errors such as "Failed to fetch" yield nothing.
+ */
+export function getRequestErrorMessage(error: unknown): string | undefined {
+  return error instanceof ORPCError ? getHttpErrorBodyMessage(error.data) : undefined
+}
+
 /** Decode the backend envelope without declaring it as a validated contract error. */
 export function createHttpError(
   response: Pick<Response, 'status' | 'statusText' | 'headers'>,
@@ -52,18 +60,6 @@ export function createHttpError(
     data,
     cause: { headers: new Headers(response.headers) },
   })
-}
-
-export function httpErrorFromXhr(xhr: XMLHttpRequest) {
-  const headers = new Headers()
-  for (const line of xhr
-    .getAllResponseHeaders()
-    .trim()
-    .split(/[\r\n]+/)) {
-    const separator = line.indexOf(':')
-    if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
-  }
-  return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
 }
 
 export async function httpErrorFromResponse(response: Response) {

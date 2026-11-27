@@ -95,14 +95,14 @@ export function SourceRow({
     <tr
       className={cn(
         sourceTableGridClass,
-        'relative rounded-lg border border-divider-subtle p-4 text-left @min-[768px]/knowledge-content:min-h-12.5 @min-[768px]/knowledge-content:rounded-none @min-[768px]/knowledge-content:border-x-0 @min-[768px]/knowledge-content:border-b-0 @min-[768px]/knowledge-content:px-0 @min-[768px]/knowledge-content:py-2',
+        'relative rounded-lg border border-divider-subtle p-4 text-start @min-[768px]/knowledge-content:min-h-12.5 @min-[768px]/knowledge-content:rounded-none @min-[768px]/knowledge-content:border-x-0 @min-[768px]/knowledge-content:border-b-0 @min-[768px]/knowledge-content:px-0 @min-[768px]/knowledge-content:py-2',
         displayStatus === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
       )}
     >
-      <td className="absolute top-4 left-4 @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:row-span-1">
+      <td className="absolute inset-s-4 top-4 @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:row-span-1">
         <Checkbox aria-label={source.name} checked={checked} onCheckedChange={onCheckedChange} />
       </td>
-      <td className="col-span-2 min-w-0 pr-8 pl-7 @min-[768px]/knowledge-content:col-span-1 @min-[768px]/knowledge-content:col-start-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[768px]/knowledge-content:p-0">
+      <td className="col-span-2 min-w-0 ps-7 pe-8 @min-[768px]/knowledge-content:col-span-1 @min-[768px]/knowledge-content:col-start-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[768px]/knowledge-content:p-0">
         <div className="flex min-w-0 items-center gap-2.5">
           <SourceProviderIcon className="size-4.5" fallbackIcon={sourceIcon} />
           <TruncatedSourceValue className="text-[13px] leading-4.25 font-medium text-text-primary">
@@ -202,7 +202,7 @@ export function SourceRow({
           <TruncatedSourceValue>{lastSync ?? '—'}</TruncatedSourceValue>
         )}
       </td>
-      <td className="absolute top-2.5 right-2.5 text-right @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:col-start-5 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
+      <td className="absolute inset-e-2.5 top-2.5 text-end @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:col-start-5 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
         <div className="flex items-center justify-end gap-0.5">
           <SourceActions source={source} ensureModelSetupReady={ensureModelSetupReady} />
         </div>

@@ -1,14 +1,21 @@
-"""The scheduler closes its read session and bounds duplicate work and dispatch pacing."""
+"""The scheduler closes its read session and bounds duplicate work and dispatch pacing.
+
+Pacing is a Celery countdown, so the scheduler never holds a worker between batches.
+"""
 
 import subprocess
 import sys
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from types import TracebackType
+from threading import Event
+from types import ModuleType, TracebackType
 
 import pytest
+from celery import Celery
+from celery.contrib.testing.worker import start_worker
 from celery.exceptions import Retry
 from redis import RedisError
 
@@ -20,6 +27,7 @@ from models.account import (
 )
 from schedule import check_upgradable_plugin_task as scheduler
 from tasks.plugin_autoupgrade_coordination import CheckReservation
+from tests.unit_tests.celery_fixtures import preserve_celery_apps
 
 SCHEDULED_AT = datetime(2026, 11, 16, 7, 30, tzinfo=UTC).timestamp()
 
@@ -196,6 +204,7 @@ class Dispatcher:
     duration: float
     calls: list[tuple[tuple[object, ...], dict[str, object], float]] = field(default_factory=list)
     expirations: list[datetime] = field(default_factory=list)
+    countdowns: list[float] = field(default_factory=list)
     failure: Exception | None = None
 
     def apply_async(
@@ -204,11 +213,13 @@ class Dispatcher:
         args: tuple[object, ...],
         headers: dict[str, object],
         expires: datetime,
+        countdown: float = 0,
     ) -> None:
         """Record child publication after the read closes, then simulate broker latency."""
         self.sessions.assert_closed()
         self.calls.append((args, headers, self.clock.elapsed))
         self.expirations.append(expires)
+        self.countdowns.append(countdown)
         self.clock.elapsed += self.duration
         if self.failure is not None:
             raise self.failure
@@ -326,7 +337,7 @@ def test_broker_failure_cancels_only_the_unpublished_reservation(monkeypatch: py
 
 
 def test_absolute_pacing_accounts_for_manifest_and_broker_latency(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The second group starts at its absolute target, without adding dispatch overhead."""
+    """The second group is delivered at its absolute target, without adding dispatch overhead or sleeping."""
     harness = setup_scheduler(
         monkeypatch,
         [strategy(f"tenant-{index}") for index in range(40)],
@@ -338,9 +349,16 @@ def test_absolute_pacing_accounts_for_manifest_and_broker_latency(monkeypatch: p
 
     assert len(harness.dispatcher.calls) == 40
     assert harness.dispatcher.calls[0][2] == 30
-    assert harness.dispatcher.calls[20][2] == 450
-    assert harness.clock.sleeps == [380]
-    assert harness.clock.elapsed == 490
+    assert harness.dispatcher.countdowns[:20] == [0] * 20
+    assert harness.dispatcher.calls[20][2] == 70
+    assert harness.dispatcher.countdowns[20] == 380
+    # Every second-group child is delivered at the same absolute target (450s).
+    assert {
+        call[2] + countdown
+        for call, countdown in zip(harness.dispatcher.calls[20:], harness.dispatcher.countdowns[20:], strict=True)
+    } == {450}
+    assert harness.clock.sleeps == []
+    assert harness.clock.elapsed == 110
 
 
 def test_slow_dispatch_does_not_add_another_full_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -354,6 +372,7 @@ def test_slow_dispatch_does_not_add_another_full_sleep(monkeypatch: pytest.Monke
     scheduler._dispatch_upgrade_checks(SCHEDULED_AT)
 
     assert harness.dispatcher.calls[20][2] == 600
+    assert harness.dispatcher.countdowns[20] == 0
     assert harness.clock.sleeps == []
 
 
@@ -501,3 +520,96 @@ def test_parent_retry_recovers_ambiguous_redis_writes_without_losing_or_duplicat
     assert len(harness.dispatcher.calls) == 1
     assert harness.coordinator.queued == [original_reservation]
     assert harness.coordinator.producer_ids == ["producer-1", "producer-1"]
+
+
+@pytest.mark.parametrize("count", [0, 1, 20, 21, 24, 41])
+def test_batches_are_paced_without_sleeping_in_worker(monkeypatch: pytest.MonkeyPatch, count: int) -> None:
+    """Later batches carry their pacing delay to Celery, so the shared worker is never held between batches."""
+    strategies = [
+        TenantPluginAutoUpgradeStrategy(
+            tenant_id=f"tenant-{index}",
+            category=TenantPluginAutoUpgradeCategory.TOOL,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
+            upgrade_time_of_day=3700,
+            upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
+            exclude_plugins=["langgenius/example"],
+            include_plugins=[],
+        )
+        for index in range(count)
+    ]
+    harness = setup_scheduler(monkeypatch, strategies)
+
+    scheduler._dispatch_upgrade_checks(SCHEDULED_AT)
+
+    assert harness.clock.sleeps == []
+    assert len(harness.dispatcher.calls) == count
+    batches = (count + scheduler.DISPATCH_BATCH_SIZE - 1) // scheduler.DISPATCH_BATCH_SIZE
+    for index, ((args, _headers, _published_at), countdown) in enumerate(
+        zip(harness.dispatcher.calls, harness.dispatcher.countdowns, strict=True)
+    ):
+        assert countdown == (index // scheduler.DISPATCH_BATCH_SIZE) * 900 / batches
+        assert args[1:] == (
+            TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
+            3700,
+            TenantPluginAutoUpgradeMode.EXCLUDE,
+            ["langgenius/example"],
+            [],
+            TenantPluginAutoUpgradeCategory.TOOL,
+        )
+    assert {call[0][0] for call in harness.dispatcher.calls} == {item.tenant_id for item in strategies}
+
+
+@pytest.mark.usefixtures(preserve_celery_apps.__name__)
+def test_single_worker_runs_ready_task_before_delayed_plugin_batch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A solo worker serving plugin and mail queues runs ready work while a plugin batch waits."""
+    celery = Celery("plugin-pacing-test", broker="memory://", set_as_current=False)
+    celery.conf.update(
+        result_backend="cache+memory://",
+        worker_prefetch_multiplier=1,
+        worker_timer_precision=0.05,
+        broker_transport_options={"polling_interval": 0.05},
+    )
+    # Pytest owns logging sinks; the embedded worker must not replace them.
+    # Celery's typing stubs omit the class-level `_setup` flag that `Logging.setup` flips.
+    monkeypatch.setattr(type(celery.log), "_setup", type(celery.log)._setup)  # pyrefly: ignore[missing-attribute]
+    monkeypatch.setattr(celery.log, "setup", lambda **_kwargs: None)
+    strategies = [strategy(f"tenant-{index}") for index in range(21)]
+    sessions = SessionFactory(strategies)
+    coordinator = Coordinator()
+    monkeypatch.setattr(scheduler, "Session", sessions)
+    monkeypatch.setattr(scheduler, "db", Database())
+    monkeypatch.setattr(scheduler, "get_upgrade_check_coordinator", lambda: coordinator)
+    monkeypatch.setattr(scheduler, "fetch_global_plugin_manifest", lambda *_args: 1)
+    order: list[str] = []
+    done = Event()
+
+    @celery.task(name="plugin-pacing-synthetic-child", queue="plugin")
+    def child(tenant_id: str, *_args: object) -> None:
+        order.append(tenant_id)
+        if len(order) == 22:
+            done.set()
+
+    @celery.task(name="plugin-pacing-synthetic-mail", queue="mail")
+    def ready() -> None:
+        order.append("mail")
+        if len(order) == 22:
+            done.set()
+
+    publisher = ModuleType("synthetic_plugin_tasks")
+    publisher.__dict__["process_tenant_plugin_autoupgrade_check_task"] = child
+    publisher.__dict__["COORDINATION_HEADER"] = scheduler.check_task.COORDINATION_HEADER
+    monkeypatch.setattr(scheduler, "check_task", publisher)
+    # Same two-batch shape as Dev, with a bounded ten-second delayed batch.
+    monkeypatch.setattr(scheduler, "AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL", 20)
+    producer = celery.tasks[scheduler.check_upgradable_plugin_task.name]
+    with start_worker(celery, pool="solo", concurrency=1, queues=("plugin", "mail"), perform_ping_check=False):
+        started = time.monotonic()
+        producer.apply_async().get(timeout=5)
+        # The producer returned without waiting for the delayed batch.
+        assert time.monotonic() - started < 5
+        ready.apply_async()
+        assert done.wait(20), order
+    assert len(order) == 22
+    assert set(order) == {"mail", *(item.tenant_id for item in strategies)}
+    assert order.index("mail") < 21
+    assert len(coordinator.queued) == 21

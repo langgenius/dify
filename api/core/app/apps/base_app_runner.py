@@ -32,6 +32,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
+from extensions.application_services.moderation_policy import platform_owns_openai_moderation
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -463,16 +464,7 @@ class AppRunner:
         query: str | None = None,
         message_id: str,
     ) -> tuple[bool, Mapping[str, Any], str]:
-        """
-        Process sensitive_word_avoidance.
-        :param app_id: app id
-        :param tenant_id: tenant id
-        :param app_generate_entity: app generate entity
-        :param inputs: inputs
-        :param query: query
-        :param message_id: message id
-        :return:
-        """
+        """Check the admitted app input; defer OpenAI checks only on the selected platform route."""
         moderation_feature = InputModeration()
         return moderation_feature.check(
             app_id=app_id,
@@ -482,6 +474,7 @@ class AppRunner:
             query=query or "",
             message_id=message_id,
             trace_scope=app_generate_entity.trace_scope,
+            platform_owned=platform_owns_openai_moderation(app_generate_entity),
         )
 
     def fill_in_inputs_from_external_data_tools(

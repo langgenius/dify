@@ -1,36 +1,69 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
-import { firecrawlDatasourcePlugin, source } from './source-fixtures'
+import { firecrawlDatasourcePlugin, source, sourceConnectionResponse } from './source-fixtures'
 import {
-  clientMock,
+  connectionResponses,
   pluginResponses,
   resetSourceServer,
   serveWebsitePreview,
+  sourceResponse,
   sourceResponses,
 } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
-
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: edit-website', () => {
+  it('shows a failed connection lookup inline and retries it', async () => {
+    pluginResponses.data = [firecrawlDatasourcePlugin]
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                parameters: { url: 'https://docs.example.com/' },
+                providerId: 'plugin-daemon-website',
+                providerName: 'Firecrawl',
+              },
+              uri: 'https://docs.example.com/',
+            }),
+          ],
+        },
+      ],
+    }
+    connectionResponses.error = apiError({ status: 503, message: 'Connections unavailable' })
+    connectionResponses.refresh.mockImplementation(() => {
+      connectionResponses.error = null
+      connectionResponses.data = { pages: [{ items: [sourceConnectionResponse] }] }
+    })
+
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      })
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
+
+    // A message without a cataloged code gives way to the editor's own text.
+    const failure = page.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' })
+    await expect.element(failure).toBeVisible()
+    await page.getByRole('button', { name: 'common.operation.retry' }).click()
+    await expect.element(failure).not.toBeInTheDocument()
+    expect(connectionResponses.refresh).toHaveBeenCalledOnce()
+  })
+
   it('edits website source parameters from the row menu', async () => {
     pluginResponses.data = [firecrawlDatasourcePlugin]
     serveWebsitePreview([
@@ -49,20 +82,22 @@ describe('Sources: edit-website', () => {
       uri: 'https://docs.example.com/',
     })
     sourceResponses.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        metadata: {
-          ...websiteSource.metadata,
-          crawlOptions: { includeSubpages: true, limit: 50 },
-          parameters: {
-            crawl_subpages: true,
-            limit: 50,
-            url: 'https://handbook.example.com/',
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          metadata: {
+            ...websiteSource.metadata,
+            crawlOptions: { includeSubpages: true, limit: 50 },
+            parameters: {
+              crawl_subpages: true,
+              limit: 50,
+              url: 'https://handbook.example.com/',
+            },
           },
-        },
-        uri: 'https://handbook.example.com/',
-        version: 4,
-      }),
+          uri: 'https://handbook.example.com/',
+          version: 4,
+        }),
+      ),
     )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -88,7 +123,9 @@ describe('Sources: edit-website', () => {
     await page.getByRole('button', { name: 'common.operation.save' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Product documentation',
@@ -172,18 +209,20 @@ describe('Sources: edit-website', () => {
       uri: 'https://docs.example.com/',
     })
     sourceResponses.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        metadata: {
-          ...websiteSource.metadata,
-          parameters: {
-            crawl_subpages: true,
-            limit: 100,
-            url: 'https://docs.example.com/',
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          metadata: {
+            ...websiteSource.metadata,
+            parameters: {
+              crawl_subpages: true,
+              limit: 100,
+              url: 'https://docs.example.com/',
+            },
           },
-        },
-        version: 4,
-      }),
+          version: 4,
+        }),
+      ),
     )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -202,7 +241,9 @@ describe('Sources: edit-website', () => {
     await page.getByRole('button', { name: 'common.operation.save' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Product documentation',

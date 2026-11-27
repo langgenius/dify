@@ -191,6 +191,80 @@ def test_convert_tool_response_to_str_and_extract_binary_messages() -> None:
         )
 
 
+@pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
+def test_extract_binary_messages_treat_an_empty_mimetype_as_missing(mime_type: str | None) -> None:
+    """Empty MIME metadata must preserve URLs and use the inferred or default type."""
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/b.png"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BINARY_LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/c.unknown-ext"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/d.unknown-ext"),
+            meta={"mime_type": mime_type, "filename": "d"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/e.unknown-ext"),
+            meta={"mime_type": mime_type},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    # the image paths keep guessing from the url, the others fall back to octet-stream
+    assert [b.mimetype for b in binaries] == [
+        "image/png",
+        "image/png",
+        "application/octet-stream",
+        "application/octet-stream",
+        "application/octet-stream",
+    ]
+    assert [b.url for b in binaries] == [
+        "https://example.com/a.png",
+        "https://example.com/b.png",
+        "https://example.com/c.unknown-ext",
+        "https://example.com/d.unknown-ext",
+        "https://example.com/e.unknown-ext",
+    ]
+
+
+def test_extract_binary_messages_keep_an_explicit_mimetype() -> None:
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": "image/gif"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/b.docx"),
+            meta={"mime_type": "text/plain"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/c.txt"),
+            meta={"mime_type": "application/pdf"},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    assert [b.mimetype for b in binaries] == ["image/gif", "text/plain", "application/pdf"]
+
+
 @pytest.mark.parametrize("json_first", [True, False])
 @pytest.mark.parametrize(
     ("text", "json_object"),
@@ -508,3 +582,72 @@ def test_agent_invoke_tool_invoke_error(sqlite_session: Session) -> None:
 
     assert "tool invoke error" in error_text
     assert files == []
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_agent_invoke_parses_json_string_parameters(sqlite_session: Session) -> None:
+    # No single LLM parameter, so the JSON-parse branch runs instead of the
+    # pass-through that wraps the raw string.
+    tool = _build_tool()
+    callback = DifyAgentCallbackHandler()
+    message = _message()
+    meta = ToolInvokeMeta.empty()
+
+    with patch.object(ToolEngine, "_invoke", return_value=iter([tool.create_text_message("ok"), meta])) as invoke:
+        with patch(
+            "core.tools.tool_engine.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **kwargs: messages,
+        ):
+            with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
+                with patch.object(ToolEngine, "_create_message_files", return_value=[]):
+                    result_text, message_files, result_meta = ToolEngine.agent_invoke(
+                        session=sqlite_session,
+                        tool=tool,
+                        tool_parameters='{"a": 1, "b": 2}',
+                        user_id="u1",
+                        tenant_id="tenant-1",
+                        message=message,
+                        invoke_from=InvokeFrom.DEBUGGER,
+                        agent_tool_callback=callback,
+                        trace_scope=None,
+                    )
+
+    assert invoke.call_args.args[2] == {"a": 1, "b": 2}
+    assert result_text == "ok"
+    assert result_meta.error is None
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+@pytest.mark.parametrize(
+    ("bad_parameters", "interpolated_value"),
+    [
+        pytest.param("[1, 2]", "[1, 2]", id="array"),
+        pytest.param('"quoted"', "quoted", id="json-string"),
+        pytest.param("null", "None", id="null"),
+        pytest.param("true", "True", id="boolean"),
+        pytest.param('["a"]', "['a']", id="string-array"),
+        pytest.param("not json", "not json", id="invalid-json"),
+        pytest.param("", "", id="empty-string"),
+    ],
+)
+def test_agent_invoke_rejects_non_dict_parameter_string(
+    sqlite_session: Session, bad_parameters: str, interpolated_value: str
+) -> None:
+    tool = _build_tool()
+    callback = DifyAgentCallbackHandler()
+    message = _message()
+
+    with pytest.raises(ValueError, match="should be a dict") as exc_info:
+        ToolEngine.agent_invoke(
+            session=sqlite_session,
+            tool=tool,
+            tool_parameters=bad_parameters,
+            user_id="u1",
+            tenant_id="tenant-1",
+            message=message,
+            invoke_from=InvokeFrom.DEBUGGER,
+            agent_tool_callback=callback,
+            trace_scope=None,
+        )
+
+    assert str(exc_info.value) == f"tool_parameters should be a dict, but got a string: {interpolated_value}"

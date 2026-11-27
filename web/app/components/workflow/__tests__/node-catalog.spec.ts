@@ -30,6 +30,21 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `/docs${path}`,
 }))
 
+const serverMessageTemplate = {
+  subject: 'Configured approval subject',
+  body: 'Configured review instructions: {{#url#}}',
+}
+
+const renderCatalog = (options: Parameters<typeof renderWorkflowCanvasHook>[1]) =>
+  renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    initialStoreState: {
+      nodesDefaultConfigs: {
+        [BlockEnum.HumanInput]: { version: '2', message_template: serverMessageTemplate },
+      },
+    },
+    ...options,
+  })
+
 describe('useWorkflowNodeCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -38,11 +53,40 @@ describe('useWorkflowNodeCatalog', () => {
     releaseGate.enabled = true
   })
 
+  it.each([{}, { [BlockEnum.HumanInput]: { version: '1', delivery_methods: [] } }])(
+    'waits for v2 node defaults before offering v2 creation',
+    (nodesDefaultConfigs) => {
+      const { result } = renderCatalog({
+        queryClient: catalogQueryClient(),
+        initialStoreState: { nodesDefaultConfigs },
+      })
+
+      expect(result.current.nodes.map((node) => node.metaData.type)).not.toContain(
+        BlockEnum.HumanInputV2,
+      )
+      expect(result.current.nodesMap?.[BlockEnum.HumanInputV2]?.checkValid).toEqual(
+        expect.any(Function),
+      )
+    },
+  )
+
+  it('uses the server message template only for the v2 candidate', () => {
+    const { result } = renderCatalog({ queryClient: catalogQueryClient() })
+
+    expect(
+      result.current.nodes.find((node) => node.metaData.type === BlockEnum.HumanInputV2)
+        ?.defaultValue,
+    ).toMatchObject({ message_template: serverMessageTemplate })
+    expect(result.current.nodesMap?.[BlockEnum.HumanInput]?.defaultValue).not.toHaveProperty(
+      'message_template',
+    )
+  })
+
   it.each(['workflow', 'advanced-chat'] as const)(
     'offers the original Human Input candidate in %s when the release gate is off',
     (mode) => {
       releaseGate.enabled = false
-      const { result, setCanvas } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+      const { result, setCanvas } = renderCatalog({
         queryClient: catalogQueryClient(),
         resource: { kind: 'app', appId: 'app-1', mode },
       })
@@ -67,7 +111,7 @@ describe('useWorkflowNodeCatalog', () => {
   )
 
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -89,7 +133,7 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should expose only legacy Agent in chat mode by default even when Agent v2 is enabled', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -108,7 +152,7 @@ describe('useWorkflowNodeCatalog', () => {
   it('should expose Agent v2 in chat mode when the Chatflow gate is enabled', () => {
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -128,7 +172,7 @@ describe('useWorkflowNodeCatalog', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -145,7 +189,7 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -174,7 +218,7 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('exposes one v2-backed Human Input candidate while retaining legacy routing metadata', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
     })
     const candidates = result.current.nodes.filter(
@@ -206,7 +250,7 @@ describe('useWorkflowNodeCatalog', () => {
           inputs: [createDefaultFormInputByType(type, 'decision')],
         },
       })
-      const { result, setCanvas } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+      const { result, setCanvas } = renderCatalog({
         nodes: [legacy],
         queryClient: catalogQueryClient(),
       })
@@ -243,7 +287,7 @@ describe('useWorkflowNodeCatalog', () => {
   )
 
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -266,7 +310,7 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should hide legacy Agent from the node picker but retain its validator when Agent v2 is enabled', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -288,7 +332,7 @@ describe('useWorkflowNodeCatalog', () => {
   it('should expose only legacy Agent while retaining Agent v2 metadata when Agent v2 is disabled', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
 
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient(),
       resource: {
         kind: 'app',
@@ -308,7 +352,7 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should hide Knowledge Retrieval v2 when KnowledgeFS is disabled', () => {
-    const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+    const { result } = renderCatalog({
       queryClient: catalogQueryClient({ enabled: false }),
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })

@@ -1,4 +1,5 @@
-import { useTriggerSubscriptions } from '@/service/use-triggers'
+import { useQuery } from '@tanstack/react-query'
+import { triggerSubscriptionsQueryOptions } from '@/service/trigger-queries'
 import { usePluginStore } from '../store'
 
 export const useSubscriptionList = () => {
@@ -8,7 +9,7 @@ export const useSubscriptionList = () => {
     data: subscriptions,
     isLoading,
     refetch,
-  } = useTriggerSubscriptions(detail?.provider || '')
+  } = useQuery(triggerSubscriptionsQueryOptions(detail?.provider || ''))
 
   return {
     detail,

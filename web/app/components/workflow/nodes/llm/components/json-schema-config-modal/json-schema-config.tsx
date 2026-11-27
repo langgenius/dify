@@ -198,7 +198,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
       className="flex h-full flex-col"
     >
       {/* Header */}
-      <div className="relative flex p-6 pr-14 pb-3">
+      <div className="relative flex p-6 pe-14 pb-3">
         <DialogTitle
           // oxlint-disable-next-line shadcn/no-restyle -- Title shares the editor's header row with its actions.
           className="grow"
@@ -210,7 +210,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
             <IconButton
               size="lg"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden className="i-ri-close-line h-4.5 w-4.5" />
             </IconButton>
@@ -226,7 +226,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
             <TabsTab
               key={value}
               value={value}
-              className="h-7 min-w-0 cursor-default justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-b-[0.5px] border-transparent px-2 py-1 whitespace-nowrap text-text-secondary transition-colors duration-150 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-0 focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-active:border-components-segmented-control-item-active-border data-active:bg-components-segmented-control-item-active-bg data-active:text-text-accent-light-mode-only data-active:shadow-xs data-active:shadow-shadow-shadow-3 data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled motion-reduce:transition-none [&&]:system-sm-medium"
+              className="h-7 min-w-0 cursor-default justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-b-[0.5px] border-transparent px-2 py-1 whitespace-nowrap text-text-secondary transition-colors duration-150 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-inset data-active:border-components-segmented-control-item-active-border data-active:bg-components-segmented-control-item-active-bg data-active:text-text-accent-light-mode-only data-active:shadow-xs data-active:shadow-shadow-shadow-3 data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled motion-reduce:transition-none [&&]:system-sm-medium"
             >
               <Icon className="size-4 shrink-0" />
               <span className="p-0.5">{text}</span>
@@ -258,7 +258,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
             <Button variant="secondary" onClick={handleResetDefaults}>
               {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflowModels' })}
             </Button>
-            <Separator orientation="vertical" className="mr-0 ml-1 h-4" />
+            <Separator orientation="vertical" className="ms-1 me-0 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <DialogClose render={<Button variant="secondary" />}>

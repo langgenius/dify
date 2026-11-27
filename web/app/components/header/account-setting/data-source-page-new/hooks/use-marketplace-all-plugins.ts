@@ -1,8 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import type { PluginsSearchParams } from '@dify/contracts/marketplace'
+import { useDebounce } from 'ahooks'
+import { useMemo } from 'react'
+import { useMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/hooks'
 import {
+  MARKETPLACE_PANEL_CACHE_OPTIONS,
   useMarketplacePlugins,
-  useMarketplacePluginsByCollectionId,
-} from '@/app/components/plugins/marketplace/hooks'
+} from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 
 export const useMarketplaceAllPlugins = (providers: any[], searchText: string) => {
@@ -11,35 +14,34 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
   }, [providers])
   const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } =
     useMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
-  const {
-    plugins,
-    queryPlugins,
-    queryPluginsWithDebounced,
-    isLoading: isPluginsLoading,
-  } = useMarketplacePlugins()
-
-  useEffect(() => {
-    if (searchText) {
-      queryPluginsWithDebounced({
-        query: searchText,
+  // Typing waits 500 ms before searching; clearing the search lists the whole category at once.
+  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
+  const marketplaceSearchParams = useMemo<PluginsSearchParams>(() => {
+    if (searchText && debouncedSearchText) {
+      return {
+        query: debouncedSearchText,
         category: PluginCategoryEnum.datasource,
         exclude,
         type: 'plugin',
         sort_by: 'install_count',
         sort_order: 'DESC',
-      })
-    } else {
-      queryPlugins({
-        query: '',
-        category: PluginCategoryEnum.datasource,
-        type: 'plugin',
-        page_size: 1000,
-        exclude,
-        sort_by: 'install_count',
-        sort_order: 'DESC',
-      })
+      }
     }
-  }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
+    return {
+      query: '',
+      category: PluginCategoryEnum.datasource,
+      type: 'plugin',
+      page_size: 1000,
+      exclude,
+      sort_by: 'install_count',
+      sort_order: 'DESC',
+    }
+  }, [debouncedSearchText, exclude, searchText])
+  const pluginsQuery = useMarketplacePlugins(marketplaceSearchParams, {
+    keepPreviousResults: false,
+    ...MARKETPLACE_PANEL_CACHE_OPTIONS,
+  })
+  const plugins = pluginsQuery.data?.pages.flatMap((page) => page.plugins)
 
   const allPlugins = useMemo(() => {
     const allPlugins = collectionPlugins.filter((plugin) => !exclude.includes(plugin.plugin_id))
@@ -58,6 +60,6 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
 
   return {
     plugins: allPlugins,
-    isLoading: isCollectionLoading || isPluginsLoading,
+    isLoading: isCollectionLoading || pluginsQuery.isLoading,
   }
 }

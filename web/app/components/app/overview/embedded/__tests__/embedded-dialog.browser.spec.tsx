@@ -13,8 +13,6 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { EmbeddedDialogContent } from '../index'
 
-// boundary: clipboard contents cross the browser/OS boundary; the visible copied state is asserted.
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 vi.unmock('react-i18next')
 
 const prefix = 'overview.appInfo.embedded'

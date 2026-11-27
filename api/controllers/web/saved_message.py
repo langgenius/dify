@@ -54,11 +54,6 @@ class SavedMessageListApi(WebApiResource):
     @web_ns.doc("Save Message")
     @web_ns.doc(description="Save a specific message for later reference.")
     @web_ns.doc(
-        params={
-            "message_id": {"description": "Message UUID to save", "type": "string", "required": True},
-        }
-    )
-    @web_ns.doc(
         responses={
             200: "Message saved successfully",
             400: "Bad Request - Not a completion app",

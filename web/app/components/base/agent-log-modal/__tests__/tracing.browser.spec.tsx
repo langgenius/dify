@@ -3,11 +3,6 @@ import { page } from 'vite-plus/test/browser'
 import TracingPanel from '../tracing'
 import { renderAgentLog } from './browser-test-env'
 
-vi.mock('@monaco-editor/react', async () => {
-  const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
-  return createMonacoEditorModuleMock()
-})
-
 const createIteration = (thought: string, tokens: number): AgentIterationLogResponse => ({
   created_at: '',
   files: [],
@@ -46,17 +41,34 @@ it('keeps trace output ordered and exposes only the last thought as the final an
   await expect.element(screen.getByText(/finalProcessing/i)).toBeVisible()
 
   for (const llm of screen.getByText('LLM').all()) await llm.click()
-  const editors = screen.getByTestId('monaco-editor').all()
-  expect(editors).toHaveLength(6)
-  const expectedValues = ['', 'Thought 1', '', 'Thought 2', '', 'Thought 3']
-  for (const [index, value] of expectedValues.entries()) {
-    await expect.element(editors[index]!).toHaveValue(JSON.stringify(value))
-    await expect.element(editors[index]!).toHaveAttribute('readonly')
-  }
-  const titles = screen.getByText(/^(?:THOUGHT|FINAL ANSWER)$/).all()
-  expect(titles).toHaveLength(3)
-  await expect.element(titles[0]!).toHaveTextContent('THOUGHT')
-  await expect.element(titles[1]!).toHaveTextContent('THOUGHT')
-  await expect.element(titles[2]!).toHaveTextContent('FINAL ANSWER')
-  await expect.element(titles[2]!).toBeVisible()
+  // Each editor title precedes its rendered value, so one document-order read proves both the
+  // iteration order and that only the last thought is labelled as the final answer.
+  const titlesAndValues = screen.getByText(
+    /^(?:OBSERVATION|THOUGHT|FINAL ANSWER|""|"Thought\s\d")$/,
+  )
+  await expect
+    // Monaco renders spaces as non-breaking spaces.
+    .poll(() =>
+      titlesAndValues
+        .all()
+        .map((element) => element.element().textContent?.replaceAll('\u00A0', ' ')),
+    )
+    .toEqual([
+      'OBSERVATION',
+      '""',
+      'THOUGHT',
+      '"Thought 1"',
+      'OBSERVATION',
+      '""',
+      'THOUGHT',
+      '"Thought 2"',
+      'OBSERVATION',
+      '""',
+      'FINAL ANSWER',
+      '"Thought 3"',
+    ])
+  await expect.element(screen.getByText('FINAL ANSWER')).toBeVisible()
+  const editors = screen.getByRole('textbox', { name: 'Editor content' })
+  await expect.poll(() => editors.all().length).toBe(6)
+  for (const editor of editors.all()) await expect.element(editor).toHaveAttribute('readonly')
 })

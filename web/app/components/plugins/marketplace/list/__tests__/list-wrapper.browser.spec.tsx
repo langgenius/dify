@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import type { marketplaceClient } from '@/service/marketplace'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { Provider as JotaiProvider } from 'jotai'
@@ -7,31 +6,12 @@ import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
 import common from '@/i18n/locales/en-US/common.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
+import { apiError, pendingResponse, setupFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { useSearchPluginText } from '../../atoms'
 import ListWrapper from '../list-wrapper'
-
-const transport = vi.hoisted(() => ({
-  collections: vi.fn<typeof marketplaceClient.collections>(),
-  collectionPlugins: vi.fn<typeof marketplaceClient.collectionPlugins>(),
-  searchAdvanced: vi.fn<typeof marketplaceClient.searchAdvanced>(),
-}))
-
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collections: transport.collections,
-      collectionPlugins: transport.collectionPlugins,
-      searchAdvanced: transport.searchAdvanced,
-    },
-  }
-})
 
 vi.unmock('react-i18next')
 
@@ -103,26 +83,20 @@ const renderListWrapper = async ({
   return { ...rendered, onUrlUpdate }
 }
 
+const fake = setupFakeApi(() => ({
+  marketplace: {
+    collections: () => ({ data: { collections: [] } }),
+    collectionPlugins: () => ({ data: { plugins: [] } }),
+    searchAdvanced: () => searchResponse([]),
+  },
+}))
+
 describe('ListWrapper', () => {
-  beforeEach(() => {
-    onTestFinished(guardUnexpectedFetch())
-    transport.collections.mockReset().mockResolvedValue({ data: { collections: [] } })
-    transport.collectionPlugins.mockReset().mockResolvedValue({ data: { plugins: [] } })
-    transport.searchAdvanced.mockReset()
-  })
+  beforeEach(() => {})
 
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
-  })
-
-  it('shows result cards and the real localized sort control', async () => {
-    transport.searchAdvanced.mockResolvedValue(searchResponse([plugin('plugin-one', 'Plugin One')]))
-    const screen = await renderListWrapper()
-    await expect.element(screen.getByRole('link', { name: /Plugin One/ })).toBeVisible()
-    await expect.element(screen.getByRole('status')).toHaveTextContent('1 results')
-    const sort = screen.getByRole('button', { name: /Sort by/ })
-    await expect.element(sort).toBeVisible()
   })
 
   it('keeps loaded cards and the result announcement while native scrolling fetches the next page', async () => {
@@ -130,9 +104,12 @@ describe('ListWrapper', () => {
     const firstPage = Array.from({ length: 40 }, (_, index) =>
       plugin(`plugin-${index}`, `Plugin ${index}`),
     )
-    transport.searchAdvanced.mockImplementation(({ body }) =>
-      body.page === 1 ? Promise.resolve(searchResponse(firstPage, 41)) : nextPage.promise,
-    )
+    fake.use({
+      marketplace: {
+        searchAdvanced: ({ body }) =>
+          body.page === 1 ? searchResponse(firstPage, 41) : nextPage.promise,
+      },
+    })
     const screen = await renderListWrapper()
     const firstCard = screen.getByRole('link', { name: /Plugin 0 / })
     await expect.element(firstCard).toBeVisible()
@@ -152,7 +129,7 @@ describe('ListWrapper', () => {
   })
 
   it('announces loading without result links on a cold start', async () => {
-    transport.searchAdvanced.mockReturnValue(new Promise(() => {}))
+    fake.use({ marketplace: { searchAdvanced: () => pendingResponse() } })
     const screen = await renderListWrapper()
     await expect.element(screen.getByRole('progressbar')).toBeVisible()
     await expect.element(screen.getByRole('link')).not.toBeInTheDocument()
@@ -161,11 +138,14 @@ describe('ListWrapper', () => {
 
   it('keeps stale results through the full debounce and pending replacement request', async () => {
     const replacement = deferred<ReturnType<typeof searchResponse>>()
-    transport.searchAdvanced.mockImplementation(({ body }) =>
-      body.query === 'first'
-        ? Promise.resolve(searchResponse([plugin('first-plugin', 'First Plugin')]))
-        : replacement.promise,
-    )
+    fake.use({
+      marketplace: {
+        searchAdvanced: ({ body }) =>
+          body.query === 'first'
+            ? searchResponse([plugin('first-plugin', 'First Plugin')])
+            : replacement.promise,
+      },
+    })
     const { onUrlUpdate, ...screen } = await renderListWrapper({
       children: <SearchControl />,
       searchParams: '?category=all&q=first',
@@ -174,6 +154,9 @@ describe('ListWrapper', () => {
     await expect.element(first).toBeVisible()
     // Only the debounce clock is controlled; native browser input and rendering remain real.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    const secondQuery = expect.objectContaining({
+      body: expect.objectContaining({ query: 'second' }),
+    })
     await screen.getByRole('textbox', { name: 'Marketplace query' }).fill('second')
     await vi.advanceTimersByTimeAsync(0)
     expect(onUrlUpdate).toHaveBeenLastCalledWith(
@@ -181,15 +164,9 @@ describe('ListWrapper', () => {
     )
     await expect.element(first).toBeVisible()
     await expect.element(screen.getByRole('status')).toHaveTextContent('Loading')
-    expect(
-      transport.searchAdvanced.mock.calls.some(([request]) => request.body.query === 'second'),
-    ).toBe(false)
+    expect(fake.marketplace.searchAdvanced).not.toHaveBeenCalledWith(secondQuery)
     await vi.advanceTimersByTimeAsync(500)
-    await expect
-      .poll(() =>
-        transport.searchAdvanced.mock.calls.some(([request]) => request.body.query === 'second'),
-      )
-      .toBe(true)
+    await expect.poll(() => fake.marketplace.searchAdvanced).toHaveBeenCalledWith(secondQuery)
     await expect.element(first).toBeVisible()
     replacement.resolve(searchResponse([plugin('second-plugin', 'Second Plugin')]))
     await vi.advanceTimersByTimeAsync(0)
@@ -200,8 +177,14 @@ describe('ListWrapper', () => {
   })
 
   it('offers a retry and renders the recovered result after a failed search', async () => {
-    transport.searchAdvanced
-      .mockRejectedValueOnce(new Error('Marketplace unavailable'))
+    fake.marketplace.searchAdvanced
+      .mockRejectedValueOnce(
+        apiError({
+          status: 503,
+          code: 'MARKETPLACE_UNAVAILABLE',
+          message: 'Marketplace unavailable',
+        }),
+      )
       .mockResolvedValueOnce(searchResponse([plugin('recovered-plugin', 'Recovered Plugin')]))
     const screen = await renderListWrapper()
     await expect

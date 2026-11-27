@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "ເຜີຍແຜ່ ແລະ ຈັດການເວີຊັນຂອງຕົວແທນ",
   "agent.acl.test_and_run": "ທົດລອງ ແລະ ແລ່ນຕົວແທນ",
   "agent.create": "ສ້າງຕົວແທນ",
+  "agent.tag.manage": "ຈັດການແທັກຂອງຕົວແທນ",
   "api_extension.manage": "ຈັດການການຕັ້ງຄ່າ API extension",
   "app.access_config": "ຕັ້ງຄ່າສິດການເຂົ້າເຖິງແອັບ",
   "app.acl.access_config": "ເບິ່ງ ແລະ ຈັດການສິດການເຂົ້າເຖິງ",

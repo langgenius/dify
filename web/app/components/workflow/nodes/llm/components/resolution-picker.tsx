@@ -26,7 +26,7 @@ const ResolutionPicker: FC<Props> = ({ value, onChange }) => {
   )
   return (
     <div className="flex items-center justify-between">
-      <div className="mr-2 text-xs font-medium text-text-secondary uppercase">
+      <div className="me-2 text-xs font-medium text-text-secondary uppercase">
         {t(($) => $[`${i18nPrefix}.resolution.name`], { ns: 'workflowModels' })}
       </div>
       <div className="flex items-center space-x-1">

@@ -109,6 +109,7 @@ import {
   zPatchConversationsByCIdPinResponse,
   zPatchConversationsByCIdUnpinPath,
   zPatchConversationsByCIdUnpinResponse,
+  zPostAudioToTextBody,
   zPostAudioToTextResponse,
   zPostChatMessagesBody,
   zPostChatMessagesByTaskIdStopPath,
@@ -126,6 +127,7 @@ import {
   zPostEmailCodeLoginResponse,
   zPostEmailCodeLoginValidityBody,
   zPostEmailCodeLoginValidityResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
   zPostForgotPasswordBody,
   zPostForgotPasswordResetsBody,
@@ -148,6 +150,7 @@ import {
   zPostFormHumanInputV2PublicByFormTokenResponse,
   zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
   zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
+  zPostHumanInputFormsFilesBody,
   zPostHumanInputFormsFilesResponse,
   zPostHumanInputV2FilesBody,
   zPostHumanInputV2FilesHeaders,
@@ -165,7 +168,6 @@ import {
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
   zPostSavedMessagesBody,
-  zPostSavedMessagesQuery,
   zPostSavedMessagesResponse,
   zPostTextToAudioBody,
   zPostTextToAudioResponse,
@@ -190,6 +192,7 @@ export const post = oc
     summary: 'Convert audio to text',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
   .errors({
     app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -534,6 +537,7 @@ export const post9 = oc
     summary: 'Upload a file for use in web applications',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
   .errors({
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
@@ -913,6 +917,7 @@ export const post19 = oc
     summary: 'Upload one local file or remote URL file for a HITL human input form',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostHumanInputFormsFilesBody.optional() }).optional())
   .output(zPostHumanInputFormsFilesResponse)
   .errors({
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
@@ -1452,7 +1457,7 @@ export const post26 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
+  .input(z.object({ body: zPostSavedMessagesBody }))
   .output(zPostSavedMessagesResponse)
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 

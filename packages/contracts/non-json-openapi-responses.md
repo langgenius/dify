@@ -22,6 +22,7 @@ This inventory records non-JSON runtime responses and their schema intent. Legac
 | console | GET    | `/workspaces/current/plugin/icon`                                        | Plugin asset MIME type                         | `string (binary)`     |
 | console | GET    | `/workspaces/current/plugin/asset`                                       | `application/octet-stream`                     | `string (binary)`     |
 | console | GET    | `/workspaces/current/skills/{skill_id}/files/content`                    | Skill file MIME type, optionally attachment    | `string (binary)`     |
+| console | GET    | `/workspaces/current/skills/{skill_id}/export`                           | `application/zip` attachment                   | `BinaryFileResponse`  |
 | console | GET    | `/workspaces/current/tool-provider/builtin/{provider}/icon`              | Tool icon MIME type                            | `BinaryFileResponse`  |
 | console | GET    | `/workspaces/current/trigger-provider/{provider}/icon`                   | Trigger icon response                          | `BinaryFileResponse`  |
 | console | GET    | `/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}`  | Model provider icon MIME type                  | `BinaryFileResponse`  |

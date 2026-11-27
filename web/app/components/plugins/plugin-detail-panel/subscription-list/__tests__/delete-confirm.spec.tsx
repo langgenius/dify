@@ -48,10 +48,7 @@ it('requires the subscription name and prevents repeated submission while deleti
   await waitFor(() => expect(requests.remove).toHaveBeenCalledOnce())
   expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
   await user.type(input, '{Enter}')
-  expect(requests.remove).toHaveBeenCalledExactlyOnceWith(
-    { params: { subscription_id: 'sub-1' } },
-    { context: { silent: true } },
-  )
+  expect(requests.remove).toHaveBeenCalledExactlyOnceWith({ params: { subscription_id: 'sub-1' } })
   expect(onClose).not.toHaveBeenCalled()
   request.resolve({})
   await waitFor(() => expect(onClose).toHaveBeenCalledExactlyOnceWith(true))

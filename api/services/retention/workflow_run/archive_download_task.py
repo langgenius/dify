@@ -10,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 ARCHIVE_DOWNLOAD_FORMAT_VERSION = "v1"
 DEFAULT_ARCHIVE_DOWNLOAD_TASK_TTL_SECONDS = 24 * 60 * 60
+MAX_ARCHIVE_DOWNLOAD_ATTEMPTS = 3
+ARCHIVE_DOWNLOAD_REDISPATCH_INTERVAL_SECONDS = 120
 
 
 class WorkflowRunArchiveDownloadStatus(StrEnum):
@@ -49,6 +51,9 @@ class WorkflowRunArchiveDownloadTask(BaseModel):
     storage_key: str | None = None
     file_size_bytes: int | None = Field(default=None, ge=0)
     celery_task_id: str | None = None
+    # None identifies cached tasks created before execution ownership was tracked.
+    execution_id: str | None = None
+    attempt_count: int = Field(default=0, ge=0)
     error: str | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime

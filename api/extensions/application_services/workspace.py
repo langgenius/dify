@@ -59,12 +59,15 @@ def build_workspace_membership_services(
     *,
     workspaces: WorkspaceRepository,
     accounts: SQLAlchemyAccountRepository,
+    invitation_tokens: RedisInvitationTokenStore,
+    redis: RedisClientWrapper,
 ) -> tuple[WorkspaceMemberService, WorkspaceProvisioningService]:
     """Build the workspace prerequisites shared by account registration and invitations."""
     members = WorkspaceMemberService(
         workspaces=workspaces,
         accounts=accounts,
         access=DeploymentWorkspaceMemberAccessGateway(),
+        invitation_links=WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis),
     )
     provisioning = WorkspaceProvisioningService(
         owners=accounts,

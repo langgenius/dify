@@ -105,7 +105,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
   return (
     <div className="group flex border-t border-gray-200">
       {/* Key */}
-      <div className="w-30 border-r border-gray-200">
+      <div className="w-30 border-e border-gray-200">
         <input
           className="block h-7 w-full appearance-none px-2 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t(($) => $['chatVariable.modal.objectKey'], { ns: 'workflow' })}
@@ -114,7 +114,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
         />
       </div>
       {/* Type */}
-      <div className="w-24 border-r border-gray-200">
+      <div className="w-24 border-e border-gray-200">
         <VariableTypeSelector
           inCell
           value={list[index].type}
@@ -126,7 +126,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
       {/* Value */}
       <div className="relative w-57.5">
         <input
-          className="block h-7 w-full appearance-none px-2 pr-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 pe-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t(($) => $['chatVariable.modal.objectValue'], { ns: 'workflow' })}
           value={list[index].value}
           onChange={handleValueChange(index)}
@@ -135,7 +135,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
           type={list[index].type === ChatVarType.Number ? 'number' : 'text'}
         />
         {list.length > 1 && !isFocus && (
-          <div className="absolute top-0.5 right-1 z-10">
+          <div className="absolute inset-e-1 top-0.5 z-10">
             <IconButton
               aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
               size="md"

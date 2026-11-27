@@ -572,3 +572,34 @@ def test_delete_archive_without_bundles_returns_completed(caplog: pytest.LogCapt
     assert _service().delete_archive(_CONTEXT, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.COMPLETED
     assert len(caplog.records) == 1
     assert caplog.records[0].__dict__["attributes"]["event"] == "workflow_run_archive.deletion_noop"
+
+
+@pytest.mark.parametrize(
+    "status", [WorkflowRunArchiveDownloadStatus.PENDING, WorkflowRunArchiveDownloadStatus.PROCESSING]
+)
+def test_create_download_redispatches_stalled_claim_without_resetting_attempts(
+    status: WorkflowRunArchiveDownloadStatus,
+) -> None:
+    records = (_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024),)
+    task_store = FakeTaskStore()
+    dispatched: list[WorkflowRunArchiveDownloadTask] = []
+    service = _service(records=records, tasks=task_store, dispatched_tasks=dispatched)
+    task = service.create_download(_CONTEXT, year=2025, month=3)
+    stale = task.model_copy(
+        update={
+            "status": status,
+            "updated_at": datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=5),
+            "execution_id": "interrupted-attempt",
+            "attempt_count": 2,
+        }
+    )
+    task_store.tasks[task.download_id] = stale
+    result = service.create_download(_CONTEXT, year=2025, month=3)
+    assert result.celery_task_id == task.celery_task_id
+    assert result.execution_id == "interrupted-attempt"
+    assert result.attempt_count == 2
+    assert result.status == status
+    assert len(dispatched) == 2
+    assert dispatched[-1] == result
+    assert service.create_download(_CONTEXT, year=2025, month=3) == result
+    assert len(dispatched) == 2

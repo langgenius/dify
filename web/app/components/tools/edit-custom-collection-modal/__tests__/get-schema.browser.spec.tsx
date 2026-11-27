@@ -1,32 +1,11 @@
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { hold, installFakeApi } from '@/test/fake-api'
 import examples from '../examples'
 import GetSchema from '../get-schema'
-
-const importSchema = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.workspaces.current.toolProvider.api.remote.get>(),
-)
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.toolProvider.api.remote.get': importSchema,
-    }),
-  }
-})
-
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  importSchema.mockReset()
-})
 
 function SchemaEditor() {
   // GetSchema is a controlled import action: the consumer owns the editable schema.
@@ -43,18 +22,28 @@ function SchemaEditor() {
   )
 }
 async function setup() {
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          toolProvider: { api: { remote: { get: async () => ({ schema: 'fetched-schema' }) } } },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
   const { wrapper: Providers } = createConsoleQueryWrapper()
-  return render(
+  const screen = await render(
     <Providers>
       <SchemaEditor />
     </Providers>,
   )
+  return { screen, importSchema: fake.console.workspaces.current.toolProvider.api.remote.get }
 }
 
 it('validates the URL, prevents duplicate imports, then replaces the editable schema', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof importSchema>>>()
-  importSchema.mockReturnValue(pending.promise)
-  const screen = await setup()
+  const { screen, importSchema } = await setup()
+  const pending = hold(importSchema)
   const trigger = screen.getByRole('button', { name: 'tools.createTool.importFromUrl' })
   const schema = screen.getByRole('textbox', { name: 'Tool schema' })
   await trigger.click()
@@ -78,9 +67,11 @@ it('validates the URL, prevents duplicate imports, then replaces the editable sc
   await userEvent.keyboard('{Enter}')
   await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
   await userEvent.keyboard('{Enter}')
-  expect(importSchema).toHaveBeenCalledExactlyOnceWith({
-    query: { url: 'https://example.com/schema.json' },
-  })
+  await expect
+    .poll(() => importSchema)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ query: { url: 'https://example.com/schema.json' } }),
+    )
   await expect.element(schema).toHaveValue('Original schema')
   pending.resolve({ schema: 'fetched-schema' })
   await expect.element(popup).not.toBeInTheDocument()
@@ -91,7 +82,7 @@ it('validates the URL, prevents duplicate imports, then replaces the editable sc
 })
 
 it('replaces the editable schema with the selected example', async () => {
-  const screen = await setup()
+  const { screen } = await setup()
   await screen.getByRole('button', { name: 'tools.createTool.examples' }).click()
   await screen
     .getByRole('menuitem', { name: `tools.createTool.exampleOptions.${examples[0].key}` })

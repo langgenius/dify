@@ -734,6 +734,7 @@ def test_valid_invitation_links_and_logs_in_invited_account() -> None:
     assert harness.runtime.logins == [("invited-account", "203.0.113.10")]
     assert harness.integrations.identity_lookups == []
     assert harness.invitations.resolutions == ["invite-token"]
+    assert harness.runtime.workspace_operations == []
 
 
 def test_resolvable_invitation_requires_matching_email() -> None:

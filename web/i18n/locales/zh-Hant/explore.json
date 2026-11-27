@@ -1,7 +1,6 @@
 {
   "appCard.try": "詳情",
   "appCustomize.nameRequired": "應用程式名稱不能為空",
-  "appCustomize.subTitle": "應用程式圖示和名稱",
   "appCustomize.title": "從 {{name}} 建立應用程式",
   "apps.allCategories": "全部",
   "apps.description": "來自社群和 Dify 團隊的即用範本。",

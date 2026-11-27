@@ -17,6 +17,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -29,8 +30,8 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType } from '@/app/components/workflow/types'
-import { useFetchDynamicOptions } from '@/service/use-plugins'
-import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import { pluginDynamicOptionsMutationOptions } from '@/service/plugin-list-queries'
+import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import {
@@ -130,18 +131,20 @@ const FormInputItem: FC<Props> = ({
   })
 
   // Fetch dynamic options hook for tools
-  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
-    currentProvider?.plugin_id || '',
-    currentProvider?.name || '',
-    currentTool?.name || '',
-    variable || '',
-    providerType,
-    extraParams,
+  const { mutateAsync: fetchDynamicOptions } = useMutation(
+    pluginDynamicOptionsMutationOptions(
+      currentProvider?.plugin_id || '',
+      currentProvider?.name || '',
+      currentTool?.name || '',
+      variable || '',
+      providerType,
+      extraParams,
+    ),
   )
 
   // Fetch dynamic options hook for triggers
-  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } =
-    useTriggerPluginDynamicOptions(
+  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useQuery({
+    ...triggerPluginDynamicOptionsQueryOptions(
       {
         plugin_id: currentProvider?.plugin_id || '',
         provider: currentProvider?.name || '',
@@ -155,7 +158,11 @@ const FormInputItem: FC<Props> = ({
         providerType === PluginCategoryEnum.trigger &&
         !!currentTool &&
         !!currentProvider,
-    )
+    ),
+    // This select has no error slot, so the query cache reports a failure, as it does for the
+    // tool options mutation above.
+    meta: undefined,
+  })
 
   // Computed values for dynamic options (unified for triggers and tools)
   const triggerOptions = triggerDynamicOptions?.options
@@ -400,7 +407,7 @@ const FormInputItem: FC<Props> = ({
           <SelectContent>
             {staticSelectItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.icon && <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />}
+                {item.icon && <img src={item.icon} alt="" className="me-2 size-4 shrink-0" />}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
@@ -431,7 +438,7 @@ const FormInputItem: FC<Props> = ({
           <SelectContent>
             {dynamicSelectItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.icon && <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />}
+                {item.icon && <img src={item.icon} alt="" className="me-2 size-4 shrink-0" />}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>

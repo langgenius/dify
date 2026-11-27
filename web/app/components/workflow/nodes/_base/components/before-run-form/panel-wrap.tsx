@@ -17,12 +17,12 @@ const PanelWrap: FC<Props> = ({ nodeName, onHide, children }) => {
   return (
     <div className="absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt">
       <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">
-        <div className="flex h-8 shrink-0 items-center justify-between pt-3 pr-3 pl-4">
+        <div className="flex h-8 shrink-0 items-center justify-between ps-4 pe-3 pt-3">
           <div className="truncate text-base font-semibold text-text-primary">
             {t(($) => $[`${i18nPrefix}.testRun`], { ns: 'workflow' })} {nodeName}
           </div>
           <div
-            className="ml-2 shrink-0 cursor-pointer p-1"
+            className="ms-2 shrink-0 cursor-pointer p-1"
             onClick={() => {
               onHide()
             }}

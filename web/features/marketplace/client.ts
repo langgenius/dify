@@ -1,8 +1,8 @@
 'use client'
 
-import type { Plugin } from '@/app/components/plugins/types'
+import type { MarketplacePlugin } from '@dify/contracts/marketplace'
+import type { QueryClient } from '@tanstack/react-query'
 import { keepPreviousData, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { marketplaceQuery } from '@/service/marketplace'
 import { marketplaceLinks } from './links'
@@ -34,7 +34,7 @@ export const useMarketplacePluginVersions = (pluginId: string | undefined, enabl
 
 export const useMarketplacePluginSearch = <TData>(
   query: string,
-  { enabled, select }: { enabled: boolean; select: (plugins: Plugin[]) => TData },
+  { enabled, select }: { enabled: boolean; select: (plugins: MarketplacePlugin[]) => TData },
 ) => {
   const marketplace = useMarketplace()
 
@@ -46,7 +46,17 @@ export const useMarketplacePluginSearch = <TData>(
       enabled,
       retry: false,
       placeholderData: keepPreviousData,
-      select: (response) => select((response.data?.plugins ?? []).map(getFormattedPlugin)),
+      select: (response) => select(response.data?.plugins ?? []),
     }),
   )
 }
+
+// The legacy plugin search and collection hooks exclude installed plugins, so refetch them after
+// the workspace installs, updates or removes one.
+export const invalidateMarketplacePluginLists = (queryClient: QueryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: marketplaceQuery.searchAdvanced.key({ type: 'infinite' }),
+    }),
+    queryClient.invalidateQueries({ queryKey: marketplaceQuery.collectionPlugins.key() }),
+  ])

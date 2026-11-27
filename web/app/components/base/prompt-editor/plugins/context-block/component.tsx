@@ -37,14 +37,14 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
 
   return (
     <div
-      className={`group inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#F4F3FF] pr-0.5 pl-1 text-[#6938EF] hover:bg-[#EBE9FE] ${open ? 'bg-[#EBE9FE]' : ''} ${isSelected && 'border-[#9B8AFB]!'} `}
+      className={`group inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#F4F3FF] ps-1 pe-0.5 text-[#6938EF] hover:bg-[#EBE9FE] ${open ? 'bg-[#EBE9FE]' : ''} ${isSelected && 'border-[#9B8AFB]!'} `}
       ref={ref}
     >
       <span
-        className="mr-1 i-custom-vender-solid-files-file-05 h-3.5 w-3.5"
+        className="me-1 i-custom-vender-solid-files-file-05 h-3.5 w-3.5"
         data-testid="file-icon"
       />
-      <div className="mr-1 text-xs font-medium">
+      <div className="me-1 text-xs font-medium">
         {t(($) => $['promptEditor.context.item.title'], { ns: 'common' })}
       </div>
       {!canNotAddContext && (
@@ -79,7 +79,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                 <div className="max-h-67.5 overflow-y-auto">
                   {localDatasets.map((dataset) => (
                     <div key={dataset.id} className="flex h-8 items-center">
-                      <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5] bg-[#F5F8FF]">
+                      <div className="me-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5] bg-[#F5F8FF]">
                         <span
                           className="i-custom-vender-solid-files-folder h-4 w-4 text-indigo-600"
                           data-testid="folder-icon"
@@ -93,10 +93,10 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                 </div>
                 <button
                   type="button"
-                  className="flex h-8 cursor-pointer items-center border-none bg-transparent p-0 text-left text-primary-600 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="flex h-8 cursor-pointer items-center border-none bg-transparent p-0 text-start text-primary-600 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={onAddContext}
                 >
-                  <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-100">
+                  <div className="me-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-100">
                     <span className="i-ri-add-line h-3.5 w-3.5" aria-hidden="true" />
                   </div>
                   <div className="text-[13px] font-medium" title="">

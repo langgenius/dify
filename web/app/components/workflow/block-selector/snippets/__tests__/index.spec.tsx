@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Edge, Node } from '../../../types'
-import type { SnippetListItem, SnippetListResponse } from '@/types/snippet'
+import type { SnippetListItem } from '@/types/snippet'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -15,10 +15,10 @@ import Snippets from '../index'
 const requests = vi.hoisted(() => ({ list: vi.fn(), increment: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.customizedSnippets.get': requests.list,
       'workspaces.current.customizedSnippets.bySnippetId.useCount.increment.post':
         requests.increment,
@@ -39,6 +39,14 @@ const snippet: SnippetListItem = {
   updated_at: 2,
   updated_by: 'user-1',
 }
+type SnippetListResponse = {
+  data: SnippetListItem[]
+  page: number
+  limit: number
+  total: number
+  has_more: boolean
+}
+
 const page = (data = [snippet]): SnippetListResponse => ({
   data,
   page: 1,
@@ -131,7 +139,9 @@ it('keeps cached rows visible while the current search refreshes', async () => {
   await screen.findByRole('button', { name: /Customer Review/ })
   requests.list.mockReturnValue(pending.promise)
   act(() => {
-    void queryClient.invalidateQueries({ queryKey: ['snippets', 'list'] })
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.customizedSnippets.get.key(),
+    })
   })
   await waitFor(() => expect(queryClient.isFetching()).toBe(1))
   expect(screen.getByRole('button', { name: /Customer Review/ })).toBeInTheDocument()

@@ -28,13 +28,13 @@ const Item: FC<ItemProps> = ({
       ref={ref}
       key={item.id}
       className={cn(
-        'group flex rounded-lg p-1 pl-3 system-sm-medium text-components-menu-item-text hover:bg-state-base-hover',
+        'group flex rounded-lg p-1 ps-3 system-sm-medium text-components-menu-item-text hover:bg-state-base-hover',
         isSelected && 'bg-state-accent-active text-text-accent hover:bg-state-accent-active',
       )}
     >
       <button
         type="button"
-        className="min-w-0 grow cursor-pointer appearance-none truncate border-0 bg-transparent p-1 pl-0 text-left"
+        className="min-w-0 grow cursor-pointer appearance-none truncate border-0 bg-transparent p-1 ps-0 text-start"
         title={item.name}
         onClick={() => onChangeConversation(item.id)}
       >

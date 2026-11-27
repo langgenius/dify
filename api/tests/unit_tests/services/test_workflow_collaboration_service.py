@@ -1,27 +1,36 @@
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
+import socketio
+from engineio.socket import Socket
+from gevent.pool import Group
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
+from socketio.packet import Packet
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
+from graphon.file import helpers as file_helpers
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from services.account_avatar_service import AccountAvatarService
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
     WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
+    WorkflowPageResume,
 )
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_upload_file
 from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
@@ -43,6 +52,33 @@ def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
     repository = WorkflowCollaborationRepository()
     socketio = Mock()
     return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
+
+
+@pytest.fixture
+def socket_servers(monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable[[], socketio.Server]]:
+    """Use actual Socket.IO sessions and own the lifetime of their heartbeat tasks."""
+    tasks = Group()
+
+    def create_server() -> socketio.Server:
+        server = socketio.Server(async_mode="gevent")
+        monkeypatch.setattr(server, "start_background_task", tasks.spawn)
+        return server
+
+    try:
+        yield create_server
+    finally:
+        tasks.kill()
+
+
+def _connect_editor(server: socketio.Server, user_id: str = "u-1") -> tuple[str, Socket]:
+    """Attach a transport and admit its authenticated identity without opening a port."""
+    eio_sid = uuid4().hex
+    transport = Socket(server.eio, eio_sid)
+    server.eio.sockets[eio_sid] = transport
+    sid = server.manager.connect(eio_sid, "/")
+    assert isinstance(sid, str)
+    server.save_session(sid, {"user_id": user_id, "tenant_id": "t-1"})
+    return sid, transport
 
 
 @pytest.fixture
@@ -164,7 +200,9 @@ class TestWorkflowCollaborationService:
                 "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=True
             ) as check_access,
             patch.object(collaboration_service, "get_or_set_leader", return_value="sid-1") as get_leader,
-            patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
+            patch.object(
+                collaboration_service, "broadcast_online_users", return_value="sid-1"
+            ) as broadcast_online_users,
         ):
             # Act
             result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
@@ -185,8 +223,112 @@ class TestWorkflowCollaborationService:
         socketio.start_background_task.assert_called_once()
         get_leader.assert_called_once_with("wf-1", "sid-1")
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
-        broadcast_online_users.assert_called_once_with("wf-1")
+        broadcast_online_users.assert_called_once_with("wf-1", joining_sid="sid-1")
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
+
+    @pytest.mark.usefixtures("collaboration_redis")
+    @pytest.mark.parametrize(
+        "existing_room", ["only editor", "another tab", "legacy tab", "stale leader", "old session cleaned up"]
+    )
+    def test_reconnect_supersedes_only_its_previous_sid_across_workers(
+        self,
+        socket_servers: Callable[[], socketio.Server],
+        db_session: Session,
+        existing_room: str,
+    ) -> None:
+        repository = WorkflowCollaborationRepository()
+        old_server, new_server = socket_servers(), socket_servers()
+        old_worker = WorkflowCollaborationService(repository, old_server, server_id="server-1")
+        new_worker = WorkflowCollaborationService(repository, new_server, server_id="server-2")
+        old_sid, _ = _connect_editor(old_server)
+        new_sid, new_transport = _connect_editor(new_server)
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+        original = WorkflowPageResume(uuid4().hex, 1)
+        expected_sids = {new_sid}
+        expected_leader = new_sid
+        other_tab_open = existing_room in ("another tab", "legacy tab")
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            assert old_worker.authorize_and_join_workflow_room(
+                "wf-1", old_sid, session=db_session, resume=original
+            ) == ("u-1", True)
+            if other_tab_open:
+                other_sid, _ = _connect_editor(old_server)
+                other_resume = WorkflowPageResume(uuid4().hex, 1) if existing_room == "another tab" else None
+                assert old_worker.authorize_and_join_workflow_room(
+                    "wf-1", other_sid, session=db_session, resume=other_resume
+                ) == ("u-1", False)
+                expected_sids.add(other_sid)
+                expected_leader = other_sid
+            if existing_room == "stale leader":
+                repository.set_leader("wf-1", "sid-expired")
+            if existing_room == "old session cleaned up":
+                old_worker.disconnect_session(old_sid)
+                assert repository.get_session_sids("wf-1") == []
+
+            assert new_worker.authorize_and_join_workflow_room(
+                "wf-1", new_sid, session=db_session, resume=WorkflowPageResume(original.page_id, 2)
+            ) == ("u-1", not other_tab_open)
+            assert (
+                old_worker.authorize_and_join_workflow_room("wf-1", old_sid, session=db_session, resume=original)
+                is None
+            )
+            assert (
+                old_worker.authorize_and_join_workflow_room(
+                    "wf-1", old_sid, session=db_session, resume=WorkflowPageResume(original.page_id, 2)
+                )
+                is None
+            )
+
+        # The local managers have no message queue, so the old worker has not
+        # received the server disconnect. The shared membership still fences it.
+        assert old_server.manager.is_connected(old_sid, "/")
+        assert old_worker.relay_graph_event(old_sid, b"late edit") == ({"msg": "unauthorized"}, 401)
+        old_worker.disconnect_session(old_sid)
+        old_server.disconnect(old_sid)
+        assert old_worker.authorize_and_join_workflow_room("wf-1", old_sid, session=db_session, resume=original) is None
+        assert set(repository.get_session_sids("wf-1")) == expected_sids
+        assert repository.get_current_leader("wf-1") == expected_leader
+        status = {"isLeader": False} if other_tab_open else {"isLeader": True, "requiresGraphReload": True}
+        packets = [
+            Packet(encoded_packet=new_transport.queue.get_nowait().data) for _ in range(new_transport.queue.qsize())
+        ]
+        assert [packet.data for packet in packets if isinstance(packet.data, list) and packet.data[0] == "status"] == [
+            ["status", status]
+        ]
+
+    @pytest.mark.usefixtures("collaboration_redis")
+    def test_page_resume_is_scoped_to_the_workflow_and_authenticated_account(
+        self, socket_servers: Callable[[], socketio.Server], db_session: Session
+    ) -> None:
+        repository = WorkflowCollaborationRepository()
+        server = socket_servers()
+        service = WorkflowCollaborationService(repository, server)
+        original_sid, _ = _connect_editor(server)
+        other_room_sid, _ = _connect_editor(server)
+        other_user_sid, _ = _connect_editor(server, "u-2")
+        page_id = uuid4().hex
+        db_session.add_all([_app(app_id="wf-1", tenant_id="t-1"), _app(app_id="wf-2", tenant_id="t-1")])
+        db_session.commit()
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            assert service.authorize_and_join_workflow_room(
+                "wf-1", original_sid, session=db_session, resume=WorkflowPageResume(page_id, 1)
+            ) == ("u-1", True)
+            assert service.authorize_and_join_workflow_room(
+                "wf-2", other_room_sid, session=db_session, resume=WorkflowPageResume(page_id, 2)
+            ) == ("u-1", True)
+            assert service.authorize_and_join_workflow_room(
+                "wf-1", other_user_sid, session=db_session, resume=WorkflowPageResume(page_id, 2)
+            ) == ("u-2", False)
+
+        assert set(repository.get_session_sids("wf-1")) == {original_sid, other_user_sid}
+        assert repository.get_session_sids("wf-2") == [other_room_sid]
+        assert server.manager.is_connected(original_sid, "/")
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
         self, real_service: ServiceFixture, db_session: Session
@@ -805,7 +947,7 @@ class TestWorkflowCollaborationService:
         }
 
         with (
-            patch.object(repository, "graph_view_state_lock", return_value=graph_view_lock()),
+            patch.object(repository, "room_state_lock", return_value=graph_view_lock()),
             patch.object(repository, "update_session_graph_active", side_effect=record_visibility),
             patch.object(collaboration_service, "refresh_session_state"),
             patch.object(
@@ -1113,7 +1255,7 @@ class TestWorkflowCollaborationService:
         # Assert
         assert result == "sid-2"
         assert not repository.session_exists("wf-1", "sid-1")
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid="sid-2")
 
         assert repository.get_current_leader("wf-1") == "sid-2"
 
@@ -1189,7 +1331,7 @@ class TestWorkflowCollaborationService:
 
         # Assert
         assert repository.get_current_leader("wf-1") == "sid-2"
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid=None)
 
     def test_handle_leader_disconnect_clears_when_empty(self, real_service: ServiceFixture) -> None:
         # Arrange
@@ -1262,6 +1404,105 @@ class TestWorkflowCollaborationService:
             room="wf-1",
         )
 
+    def test_online_user_avatars_use_current_profiles_for_active_room_sessions(
+        self, real_service: ServiceFixture, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        service, repository, socketio = real_service
+        stale_avatar_id, owner_avatar_id, assigned_later_avatar_id = (str(uuid4()) for _ in range(3))
+        owner_id, assigned_later_id, other_id, outside_id = (str(uuid4()) for _ in range(4))
+        with sqlite_session_factory.begin() as session:
+            owner = make_account(account_id=owner_id, email="owner@example.com")
+            owner.avatar = owner_avatar_id
+            assigned_later = make_account(account_id=assigned_later_id, email="later@example.com")
+            assigned_later.avatar = assigned_later_avatar_id
+            other = make_account(account_id=other_id, email="other@example.com")
+            other.avatar = stale_avatar_id
+            outside = make_account(account_id=outside_id, email="outside@example.com")
+            outside.avatar = "https://example.com/other-avatar.png"
+            session.add_all(
+                [
+                    owner,
+                    assigned_later,
+                    other,
+                    outside,
+                    make_upload_file(
+                        file_id=stale_avatar_id, created_by=owner_id, extension="png", mime_type="image/png"
+                    ),
+                    make_upload_file(
+                        file_id=owner_avatar_id, created_by=owner_id, extension="png", mime_type="image/png"
+                    ),
+                    make_upload_file(
+                        file_id=assigned_later_avatar_id,
+                        created_by=assigned_later_id,
+                        extension="png",
+                        mime_type="image/png",
+                    ),
+                ]
+            )
+        avatar_service = AccountAvatarService(
+            avatars=SQLAlchemyAccountRepository(session_factory=sqlite_session_factory),
+            sign_file_url=file_helpers.get_signed_file_url,
+            console_api_url="https://console.example.com",
+        )
+        seed_session(repository, "viewer")
+        seed_sessions(
+            repository,
+            [
+                {
+                    "sid": "owner",
+                    "user_id": owner_id,
+                    "username": "Owner",
+                    "avatar": stale_avatar_id,
+                    "connected_at": 1,
+                },
+                {
+                    "sid": "assigned-later",
+                    "user_id": assigned_later_id,
+                    "username": "Later",
+                    "avatar": None,
+                    "connected_at": 1,
+                },
+                {
+                    "sid": "unowned",
+                    "user_id": other_id,
+                    "username": "Other",
+                    "avatar": stale_avatar_id,
+                    "connected_at": 1,
+                },
+                {"sid": "invalid", "user_id": "invalid", "username": "Invalid", "avatar": "invalid", "connected_at": 1},
+                {
+                    "sid": "offline",
+                    "user_id": owner_id,
+                    "username": "Owner",
+                    "avatar": stale_avatar_id,
+                    "connected_at": 1,
+                },
+            ],
+        )
+        repository.set_session_info(
+            "other-room",
+            {
+                "sid": "outside",
+                "user_id": outside_id,
+                "username": "Outside",
+                "avatar": None,
+                "connected_at": 1,
+            },
+        )
+        socketio.manager.is_connected.side_effect = lambda sid, _namespace: sid != "offline"
+
+        assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
+        assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
+            "outside": "https://example.com/other-avatar.png"
+        }
+        assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
+            "owner": f"https://console.example.com/console/api/accounts/{owner_id}/avatars/{owner_avatar_id}",
+            "assigned-later": (
+                "https://console.example.com/console/api/accounts/"
+                f"{assigned_later_id}/avatars/{assigned_later_avatar_id}"
+            ),
+        }
+
     def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, socketio = real_service
         users = [{"user_id": "u-2", "username": "B", "avatar": None, "sid": "sid-2", "connected_at": 1}]
@@ -1275,7 +1516,7 @@ class TestWorkflowCollaborationService:
             collaboration_service.broadcast_online_users("wf-1")
 
         assert repository.get_current_leader("wf-1") == "sid-2"
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid=None)
         socketio.emit.assert_called_once_with(
             "online_users",
             {"workflow_id": "wf-1", "users": users, "leader": "sid-2"},
@@ -1332,6 +1573,7 @@ class TestWorkflowCollaborationService:
     def test_refresh_session_state_replaces_inactive_existing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, _socketio = real_service
         repository.set_leader("wf-1", "sid-old")
+        seed_session(repository, "sid-new")
 
         with (
             patch.object(collaboration_service, "is_session_active", return_value=False),
@@ -1551,4 +1793,4 @@ class TestWorkflowCollaborationService:
             collaboration_service.handle_leader_disconnect("wf-1", "sid-old")
 
         assert repository.get_current_leader("wf-1") == "sid-2"
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid=None)

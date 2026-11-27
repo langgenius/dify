@@ -14,13 +14,31 @@ import TryApp from '../index'
 
 const api = vi.hoisted(() => ({
   detail: vi.fn<typeof consoleClient.trialApps.byAppId.get>(),
-  stream: vi.fn<(typeof import('@/service/base'))['ssePost']>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   parameters: vi.fn<typeof consoleClient.trialApps.byAppId.parameters.get>(),
   workflow: vi.fn<typeof consoleClient.trialApps.byAppId.workflows.get>(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: api.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
+  sendCompletionMessage: streams.sendCompletionMessage,
+  sendWorkflowMessage: streams.sendWorkflowMessage,
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -36,6 +54,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'trialApps.byAppId.get': api.detail,
       'trialApps.byAppId.workflows.get': api.workflow,
+      'trialApps.byAppId.parameters.get': api.parameters,
       'workspaces.current.toolProviders.get': async () => [],
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {

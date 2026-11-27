@@ -9,8 +9,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import FormStatusCard from '@/features/human-input/form/form-status-card'
 import LoadedFormContent from '@/features/human-input/form/loaded-form-content'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleQuery } from '@/service/console'
-import { useLogout } from '@/service/use-common'
 import { basePath } from '@/utils/var'
 import { normalizeHumanInputV2Error } from '../public/errors'
 import { normalizeConsoleFormDefinition } from './definition'
@@ -21,9 +21,11 @@ function UnavailableConsoleForm({ formToken }: { formToken: string }) {
   const profile = data?.profile
   const accountName = profile?.name?.trim() || profile?.email
   const returnPath = `${basePath}/human-input/${encodeURIComponent(formToken)}`
-  const logout = useLogout({
-    redirectTo: `/signin?redirect_url=${encodeURIComponent(returnPath)}`,
-  })
+  const logout = useMutation(
+    logoutMutationOptions({
+      redirectTo: `/signin?redirect_url=${encodeURIComponent(returnPath)}`,
+    }),
+  )
 
   return (
     <FormStatusCard
@@ -52,11 +54,9 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   const form = useQuery(
     consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
       input: { params: { form_token: formToken } },
-      context: { silent: true },
+      meta: { errorToast: false },
       select: normalizeConsoleFormDefinition,
       retry: false,
-      staleTime: 0,
-      gcTime: 0,
       refetchOnWindowFocus: false,
     }),
   )
@@ -72,7 +72,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   }, [expiresAt, now])
   const submission = useMutation(
     consoleQuery.form.humanInput.v2.byFormToken.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const errorKind =

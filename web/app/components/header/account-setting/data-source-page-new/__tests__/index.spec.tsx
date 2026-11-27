@@ -26,30 +26,19 @@ const api = vi.hoisted(() => ({
   uninstall: vi.fn<typeof consoleClient.workspaces.current.plugin.uninstall.post>(),
   readme: vi.fn<typeof consoleClient.workspaces.current.plugin.readme.get>(),
   collection: vi.fn<typeof marketplaceClient.collectionPlugins>(),
-  search:
-    vi.fn<
-      (
-        _url: string,
-        options: { body?: unknown },
-      ) => Promise<{ data: PluginsFromMarketplaceResponse }>
-    >(),
+  search: vi.fn<(input: { body?: unknown }) => Promise<{ data: PluginsFromMarketplaceResponse }>>(),
 }))
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: api.search,
-}))
 vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: { ...actual.marketplaceClient, collectionPlugins: api.collection },
-  }
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    collectionPlugins: api.collection,
+    searchAdvanced: api.search,
+  })
 })
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -59,8 +48,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.byCategory.list.get': api.installed,
       'workspaces.current.plugin.list.latestVersions.post': async () => ({ versions: {} }),
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
@@ -245,7 +232,6 @@ it('combines recommendations without installed plugins or duplicates and sends d
   expect(screen.queryByText('Plugin Bundle')).not.toBeInTheDocument()
   await waitFor(() =>
     expect(api.search).toHaveBeenCalledWith(
-      '/plugins/search/advanced',
       expect.objectContaining({
         body: expect.objectContaining({
           query: '',
@@ -254,12 +240,12 @@ it('combines recommendations without installed plugins or duplicates and sends d
           page_size: 1000,
         }),
       }),
+      expect.anything(),
     ),
   )
   await user.type(screen.getByRole('searchbox'), 'partner')
   await waitFor(() =>
     expect(api.search).toHaveBeenLastCalledWith(
-      '/plugins/search/advanced',
       expect.objectContaining({
         body: expect.objectContaining({
           query: 'partner',
@@ -267,6 +253,7 @@ it('combines recommendations without installed plugins or duplicates and sends d
           exclude: ['plugin-1', 'plugin-2'],
         }),
       }),
+      expect.anything(),
     ),
   )
   expect(

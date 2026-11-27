@@ -1,10 +1,9 @@
 'use client'
 
-import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -19,7 +18,6 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
-  const queryClient = useQueryClient()
   const { canManageAccessPoint } = useAgentPermissions(agentId)
   const apiAccessQueryOptions = consoleQuery.agent.byAgentId.apiAccess.get.queryOptions({
     input: {
@@ -32,22 +30,9 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const apiAccess = apiAccessQuery.data
   const toggleServiceApiMutation = useMutation(
     consoleQuery.agent.byAgentId.apiEnable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `agent-service-api-toggle:${agentId}`,
-      },
-      onSuccess: (updatedApiAccess, variables) => {
-        queryClient.setQueryData(apiAccessQueryOptions.queryKey, updatedApiAccess)
-        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-          consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-          (agentDetail) =>
-            agentDetail
-              ? {
-                  ...agentDetail,
-                  enable_api: variables.body.enable_api,
-                }
-              : agentDetail,
-        )
       },
       onError: (error) => {
         toast.error(getErrorMessage(error) ?? tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))

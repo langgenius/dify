@@ -1,5 +1,6 @@
 'use client'
 import type { Locale } from '@/i18n'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -13,60 +14,44 @@ import {
   SelectItemText,
   SelectLabel,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { safe } from '@orpc/client'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { LICENSE_LINK } from '@/constants/link'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { TimezoneCombobox } from '@/features/account-profile/timezone-combobox'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n } from '@/i18n'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
-import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
-import { getBrowserTimezone, timezones } from '@/utils/timezone'
+import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import { isInvitationForAccount } from '../utils/invitation-account'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
-type LanguageSelectOption = {
-  value: Locale
-  name: string
-}
-
-type TimezoneSelectOption = {
-  value: string
-  name: string
-}
-
-const LANGUAGE_OPTIONS: LanguageSelectOption[] = languages
+const languageItems = languages
   .filter((item) => item.supported)
-  .map((item) => ({
-    value: item.value,
-    name: item.name,
-  }))
-
-const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map((item) => ({
-  value: String(item.value),
-  name: item.name,
-}))
+  .map((item) => ({ value: item.value, label: item.name }))
 
 const getInitialLanguage = (locale: Locale): Locale => {
-  if (LANGUAGE_OPTIONS.some((item) => item.value === locale)) return locale
+  if (languageItems.some((item) => item.value === locale)) return locale
 
   return i18n.defaultLocale
 }
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation(['common', 'login'])
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -83,20 +68,9 @@ export default function InviteSettingsPage() {
   const locale = useLocale()
   const [name, setName] = useState('')
   const [isActivating, setIsActivating] = useState(false)
+  const [isWorkspaceFull, setIsWorkspaceFull] = useState(false)
   const [language, setLanguage] = useState(() => getInitialLanguage(locale))
   const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
-  const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
-  const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === timezone)
-
-  const handleLanguageChange = (nextValue: string | null) => {
-    const nextLanguage = LANGUAGE_OPTIONS.find((item) => item.value === nextValue)
-    if (nextLanguage) setLanguage(nextLanguage.value)
-  }
-
-  const handleTimezoneChange = (nextValue: string | null) => {
-    const nextTimezone = TIMEZONE_OPTIONS.find((item) => item.value === nextValue)
-    if (nextTimezone) setTimezone(nextTimezone.value)
-  }
 
   const checkParams = {
     url: '/activate/check',
@@ -150,6 +124,7 @@ export default function InviteSettingsPage() {
       if (isActivating) return
       if (!isInvitationForCurrentAccount) return
       setIsActivating(true)
+      setIsWorkspaceFull(false)
       const body = requiresAccountSetup
         ? {
             token,
@@ -160,7 +135,22 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const res = await consoleClient.activate.post({ body })
+      const [error, res, isDefined] = await safe(consoleClient.activate.post({ body }))
+      if (error) {
+        setIsActivating(false)
+        if (isDefined && error.code === 'workspace_member_limit_reached') {
+          setIsWorkspaceFull(true)
+          return
+        }
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $['api.actionFailed'], { ns: 'common' }),
+          ),
+        )
+        recheck()
+        return
+      }
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!)
@@ -172,6 +162,7 @@ export default function InviteSettingsPage() {
       setIsActivating(false)
     }
   }, [
+    describeRequestError,
     isInvitationForCurrentAccount,
     isActivating,
     language,
@@ -180,6 +171,7 @@ export default function InviteSettingsPage() {
     recheck,
     requiresAccountSetup,
     searchParams,
+    t,
     timezone,
     token,
     router,
@@ -210,21 +202,20 @@ export default function InviteSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-100 flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <span
           className="i-ri-account-circle-line size-6 text-text-accent-light-mode-only"
           aria-hidden="true"
         />
       </div>
-      <div className="pt-2 pb-4">
-        <h1 className="title-4xl-semi-bold text-text-primary">
-          {requiresAccountSetup
-            ? t(($) => $.setYourAccount, { ns: 'login' })
-            : workspaceInvitationTitle}
-        </h1>
-      </div>
+      <h1 className="pt-2 pb-4 title-4xl-semi-bold wrap-anywhere text-text-primary">
+        {requiresAccountSetup
+          ? t(($) => $.setYourAccount, { ns: 'login' })
+          : workspaceInvitationTitle}
+      </h1>
       <Form
+        className="grid min-w-0 gap-5"
         onFormSubmit={() => {
           void handleActivate()
         }}
@@ -239,7 +230,6 @@ export default function InviteSettingsPage() {
                   ? null
                   : t(($) => $.enterYourName, { ns: 'login' })
               }}
-              className="mb-5"
             >
               <FieldLabel>{t(($) => $.name, { ns: 'login' })}</FieldLabel>
               <Input
@@ -251,58 +241,49 @@ export default function InviteSettingsPage() {
               />
               <FieldError>{t(($) => $.enterYourName, { ns: 'login' })}</FieldError>
             </Field>
-            <Field name="interface_language" className="mb-5">
-              <Select value={selectedLanguage?.value ?? null} onValueChange={handleLanguageChange}>
+            <Field name="interface_language">
+              <Select<Locale>
+                items={languageItems}
+                value={language}
+                onValueChange={(value) => {
+                  if (value !== null) setLanguage(value)
+                }}
+              >
                 <SelectLabel>{t(($) => $.interfaceLanguage, { ns: 'login' })}</SelectLabel>
-                <SelectTrigger size="large">
-                  {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
+                <SelectTrigger>
+                  <SelectValue<Locale> />
                 </SelectTrigger>
                 <SelectContent>
-                  {LANGUAGE_OPTIONS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      <SelectItemText>{item.name}</SelectItemText>
+                  {languageItems.map((item) => (
+                    <SelectItem<Locale> key={item.value} value={item.value}>
+                      <SelectItemText>{item.label}</SelectItemText>
                       <SelectItemIndicator />
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field name="timezone" className="mb-5">
-              <Select value={selectedTimezone?.value ?? null} onValueChange={handleTimezoneChange}>
-                <SelectLabel>{t(($) => $.timezone, { ns: 'login' })}</SelectLabel>
-                <SelectTrigger size="large">
-                  {selectedTimezone?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONE_OPTIONS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      <SelectItemText>{item.name}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <TimezoneCombobox
+              label={t(($) => $.timezone, { ns: 'login' })}
+              value={timezone}
+              onValueChange={setTimezone}
+            />
           </>
         )}
-        <Button type="submit" variant="primary" className="w-full" loading={isActivating}>
+        {isWorkspaceFull && (
+          <Alert type="warning">
+            <AlertTitle>{t(($) => $.invitationWorkspaceFull, { ns: 'login' })}</AlertTitle>
+          </Alert>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          className="h-auto min-h-8 w-full py-2 wrap-anywhere whitespace-normal"
+          loading={isActivating}
+        >
           {workspaceInvitationTitle}
         </Button>
       </Form>
-      {!systemFeatures.branding.enabled && (
-        <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-          {t(($) => $['license.tip'], { ns: 'login' })}
-          &nbsp;
-          <Link
-            className="system-xs-medium text-text-accent-secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-            href={LICENSE_LINK}
-          >
-            {t(($) => $['license.link'], { ns: 'login' })}
-          </Link>
-        </div>
-      )}
     </div>
   )
 }

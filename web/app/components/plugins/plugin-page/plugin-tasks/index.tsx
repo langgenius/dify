@@ -107,7 +107,7 @@ const PluginTasks = ({ animatedSlot = false, anchor }: PluginTasksProps) => {
   const rootClassName = animatedSlot
     ? cn(
         'flex shrink-0 items-center overflow-visible transition-[width,margin-left,opacity] duration-200 ease-out',
-        hasPluginTasks ? 'ml-1 w-8 opacity-100' : 'ml-0 w-0 opacity-0',
+        hasPluginTasks ? 'ms-1 w-8 opacity-100' : 'ms-0 w-0 opacity-0',
       )
     : 'flex items-center'
 

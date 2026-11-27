@@ -623,6 +623,45 @@ def test_refresh_commits_for_a_detached_snapshot(
     )
 
 
+def test_unknown_refresh_rowcount_commits_when_values_match(
+    runtime_repository: CredentialQueryRepository, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert record is not None
+    monkeypatch.setattr(sqlite_engine.dialect.execution_ctx_cls, "rowcount", -1)
+
+    assert runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials="new", expires_at=500
+    )
+    assert runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    ) == replace(record, encrypted_credentials="new", expires_at=500)
+
+
+def test_unknown_refresh_rowcount_rejects_stale_snapshot(
+    runtime_repository: CredentialQueryRepository, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert record is not None
+    assert record.encrypted_credentials is not None
+    monkeypatch.setattr(sqlite_engine.dialect.execution_ctx_cls, "rowcount", -1)
+
+    with pytest.raises(ValueError, match="affected-row count is uncertain"):
+        runtime_repository.update_tool_credential_if_unchanged(
+            record=replace(record, expires_at=2),
+            encrypted_credentials=record.encrypted_credentials,
+            expires_at=500,
+        )
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="workspace", providers=("provider",), credential_id=None)
+        == record
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

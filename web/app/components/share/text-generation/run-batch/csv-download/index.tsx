@@ -32,7 +32,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
               {addQueryContentVars.map((item, i) => (
                 <th
                   key={i}
-                  className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]"
+                  className="h-9 border-b border-divider-regular ps-3 pe-2 text-start font-[weight:inherit]"
                 >
                   {item.name}
                 </th>
@@ -42,7 +42,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
           <tbody className="text-text-secondary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className="h-9 pl-4">
+                <td key={i} className="h-9 ps-4">
                   {item.name} {t(($) => $['generation.field'], { ns: 'share' })}
                 </td>
               ))}

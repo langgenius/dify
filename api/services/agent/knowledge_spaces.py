@@ -9,19 +9,20 @@ the command gateway additionally checks one Agent's immutable configuration.
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.knowledge_fs import (
-    AppKnowledgeFSSpaceJoin,
-    KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
+    KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
 )
 from models.workflow import Workflow
+from repositories.knowledge_fs_app_bindings import has_agent_app_bindings
 from services.agent.errors import InvalidComposerConfigError
+from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 from services.knowledge_fs.product_authorization import (
     DifyKnowledgeFSProductRBACPort,
     effective_product_permissions,
@@ -42,6 +43,47 @@ def validate_agent_knowledge_spaces(
     if not bindings:
         return
     ids = [binding.control_space_id for binding in bindings]
+    roles = read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
+    require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
+
+
+def authorize_composer_knowledge(
+    *,
+    session_factory: sessionmaker[Session],
+    tenant_id: str,
+    account_id: str,
+    soul: AgentSoulConfig,
+    check_datasets: bool = False,
+) -> None:
+    """Authorize a Soul's spaces after the read session closes.
+
+    Apply checks that Classic Knowledge datasets exist first. Draft saves allow incomplete dataset selections.
+    """
+    ids = [binding.control_space_id for binding in soul.knowledge.spaces if not binding.is_missing]
+    if check_datasets or ids:
+        with session_factory() as session:
+            if check_datasets:
+                missing = list_missing_tenant_knowledge_dataset_ids(
+                    session=session, tenant_id=tenant_id, agent_soul=soul
+                )
+                if missing:
+                    raise InvalidComposerConfigError(
+                        "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
+                        + ", ".join(missing)
+                    )
+            roles = (
+                read_agent_knowledge_space_roles(session, tenant_id=tenant_id, account_id=account_id, ids=ids)
+                if ids
+                else {}
+            )
+        if ids:
+            require_agent_knowledge_space_access(tenant_id=tenant_id, account_id=account_id, ids=ids, roles=roles)
+
+
+def read_agent_knowledge_space_roles(
+    session: Session, *, tenant_id: str, account_id: str, ids: list[str]
+) -> dict[str, KnowledgeFSControlSpacePermissionRole | None]:
+    """Read local roles for active spaces within the tenant, returning no ORM rows."""
     spaces = list(
         session.scalars(
             select(KnowledgeFSControlSpace).where(
@@ -51,23 +93,31 @@ def validate_agent_knowledge_spaces(
             )
         )
     )
-    roles = resolve_local_roles(session, control_spaces=spaces, account_id=account_id)
+    return resolve_local_roles(session, control_spaces=spaces, account_id=account_id)
+
+
+def require_agent_knowledge_space_access(
+    *,
+    tenant_id: str,
+    account_id: str,
+    ids: list[str],
+    roles: dict[str, KnowledgeFSControlSpacePermissionRole | None],
+) -> None:
+    """Require local and enterprise read/query permission for every requested space."""
     permissions = DifyKnowledgeFSProductRBACPort().permission_keys_by_control_space(
-        session=session,
         tenant_id=tenant_id,
         account_id=account_id,
         control_space_ids=ids,
     )
     allowed = {
-        space.id
-        for space in spaces
+        space_id
+        for space_id, role in roles.items()
         if {KnowledgeFSProductPermission.READ, KnowledgeFSProductPermission.QUERY}.issubset(
-            effective_product_permissions(roles.get(space.id), permissions.get(space.id, frozenset()))
+            effective_product_permissions(role, permissions.get(space_id, frozenset()))
         )
     }
     if set(ids) - allowed:
-        # Missing and forbidden targets deliberately share an error and do not
-        # disclose names/IDs from another principal's space catalog.
+        # Missing and forbidden targets deliberately share an error.
         raise InvalidComposerConfigError(
             "knowledge_fs_space_unavailable: one or more selected Agent Knowledge Bases are unavailable or unauthorized"
         )
@@ -92,19 +142,7 @@ def sync_agent_app_knowledge_bindings(
             )
         return
     ids = [binding.control_space_id for binding in agent_soul.knowledge.spaces]
-    if (
-        not ids
-        and session.scalar(
-            select(AppKnowledgeFSSpaceJoin.id)
-            .where(
-                AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
-                AppKnowledgeFSSpaceJoin.app_id == app_id,
-                AppKnowledgeFSSpaceJoin.join_type == KnowledgeFSAppSpaceJoinType.AGENT,
-            )
-            .limit(1)
-        )
-        is None
-    ):
+    if not ids and not has_agent_app_bindings(session, tenant_id=tenant_id, app_id=app_id):
         return
     get_knowledge_fs_runtime(session_factory.get_session_maker()).app_bindings.sync_agent_bindings(
         tenant_id=tenant_id,
@@ -113,6 +151,21 @@ def sync_agent_app_knowledge_bindings(
         control_space_ids=ids,
         session=session,
     )
+
+
+def authorize_published_agent_knowledge_bindings(
+    *, session_maker: sessionmaker[Session], tenant_id: str, account_id: str, soul: AgentSoulConfig
+) -> None:
+    """Apply both the authoring policy and the product binding policy before the publish transaction."""
+    authorize_composer_knowledge(session_factory=session_maker, tenant_id=tenant_id, account_id=account_id, soul=soul)
+    if soul.knowledge.spaces:
+        from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+
+        get_knowledge_fs_runtime(session_maker).app_bindings.authorize_agent_bindings(
+            tenant_id=tenant_id,
+            actor_account_id=account_id,
+            control_space_ids=[binding.control_space_id for binding in soul.knowledge.spaces],
+        )
 
 
 def collect_workflow_agent_knowledge_space_ids(*, session: Session, workflow: Workflow) -> tuple[str, ...]:

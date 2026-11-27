@@ -3,20 +3,24 @@ from __future__ import annotations
 from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal
+from uuid import UUID
 
-from flask import request
+from flask import Response, after_this_request, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import (
     AvatarUrlResponse,
+    BinaryFileResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
 )
+from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -60,12 +64,14 @@ from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from machinery.context import RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
 from services.entities.account_entities import AccountProfileChanges
 from services.errors.billing import BillingUpstreamError
+from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError
 
 
 class AccountInitPayload(BaseModel):
@@ -264,6 +270,7 @@ register_response_schema_models(
     AccountIntegrateResponse,
     AccountIntegrateListResponse,
     AvatarUrlResponse,
+    BinaryFileResponse,
     EducationActivateResponse,
     EducationVerifyResponse,
     EducationStatusResponse,
@@ -307,7 +314,7 @@ class AccountInitApi(Resource):
 class AccountProfileApi(Resource):
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission(require_valid_enterprise_license=True)
+    @console_account_admission(require_valid_enterprise_license=True, require_active_workspace=False)
     def get(self, request_context: RequestContext):
         try:
             account = application_services().accounts.profile.get(request_context)
@@ -325,6 +332,8 @@ class AccountProfileApi(Resource):
             account = application_services().accounts.profile.update(request_context, args.to_changes())
         except account_errors.AccountNotFoundError as error:
             raise AccountNotFound() from error
+        except account_errors.AvatarFileNotFoundError as error:
+            raise InvalidArgumentError("Avatar file is invalid.") from error
         return dump_response(AccountResponse, account)
 
 
@@ -342,6 +351,66 @@ class AccountAvatarApi(Resource):
         except account_errors.AvatarFileNotFoundError as error:
             raise NotFound("Avatar file not found") from error
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
+
+
+_ACCOUNT_AVATAR_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"]
+
+
+@console_ns.route("/accounts/<uuid:account_id>/avatars/<uuid:file_id>")
+class CurrentAccountAvatarFileApi(Resource):
+    @console_ns.doc(
+        "get_current_account_avatar_file",
+        produces=_ACCOUNT_AVATAR_MEDIA_TYPES,
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: _ACCOUNT_AVATAR_MEDIA_TYPES},
+    )
+    @console_ns.response(HTTPStatus.OK, "Avatar image", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_MODIFIED, "Avatar image has not changed")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Avatar file not found")
+    @console_account_admission(require_active_workspace=False, require_initialized=False)
+    def get(self, _request_context: RequestContext, account_id: UUID, file_id: UUID) -> Response:
+        """Serve an account's assigned raster avatar to an authenticated Console account."""
+        return self._avatar_response(account_id, file_id)
+
+    @console_ns.doc(False)
+    @console_account_admission(require_active_workspace=False, require_initialized=False)
+    def head(self, _request_context: RequestContext, account_id: UUID, file_id: UUID) -> Response:
+        """Use the same account-only admission and metadata as GET."""
+        return self._avatar_response(account_id, file_id)
+
+    @staticmethod
+    def _avatar_response(account_id: UUID, file_id: UUID) -> Response:
+        """Build the conditional avatar response after account admission."""
+        file_id_str = str(file_id)
+        try:
+            delivery = application_services().upload_file_delivery.get_current_account_avatar(
+                account_id=str(account_id), file_id=file_id_str
+            )
+        except UploadFileDeliveryNotFoundError as error:
+            raise CurrentAccountAvatarFileApi._not_found() from error
+
+        file = delivery.file
+        response = Response(delivery.content, mimetype=file.mime_type, direct_passthrough=True)
+        if harden_active_content_response(
+            response, mime_type=file.mime_type, filename=file.name, extension=file.extension
+        ):
+            raise CurrentAccountAvatarFileApi._not_found()
+        response.content_length = file.size
+        response.headers["Cache-Control"] = "private, max-age=300, must-revalidate"
+        response.set_etag(file_id_str)
+        response.make_conditional(request)
+        return response
+
+    @staticmethod
+    def _not_found() -> NotFound:
+        """Retain the Console error response while preventing a cached miss at this stable URL."""
+
+        @after_this_request
+        def no_store(response: Response) -> Response:
+            response.cache_control.private = True
+            response.cache_control.no_store = True
+            return response
+
+        return NotFound("Avatar file not found")
 
 
 @console_ns.route("/account/password")

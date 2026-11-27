@@ -29,7 +29,7 @@ export function AccessControlRestrictedPreview() {
         <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded bg-linear-to-t from-background-default/16 to-background-default">
           <div className="relative size-9">
             <span className="i-ri-global-line size-9 text-text-accent" />
-            <span className="absolute top-5 left-5.75 flex size-4 items-center justify-center rounded-full bg-background-default">
+            <span className="absolute inset-s-5.75 top-5 flex size-4 items-center justify-center rounded-full bg-background-default">
               <span className="i-ri-information-2-fill size-4 text-text-accent" />
             </span>
           </div>

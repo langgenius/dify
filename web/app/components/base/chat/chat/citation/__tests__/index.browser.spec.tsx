@@ -6,8 +6,6 @@ import Citation from '../index'
 import { citation } from './citation-preset'
 
 vi.unmock('react-i18next')
-// boundary: citation destinations are inspected without bootstrapping the Next router.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 beforeEach(async () => {
   await page.viewport(900, 700)

@@ -5,6 +5,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { zTrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/zod.gen'
+import { TEST_APP_ID } from '@/test/console/ids'
 
 export function createAppModelConfigFixture(
   overrides: Partial<AppModelConfigResponse> = {},
@@ -89,7 +90,7 @@ export function createAppDetailFixture(
     icon_background: null,
     icon_type: null,
     icon_url: null,
-    id: 'app-1',
+    id: TEST_APP_ID,
     maintainer: null,
     max_active_requests: null,
     mode: 'chat',

@@ -67,7 +67,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                 <button
                   type="button"
                   className={cn(
-                    'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+                    'group relative ms-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
                     'data-disabled:cursor-not-allowed data-disabled:opacity-50',
                   )}
                   disabled={disabled || undefined}
@@ -80,7 +80,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                     />
                   </span>
                   {!!needWarningNodes.length && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+                    <span className="absolute -inset-e-1.5 -top-1.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
                       {needWarningNodes.length}
                     </span>
                   )}
@@ -100,7 +100,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
             <div className="flex items-start px-1">
-              <div className="min-w-0 grow pr-8">
+              <div className="min-w-0 grow pe-8">
                 <PopoverTitle className="text-base/6 font-semibold text-text-primary">
                   {checklistLabel}
                   {needWarningNodes.length > 0 && `(${needWarningNodes.length})`}
@@ -111,7 +111,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                   <IconButton
                     size="lg"
                     aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="-mt-1 -mr-1 shrink-0"
+                    className="-me-1 -mt-1 shrink-0"
                   >
                     <span className="i-ri-close-line size-4" aria-hidden="true" />
                   </IconButton>

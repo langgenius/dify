@@ -110,7 +110,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
             aria-label={t(($) => $['resize.editor'])}
             aria-controls={editorId}
             aria-describedby={resizeDescriptionId}
-            className="group/resize absolute bottom-0 left-0 h-2 w-full cursor-row-resize"
+            className="group/resize absolute inset-s-0 bottom-0 h-2 w-full cursor-row-resize"
             onMouseDown={handleStartResize}
             onClick={(event) => {
               if (event.detail === 0 || !didDragRef.current) onHeightChange(minHeight)

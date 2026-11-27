@@ -5,7 +5,7 @@ export function StartPlaceholderPanelTitle() {
   const { t } = useTranslation(['workflow'])
 
   return (
-    <div className="mr-2 min-w-0 grow system-xl-semibold text-text-primary">
+    <div className="me-2 min-w-0 grow system-xl-semibold text-text-primary">
       {t(($) => $['nodes.startPlaceholder.panelTitle'], { ns: 'workflow' })}
     </div>
   )

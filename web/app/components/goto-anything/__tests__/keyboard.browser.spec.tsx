@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react'
-import type { consoleClient } from '@/service/console'
-import type { marketplaceClient } from '@/service/marketplace'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -8,95 +6,41 @@ import { MainNavSearchButton } from '@/app/components/main-nav/components/search
 import { MainNavMobileBar } from '@/app/components/main-nav/mobile-nav'
 import { ThemeProvider } from '@/features/theme/provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
+import { createTestNavigation } from '@/test/next-navigation'
 import { GotoAnything } from '../index'
-
-const api = vi.hoisted(() => ({
-  apps: vi.fn<typeof consoleClient.apps.get>(),
-  datasets: vi.fn<typeof consoleClient.datasets.get>(),
-  skills: vi.fn<typeof consoleClient.workspaces.current.skills.get>(),
-  agents: vi.fn<typeof consoleClient.agent.get>(),
-  marketplace: vi.fn<typeof marketplaceClient.searchAdvanced>(),
-  install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
-  push: vi.fn(),
-  refresh: vi.fn(),
-  pathname: '/',
-}))
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: api.push, refresh: api.refresh }),
-  usePathname: () => api.pathname,
-  useParams: () => ({}),
-}))
-// boundary: search-result reads and plugin installation stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.get': api.apps,
-      'workspaces.current.defaultModel.get': async () => ({ data: null }),
-      'workspaces.current.tools.builtin.get': async () => [],
-      'workspaces.current.tools.api.get': async () => [],
-      'workspaces.current.tools.workflow.get': async () => [],
-      'workspaces.current.tools.mcp.get': async () => [],
-      'datasets.get': api.datasets,
-      'workspaces.current.skills.get': api.skills,
-      'agent.get': api.agents,
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
-        manifest: createPluginDeclarationFixture(),
-      }),
-      'workspaces.current.plugin.install.marketplace.post': api.install,
-    }),
-  }
-})
-// boundary: marketplace discovery is an external HTTP service below the palette owner.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceQuery: {
-      ...actual.marketplaceQuery,
-      searchAdvanced: {
-        ...actual.marketplaceQuery.searchAdvanced,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
-        ) => {
-          const original = actual.marketplaceQuery.searchAdvanced.queryOptions(options)
-          const input = options.input
-          return typeof input === 'symbol'
-            ? original
-            : { ...original, queryFn: () => api.marketplace(input) }
-        },
-      },
-    },
-  }
-})
 
 const emptyPage = { data: [], has_more: false, limit: 10, page: 1, total: 0 }
 const searchTitle = 'app.gotoAnything.searchTitle'
 const shortcut = detectPlatform() === 'mac' ? '{Meta>}k{/Meta}' : '{Control>}k{/Control}'
 
-beforeEach(() => {
-  api.apps.mockResolvedValue(emptyPage)
-  api.datasets.mockResolvedValue(emptyPage)
-  api.skills.mockResolvedValue(emptyPage)
-  api.agents.mockResolvedValue({ ...emptyPage, publication_counts: { drafts: 0, published: 0 } })
-  api.marketplace.mockResolvedValue({ data: { plugins: [], total: 0 } })
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: { get: () => emptyPage },
+    datasets: { get: () => emptyPage },
+    agent: {
+      get: () => ({ ...emptyPage, publication_counts: { drafts: 0, published: 0 } }),
+    },
+    workspaces: {
+      current: {
+        skills: { get: () => emptyPage },
+        defaultModel: { get: () => ({ data: null }) },
+        tools: {
+          builtin: { get: () => [] },
+          api: { get: () => [] },
+          workflow: { get: () => [] },
+          mcp: { get: () => [] },
+        },
+        models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+        plugin: {
+          list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
+        },
+      },
+    },
+  },
+  marketplace: { searchAdvanced: () => ({ data: { plugins: [], total: 0 } }) },
+}))
 
 function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
   const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper({
@@ -120,6 +64,7 @@ function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
         <GotoAnything />
       </ThemeProvider>
     </ConsoleWrapper>,
+    { wrapper: createTestNavigation().NavigationProvider },
   )
 }
 
@@ -191,7 +136,11 @@ describe('desktop dialog', () => {
     await expectActiveOption(languageField, page.getByRole('option').first())
   })
   it('turns a suggested scope into a token that lists its first result highlighted', async () => {
-    api.datasets.mockResolvedValue({ ...emptyPage, data: [createDatasetFixture()], total: 1 })
+    fake.console.datasets.get.mockResolvedValue({
+      ...emptyPage,
+      data: [createDatasetFixture()],
+      total: 1,
+    })
     renderPalette()
     await openWithShortcut()
     const knowledge = 'app.gotoAnything.groups.knowledgeBases'

@@ -67,7 +67,7 @@ function ToolCategoryEmptyState({ type }: { type: ToolType }) {
             className="inline-flex items-center rounded-md system-xs-regular text-text-tertiary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span>{tip}</span>
-            <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+            <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
           </Link>
         ) : undefined
       }
@@ -383,7 +383,7 @@ function ToolBrowser({
               rel="noopener noreferrer"
             >
               <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
-              <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+              <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
             </Link>
           </footer>
         )}

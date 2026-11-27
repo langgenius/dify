@@ -5,19 +5,19 @@ import hashlib
 import io
 import logging
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 from typing import TypedDict, override
 
 import pypdfium2
 import pypdfium2.raw as pdfium_c
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
@@ -47,7 +47,10 @@ class PdfExtractor(BaseExtractor):
         source_file_id: Optional id of the source upload file. When provided,
             extracted images are persisted under deterministic storage keys so
             repeated extractions of the same source reuse the same assets.
-        session: Session used to persist extracted images.
+        session: Optional caller-owned session used to persist extracted images.
+            The caller commits it. Without one, image records are written in a
+            short-lived session that commits on its own.
+        session_maker: Factory for that short-lived session.
     """
 
     # Magic bytes for image format detection: (magic_bytes, extension, mime_type)
@@ -64,6 +67,7 @@ class PdfExtractor(BaseExtractor):
     )
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
     _session: Session | None
+    _session_maker: sessionmaker[Session]
     _source_file_id: str | None
 
     def __init__(
@@ -75,6 +79,7 @@ class PdfExtractor(BaseExtractor):
         source_file_id: str | None = None,
         *,
         session: Session | None = None,
+        session_maker: sessionmaker[Session],
     ):
         """Initialize PdfExtractor."""
         self._file_path = file_path
@@ -83,6 +88,7 @@ class PdfExtractor(BaseExtractor):
         self._file_cache_key = file_cache_key
         self._source_file_id = source_file_id
         self._session = session
+        self._session_maker = session_maker
 
     @override
     def extract(self) -> list[Document]:
@@ -216,16 +222,15 @@ class PdfExtractor(BaseExtractor):
         if not candidates:
             return ""
 
-        session = self._session or db.session
-
         upload_files_by_key: dict[str, UploadFile] = {}
         if self._source_file_id:
-            existing_upload_files = session.scalars(
-                select(UploadFile).where(
-                    UploadFile.tenant_id == self._tenant_id,
-                    UploadFile.key.in_([candidate["file_key"] for candidate in candidates]),
-                )
-            ).all()
+            with self._session_scope() as session:
+                existing_upload_files = session.scalars(
+                    select(UploadFile).where(
+                        UploadFile.tenant_id == self._tenant_id,
+                        UploadFile.key.in_([candidate["file_key"] for candidate in candidates]),
+                    )
+                ).all()
             upload_files_by_key = {upload_file.key: upload_file for upload_file in existing_upload_files}
 
         image_content = []
@@ -259,7 +264,19 @@ class PdfExtractor(BaseExtractor):
             image_content.append(f"![image]({base_url}/files/{upload_file.id}/file-preview)")
 
         if new_upload_files:
-            session.add_all(new_upload_files)
-            if self._session is None:
-                session.commit()
+            with self._session_scope() as session:
+                session.add_all(new_upload_files)
         return "\n".join(image_content)
+
+    @contextmanager
+    def _session_scope(self) -> Generator[Session]:
+        """Yield the caller's session, or a short-lived one that commits on exit.
+
+        The short-lived session is only opened around database work, so it is
+        never held while PDF objects are decoded or images are written to storage.
+        """
+        if self._session is not None:
+            yield self._session
+            return
+        with self._session_maker() as session, session.begin():
+            yield session

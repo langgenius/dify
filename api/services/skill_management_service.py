@@ -79,6 +79,7 @@ from models.agent_config_entities import (
     AgentSoulPromptConfig,
     validate_config_skill_name,
 )
+from models.agent_soul_state import agent_soul_has_model
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from models.provider_ids import ModelProviderID
@@ -94,7 +95,7 @@ from models.skill import (
     SkillVersionManifestFile,
 )
 from models.tools import ToolFile
-from services.agent.agent_soul_state import agent_soul_has_model
+from repositories.agent.agent_skill_bindings import copy_agent_bindings, publish_agent_bindings
 from services.agent.roster_service import AgentRosterService
 from services.file_service import FileService
 
@@ -2684,36 +2685,11 @@ class SkillManagementService:
     def publish_agent_bindings(self, *, tenant_id: str, agent_id: str, snapshot_id: str, user_id: str) -> None:
         """Persist the current draft bindings for an immutable Agent snapshot."""
         with self._session_scope() as session:
-            draft_bindings = list(
-                session.scalars(
-                    select(AgentSkillBinding)
-                    .where(
-                        AgentSkillBinding.tenant_id == tenant_id,
-                        AgentSkillBinding.agent_id == agent_id,
-                    )
-                    .order_by(AgentSkillBinding.priority, AgentSkillBinding.created_at, AgentSkillBinding.id)
-                )
+            publish_agent_bindings(
+                session, tenant_id=tenant_id, agent_id=agent_id, snapshot_id=snapshot_id, user_id=user_id
             )
-            session.query(AgentSkillBindingSnapshot).filter(
-                AgentSkillBindingSnapshot.tenant_id == tenant_id,
-                AgentSkillBindingSnapshot.agent_id == agent_id,
-                AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
-            ).delete(synchronize_session=False)
-            for binding in draft_bindings:
-                session.add(
-                    AgentSkillBindingSnapshot(
-                        tenant_id=tenant_id,
-                        agent_id=agent_id,
-                        config_snapshot_id=snapshot_id,
-                        skill_id=binding.skill_id,
-                        priority=binding.priority,
-                        created_by=user_id,
-                    )
-                )
             if self._session is None:
                 session.commit()
-            else:
-                session.flush()
 
     def copy_agent_bindings(
         self,
@@ -2728,79 +2704,18 @@ class SkillManagementService:
     ) -> None:
         """Copy an Agent binding set into another Agent's draft and optional snapshot."""
         with self._session_scope() as session:
-            if source_include_draft:
-                source_bindings = list(
-                    session.scalars(
-                        select(AgentSkillBinding)
-                        .where(
-                            AgentSkillBinding.tenant_id == tenant_id,
-                            AgentSkillBinding.agent_id == source_agent_id,
-                        )
-                        .order_by(AgentSkillBinding.priority, AgentSkillBinding.created_at)
-                    )
-                )
-            else:
-                source_bindings = list(
-                    session.scalars(
-                        select(AgentSkillBindingSnapshot)
-                        .where(
-                            AgentSkillBindingSnapshot.tenant_id == tenant_id,
-                            AgentSkillBindingSnapshot.agent_id == source_agent_id,
-                            AgentSkillBindingSnapshot.config_snapshot_id == source_snapshot_id,
-                        )
-                        .order_by(AgentSkillBindingSnapshot.priority, AgentSkillBindingSnapshot.created_at)
-                    )
-                )
-                # Older installations may have published Agents without the
-                # binding snapshot table populated yet. Preserve their current
-                # binding set until the migration/backfill has run.
-                if not source_bindings:
-                    source_bindings = list(
-                        session.scalars(
-                            select(AgentSkillBinding)
-                            .where(
-                                AgentSkillBinding.tenant_id == tenant_id,
-                                AgentSkillBinding.agent_id == source_agent_id,
-                            )
-                            .order_by(AgentSkillBinding.priority, AgentSkillBinding.created_at)
-                        )
-                    )
-            session.query(AgentSkillBinding).filter(
-                AgentSkillBinding.tenant_id == tenant_id,
-                AgentSkillBinding.agent_id == target_agent_id,
-            ).delete(synchronize_session=False)
-            if target_snapshot_id is not None:
-                session.query(AgentSkillBindingSnapshot).filter(
-                    AgentSkillBindingSnapshot.tenant_id == tenant_id,
-                    AgentSkillBindingSnapshot.agent_id == target_agent_id,
-                    AgentSkillBindingSnapshot.config_snapshot_id == target_snapshot_id,
-                ).delete(synchronize_session=False)
-
-            for priority, binding in enumerate(source_bindings):
-                session.add(
-                    AgentSkillBinding(
-                        tenant_id=tenant_id,
-                        agent_id=target_agent_id,
-                        skill_id=binding.skill_id,
-                        priority=priority,
-                        created_by=user_id,
-                    )
-                )
-                if target_snapshot_id is not None:
-                    session.add(
-                        AgentSkillBindingSnapshot(
-                            tenant_id=tenant_id,
-                            agent_id=target_agent_id,
-                            config_snapshot_id=target_snapshot_id,
-                            skill_id=binding.skill_id,
-                            priority=priority,
-                            created_by=user_id,
-                        )
-                    )
+            copy_agent_bindings(
+                session,
+                tenant_id=tenant_id,
+                source_agent_id=source_agent_id,
+                source_snapshot_id=source_snapshot_id,
+                target_agent_id=target_agent_id,
+                user_id=user_id,
+                target_snapshot_id=target_snapshot_id,
+                source_include_draft=source_include_draft,
+            )
             if self._session is None:
                 session.commit()
-            else:
-                session.flush()
 
     @staticmethod
     def _check_agent_skill_name_conflicts(

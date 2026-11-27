@@ -24,7 +24,7 @@ import { consoleQuery } from '@/service/console'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
-import { tracingQueryParamName, tracingQueryParser } from './query-params'
+import { tracingSearchParams } from './query-params'
 import { usesAgentTracePipeline } from './resource'
 import { TracingIcon } from './tracing-icon'
 
@@ -37,7 +37,7 @@ type TracingConfigurationProps = {
 
 export function TracingConfiguration({ resource, readOnly }: TracingConfigurationProps) {
   const { t } = useTranslation(['app', 'common'])
-  const [destination, setDestination] = useQueryState(tracingQueryParamName, tracingQueryParser)
+  const [destination, setDestination] = useQueryState('tracing', tracingSearchParams.tracing)
   const statusQuery = useQuery(
     resource.kind === 'agent'
       ? consoleQuery.agent.byAgentId.trace.get.queryOptions({
@@ -79,10 +79,16 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
   const resourceId = resource.kind === 'agent' ? resource.agentId : resource.appId
   const scope = { id: `tracing:${resource.kind}:${resourceId}` }
   const updateAppTrace = useMutation(
-    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true }, scope }),
+    consoleQuery.apps.byAppId.trace.post.mutationOptions({
+      meta: { errorToast: false },
+      scope,
+    }),
   )
   const updateAgentTrace = useMutation(
-    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true }, scope }),
+    consoleQuery.agent.byAgentId.trace.post.mutationOptions({
+      meta: { errorToast: false },
+      scope,
+    }),
   )
   const updateTracingStatus = resource.kind === 'agent' ? updateAgentTrace : updateAppTrace
   const isCurrentMutation =

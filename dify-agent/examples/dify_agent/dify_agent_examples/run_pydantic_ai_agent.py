@@ -3,7 +3,8 @@
 Prerequisites:
 - Sync the server runtime dependencies first: `uv sync --project dify-agent --extra server`.
 - Run the Dify API with its inner Agent LLM endpoint enabled.
-- Fill `dify-agent/.env` with a real tenant, user, app, plugin, provider, and model.
+- Set `DIFY_AGENT_INNER_API_URL` and `DIFY_AGENT_INNER_API_KEY` in `dify-agent/.env` using `dify-agent/.example.env`
+  for reference, and add the tenant, user, app, plugin, provider, and model settings.
 
 This example is meant to be run from a source checkout because
 `dify_agent_examples` is not part of the published package.
@@ -56,8 +57,8 @@ async def main() -> None:
     async with httpx.AsyncClient(timeout=600, trust_env=False) as http_client:
         provider = DifyApiLLMProvider(
             plugin_id=required_env("DIFY_AGENT_PLUGIN_ID"),
-            inner_api_url=required_env("DIFY_INNER_API_URL"),
-            inner_api_key=required_env("DIFY_INNER_API_KEY"),
+            inner_api_url=required_env("DIFY_AGENT_INNER_API_URL"),
+            inner_api_key=required_env("DIFY_AGENT_INNER_API_KEY"),
             execution_context=DifyExecutionContextLayerConfig(
                 tenant_id=required_env("DIFY_AGENT_TENANT_ID"),
                 user_id=required_env("DIFY_AGENT_USER_ID"),

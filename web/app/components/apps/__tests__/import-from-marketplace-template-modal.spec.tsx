@@ -1,14 +1,19 @@
 import { act, isInaccessible, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { marketplaceQuery } from '@/service/marketplace'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ImportFromMarketplaceTemplateModal from '../import-from-marketplace-template-modal'
 
 const getTemplate = vi.hoisted(() => vi.fn())
+const getTemplateDsl = vi.hoisted(() => vi.fn())
+const toastError = vi.hoisted(() => vi.fn())
+vi.mock('@/app/notifications', () => ({ toast: { error: toastError } }))
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/marketplace')>()
   return {
     ...actual,
+    marketplaceClient: { ...actual.marketplaceClient, templateDsl: getTemplateDsl },
     marketplaceQuery: {
       ...actual.marketplaceQuery,
       templateDetail: {
@@ -64,6 +69,8 @@ const renderModal = ({ pending = false } = {}) => {
 describe('ImportFromMarketplaceTemplateModal', () => {
   beforeEach(() => {
     getTemplate.mockReset().mockResolvedValue(template)
+    getTemplateDsl.mockReset()
+    toastError.mockReset()
   })
 
   it('shows the template with its decorative emoji and closes from its named control', async () => {
@@ -108,6 +115,31 @@ describe('ImportFromMarketplaceTemplateModal', () => {
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(confirmButton).toBeDisabled()
     await user.click(confirmButton)
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      'the localized fallback over a generic server message',
+      createHttpError(new Response(null, { status: 404 }), {
+        code: 'not_found',
+        message: 'Server says why',
+      }),
+      'app.marketplace.template.importFailed',
+    ],
+    [
+      'the localized fallback',
+      new TypeError('Failed to fetch'),
+      'app.marketplace.template.importFailed',
+    ],
+  ])('reports %s when the template DSL cannot be imported', async (_case, error, message) => {
+    const user = userEvent.setup()
+    getTemplateDsl.mockRejectedValueOnce(error)
+    const { onConfirm } = renderModal()
+
+    await user.click(screen.getByRole('button', { name: 'app.marketplace.template.importConfirm' }))
+
+    expect(toastError).toHaveBeenCalledExactlyOnceWith(message)
     expect(onConfirm).not.toHaveBeenCalled()
   })
 })

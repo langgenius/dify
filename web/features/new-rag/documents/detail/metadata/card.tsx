@@ -98,6 +98,8 @@ function DocumentMetadataCardContent() {
   )
   const metadataFieldsQuery = useQuery({
     ...knowledgeFsMetadataFieldsQueryOptions(controlSpaceId),
+    // The editor renders a failed field list inline.
+    meta: { errorToast: false },
     enabled: editing,
   })
   const fields = useMemo(() => metadataFieldsQuery.data ?? [], [metadataFieldsQuery.data])
@@ -142,31 +144,26 @@ function DocumentMetadataCardContent() {
   }
 
   const createFieldMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ name, type }: { name: string; type: DocumentMetadataType }) => {
       if (!editBaseline) throw new Error('Missing metadata edit baseline')
       const defaultValue = documentMetadataDefaultValue(type)
       if (retryableCreateName !== name) {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
-          {
-            body: { name, type },
-            params: { control_space_id: controlSpaceId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+          body: { name, type },
+          params: { control_space_id: controlSpaceId },
+        })
         // Only a confirmed field lets a retry skip creation and go straight to the document update.
         markCreateRetryable(name)
       }
       const response =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-          {
-            body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
-            params: {
-              control_space_id: controlSpaceId,
-              document_id: document.id,
-            },
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+          body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
+          params: {
+            control_space_id: controlSpaceId,
+            document_id: document.id,
           },
-          { context: { silent: true } },
-        )
+        })
       return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
     },
     onError: (error) => {
@@ -186,35 +183,16 @@ function DocumentMetadataCardContent() {
     },
   })
 
-  const saveMutation = useMutation({
-    mutationFn: async ({
-      patch,
-      rowVersion,
-    }: {
-      patch: Record<string, unknown>
-      rowVersion: number
-    }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-        {
-          body: { expectedRowVersion: rowVersion, patch },
-          params: {
-            control_space_id: controlSpaceId,
-            document_id: document.id,
-          },
-        },
-        { context: { silent: true } },
-      ),
-    onError: (error) => {
-      toast.error(
-        getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
-      )
-    },
-    onSuccess: async () => {
-      await invalidateMetadataQueries()
-      cancelEditing()
-      toast.success(tCommon(($) => $['api.actionSuccess']))
-    },
-  })
+  const saveMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
+      meta: { errorToast: false },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+        )
+      },
+    }),
+  )
 
   const startEditing = () => {
     if (canEdit) beginEditing({ document, fields })
@@ -251,7 +229,19 @@ function DocumentMetadataCardContent() {
       cancelEditing()
       return
     }
-    saveMutation.mutate({ patch, rowVersion: editBaseline.rowVersion })
+    // Runs after the policy's refresh, so edit mode closes on the saved values.
+    saveMutation.mutate(
+      {
+        body: { expectedRowVersion: editBaseline.rowVersion, patch },
+        params: { control_space_id: controlSpaceId, document_id: document.id },
+      },
+      {
+        onSuccess: () => {
+          cancelEditing()
+          toast.success(tCommon(($) => $['api.actionSuccess']))
+        },
+      },
+    )
   }
 
   const creating = createFieldMutation.isPending
@@ -268,7 +258,7 @@ function DocumentMetadataCardContent() {
         </p>
         <Button className="mt-2" disabled={!canEdit} onClick={startEditing} variant="primary">
           {t(($) => $['metadata.documentMetadata.startLabeling'], { ns: 'dataset' })}
-          <span aria-hidden className="ml-1 i-ri-arrow-right-line size-4" />
+          <span aria-hidden className="ms-1 i-ri-arrow-right-line size-4" />
         </Button>
       </section>
     )
@@ -330,7 +320,7 @@ function DocumentMetadataCardContent() {
         </h2>
         {!editing && canEdit && (
           <Button onClick={startEditing} size="small" variant="ghost">
-            <span aria-hidden className="mr-1 i-ri-edit-line size-3.5" />
+            <span aria-hidden className="me-1 i-ri-edit-line size-3.5" />
             {tCommon(($) => $['operation.edit'])}
           </Button>
         )}
@@ -343,7 +333,7 @@ function DocumentMetadataCardContent() {
               allowedExistingName={retryableCreateName}
               creating={creating}
               disabled={saving}
-              error={Boolean(metadataFieldsQuery.error)}
+              error={metadataFieldsQuery.error}
               fields={fields}
               loading={metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching}
               onCreate={createField}

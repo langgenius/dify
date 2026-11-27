@@ -104,6 +104,7 @@ export const zBillingModel = z.object({
  * Effective feature availability and limits for the current workspace.
  */
 export const zFeatureModel = z.object({
+  agent_preview_enabled: z.boolean().default(false),
   annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
   api_rate_limit: zQuota.default({
     limit: 5000,
@@ -118,6 +119,8 @@ export const zFeatureModel = z.object({
   enable_file_scan: z.boolean().default(false),
   enable_knowledge_fs: z.boolean().default(false),
   enable_skill: z.boolean().default(true),
+  evaluation_enabled: z.boolean().default(false),
+  evaluation_upgrade_available: z.boolean().default(false),
   human_input_email_delivery_enabled: z.boolean().default(false),
   im_centrally_managed: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),

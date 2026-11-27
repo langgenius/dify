@@ -1,13 +1,13 @@
-import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
+import EvaluationPlanGuard from '@/app/components/billing/evaluation-plan-guard'
 import Evaluation from '@/app/components/evaluation'
 
 const Page = async (props: { params: Promise<{ appId: string }> }) => {
   const { appId } = await props.params
 
   return (
-    <SnippetAndEvaluationPlanGuard fallbackHref={`/app/${appId}/overview`}>
+    <EvaluationPlanGuard fallbackHref={`/app/${appId}/overview`} resourceType="apps">
       <Evaluation resourceType="apps" resourceId={appId} />
-    </SnippetAndEvaluationPlanGuard>
+    </EvaluationPlanGuard>
   )
 }
 

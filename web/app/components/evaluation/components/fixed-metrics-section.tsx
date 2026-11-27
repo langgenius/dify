@@ -122,6 +122,7 @@ const FixedMetricsSection = ({ resourceType, resourceId }: FixedMetricsSectionPr
       <InlineSectionHeader
         title={t(($) => $['metrics.title'])}
         tooltip={t(($) => $['metrics.description'])}
+        docPath="/use-dify/evaluate/metrics"
       />
       <div className="mt-1 space-y-1">
         <UnsupportedMetricsWarning resourceType={resourceType} resourceId={resourceId} />

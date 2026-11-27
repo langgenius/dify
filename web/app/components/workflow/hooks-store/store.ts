@@ -7,7 +7,7 @@ import type {
   ValueSelector,
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
@@ -22,7 +22,7 @@ export type AvailableNodesMetaData = {
 }
 export type SyncDraftCallback = {
   onSuccess?: () => void
-  onError?: () => void
+  onError?: (error?: unknown) => void
   onSettled?: () => void
 }
 
@@ -61,7 +61,7 @@ type CommonHooksFnMap = {
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: IOtherOptions, options?: any) => void
+  handleRun: (params: any, callback?: StreamCallbacks, options?: any) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
@@ -71,7 +71,6 @@ type CommonHooksFnMap = {
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
   availableNodesMetaData?: AvailableNodesMetaData
-  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean, flowId?: string) => Promise<boolean>
   isExporting: boolean
@@ -130,10 +129,6 @@ export const createHooksStore = ({
   availableNodesMetaData = {
     nodes: [],
   },
-  getWorkflowRunAndTraceUrl = () => ({
-    runUrl: '',
-    traceUrl: '',
-  }),
   exportCheck = async () => noop(),
   handleExportDSL = async () => false,
   isExporting = false,
@@ -173,7 +168,6 @@ export const createHooksStore = ({
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
     availableNodesMetaData,
-    getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
     isExporting,

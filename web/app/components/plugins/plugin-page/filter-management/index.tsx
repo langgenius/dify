@@ -49,7 +49,7 @@ const FilterManagement = ({
         searchQuery={filters.searchQuery}
         onChange={(searchQuery) => updateFilters({ searchQuery })}
       />
-      {showRightSlot && <div className="ml-auto shrink-0">{rightSlot}</div>}
+      {showRightSlot && <div className="ms-auto shrink-0">{rightSlot}</div>}
     </div>
   )
 }

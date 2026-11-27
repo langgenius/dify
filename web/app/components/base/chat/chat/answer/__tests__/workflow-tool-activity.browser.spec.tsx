@@ -5,8 +5,6 @@ import { chatItem, renderChatOwner } from '../../__tests__/chat-owner-preset'
 import Answer from '../index'
 
 vi.unmock('react-i18next')
-// boundary: real attachment owners read params without a running Next router.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 beforeEach(async () => {
   await page.viewport(1000, 800)
@@ -30,6 +28,63 @@ const toolActivity = (
     node_title: 'Research agent',
   },
   ...overrides,
+})
+
+it('shows quota only on the rejected call and never presents its observation as an executed response', async () => {
+  const data = {
+    tool_call_id: 'third',
+    tool_name: 'search',
+    tool_input: '{"query":"typescript"}',
+    tool_output: 'Three repositories',
+    node_title: 'Research agent',
+    call_limit: {
+      tool_identity: 'operation',
+      used: 3,
+      limit: 3,
+      execution_status: 'executed' as const,
+    },
+  }
+  await renderChatOwner(
+    <Answer
+      item={chatItem({
+        workflowAgentActivities: [
+          toolActivity({
+            id: 'run:third',
+            label: 'Search repositories',
+            status: 'succeeded',
+            data,
+          }),
+          toolActivity({
+            id: 'run:fourth',
+            label: 'Search repositories',
+            status: 'not_executed',
+            data: {
+              ...data,
+              tool_call_id: 'fourth',
+              tool_input: '{"query":"rust"}',
+              tool_output: 'Structured denial, not a response',
+              call_limit: {
+                ...data.call_limit,
+                execution_status: 'not_executed',
+                reason: 'call_limit_reached',
+              },
+            },
+          }),
+        ],
+      })}
+      question="Question"
+      index={0}
+    />,
+  )
+  await expect.element(page.getByText('3 of 3 calls used', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Search repositories', exact: true }).click()
+  await expect.element(page.getByText('Three repositories')).toBeVisible()
+  await page.getByRole('button', { name: /3 of 3 calls used/ }).click()
+  await expect
+    .element(page.getByText('Call limit reached (3 per run). This request was not executed.'))
+    .toBeVisible()
+  await expect.element(page.getByText('Structured denial, not a response')).not.toBeInTheDocument()
+  await expect.element(page.getByText('Call limit', { exact: true })).not.toBeInTheDocument()
 })
 
 it('shows started, running, and completed phases before the final answer', async () => {
@@ -200,11 +255,10 @@ it('updates same-name parallel calls out of order and keeps per-call request/res
   await expect.element(page.getByText('result-a', { exact: true })).toBeVisible()
   await expect.element(page.getByText('result-b', { exact: true })).toBeVisible()
 
-  const expectedValues = ['{"q":"a"}', 'result-a', '{"q":"b"}', 'result-b']
-  const values = [...page.getByTestId('workflow-tool-activity').element().querySelectorAll('div')]
-    .map((element) => element.textContent?.trim())
-    .filter((text): text is string => expectedValues.includes(text ?? ''))
-  expect(values).toEqual(expectedValues)
+  // Each call keeps its own input beside its output, in call order.
+  await expect
+    .element(page.getByTestId('workflow-tool-activity'))
+    .toMatchTextContent(/\{"q":"a"\}[\s\S]*result-a[\s\S]*\{"q":"b"\}[\s\S]*result-b/)
 })
 
 it('shows readable failed, cancelled, and interrupted statuses with the original tool label', async () => {

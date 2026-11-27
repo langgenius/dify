@@ -21,6 +21,7 @@ from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset
 from services.billing_service import BillingService
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -433,20 +434,11 @@ class VectorSpaceAdmissionService:
         if tenant_id in self._plan_by_tenant:
             return self._plan_by_tenant[tenant_id]
         try:
-            billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+            plan = FeatureService.get_workspace_plan(tenant_id)
         except Exception as error:
             raise VectorSpaceAdmissionUnavailableError(
                 "Unable to verify the subscription plan right now. Please try again later."
             ) from error
-
-        plan = None
-        try:
-            plan = CloudPlan(billing_info.subscription.plan)
-        except ValueError:
-            logger.warning(
-                "Skipping TiDB vector-space admission for unknown plan tenant_id=%s",
-                tenant_id,
-            )
         self._plan_by_tenant[tenant_id] = plan
         return plan
 

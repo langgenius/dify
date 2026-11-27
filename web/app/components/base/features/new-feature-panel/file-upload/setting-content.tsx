@@ -75,7 +75,7 @@ const SettingContent = ({ imageUpload, onClose, onChange }: SettingContentProps)
         onChange={(p: UploadFileSetting) => setTempPayload(p)}
       />
       <div className="mt-4 flex items-center justify-end">
-        <Button onClick={onClose} className="mr-2">
+        <Button onClick={onClose} className="me-2">
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button

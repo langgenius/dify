@@ -1,35 +1,14 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagSelector } from '../components/tag-selector'
-import { renderWithTags } from './render-browser'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
+import { createDeferred } from '@/test/deferred'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
+import { renderWithTags } from '@/test/tag-management'
+import { TagFilter } from '../tag-filter'
+import { TagSelector } from '../tag-selector'
 
-const mocks = vi.hoisted(() => ({
-  tags: [] as Tag[],
-  bind: vi.fn(),
-  unbind: vi.fn(),
-  create: vi.fn(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'tagBindings.post': (input: Parameters<typeof actual.consoleClient.tagBindings.post>[0]) =>
-        mocks.bind(input),
-      'tagBindings.remove.post': (
-        input: Parameters<typeof actual.consoleClient.tagBindings.remove.post>[0],
-      ) => mocks.unbind(input),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'tags.get': async () => mocks.tags,
-      'tags.post': mocks.create,
-    }),
-  }
-})
+let serverTags: Tag[] = []
 const tags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
   { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
@@ -46,18 +25,25 @@ function renderSelector(permissions = ['app.tag.manage'], canBindOrUnbindTags = 
       canBindOrUnbindTags={canBindOrUnbindTags}
       contextLabel="Test App"
     />,
-    mocks.tags,
+    serverTags,
     permissions,
   )
 }
+const fake = setupFakeApi(() => ({
+  console: {
+    tags: { get: () => serverTags, post: ({ body }) => ({ id: 'new-tag', ...body }) },
+    tagBindings: {
+      post: () => ({ result: 'success' }),
+      remove: { post: () => ({ result: 'success' }) },
+    },
+  },
+}))
 beforeEach(() => {
-  mocks.tags = tags
-  mocks.bind.mockReset().mockResolvedValue(undefined)
-  mocks.unbind.mockReset().mockResolvedValue(undefined)
-  mocks.create.mockReset().mockImplementation(async ({ body }) => ({ id: 'new-tag', ...body }))
+  serverTags = tags
 })
 afterEach(() => {
   toast.dismiss()
+  vi.unstubAllGlobals()
 })
 
 it('names the owning app and filters existing tags without offering a case-only duplicate', async () => {
@@ -70,9 +56,58 @@ it('names the owning app and filters existing tags without offering a case-only 
     .not.toBeInTheDocument()
 })
 
+it.each(['app', 'agent'] as const)(
+  'keeps the %s tag options visible while the popup fades out',
+  async (type) => {
+    await emulateReducedMotion(false)
+    vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+    serverTags = tags.map((tag) => ({ ...tag, type }))
+    await renderWithTags(
+      <TagSelector
+        type={type}
+        targetId="card-1"
+        value={[{ ...firstTag, type }]}
+        canBindOrUnbindTags
+      />,
+      serverTags,
+      [`${type}.tag.manage`],
+    )
+    await trigger().click()
+    await expect.element(search()).toHaveFocus()
+    const dialog = page.getByRole('dialog', { name: 'Frontend' })
+    await expect.element(dialog.getByRole('option', { name: 'Frontend' })).toBeVisible()
+    await expect.element(dialog.getByRole('option', { name: 'Backend' })).toBeVisible()
+    const popup = dialog.element()
+    await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+
+    const exitFrame = createDeferred<{ opacity: number; options: string[]; text: string }>()
+    const captureExit = (event: Event) => {
+      if (!(event instanceof TransitionEvent)) return
+      if (event.target !== popup || event.propertyName !== 'opacity') return
+      popup.removeEventListener('transitionrun', captureExit)
+      exitFrame.resolve({
+        opacity: Number(getComputedStyle(popup).opacity),
+        options: Array.from(
+          popup.querySelectorAll('[role="option"]'),
+          (option) => option.textContent?.trim() ?? '',
+        ),
+        text: popup.textContent ?? '',
+      })
+    }
+    popup.addEventListener('transitionrun', captureExit)
+    await userEvent.keyboard('{Escape}')
+    const frame = await exitFrame.promise
+    expect(frame.opacity).toBeGreaterThan(0)
+    expect(frame.options).toEqual(['Frontend', 'Backend'])
+    expect(frame.text).not.toContain('common.tag.noTagsYetCreateHint')
+    await expect.poll(() => popup.isConnected).toBe(false)
+  },
+)
+
 it('applies added tags only after closing and refreshes displayed names from the real query', async () => {
-  mocks.bind.mockImplementation(async () => {
-    mocks.tags = [{ ...firstTag, name: 'Frontend refreshed' }, tags[1]!]
+  fake.console.tagBindings.post.mockImplementation(() => {
+    serverTags = [{ ...firstTag, name: 'Frontend refreshed' }, tags[1]!]
+    return { result: 'success' }
   })
   await renderSelector()
   await trigger().click()
@@ -80,13 +115,13 @@ it('applies added tags only after closing and refreshes displayed names from the
   await expect
     .element(page.getByRole('option', { name: 'Backend' }))
     .toHaveAttribute('aria-selected', 'true')
-  expect(mocks.bind).not.toHaveBeenCalled()
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
   await trigger().click()
   await expect.element(search()).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('combobox', { name: 'Frontend refreshed: Test App' }))
     .toBeVisible()
-  expect(mocks.bind).toHaveBeenCalledExactlyOnceWith({
+  expect(fake.console.tagBindings.post).toHaveBeenCalledExactlyOnceWith({
     body: { tag_ids: ['tag-2'], target_id: 'target-1', type: 'app' },
   })
   await expect
@@ -109,7 +144,7 @@ it('selects a highlighted tag with the keyboard and applies it when the popup cl
     .toHaveAttribute('aria-selected', 'true')
   await trigger().click()
   await expect
-    .poll(() => mocks.bind.mock.calls)
+    .poll(() => fake.console.tagBindings.post.mock.calls)
     .toEqual([[{ body: { tag_ids: ['tag-2'], target_id: 'target-1', type: 'app' } }]])
 })
 
@@ -119,22 +154,24 @@ it('applies removal on close and leaves unchanged selections alone', async () =>
   await expect.element(search()).toBeVisible()
   await trigger().click()
   await expect.element(search()).not.toBeInTheDocument()
-  expect(mocks.bind).not.toHaveBeenCalled()
-  expect(mocks.unbind).not.toHaveBeenCalled()
   await trigger().click()
   await page.getByRole('option', { name: 'Frontend' }).click()
   await expect
     .element(page.getByRole('option', { name: 'Frontend' }))
     .toHaveAttribute('aria-selected', 'false')
-  expect(mocks.unbind).not.toHaveBeenCalled()
+  expect(fake.console.tagBindings.remove.post).not.toHaveBeenCalled()
   await trigger().click()
   await expect
-    .poll(() => mocks.unbind.mock.calls)
+    .poll(() => fake.console.tagBindings.remove.post.mock.calls)
     .toEqual([[{ body: { tag_ids: ['tag-1'], target_id: 'target-1', type: 'app' } }]])
+  // Both closes share the apply path, so a spurious binding from either would have arrived by now.
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
 it('shows the binding failure after closing the popup', async () => {
-  mocks.unbind.mockRejectedValueOnce(new Error('Unbind failed'))
+  fake.console.tagBindings.remove.post.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unbind failed' }),
+  )
   await renderSelector()
   await trigger().click()
   await page.getByRole('option', { name: 'Frontend' }).click()
@@ -149,10 +186,187 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   await search().fill('NewKnowledgeTag')
   await page.getByRole('option', { name: /NewKnowledgeTag/ }).click()
   await expect
-    .poll(() => mocks.create.mock.calls)
+    .poll(() => fake.console.tags.post.mock.calls)
     .toEqual([[{ body: { name: 'NewKnowledgeTag', type: 'knowledge' } }]])
   await expect.element(page.getByText('common.tag.created', { exact: true })).toBeVisible()
-  expect(mocks.bind).not.toHaveBeenCalled()
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
+})
+
+it('shows one error toast when a new tag name crosses the length limit', async () => {
+  await renderSelector()
+  await trigger().click()
+  await search().fill('A'.repeat(51))
+  const message = 'common.tag.nameTooLong:{"max":50}'
+  const notifications = page.getByRole('region', { name: 'Notifications' })
+  await expect.element(notifications.getByRole('dialog', { name: message })).toBeVisible()
+  await expect
+    .element(page.getByRole('dialog', { name: 'Frontend: Test App' }).getByText(message))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(52))
+  expect(notifications.getByRole('dialog').all()).toHaveLength(1)
+  await expect
+    .element(page.getByRole('option', { name: /common\.tag\.create/ }))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(50))
+  await expect.element(page.getByRole('option', { name: /common\.tag\.create/ })).toBeVisible()
+})
+
+it.each(['agent', 'app'] as const)(
+  'offers to create the first %s tag only after the workspace catalog loads',
+  async (type) => {
+    const catalog = createDeferred<Tag[]>()
+    fake.console.tags.get.mockImplementation(() => catalog.promise)
+    await renderWithTags(
+      <TagSelector type={type} targetId="card-1" value={[]} canBindOrUnbindTags />,
+      undefined,
+      [`${type}.tag.manage`],
+    )
+    await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+    await expect.element(search()).toBeVisible()
+    const hint = page.getByText('common.tag.noTagsYetCreateHint', { exact: true })
+    await expect.element(hint).not.toBeInTheDocument()
+
+    catalog.resolve([])
+    await expect.element(hint).toBeVisible()
+    await search().fill('Research')
+    await expect
+      .element(page.getByRole('option', { name: /common\.tag\.create.*Research/ }))
+      .toBeVisible()
+    await expect.element(hint).not.toBeInTheDocument()
+  },
+)
+
+it('shows an empty tag catalog without inviting a binding-only editor to create a tag', async () => {
+  serverTags = []
+  await renderWithTags(
+    <TagSelector type="agent" targetId="agent-1" value={[]} canBindOrUnbindTags />,
+    serverTags,
+    [],
+  )
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await expect.element(page.getByText('common.tag.noTagsYet', { exact: true })).toBeVisible()
+  await expect
+    .element(page.getByText('common.tag.noTagsYetCreateHint', { exact: true }))
+    .not.toBeInTheDocument()
+})
+
+it('does not offer to create the first tag when the Studio App catalog request fails', async () => {
+  fake.console.tags.get.mockRejectedValue(
+    apiError({ status: 503, message: 'Tag catalog unavailable' }),
+  )
+  const { queryClient } = await renderWithTags(
+    <TagSelector type="app" targetId="app-1" value={[]} canBindOrUnbindTags />,
+    undefined,
+    ['app.tag.manage'],
+  )
+  await expect.poll(() => fake.console.tags.get.mock.calls.length).toBe(1)
+  await expect.poll(() => queryClient.isFetching()).toBe(0)
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await expect.element(search()).toBeVisible()
+  await expect
+    .element(page.getByText('common.tag.noTagsYetCreateHint', { exact: true }))
+    .not.toBeInTheDocument()
+})
+
+it.each(['before', 'after'] as const)(
+  'saves a new Agent tag alongside the draft when closing %s creation completes',
+  async (close) => {
+    const agentTag = { id: 'existing', name: 'Existing', type: 'agent' }
+    const newTag = { id: 'created', name: 'Research', type: 'agent' }
+    serverTags = [agentTag]
+    const creation = hold(fake.console.tags.post)
+    const binding = hold(fake.console.tagBindings.post)
+    await renderWithTags(
+      <>
+        <TagFilter type="agent" value={[]} onChange={vi.fn()} />
+        <TagSelector
+          type="agent"
+          targetId="agent-1"
+          value={[]}
+          requiresTargetEditPermission
+          canBindOrUnbindTags
+        />
+      </>,
+      serverTags,
+      ['agent.tag.manage'],
+    )
+    const addTags = page.getByRole('combobox', { name: 'common.tag.addTag' })
+    await addTags.click()
+    await page.getByRole('option', { name: 'Existing' }).click()
+    await search().fill('Research')
+    await page.getByRole('option', { name: /common\.tag\.create/ }).click()
+    await creation.arrived
+    expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
+      body: { name: 'Research', type: 'agent' },
+    })
+    if (close === 'before') {
+      await userEvent.keyboard('{Escape}')
+      await expect.element(search()).not.toBeInTheDocument()
+      await expect.element(addTags).toHaveFocus()
+      await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
+      await userEvent.keyboard('{Enter}')
+      await expect.element(search()).not.toBeInTheDocument()
+    }
+    const catalogRefresh = hold(fake.console.tags.get)
+    serverTags = [newTag, agentTag]
+    creation.resolve(newTag)
+    if (close === 'after') {
+      await expect
+        .element(page.getByRole('option', { name: 'Research' }))
+        .toHaveAttribute('aria-selected', 'true')
+      expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
+      await userEvent.keyboard('{Escape}')
+    }
+    await expect
+      .poll(() => fake.console.tagBindings.post.mock.calls)
+      .toEqual([
+        [{ body: { tag_ids: ['existing', 'created'], target_id: 'agent-1', type: 'agent' } }],
+      ])
+    expect(fake.console.tags.get).not.toHaveBeenCalled()
+    await expect.element(addTags).toHaveFocus()
+    await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(search()).not.toBeInTheDocument()
+    serverTags = serverTags.map((tag) => ({ ...tag, binding_count: '1' }))
+    binding.release()
+    await catalogRefresh.arrived
+    catalogRefresh.release()
+    await expect.element(addTags).not.toHaveAttribute('aria-disabled')
+    expect(fake.console.tags.get).toHaveBeenCalledExactlyOnceWith({ query: { type: 'agent' } })
+    await expect.element(addTags).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(search()).toBeVisible()
+  },
+)
+
+it('refreshes the Agent tag catalog when the new tag is deselected before saving', async () => {
+  const newTag = { id: 'created', name: 'Research', type: 'agent' }
+  serverTags = []
+  fake.console.tags.post.mockImplementationOnce(() => {
+    serverTags = [newTag]
+    return newTag
+  })
+  await renderWithTags(
+    <>
+      <TagFilter type="agent" value={[]} onChange={vi.fn()} />
+      <TagSelector type="agent" targetId="agent-1" value={[]} canBindOrUnbindTags />
+    </>,
+    serverTags,
+    ['agent.tag.manage'],
+  )
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await search().fill('Research')
+  await page.getByRole('option', { name: /common\.tag\.create/ }).click()
+  const option = page.getByRole('option', { name: 'Research' })
+  await expect.element(option).toHaveAttribute('aria-selected', 'true')
+  expect(fake.console.tags.get).not.toHaveBeenCalled()
+  await option.click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(search()).not.toBeInTheDocument()
+  await expect
+    .poll(() => fake.console.tags.get.mock.calls)
+    .toEqual([[{ query: { type: 'agent' } }]])
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
 it('blocks opening without management permission or binding capability', async () => {
@@ -167,23 +381,24 @@ it('allows existing tag bindings without management permission but never offers 
   await expect
     .element(page.getByRole('button', { name: 'common.tag.manageTags' }))
     .not.toBeInTheDocument()
-  await search().fill('BrandNewTag')
+  const searchExistingTags = page.getByRole('combobox', { name: 'common.tag.searchTags' })
+  await searchExistingTags.fill('BrandNewTag')
   await expect.element(page.getByRole('option', { name: /BrandNewTag/ })).not.toBeInTheDocument()
-  await search().fill('Back')
+  await searchExistingTags.fill('Back')
   await page.getByRole('option', { name: 'Backend' }).click()
   await trigger().click()
   await expect
-    .poll(() => mocks.bind.mock.calls)
+    .poll(() => fake.console.tagBindings.post.mock.calls)
     .toEqual([[{ body: { tag_ids: ['tag-2'], target_id: 'target-1', type: 'app' } }]])
-  expect(mocks.create).not.toHaveBeenCalled()
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
 })
 
 it('opens snippet tags using the snippet edit permission', async () => {
   const snippet = { id: 'snippet-tag-1', name: 'Reusable', type: 'snippet' as const }
-  mocks.tags = [snippet]
+  serverTags = [snippet]
   await renderWithTags(
     <TagSelector targetId="snippet-1" type="snippet" value={[snippet]} />,
-    mocks.tags,
+    serverTags,
     ['snippets.create_and_modify'],
   )
   await page.getByRole('combobox', { name: 'Reusable' }).click()
@@ -213,7 +428,3 @@ it.each([false, true])(
       .toHaveAttribute('aria-selected', 'true')
   },
 )
-
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-})

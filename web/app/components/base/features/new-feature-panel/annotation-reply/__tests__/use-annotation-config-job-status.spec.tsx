@@ -26,6 +26,8 @@ const embeddingModel = {
   embedding_model_name: 'text-embedding-3-small',
 }
 
+const unlimitedAnnotationQuota = { annotation_quota_limit: { size: 0, limit: 0 } }
+
 const annotationConfig: AnnotationReplyConfig = {
   id: 'test-setting',
   enabled: true,
@@ -69,14 +71,16 @@ describe('annotation reply job status', () => {
           error_msg: errorMessage,
         })
       }
-      const { result } = renderHookWithConsoleQuery(() =>
-        useAnnotationConfig({
-          appId: 'test-app',
-          annotationConfig: { ...annotationConfig, enabled: action === 'disable' },
-          setAnnotationConfig: (config) => {
-            updatedConfig = config
-          },
-        }),
+      const { result } = renderHookWithConsoleQuery(
+        () =>
+          useAnnotationConfig({
+            appId: 'test-app',
+            annotationConfig: { ...annotationConfig, enabled: action === 'disable' },
+            setAnnotationConfig: (config) => {
+              updatedConfig = config
+            },
+          }),
+        { features: unlimitedAnnotationQuota },
       )
 
       let outcome: Promise<unknown> | undefined
@@ -112,14 +116,16 @@ describe('annotation reply job status', () => {
       statusRequests += 1
       return Response.json({ job_status: statusRequests === 1 ? 'processing' : 'completed' })
     }
-    const { result } = renderHookWithConsoleQuery(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig,
-        setAnnotationConfig: (config) => {
-          updatedConfig = config
-        },
-      }),
+    const { result } = renderHookWithConsoleQuery(
+      () =>
+        useAnnotationConfig({
+          appId: 'test-app',
+          annotationConfig,
+          setAnnotationConfig: (config) => {
+            updatedConfig = config
+          },
+        }),
+      { features: unlimitedAnnotationQuota },
     )
 
     let completion: Promise<void> | undefined
@@ -171,6 +177,7 @@ describe('annotation reply job status', () => {
           </FeaturesContext>
           <AppToaster timeout={0} />
         </PathnameContext>,
+        { features: unlimitedAnnotationQuota },
       )
 
       const toggle = screen.getByRole('switch')
@@ -260,7 +267,7 @@ describe('annotation reply job status', () => {
             <AppToaster timeout={0} />
           </PathnameContext>
         </NuqsTestingAdapter>,
-        { queryClient },
+        { queryClient, features: unlimitedAnnotationQuota },
       )
 
       const toggle = screen.getByRole('switch')

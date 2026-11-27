@@ -4,8 +4,7 @@ import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ALL_PLANS } from '@/app/components/billing/config'
-import { CloudPlanCard } from '@/app/components/billing/pricing/plan-card'
-import { PlanFeatureInfotip } from '@/app/components/billing/pricing/plan-card/features'
+import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -51,21 +50,21 @@ const renderPlan = ({
   return render(
     <>
       <AppToaster timeout={0} />
-      <PlanFeatureInfotip>
-        <CloudPlanCard
-          plan={plan}
-          billingInterval={billingInterval}
-          billing={{
-            currentPlan,
-            currentBillingInterval: 'month',
-            isEducationDiscountEligible: false,
-          }}
-        />
-      </PlanFeatureInfotip>
+      <CloudPlanItem
+        plan={plan}
+        billingInterval={billingInterval}
+        billing={{
+          currentPlan,
+          currentBillingInterval: 'month',
+          isEducationDiscountEligible: false,
+          isEducationDiscountActivated: false,
+        }}
+      />
     </>,
     { wrapper },
   )
 }
+const popup = { opener: null as unknown, location: { href: '' }, close: vi.fn() }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -74,7 +73,9 @@ beforeEach(() => {
   mockGetSubscription.mockReset().mockResolvedValue({ url: 'https://pay.example.com/checkout' })
   mockGetInvoices.mockReset().mockResolvedValue({ url: 'https://pay.example.com/invoices' })
   vi.stubGlobal('location', { href: 'https://app.example.com/billing' })
-  vi.spyOn(window, 'open').mockReturnValue(null)
+  popup.opener = window
+  popup.location.href = ''
+  vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -83,8 +84,8 @@ afterEach(() => {
 
 describe('Cloud plan payment flow', () => {
   it.each([
-    { plan: 'professional', interval: 'month', label: 'upgradeToProfessional' },
-    { plan: 'team', interval: 'year', label: 'upgradeToTeam' },
+    { plan: 'professional', interval: 'month', label: 'startBuilding' },
+    { plan: 'team', interval: 'year', label: 'getStarted' },
   ] as const)(
     'displays $plan pricing and redirects to its $interval checkout',
     async ({ plan, interval, label }) => {
@@ -92,12 +93,10 @@ describe('Cloud plan payment flow', () => {
       renderPlan({ plan, billingInterval: interval })
       const price = ALL_PLANS[plan].price
       expect(screen.getByText(`$${price * (interval === 'year' ? 10 : 1)}`)).toBeInTheDocument()
+      if (interval === 'year') expect(screen.getByText(`$${price * 12}`)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/checkout'))
-      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith(
-        { query: { plan, interval } },
-        { context: { silent: true } },
-      )
+      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith({ query: { plan, interval } })
       expect(mockGetInvoices).not.toHaveBeenCalled()
     },
   )
@@ -113,7 +112,7 @@ describe('Cloud plan payment flow', () => {
       }),
     )
     renderPlan()
-    const button = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
     await user.click(button)
     expect(await screen.findByText('billing.errors.requestInProgress')).toBeInTheDocument()
     expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
@@ -122,44 +121,50 @@ describe('Cloud plan payment flow', () => {
   })
 
   it.each([
-    ['sandbox', 'sandbox'],
-    ['professional', 'sandbox'],
-    ['team', 'sandbox'],
-    ['team', 'professional'],
-  ] as const)('hides the purchase action for %s viewing %s', (currentPlan, plan) => {
-    renderPlan({ currentPlan, plan })
-    expect(
-      screen.queryByRole('button', {
-        name: /billing\.plansCommon\.(startForFree|startBuilding|getStarted|upgradeToProfessional|upgradeToTeam|manageSubscription)$/,
-      }),
-    ).not.toBeInTheDocument()
-  })
+    { currentPlan: 'sandbox', plan: 'sandbox', label: 'currentPlan' },
+    { currentPlan: 'professional', plan: 'sandbox', label: 'startForFree' },
+    { currentPlan: 'team', plan: 'sandbox', label: 'startForFree' },
+    { currentPlan: 'team', plan: 'professional', label: 'startBuilding' },
+  ] as const)(
+    'prevents purchasing $plan from $currentPlan',
+    async ({ currentPlan, plan, label }) => {
+      const user = userEvent.setup()
+      renderPlan({ currentPlan, plan })
+      const button = screen.getByRole('button', { name: `billing.plansCommon.${label}` })
+      expect(button).toBeDisabled()
+      await user.click(button)
+      expect(mockGetSubscription).not.toHaveBeenCalled()
+      expect(mockGetInvoices).not.toHaveBeenCalled()
+      expect(window.open).not.toHaveBeenCalled()
+    },
+  )
 
   it('opens the billing portal for the current paid subscription after resolving its URL', async () => {
     const user = userEvent.setup()
     const request = createDeferred<{ url: string }>()
     mockGetInvoices.mockReturnValue(request.promise)
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
-    expect(window.location.href).toBe('https://app.example.com/billing')
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+    expect(popup.opener).toBeNull()
+    expect(popup.location.href).toBe('')
     await act(async () => request.resolve({ url: 'https://pay.example.com/invoices' }))
-    await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/invoices'))
-    expect(window.open).not.toHaveBeenCalled()
+    await waitFor(() => expect(popup.location.href).toBe('https://pay.example.com/invoices'))
     expect(mockGetInvoices).toHaveBeenCalledOnce()
     expect(mockGetSubscription).not.toHaveBeenCalled()
   })
 
-  it('stays on the billing page and reports a portal URL request failure', async () => {
+  it('closes the pending portal and reports its URL request failure', async () => {
     const user = userEvent.setup()
     mockGetInvoices.mockRejectedValueOnce(
       new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
     )
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
     expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
     expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
-    expect(window.location.href).toBe('https://app.example.com/billing')
-    expect(window.open).not.toHaveBeenCalled()
+    expect(popup.close).toHaveBeenCalledOnce()
+    expect(popup.location.href).toBe('')
   })
 
   it('prevents duplicate subscription requests while checkout is pending', async () => {
@@ -167,7 +172,7 @@ describe('Cloud plan payment flow', () => {
     mockGetSubscription.mockReturnValue(request.promise)
     const user = userEvent.setup()
     renderPlan()
-    const button = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
     await user.click(button)
     await user.click(button)
     expect(mockGetSubscription).toHaveBeenCalledOnce()
@@ -177,7 +182,7 @@ describe('Cloud plan payment flow', () => {
 
   it.each([
     { currentPlan: 'sandbox', label: 'startBuilding' },
-    { currentPlan: 'professional', label: 'startBuilding' },
+    { currentPlan: 'professional', label: 'currentPlan' },
   ] as const)(
     'blocks the $label action without billing permission',
     async ({ currentPlan, label }) => {

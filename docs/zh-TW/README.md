@@ -75,16 +75,28 @@ Dify 是一個開源的 LLM 應用程式開發平台。其直觀的界面結合�
 
 </br>
 
-啟動 Dify 伺服器最簡單的方式是透過 [docker compose](../../docker/docker-compose.yaml)。在使用以下命令運行 Dify 之前，請確保您的機器已安裝 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)：
+啟動 Dify 伺服器最簡單的方式是使用 [Docker Compose](../../docker/docker-compose.yaml)。請先安裝 [Docker](https://docs.docker.com/get-docker/) 並啟動 Docker 常駐程式，再確認已安裝 [Docker Compose](https://docs.docker.com/compose/install/) v2.35.0 或更新版本，以及 OpenSSL。
+
+首次部署時，請從儲存庫根目錄執行以下命令。如果要升級既有部署，請保留原有的 `.env` 檔案，並參閱[升級設定指南](../../docker/README.md#review-configuration-after-an-upgrade)。
 
 ```bash
-cd dify
 cd docker
 cp .env.example .env
-docker compose up -d
+openssl rand -hex 32
 ```
 
-運行後，您可以在瀏覽器中通過 [http://localhost/install](http://localhost/install) 訪問 Dify 儀表板並開始初始化過程。
+開啟 `docker/.env`，將產生的值填入 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`。使用隨附的服務時，請保留預設的 `COMPOSE_PROFILES` 值。服務會自動載入預設設定，無須新增其他設定檔。
+
+在同一個 `docker` 目錄下啟動並檢查服務：
+
+```bash
+docker compose up -d
+docker compose ps --all
+```
+
+服務啟動後，請在瀏覽器開啟 [http://localhost/install](http://localhost/install) 完成初始設定。一次性的 `init_permissions` 服務應以結束代碼 `0` 結束。
+
+如需選用設定及覆寫服務設定，請參閱 [Docker 部署指南](../../docker/README.md#configure-dify)。
 
 ### 尋求幫助
 

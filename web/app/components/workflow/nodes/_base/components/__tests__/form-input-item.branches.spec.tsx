@@ -9,8 +9,11 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
@@ -19,10 +22,16 @@ const { mockDynamicOptions } = vi.hoisted(() => ({ mockDynamicOptions: vi.fn() }
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    // Tool options load through the client, trigger options through the query contract.
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
+        mockDynamicOptions(input),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
         mockDynamicOptions(input),
     }),
@@ -69,8 +78,12 @@ const provider: ToolWithProvider = {
   tools: [tool],
 }
 
-const renderForm = (props: Partial<Props> = {}) => {
-  const { queryClient } = createConsoleQueryWrapper()
+const renderForm = (props: Partial<Props> = {}, { reportErrors = false } = {}) => {
+  const { queryClient } = createConsoleQueryWrapper(
+    reportErrors
+      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
+      : undefined,
+  )
   seedToolProviders(queryClient, {
     builtInTools: [],
     customTools: [],
@@ -228,6 +241,27 @@ describe('FormInputItem selections', () => {
     expect(onChange).toHaveBeenLastCalledWith({
       field: { type: VarKindType.constant, value: ['trigger-option'] },
     })
+  })
+
+  it('reports trigger options that fail to load', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    mockDynamicOptions.mockRejectedValue(
+      createHttpError(
+        { status: 400, statusText: '', headers: new Headers() },
+        { message: 'Credential expired' },
+      ),
+    )
+    renderForm(
+      {
+        schema: createSchema({ type: FormTypeEnum.dynamicSelect }),
+        currentProvider: { ...provider, credential_id: 'credential-1' },
+        currentTool: tool,
+        providerType: PluginCategoryEnum.trigger,
+      },
+      { reportErrors: true },
+    )
+
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Credential expired'))
   })
 
   it('saves JSON edits as constant strings', async () => {

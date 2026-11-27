@@ -28,13 +28,8 @@ const BuiltInPipelineList = () => {
     <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-3 py-2">
       <CreateCard />
       {!isLoading &&
-        list.map((pipeline, index) => (
-          <TemplateCard
-            key={index}
-            type="built-in"
-            pipeline={pipeline}
-            showMoreOperations={false}
-          />
+        list.map((pipeline) => (
+          <TemplateCard key={pipeline.id} type="built-in" pipeline={pipeline} />
         ))}
     </div>
   )

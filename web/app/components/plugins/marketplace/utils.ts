@@ -1,53 +1,16 @@
 import type {
   CollectionsAndPluginsSearchParams,
-  MarketplacePlugin,
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import { toListPlugin, toPluginCard } from './plugin-card-adapter'
 
 type MarketplaceFetchOptions = {
   signal?: AbortSignal
-}
-
-type MarketplacePluginListExtras = {
-  agent_strategy?: unknown
-  data_sources?: unknown
-  model?: unknown
-  plugins?: unknown
-  privacy_options?: unknown
-  privacy_policy?: unknown
-  readme_meta?: unknown
-  resource?: unknown
-  tool?: unknown
-  triggers?: unknown
-}
-
-export const toListPlugin = (plugin: Plugin): Plugin => {
-  const {
-    agent_strategy: _agentStrategy,
-    data_sources: _dataSources,
-    introduction: _introduction,
-    model: _model,
-    plugins: _plugins,
-    privacy_options: _privacyOptions,
-    privacy_policy: _privacyPolicy,
-    readme_meta: _readmeMeta,
-    resource: _resource,
-    tool: _tool,
-    triggers: _triggers,
-    ...listFields
-  } = plugin as Plugin & MarketplacePluginListExtras
-
-  return {
-    ...listFields,
-    introduction: '',
-    endpoint: { settings: [] },
-  }
 }
 
 export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
@@ -56,29 +19,6 @@ export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
   for (let i = 0; i < items.length; i += itemsPerPage) pages.push(items.slice(i, i + itemsPerPage))
 
   return pages
-}
-
-type MarketplacePluginPayload = MarketplacePlugin | (Plugin & { labels?: Plugin['label'] })
-
-export const getPluginIconInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`, plugin.type)
-
-export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
-  const plugin = payload as Plugin
-
-  if (payload.type === 'bundle') {
-    return {
-      ...plugin,
-      icon: getPluginIconInMarketplace(payload),
-      brief: payload.description as Plugin['brief'],
-      label: (payload.labels ?? payload.label) as Plugin['label'],
-    }
-  }
-  return {
-    ...plugin,
-    icon: getPluginIconInMarketplace(payload),
-  }
 }
 
 // One collections response lists every catalog carousel and each needs its own
@@ -105,7 +45,7 @@ export const getMarketplacePluginsByCollectionId = async (
   )
 
   return (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin) =>
-    toListPlugin(getFormattedPlugin(plugin)),
+    toListPlugin(toPluginCard(plugin)),
   )
 }
 
@@ -173,7 +113,7 @@ export const getMarketplacePlugins = async (
     }
   }
 
-  const { query, sort_by, sort_order, category, tags, type, page_size = 40 } = queryParams
+  const { query, sort_by, sort_order, category, tags, exclude, type, page_size = 40 } = queryParams
 
   // Errors propagate on purpose. Returning a synthesized empty page here made
   // every backend failure — and every aborted keystroke — look like a
@@ -193,6 +133,7 @@ export const getMarketplacePlugins = async (
         sort_order,
         category: category !== 'all' ? category : '',
         tags,
+        exclude,
       },
     },
     { signal },
@@ -200,7 +141,7 @@ export const getMarketplacePlugins = async (
   const resPlugins = res.data.bundles || res.data.plugins || []
 
   return {
-    plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
+    plugins: resPlugins.map((plugin) => toPluginCard(plugin)),
     total: res.data.total,
     page: pageParam,
     page_size,

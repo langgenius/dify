@@ -53,3 +53,7 @@ A few rules:
 
 Infotip owns its hint surface, spacing, typography, radius, and shadow. Callers may constrain width
 or preserve intentional line breaks.
+
+`size` sets the icon and the trigger's layout box together. Every size keeps a 24px pointer target
+outside its layout box, so a larger target does not move surrounding content. An ancestor that clips
+overflow also clips that target. Callers may place and colour the trigger but do not resize it.

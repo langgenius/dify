@@ -79,7 +79,7 @@ const DebugAndPreview = () => {
         controls={panelId}
         label={t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
         onResize={(width) => handleResize(width, 'user')}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
+        className="absolute -inset-s-1 top-0 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </ResizeHandle>
@@ -87,7 +87,7 @@ const DebugAndPreview = () => {
         id={panelId}
         ref={containerRef}
         className={cn(
-          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
+          'relative flex h-full flex-col rounded-s-2xl border border-e-0 border-components-panel-border bg-chatbot-bg shadow-xl',
         )}
         style={{ width: `${panelWidth}px` }}
       >
@@ -127,7 +127,7 @@ const DebugAndPreview = () => {
                   <TooltipContent>{userInputFieldLabel}</TooltipContent>
                 </Tooltip>
                 {expanded && (
-                  <div className="absolute right-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                  <div className="absolute inset-e-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-s-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
                 )}
               </div>
             )}

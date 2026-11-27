@@ -170,28 +170,63 @@ describe('initialNodes', () => {
     expect(result[0]!.data._targetBranches?.map((branch) => branch.id)).toEqual(['case-1', 'false'])
   })
 
-  it('should migrate legacy IfElse node without cases to cases format', () => {
-    const nodes = [
-      createNode({
-        id: 'if-1',
+  it.each(['and', 'or', undefined])(
+    'migrates legacy IfElse conditions with logical operator %s',
+    (logicalOperator) => {
+      const conditions = [{ id: 'c1', value: 'test' }]
+      const node = createNode({
         data: {
           type: BlockEnum.IfElse,
-          title: '',
-          desc: '',
-          logical_operator: 'and',
-          conditions: [{ id: 'c1', value: 'test' }],
-          cases: undefined,
+          conditions,
+          ...(logicalOperator === undefined ? {} : { logical_operator: logicalOperator }),
         },
-      }),
-    ]
+      })
 
-    const result = initialNodes(nodes, [])
-    const data = result[0]!.data as IfElseNodeType
-    expect(data.cases).toEqual([
-      { case_id: 'true', logical_operator: 'and', conditions: [{ id: 'c1', value: 'test' }] },
-    ])
-    expect(data.conditions).toBeUndefined()
-    expect(data.logical_operator).toBeUndefined()
+      const [result] = initialNodes([node], [])
+      const data = result!.data as IfElseNodeType
+      expect(data.cases).toEqual([
+        { case_id: 'true', logical_operator: logicalOperator ?? 'and', conditions },
+      ])
+      expect(data.conditions).toBeUndefined()
+      expect(data.logical_operator).toBeUndefined()
+    },
+  )
+
+  it.each([{}, { cases: null, conditions: null }, { cases: 'invalid' }])(
+    'keeps the legacy IF handle when cases or conditions need defaults (%j)',
+    (legacyFields) => {
+      const node = createNode({ id: 'if', data: { type: BlockEnum.IfElse, ...legacyFields } })
+      const destination = createNode({ id: 'destination' })
+      const edge = createEdge({ source: node.id, target: destination.id, sourceHandle: 'true' })
+
+      const [result] = initialNodes([node, destination], [edge])
+
+      expect(result?.data).toMatchObject({
+        cases: [{ case_id: 'true', logical_operator: 'and', conditions: [] }],
+        _targetBranches: [
+          { id: 'true', name: 'IF' },
+          { id: 'false', name: 'ELSE' },
+        ],
+        _connectedSourceHandleIds: ['true'],
+      })
+    },
+  )
+
+  it('preserves explicit empty IfElse cases and exposes only the ELSE branch', () => {
+    const node = createNode({
+      data: {
+        type: BlockEnum.IfElse,
+        logical_operator: 'and',
+        conditions: [{ id: 'c1', value: 'test' }],
+        cases: [],
+      },
+    })
+
+    const [result] = initialNodes([node], [])
+    expect(result?.data).toMatchObject({
+      cases: [],
+      _targetBranches: [{ id: 'false', name: 'ELSE' }],
+    })
   })
 
   it('should delete legacy conditions/logical_operator when cases exist', () => {
@@ -234,6 +269,57 @@ describe('initialNodes', () => {
     const result = initialNodes(nodes, [])
     expect(result[0]!.data._targetBranches).toEqual([{ id: 'cls-1', name: 'Class 1' }])
   })
+
+  it.each([{}, { classes: 'missing' }])(
+    'initializes an empty class list and no branches for classifier fields %j',
+    (classFields) => {
+      const node = createNode({
+        data: { type: BlockEnum.QuestionClassifier, model: { provider: 'openai' }, ...classFields },
+      })
+
+      const [result] = initialNodes([node], [])
+      expect(result?.data).toMatchObject({ classes: [], _targetBranches: [] })
+    },
+  )
+
+  it('initializes an empty variable list for a Start node without variables', () => {
+    const node = createNode({ data: { type: BlockEnum.Start } })
+
+    const [result] = initialNodes([node], [])
+    expect(result?.data).toMatchObject({ variables: [] })
+  })
+
+  it('leaves the chunk variable unselected for an invalid KnowledgeBase selector', () => {
+    const node = createNode({
+      data: { type: BlockEnum.KnowledgeBase, index_chunk_variable_selector: null },
+    })
+
+    const [result] = initialNodes([node], [])
+    expect(result?.data).toMatchObject({ index_chunk_variable_selector: [] })
+  })
+
+  describe.each([BlockEnum.LLM, BlockEnum.QuestionClassifier, BlockEnum.ParameterExtractor])(
+    '%s model configuration',
+    (type) => {
+      it.each([{}, { model: 'openai' }])(
+        'leaves the model unselected and editable for model fields %j',
+        (modelFields) => {
+          const node = createNode({
+            data: {
+              type,
+              ...(type === BlockEnum.QuestionClassifier ? { classes: [] } : {}),
+              ...modelFields,
+            },
+          })
+
+          const [result] = initialNodes([node], [])
+          expect(result?.data).toMatchObject({
+            model: { provider: '', name: '', mode: 'chat', completion_params: {} },
+          })
+        },
+      )
+    },
+  )
 
   it('should set iteration node defaults', () => {
     const nodes = [
@@ -298,22 +384,19 @@ describe('initialNodes', () => {
     )
   })
 
-  it('should correct model provider for LLM nodes', () => {
-    const nodes = [
-      createNode({
-        id: 'llm-1',
-        data: {
-          type: BlockEnum.LLM,
-          title: '',
-          desc: '',
-          model: { provider: 'openai' },
-        },
-      }),
-    ]
+  it.each([
+    { provider: 'openai', expectedProvider: 'langgenius/openai/openai' },
+    { provider: 123, expectedProvider: '' },
+  ])(
+    'normalizes the LLM provider $provider and keeps its model configuration',
+    ({ provider, expectedProvider }) => {
+      const model = { provider, name: 'example', completion_params: { temperature: 0.7 } }
+      const node = createNode({ data: { type: BlockEnum.LLM, model } })
 
-    const result = initialNodes(nodes, [])
-    expect((result[0]!.data as LLMNodeType).model.provider).toBe('langgenius/openai/openai')
-  })
+      const [result] = initialNodes([node], [])
+      expect((result!.data as LLMNodeType).model).toEqual({ ...model, provider: expectedProvider })
+    },
+  )
 
   it('should correct model provider for KnowledgeRetrieval reranking_model', () => {
     const nodes = [

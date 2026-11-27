@@ -507,7 +507,8 @@ class WorkspaceSkillDuplicateApi(Resource):
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/export")
 class WorkspaceSkillExportApi(Resource):
     @error_responses(RelayedHTTPError)
-    @console_ns.response(200, "Draft Skill zip archive")
+    @console_ns.produces(["application/zip"])
+    @console_ns.response(200, "Draft Skill zip archive", console_ns.models[BinaryFileResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )

@@ -66,12 +66,12 @@ const ErrorHandleTypeSelector = ({
               key={option.value}
               value={option.value}
               closeOnClick
-              className="h-auto items-start p-2 pr-3"
+              className="h-auto items-start p-2 pe-3"
               onClick={(e) => {
                 e.stopPropagation()
               }}
             >
-              <div className="mr-1 w-4 shrink-0">
+              <div className="me-1 w-4 shrink-0">
                 <MenuRadioItemIndicator />
               </div>
               <div className="grow">

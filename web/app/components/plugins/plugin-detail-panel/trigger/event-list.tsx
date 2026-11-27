@@ -1,10 +1,11 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useTriggerProviderInfo } from '@/service/use-triggers'
+import { triggerProviderInfoQueryOptions } from '@/service/trigger-queries'
 import { usePluginStore } from '../store'
 import { EventDetailDrawer } from './event-detail-drawer'
 
@@ -28,7 +29,7 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
         aria-labelledby={titleId}
         aria-describedby={descriptionText ? descriptionId : undefined}
         className={cn(
-          'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-left shadow-xs outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-start shadow-xs outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         )}
         onClick={() => setShowDetail(true)}
       >
@@ -54,7 +55,7 @@ export const TriggerEventsList = () => {
   const { t } = useTranslation(['pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
 
-  const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
+  const { data: providerInfo } = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
   const triggerEvents = providerInfo?.events || []
 
   if (!providerInfo || !triggerEvents.length) return null

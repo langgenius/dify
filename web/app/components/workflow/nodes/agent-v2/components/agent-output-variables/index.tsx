@@ -47,7 +47,7 @@ function OutputRow({
   const description = getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
-      <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
+      <div className="flex h-6 items-center gap-x-1 ps-1 pe-0.5">
         <div className="flex min-w-0 grow items-center gap-x-1">
           <span className="flex h-5 min-w-0 items-center px-1">
             <span className="truncate code-sm-semibold leading-4 text-text-primary">

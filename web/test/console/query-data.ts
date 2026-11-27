@@ -106,8 +106,9 @@ const getCurrentWorkspaceQueryKey = () => {
  * mirrors the behaviour of an in-flight network request without touching the
  * real fetch layer.
  */
-export const createConsoleQueryClient = (): QueryClient =>
-  createTestQueryClient(() => new Promise(() => {}))
+export const createConsoleQueryClient = (
+  options?: Parameters<typeof createTestQueryClient>[1],
+): QueryClient => createTestQueryClient(() => new Promise(() => {}), options)
 
 export const seedSystemFeatures = (
   queryClient: QueryClient,
@@ -145,11 +146,27 @@ export const seedEducationStatus = (
   return data
 }
 
+export const createFeaturesFixture = (
+  overrides: DeepPartial<GetFeaturesResponse> = {},
+): GetFeaturesResponse => zGetFeaturesResponse.parse(overrides)
+
+// Matches the default Community system features: plan quotas are unlimited outside Cloud.
+const unlimitedCount = { size: 0, limit: 0 }
+const unlimitedPeriodic = { usage: 0, limit: -1, reset_date: -1 }
+const communityFeatures = {
+  members: unlimitedCount,
+  apps: unlimitedCount,
+  annotation_quota_limit: unlimitedCount,
+  documents_upload_quota: unlimitedCount,
+  trigger_event: unlimitedPeriodic,
+  api_rate_limit: unlimitedPeriodic,
+} satisfies DeepPartial<GetFeaturesResponse>
+
 export const seedFeatures = (
   queryClient: QueryClient,
   overrides: DeepPartial<GetFeaturesResponse> = {},
 ): GetFeaturesResponse => {
-  const data = zGetFeaturesResponse.parse(overrides)
+  const data = createFeaturesFixture(overrides)
   queryClient.setQueryData(consoleQuery.features.get.queryKey(), data)
   return data
 }
@@ -222,7 +239,12 @@ export type ConsoleQueryTestOptions = {
   knowledgeFsFeatures?: Partial<KnowledgeFsFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
   accountProfileMeta?: Partial<UserProfileWithMeta['meta']>
-  features?: DeepPartial<GetFeaturesResponse>
+  /**
+   * Partial overrides for the workspace features payload. When omitted, the
+   * cache is seeded with a Community response, matching the Console layout
+   * that hydrates this query. Pass `null` to leave it unseeded.
+   */
+  features?: DeepPartial<GetFeaturesResponse> | null
   educationStatus?: Partial<EducationStatusResponse>
   currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   trialModels?: readonly string[] | null
@@ -251,6 +273,11 @@ export const createConsoleQueryWrapper = (
     else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' }, options.accountProfileMeta)
   }
   if (options.features) seedFeatures(queryClient, options.features)
+  else if (
+    options.features === undefined &&
+    queryClient.getQueryState(consoleQuery.features.get.queryKey()) === undefined
+  )
+    seedFeatures(queryClient, communityFeatures)
   if (options.knowledgeFsFeatures !== null) {
     const queryKey = getKnowledgeFsFeaturesQueryKey()
     if (options.knowledgeFsFeatures)

@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Agent-Versionen veröffentlichen und verwalten",
   "agent.acl.test_and_run": "Agent testen und ausführen",
   "agent.create": "Agenten erstellen",
+  "agent.tag.manage": "Agent-Tags verwalten",
   "api_extension.manage": "API-Erweiterungskonfiguration verwalten",
   "app.access_config": "App-Zugriffsberechtigungen konfigurieren",
   "app.acl.access_config": "Zugriffsberechtigungen anzeigen und verwalten",

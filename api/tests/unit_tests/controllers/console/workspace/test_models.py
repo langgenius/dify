@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -5,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from flask import Flask, g
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.models import (
@@ -110,7 +111,11 @@ class TestDefaultModelApi:
         ],
     )
     def test_post_removes_unconfigured_defaults(
-        self, app: Flask, sqlite_session: Session, cleared_setting: dict[str, str | None] | None
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        cleared_setting: dict[str, str | None] | None,
     ) -> None:
         sqlite_session.add_all(
             [
@@ -135,7 +140,7 @@ class TestDefaultModelApi:
         if cleared_setting is not None:
             model_settings.append(cleared_setting)
         payload = ParserPostDefault.model_validate({"model_settings": model_settings})
-        manager = ProviderManager(model_runtime=Mock())
+        manager = ProviderManager(model_runtime=Mock(), session_maker=sqlite_session_factory)
         configurations = MagicMock()
         configurations.__contains__.return_value = True
         configurations.get_models.return_value = [Mock(model="gpt-4")]
@@ -158,14 +163,16 @@ class TestDefaultModelApi:
             ("other-tenant", ModelType.TEXT_EMBEDDING, "text-embedding-3-small"),
         }
 
-    def test_post_empty_settings_clears_defaults(self, app: Flask, sqlite_session: Session) -> None:
+    def test_post_empty_settings_clears_defaults(
+        self, app: Flask, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         sqlite_session.add(
             TenantDefaultModel(
                 tenant_id="tenant1", model_type=ModelType.LLM, provider_name="openai", model_name="gpt-4"
             )
         )
         sqlite_session.commit()
-        manager = ProviderManager(model_runtime=Mock())
+        manager = ProviderManager(model_runtime=Mock(), session_maker=sqlite_session_factory)
         api = DefaultModelApi()
 
         with (
@@ -412,6 +419,51 @@ class TestModelProviderModelCredentialSwitchApi:
         assert result["result"] == "success"
 
 
+class TestModelConfigurationPermission:
+    @pytest.mark.parametrize(
+        ("method", "payload", "call"),
+        [
+            ("POST", {"model_settings": []}, lambda: DefaultModelApi().post()),
+            (
+                "POST",
+                {"model": "custom-model", "model_type": "llm"},
+                lambda: ModelProviderModelApi().post(provider="custom-provider"),
+            ),
+            (
+                "DELETE",
+                {"model": "custom-model", "model_type": "llm"},
+                lambda: ModelProviderModelApi().delete(provider="custom-provider"),
+            ),
+        ],
+    )
+    def test_writes_check_configure_models_permission(
+        self, app: Flask, method: str, payload: dict[str, object], call: Callable[[], object]
+    ) -> None:
+        account = make_account(role=TenantAccountRole.OWNER)
+        identity = AccountWithTenant(account, "workspace")
+        with (
+            app.test_request_context("/", method=method, json=payload),
+            config_overrides_context(LOGIN_DISABLED=True, RBAC_ENABLED=True),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=identity),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=identity),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False) as access,
+            patch("controllers.console.workspace.models.ModelProviderService") as service,
+        ):
+            g._login_user = account
+            with pytest.raises(Forbidden):
+                call()
+
+        service.assert_not_called()
+        access.assert_called_once_with(
+            "workspace",
+            account.id,
+            scene=RBACPermission.PLUGIN_MODEL_CONFIG,
+            resource_type=None,
+            resource_id=None,
+        )
+
+
 class TestModelEnableDisableApis:
     @pytest.mark.parametrize(
         ("resource", "operation"),
@@ -468,7 +520,7 @@ class TestModelEnableDisableApis:
             access.assert_called_once_with(
                 "workspace",
                 account.id,
-                scene=RBACPermission.PLUGIN_PREFERENCES,
+                scene=RBACPermission.PLUGIN_MODEL_CONFIG,
                 resource_type=None,
                 resource_id=None,
             )

@@ -16,7 +16,7 @@ from services.upload_file_delivery_service import (
     UploadFileDeliveryRecord,
     UploadFileDeliveryService,
 )
-from tests.helpers.unit.model_factories import make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _record(*, extension: str = "png") -> UploadFileDeliveryRecord:
@@ -63,6 +63,46 @@ def storage(tmp_path: Path) -> Storage:
 @pytest.fixture
 def service(files: UploadFileDeliveryQueryRepository, storage: Storage) -> UploadFileDeliveryService:
     return UploadFileDeliveryService(files=files, storage=storage)
+
+
+@pytest.mark.parametrize(
+    "stored_avatar",
+    [
+        "abc11111111141118111111111111111",
+        "{abc11111-1111-4111-8111-111111111111}",
+        "urn:uuid:abc11111-1111-4111-8111-111111111111",
+    ],
+    ids=["compact", "braced", "urn"],
+)
+def test_current_avatar_accepts_legacy_uuid_spellings(
+    service: UploadFileDeliveryService,
+    sqlite_session_factory: sessionmaker[Session],
+    stored_avatar: str,
+) -> None:
+    owner_id = "22222222-2222-4222-8222-222222222222"
+    file_id = "abc11111-1111-4111-8111-111111111111"
+    owner = make_account(account_id=owner_id, email="avatar-owner@example.com", tenant=None)
+    owner.avatar = stored_avatar
+    file = _record()
+    with sqlite_session_factory.begin() as session:
+        session.add(owner)
+        session.add(
+            make_upload_file(
+                file_id=file_id,
+                created_by=owner_id,
+                key=file.key,
+                name=file.name,
+                size=file.size,
+                extension="png",
+                mime_type="image/png",
+            )
+        )
+
+    delivery = service.get_current_account_avatar(file_id=file_id, account_id=owner_id)
+
+    assert delivery.file == file
+    assert not isinstance(delivery.content, bytes)
+    assert b"".join(delivery.content) == b"content"
 
 
 def test_invalid_image_signature_does_not_query_or_load_file(

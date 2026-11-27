@@ -1,13 +1,16 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { useNodes } from 'reactflow'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { lastRunQueryOptions, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { createDeferred } from '@/test/deferred'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
+import { createTestQueryClient } from '@/test/query-client'
 import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineRunByCanEdit } from '../use-pipeline-run'
 
@@ -52,23 +55,56 @@ const mockStopWorkflowRun = vi
   .fn()
   .mockImplementation(async () => Response.json({ result: 'success' }))
 
-const mockSsePost = vi.fn()
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: unknown[]) => mockSsePost(...args),
   request: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
 
-const mockInvalidAllLastRun = vi.fn()
-const mockInvalidateRunHistory = vi.fn()
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
-  useInvalidateWorkflowRunHistory: () => mockInvalidateRunHistory,
+const mockStreamEvents = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/event-stream').streamEvents>(),
+)
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: mockStreamEvents,
 }))
+
+const mockRunPipelineDraft = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'rag.pipelines.byPipelineId.workflows.draft.run.post': mockRunPipelineDraft,
+    }),
+  }
+})
+
+const streamRequestOptions = {
+  signal: new AbortController().signal,
+  context: { stream: true },
+} as const
 
 type PipelineRun = ReturnType<typeof usePipelineRunByCanEdit>
 type IOtherOptions = NonNullable<Parameters<PipelineRun['handleRun']>[1]>
 
-const RUN_HISTORY_URL = '/rag/pipelines/test-pipeline-id/workflow-runs'
+const resource = { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' } as const
+const runHistoryKey = workflowRunHistoryQueryOptions(resource).queryKey
+const lastRunKey = lastRunQueryOptions(resource, 'kb').queryKey
+const otherPipelineLastRunKey = lastRunQueryOptions(
+  { kind: 'knowledge-pipeline', pipelineId: 'other-pipeline-id' },
+  'kb',
+).queryKey
+
+let queryClient: QueryClient
+
+const seedRunQueries = () => {
+  queryClient.setQueryData(runHistoryKey, { data: [], has_more: false, limit: 20 })
+  queryClient.setQueryData(lastRunKey, { id: 'execution-1', node_id: 'kb' })
+  queryClient.setQueryData(otherPipelineLastRunKey, { id: 'execution-2', node_id: 'kb' })
+}
+
+const isInvalidated = (queryKey: readonly unknown[]) =>
+  queryClient.getQueryState(queryKey)?.isInvalidated
 
 const envVar = (id: string, value: string): EnvironmentVariable => ({
   id,
@@ -80,7 +116,8 @@ const envVar = (id: string, value: string): EnvironmentVariable => ({
 
 const renderPipelineRun = (initialStoreState: Record<string, unknown> = {}) =>
   renderWorkflowCanvasHook(() => ({ run: usePipelineRunByCanEdit(true), nodes: useNodes() }), {
-    resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+    resource,
+    queryClient,
     injectWorkflowStoreSliceFn: createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn,
     nodes: [
       createNode({
@@ -102,12 +139,13 @@ const startRun = async (run: PipelineRun, callback?: IOtherOptions) => {
   await act(async () => {
     await run.handleRun({ inputs: { query: 'test' } }, callback)
   })
-  return mockSsePost.mock.calls.at(-1)![2] as Required<IOtherOptions>
+  return mockStreamEvents.mock.calls.at(-1)![1] as Required<IOtherOptions>
 }
 
 describe('usePipelineRunByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createTestQueryClient()
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     const container = document.createElement('div')
     container.id = 'workflow-container'
@@ -162,6 +200,17 @@ describe('usePipelineRunByCanEdit', () => {
       })
     })
 
+    it('brings back the draft input fields after previewing a published version', () => {
+      const draftFields = [{ variable: 'draft-field' }]
+      const { result, store } = renderPipelineRun({ ragPipelineVariables: draftFields })
+
+      act(() => result.current.run.handleBackupDraft())
+      act(() => store.getState().setRagPipelineVariables?.([]))
+      act(() => result.current.run.handleLoadBackupDraft())
+
+      expect(store.getState().ragPipelineVariables).toEqual(draftFields)
+    })
+
     it('leaves the canvas alone when there is no backup to restore', () => {
       const { result } = renderPipelineRun()
 
@@ -173,15 +222,23 @@ describe('usePipelineRunByCanEdit', () => {
 
   describe('restore from published workflow', () => {
     it('loads the published graph unselected along with its variables', () => {
-      const publishedWorkflow = {
+      const publishedWorkflow = createWorkflowResponseFixture({
         graph: {
           nodes: [createNode({ id: 'pub-node', selected: true, data: { selected: true } })],
           edges: [],
           viewport: { x: 50, y: 50, zoom: 1 },
         },
         environment_variables: [envVar('pub', 'published')],
-        rag_pipeline_variables: [{ variable: 'input', type: 'text-input' }],
-      } as unknown as FetchWorkflowDraftResponse
+        rag_pipeline_variables: [
+          {
+            belong_to_node_id: 'shared',
+            label: 'Input',
+            variable: 'input',
+            type: 'text-input',
+            required: true,
+          },
+        ],
+      })
       const { result, store } = renderPipelineRun()
 
       act(() => result.current.run.handleRestoreFromPublishedWorkflow(publishedWorkflow))
@@ -198,8 +255,16 @@ describe('usePipelineRunByCanEdit', () => {
         viewport: publishedWorkflow.graph.viewport,
       })
       expect(store.getState()).toMatchObject({
-        environmentVariables: publishedWorkflow.environment_variables,
-        ragPipelineVariables: publishedWorkflow.rag_pipeline_variables,
+        environmentVariables: [envVar('pub', 'published')],
+        ragPipelineVariables: [
+          {
+            belong_to_node_id: 'shared',
+            label: 'Input',
+            variable: 'input',
+            type: 'text-input',
+            required: true,
+          },
+        ],
       })
     })
 
@@ -210,9 +275,7 @@ describe('usePipelineRunByCanEdit', () => {
       })
 
       act(() =>
-        result.current.run.handleRestoreFromPublishedWorkflow({
-          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
-        } as unknown as FetchWorkflowDraftResponse),
+        result.current.run.handleRestoreFromPublishedWorkflow(createWorkflowResponseFixture()),
       )
 
       expect(store.getState()).toMatchObject({ environmentVariables: [], ragPipelineVariables: [] })
@@ -236,7 +299,7 @@ describe('usePipelineRunByCanEdit', () => {
         selected: false,
         _runningStatus: undefined,
       })
-      expect(mockSsePost).not.toHaveBeenCalled()
+      expect(mockStreamEvents).not.toHaveBeenCalled()
 
       await act(async () => {
         pending.resolve()
@@ -251,10 +314,14 @@ describe('usePipelineRunByCanEdit', () => {
           resultText: '',
         },
       })
-      expect(mockSsePost).toHaveBeenCalledExactlyOnceWith(
-        '/rag/pipelines/test-pipeline-id/workflows/draft/run',
-        { body: { inputs: { query: 'test' } } },
+      expect(mockStreamEvents).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Function),
         expect.any(Object),
+      )
+      await mockStreamEvents.mock.calls[0]![0](streamRequestOptions)
+      expect(mockRunPipelineDraft).toHaveBeenCalledExactlyOnceWith(
+        { params: { pipeline_id: 'test-pipeline-id' }, body: { inputs: { query: 'test' } } },
+        streamRequestOptions,
       )
     })
 
@@ -316,16 +383,23 @@ describe('usePipelineRunByCanEdit', () => {
       const { result } = renderPipelineRun()
       const stream = await startRun(result.current.run)
 
+      seedRunQueries()
       act(() => stream.onWorkflowStarted({} as never))
-      expect(mockInvalidateRunHistory).toHaveBeenLastCalledWith(RUN_HISTORY_URL)
+      expect(isInvalidated(runHistoryKey)).toBe(true)
+      expect(isInvalidated(lastRunKey)).toBe(false)
       expect(mockFetchInspectVars).not.toHaveBeenCalled()
 
+      seedRunQueries()
       act(() => stream.onWorkflowFinished({} as never))
+      expect(isInvalidated(runHistoryKey)).toBe(true)
+      expect(isInvalidated(lastRunKey)).toBe(true)
+      expect(isInvalidated(otherPipelineLastRunKey)).toBe(false)
       expect(mockFetchInspectVars).toHaveBeenCalledExactlyOnceWith({})
-      expect(mockInvalidAllLastRun).toHaveBeenCalledOnce()
 
+      seedRunQueries()
       act(() => stream.onError({} as never))
-      expect(mockInvalidateRunHistory).toHaveBeenCalledTimes(3)
+      expect(isInvalidated(runHistoryKey)).toBe(true)
+      expect(isInvalidated(lastRunKey)).toBe(false)
     })
 
     it('passes other stream callbacks through untouched', async () => {

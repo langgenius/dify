@@ -187,7 +187,7 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
         aria-label={currentImage!.name.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
         className="image-previewer fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]"
       >
-        <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
+        <div className="absolute inset-e-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
           <IconButton
             variant="tertiary"
             size="xl"
@@ -236,7 +236,7 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
           size="xl"
           aria-label={t(($) => $['pagination.previous'], { ns: 'common' })}
           onClick={prevImage}
-          className="absolute top-1/2 left-8 z-10 -translate-y-1/2 rounded-full"
+          className="absolute inset-s-8 top-1/2 z-10 -translate-y-1/2 rounded-full"
           disabled={currentIndex === 0}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-5" />
@@ -246,7 +246,7 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
           size="xl"
           aria-label={t(($) => $['pagination.next'], { ns: 'common' })}
           onClick={nextImage}
-          className="absolute top-1/2 right-8 z-10 -translate-y-1/2 rounded-full"
+          className="absolute inset-e-8 top-1/2 z-10 -translate-y-1/2 rounded-full"
           disabled={currentIndex === images.length - 1}
         >
           <span aria-hidden className="i-ri-arrow-right-line size-5" />

@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "फ़िल्टर साफ़ करें",
   "roster.createAgent": "एजेंट बनाएँ",
   "roster.createDialog.description": "इस वर्कस्पेस में एक पुनः उपयोग योग्य Agent बनाएँ।",
   "roster.createDialog.title": "एजेंट बनाएँ",
@@ -24,6 +25,7 @@
   "roster.editInfo": "जानकारी संपादित करें",
   "roster.empty": "अभी तक कोई एजेंट नहीं",
   "roster.emptySearch": "कोई मेल खाते एजेंट नहीं",
+  "roster.emptySearchDescription": "कोई अन्य खोज आज़माएँ या मौजूदा फ़िल्टर साफ़ करें।",
   "roster.filters.all": "सभी",
   "roster.filters.createdByMe": "मेरे द्वारा बनाए गए",
   "roster.filters.drafts": "ड्राफ्ट",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "इनलाइन एजेंट बनाने में विफल। रीफ़्रेश करें और पुनः प्रयास करें।",
   "roster.nodeSelector.dialogLabel": "एक एजेंट चुनें",
   "roster.nodeSelector.manageInAgentConsole": "Agents में प्रबंधित करें",
-  "roster.nodeSelector.searchPlaceholder": "खोजें…",
+  "roster.nodeSelector.searchPlaceholder": "एजेंट खोजें…",
   "roster.nodeSelector.startFromScratch": "शुरुआत से आरंभ करें",
   "roster.references.label": "{{name}} का उपयोग करने वाले वर्कफ़्लो",
   "roster.references.trigger": "{{name}} का उपयोग करने वाले वर्कफ़्लो",

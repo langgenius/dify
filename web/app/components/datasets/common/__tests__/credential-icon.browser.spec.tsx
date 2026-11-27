@@ -8,14 +8,18 @@ const brokenAvatar = 'data:image/png;base64,not-an-image'
 
 it('keeps the fallback visible until a replacement avatar decodes natively', async () => {
   const screen = await render(<CredentialIcon name="Alice" />)
+  // The avatar image is decorative (alt=""), so it has no role; native decode visibility is the contract.
+  const image = page.elementLocator(screen.container.querySelector('img')!)
 
   await expect.element(screen.getByText('A')).toBeVisible()
-  await expect.element(page.getByRole('img')).not.toBeInTheDocument()
+  await expect.element(image).not.toBeVisible()
 
   await screen.rerender(<CredentialIcon avatarUrl={brokenAvatar} name="Bob" />)
   await expect.element(screen.getByText('B')).toBeVisible()
+  await expect.element(image).not.toBeVisible()
 
   await screen.rerender(<CredentialIcon avatarUrl={validAvatar} name="Bob" />)
+  await expect.element(image).toBeVisible()
+  expect((image.element() as HTMLImageElement).naturalWidth).toBeGreaterThan(0)
   await expect.element(screen.getByText('B')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('img')).not.toBeInTheDocument()
 })

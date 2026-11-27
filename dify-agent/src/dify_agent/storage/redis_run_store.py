@@ -18,6 +18,7 @@ from typing import cast, override
 from redis.asyncio import Redis
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     RUN_EVENT_ADAPTER,
@@ -128,7 +129,8 @@ end
 
 local ttl = tonumber(ARGV[8])
 local updated_record_json = cjson.encode(record)
-local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", ARGV[7])
+local payload = ARGV[7]
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "payload", payload)
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 """
@@ -141,7 +143,7 @@ return {1, ARGV[1], event_id}
 
 _APPEND_EVENT_SCRIPT = (
     """
--- KEYS: record, events. ARGV: event JSON, max stream length, TTL.
+-- KEYS: record, events, cancel intent. ARGV: event JSON, max stream length, TTL.
 -- Return {-1, ""} if missing, {0, status} if sealed, {1, "running", event id} if appended.
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
@@ -157,6 +159,7 @@ local ttl = tonumber(ARGV[3])
 local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[2], "*", "payload", ARGV[1])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("EXPIRE", KEYS[1], ttl)
+redis.call("EXPIRE", KEYS[3], ttl)
 """
     + _REFRESH_IDEMPOTENCY_CLAIM
     + """
@@ -229,7 +232,8 @@ end
 record.error_type = cjson.null
 
 local ttl = tonumber(ARGV[5])
-local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
+local payload = ARGV[4]
+local event_id = redis.call("XADD", KEYS[3], "MAXLEN", "~", ARGV[6], "*", "payload", payload)
 redis.call("DEL", KEYS[2])
 redis.call("EXPIRE", KEYS[3], ttl)
 redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
@@ -242,18 +246,22 @@ return {1, "cancelled", event_id}
 
 
 class RedisRunStore(RunEventSink):
-    """Async Redis implementation for run records and event logs.
+    """Async Redis implementation for run records, event logs, and cancellation intents.
 
-    ``run_retention_seconds`` is applied to both the run record key and the
-    per-run Redis stream. Every public stream write applies an approximate
-    maximum length before refreshing both TTLs, so active runs cannot grow one
-    Redis key without bound without paying the CPU cost of exact per-entry
-    trimming. The transaction also ensures a newly created stream is not left
-    without expiration if the client is interrupted between commands.
+    ``run_retention_seconds`` is shared by the run record key, per-run event
+    stream, and pending cancellation intent. Every public event stream write
+    applies an approximate maximum length before refreshing the stream and
+    record TTLs, so active runs cannot grow one Redis key without bound without
+    paying the CPU cost of exact per-entry trimming. The transaction also
+    ensures a newly created stream is not left without expiration if the
+    client is interrupted between commands.
     Event writes refresh the record TTL so long-running runs that keep producing
-    events do not lose their status record mid-run. Active writes also refresh
-    the admission claim when it is absent or still owned by that run. A newer
-    owner is preserved, and passive admission replays do not refresh any TTL.
+    events do not lose their status record mid-run. Non-terminal event appends
+    while the run is ``running`` also atomically refresh any existing pending
+    cancellation intent's TTL without creating one when absent. Rejected appends
+    after a terminal transition do not refresh retention. Active writes also
+    refresh the admission claim when it is absent or still owned by that run.
+    A newer owner is preserved, and passive admission replays do not refresh any TTL.
     """
 
     redis: Redis
@@ -342,18 +350,20 @@ class RedisRunStore(RunEventSink):
         """Append a non-terminal event while the durable run status is still ``running``.
 
         The status check and the write share one linearization point with
-        ``finalize_run``/``finalize_cancellation``: once a terminal transition
-        wins, late non-terminal appends are rejected without consuming a
-        cursor or refreshing retention.
+        ``finalize_run``/``finalize_cancellation``. An append also keeps an
+        existing cancellation intent on the same retention window as the run.
+        Once a terminal transition wins, late non-terminal appends are
+        rejected without consuming a cursor or refreshing retention.
         """
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         evaluation = cast(
             Awaitable[object],
             self.redis.eval(
                 _APPEND_EVENT_SCRIPT,
-                2,
+                3,
                 run_record_key(self.prefix, event.run_id),
                 run_events_key(self.prefix, event.run_id),
+                run_cancel_intent_key(self.prefix, event.run_id),
                 payload,
                 str(self.run_event_stream_max_length),
                 str(self.run_retention_seconds),
@@ -369,7 +379,12 @@ class RedisRunStore(RunEventSink):
 
     @override
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
-        """Atomically append the first success/failure event and update its run record."""
+        """Commit the owner's already-sealed terminal event and status atomically.
+
+        Tool reservations live only in the native run. The typed event carries
+        its final snapshot; storage preserves the payload without cjson rewriting
+        its nested values, empty maps or large Python integers.
+        """
         status, error, error_type = terminal_event_status_fields(event)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         evaluation = cast(
@@ -452,6 +467,7 @@ class RedisRunStore(RunEventSink):
         *,
         session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
+        tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
     ) -> RunFinalizationResult:
         """Atomically publish cancellation after the owner runner has exited."""
         event = RunCancelledEvent(
@@ -463,6 +479,7 @@ class RedisRunStore(RunEventSink):
                 usage=usage,
             ),
             created_at=utc_now(),
+            tool_call_limits=tool_call_limits or {},
         )
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         error = event.data.message or event.data.reason

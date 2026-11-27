@@ -85,6 +85,10 @@ class InvalidOwnerTransferCodeError(WorkspaceApplicationError):
     """The verification code does not match the ownership-transfer token."""
 
 
+class PendingInvitationNotFoundError(WorkspaceApplicationError):
+    """No live invitation exists for the email in this workspace."""
+
+
 class WorkspaceInvitationQuotaError(WorkspaceApplicationError):
     def __init__(self, *, seats: bool = False) -> None:
         super().__init__("Workspace invitation quota exceeded")

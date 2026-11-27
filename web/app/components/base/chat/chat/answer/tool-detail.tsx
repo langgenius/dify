@@ -17,7 +17,7 @@ const ToolDetail = ({ payload }: ToolDetailProps) => {
     <div
       className={cn(
         'rounded-xl',
-        !expand && 'border-l-[0.25px] border-components-panel-border bg-workflow-process-bg',
+        !expand && 'border-s-[0.25px] border-components-panel-border bg-workflow-process-bg',
         expand && 'border-[0.5px] border-components-panel-border-subtle bg-background-section-burn',
       )}
     >
@@ -30,12 +30,12 @@ const ToolDetail = ({ payload }: ToolDetailProps) => {
         )}
         onClick={() => setExpand(!expand)}
       >
-        {isFinished && <RiHammerFill aria-hidden="true" className="mr-1 size-3.5" />}
-        {!isFinished && <RiLoader2Line aria-hidden="true" className="mr-1 size-3.5 animate-spin" />}
+        {isFinished && <RiHammerFill aria-hidden="true" className="me-1 size-3.5" />}
+        {!isFinished && <RiLoader2Line aria-hidden="true" className="me-1 size-3.5 animate-spin" />}
         {t(($) => $[`thought.${isFinished ? 'used' : 'using'}`], { ns: 'tools' })}
         <span className="mx-1 text-text-secondary">{toolLabel}</span>
         {!expand && <RiArrowRightSLine aria-hidden="true" className="size-4" />}
-        {expand && <RiArrowDownSLine aria-hidden="true" className="ml-auto size-4" />}
+        {expand && <RiArrowDownSLine aria-hidden="true" className="ms-auto size-4" />}
       </button>
       {expand && (
         <>

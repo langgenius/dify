@@ -38,6 +38,7 @@ from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, 
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from machinery.context import AppRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
 from tests.helpers.unit.controllers.openapi.auth._world import (
@@ -355,18 +356,24 @@ def test_every_pipeline_checks_the_catalog_before_anything_else() -> None:
     assert _RequiresCurrentCatalog.rank is Rank.FIRST
 
 
-@pytest.mark.parametrize("sent", [None, "not-the-current-catalog"], ids=["missing", "stale"])
+@pytest.mark.parametrize("sent", ["not-the-current-catalog", ""], ids=["stale", "empty"])
 def test_a_request_built_from_another_catalog_is_refused(
     app: Flask,
     sqlite_session: Session,
-    sent: str | None,
+    sent: str,
 ) -> None:
     subject = account_subject()
-    headers: dict[str, str] = {} if sent is None else {CATALOG_HEADER: sent}
 
-    with app.test_request_context("/openapi/v1/account", headers=headers):
+    with app.test_request_context("/openapi/v1/account", headers={CATALOG_HEADER: sent}):
         with pytest.raises(CatalogStale):
             _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+def test_a_request_that_names_no_catalog_passes(app: Flask, sqlite_session: Session) -> None:
+    subject = account_subject()
+
+    with app.test_request_context("/openapi/v1/account"):
+        _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
 def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_session: Session) -> None:
@@ -386,8 +393,8 @@ def test_personal_access_check_skips_oauth_without_loading_resources(
     # No Flask request, account, or resource is needed for a non-PAT credential.
     CheckPersonalAccess().run(subject, ctx, sqlite_session)
 
-    assert ctx.personal_workspace_ids is None
-    assert ctx.personal_app_ids is None
+    assert ctx.personal_workspace_ids is UNRESTRICTED
+    assert ctx.personal_app_ids is UNRESTRICTED
 
 
 def test_account_pipeline_denies_pat_without_policy_before_loading_resources(

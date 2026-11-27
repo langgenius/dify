@@ -10,7 +10,11 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ChunkingMode } from '@/models/datasets'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DocumentContext } from '../../context'
 import Completed from '../index'
@@ -114,6 +118,8 @@ async function renderChunks(canEdit: boolean, docForm: ChunkingMode = ChunkingMo
         </DocumentContext.Provider>
       </DatasetDetailContext.Provider>
     </EventEmitterContextProvider>,
+    // Like the app, refresh a mutation's domain after it succeeds.
+    { queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }) },
   )
   await screen.findByText(parentMode === 'full-doc' ? 'Child chunk content' : 'Chunk content')
   return view
@@ -137,15 +143,26 @@ describe('Chunk permissions', () => {
       page: 1,
       limit: 10,
     })
-    api.switch.mockResolvedValue({ result: 'success' })
+    // Writes reach the server list, which the invalidation fallback refetches.
+    api.switch.mockImplementation(async ({ params, query }) => {
+      serverSegments = serverSegments.map((item) =>
+        query?.segment_id?.includes(item.id)
+          ? { ...item, enabled: params.action === 'enable' }
+          : item,
+      )
+      return { result: 'success' }
+    })
     api.remove.mockImplementation(async () => {
       serverSegments = []
       return { result: 'success' }
     })
-    api.update.mockImplementation(async ({ body }) => ({
-      data: { ...segment, ...body },
-      doc_form: ChunkingMode.text,
-    }))
+    api.update.mockImplementation(async ({ body }) => {
+      serverSegments = serverSegments.map((item) => ({ ...item, ...body }))
+      return {
+        data: { ...segment, ...body },
+        doc_form: ChunkingMode.text,
+      }
+    })
     parentMode = 'paragraph'
   })
 

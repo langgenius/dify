@@ -19,7 +19,7 @@ from controllers.inner_api.plugin.agent_config import (
     AgentConfigSkillInspectApi,
 )
 from libs.exception import RelayedHTTPError
-from services.agent_config_service import AgentConfigServiceError
+from services.agent.config_service import AgentConfigServiceError
 
 MODULE = "controllers.inner_api.plugin.agent_config"
 app = Flask(__name__)

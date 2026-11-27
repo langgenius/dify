@@ -18,7 +18,7 @@ export const STEP_BY_STEP_TOUR_TASKS = [
     target: STEP_BY_STEP_TOUR_TARGETS.studio,
     iconClassName: 'i-custom-vender-main-nav-studio',
     fallbackTarget: STEP_BY_STEP_TOUR_TARGETS.studio,
-    learnMoreDocPath: '/use-dify/workspace/app-management',
+    learnMoreDocPath: '/use-dify/workspace/export-import-apps',
     canClickThrough: true,
   },
   {

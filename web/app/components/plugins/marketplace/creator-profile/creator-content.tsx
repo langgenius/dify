@@ -68,7 +68,7 @@ export default function CreatorContent({
   const [pluginNextPage, setPluginNextPage] = useState(inventory?.pluginNextPage ?? 2)
   const [templateNextPage, setTemplateNextPage] = useState(inventory?.templateNextPage ?? 2)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [loadMoreFailed, setLoadMoreFailed] = useState(false)
+  const [loadMoreFailed, setLoadMoreFailed] = useState(inventory?.loadFailed ?? false)
   if (creations !== sourceCreations) {
     setSourceCreations(creations)
     setLoadedCreations(creations)
@@ -76,7 +76,7 @@ export default function CreatorContent({
     setTemplateHasMore(inventory?.templateHasMore ?? false)
     setPluginNextPage(inventory?.pluginNextPage ?? 2)
     setTemplateNextPage(inventory?.templateNextPage ?? 2)
-    setLoadMoreFailed(false)
+    setLoadMoreFailed(inventory?.loadFailed ?? false)
   }
   const sortOptions: Array<{ value: CreatorSortField; label: string }> = [
     {
@@ -166,11 +166,11 @@ export default function CreatorContent({
               aria-label={`${t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })} ${selectedSort.label}`}
               className="flex h-8 items-center rounded-lg px-2 hover:bg-state-base-hover"
             >
-              <span className="mr-1 system-sm-regular text-text-tertiary">
+              <span className="me-1 system-sm-regular text-text-tertiary">
                 {t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })}
               </span>
               <span className="system-sm-medium text-text-secondary">{selectedSort.label}</span>
-              <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
+              <span aria-hidden className="ms-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
             </MenuTrigger>
             <MenuContent className="min-w-[176px]">
               <MenuRadioGroup<CreatorSortField>
@@ -184,10 +184,10 @@ export default function CreatorContent({
                     key={option.value}
                     value={option.value}
                     closeOnClick
-                    className="justify-between px-3 pr-2 system-md-regular text-text-primary"
+                    className="justify-between px-3 pe-2 system-md-regular text-text-primary"
                   >
                     {option.label}
-                    <MenuRadioItemIndicator className="ml-2" />
+                    <MenuRadioItemIndicator className="ms-2" />
                   </MenuRadioItem>
                 ))}
               </MenuRadioGroup>
@@ -227,9 +227,11 @@ export default function CreatorContent({
           ))}
         </div>
       ) : (
-        <div className="w-full py-12 text-center system-sm-regular text-text-tertiary">
-          {t(($) => $['marketplace.creatorProfile.empty'], { ns: 'plugin' })}
-        </div>
+        !loadMoreFailed && (
+          <div className="w-full py-12 text-center system-sm-regular text-text-tertiary">
+            {t(($) => $['marketplace.creatorProfile.empty'], { ns: 'plugin' })}
+          </div>
+        )
       )}
 
       {hasMore && (

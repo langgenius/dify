@@ -6,8 +6,6 @@ import Chat from '../index'
 import { chatItem, renderChatOwner } from './chat-owner-preset'
 
 vi.unmock('react-i18next')
-// boundary: Chat consumes Next route params; no application router runs here.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 beforeEach(async () => {
   await page.viewport(1200, 800)

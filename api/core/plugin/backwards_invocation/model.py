@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
 from core.credit_usage import CreditUsageCreatedBy
+from core.db.session_factory import session_factory
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_context import get_credit_usage_metadata, with_credit_usage_created_by
 from core.model_manager import ModelManager
@@ -476,6 +477,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             tool_name="plugin",
             prompt_messages=prompt_messages,
             caller_user_id=user_id,
+            session_maker=session_factory.get_session_maker(),
         )
 
     @classmethod

@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import {
   zKnowledgeFsDurableDeletionAcceptedResponse,
   zKnowledgeFsLogicalDocumentListResponse,
@@ -7,46 +6,16 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentResultsSurface } from '../results/surface'
 import { DocumentsStateBoundary } from '../state/boundary'
 
-vi.mock('../../components/knowledge-model-readiness-banner', () => ({
-  KnowledgeModelReadinessBanner: () => null,
-}))
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get>(),
-  remove:
-    vi.fn<
-      typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete
-    >(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get': api.list,
-      'knowledgeFs.spaces.byControlSpaceId.sources.get': async () => ({
-        data: [],
-        next_cursor: null,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': async () => ({
-        data: [],
-        next_cursor: null,
-      }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete': api.remove,
-    }),
-  }
-})
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -65,39 +34,82 @@ async function setup(ids: string[]) {
     })),
     next_cursor: null,
   }).data
-  api.list.mockReset().mockImplementation(async () => ({ data: documents, next_cursor: null }))
-  api.remove.mockReset().mockImplementation(async ({ params }) => {
-    documents = documents.filter((item) => item.id !== params.document_id)
-    return zKnowledgeFsDurableDeletionAcceptedResponse.parse({
-      status_url: '/deletion',
-      job: {
-        id: 'delete-1',
-        checkpoint: 'requested',
-        created_at: '2026-07-20T10:00:00Z',
-        updated_at: '2026-07-20T10:00:00Z',
-        knowledge_space_id: 'space-1',
-        target_id: params.document_id,
-        target_type: 'logical_document',
-        run_state: 'queued',
+  const fake = installFakeApi({
+    console: {
+      knowledgeFs: {
+        // The invalidation fallback refetches the knowledge features after the delete.
+        features: { get: () => ({ agent_enabled: false, upload_enabled: true }) },
+        spaces: {
+          byControlSpaceId: {
+            logicalDocuments: {
+              get: () => ({ data: documents, next_cursor: null }),
+              byDocumentId: {
+                delete: async ({ params }) => {
+                  documents = documents.filter((item) => item.id !== params.document_id)
+                  return zKnowledgeFsDurableDeletionAcceptedResponse.parse({
+                    status_url: '/deletion',
+                    job: {
+                      id: 'delete-1',
+                      checkpoint: 'requested',
+                      created_at: '2026-07-20T10:00:00Z',
+                      updated_at: '2026-07-20T10:00:00Z',
+                      knowledge_space_id: 'space-1',
+                      target_id: params.document_id,
+                      target_type: 'logical_document',
+                      run_state: 'queued',
+                    },
+                  })
+                },
+              },
+            },
+            sources: { get: () => ({ data: [], next_cursor: null }) },
+            backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
+            settings: {
+              get: () => ({
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  index: true,
+                  ingest: true,
+                  query: true,
+                  research: true,
+                  source_sync: true,
+                },
+                configuration_state: 'active',
+                embedding: null,
+                issues: [],
+                retrieval: null,
+                revision: 1,
+              }),
+            },
+          },
+        },
       },
-    })
+    },
   })
+  onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({
+    // Like the app, refresh a mutation's domain after it succeeds.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     systemFeatures: { deployment_edition: 'ENTERPRISE' },
     features: { enable_knowledge_fs: true },
     knowledgeFsFeatures: { upload_enabled: true },
   })
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/new/space-1/documents' })
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <QueryTestingAdapter>
-        <KnowledgeSpaceTestProvider>
-          <DocumentsStateBoundary knowledgeSpaceId="space-1">
-            <DocumentResultsSurface />
-            <AppToaster />
-          </DocumentsStateBoundary>
-        </KnowledgeSpaceTestProvider>
-      </QueryTestingAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <QueryTestingAdapter>
+          <KnowledgeSpaceTestProvider>
+            <DocumentsStateBoundary knowledgeSpaceId="space-1">
+              <DocumentResultsSurface />
+              <AppToaster />
+            </DocumentsStateBoundary>
+          </KnowledgeSpaceTestProvider>
+        </QueryTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   const actions = (id: string) =>
     screen.getByRole('button', { name: `knowledgeDocuments.documentActions:{"name":"${id}"}` })
@@ -111,6 +123,7 @@ async function setup(ids: string[]) {
     screen,
     open,
     actions,
+    remove: fake.console.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete,
     removeElsewhere: async () => {
       documents = []
       await queryClient.invalidateQueries({
@@ -127,7 +140,7 @@ async function setup(ids: string[]) {
 }
 describe('Knowledge document deletion', () => {
   it('closes safely if the document was removed elsewhere while confirmation was open', async () => {
-    const { screen, open, removeElsewhere } = await setup(['Alpha'])
+    const { screen, open, remove, removeElsewhere } = await setup(['Alpha'])
     await open('Alpha')
     await removeElsewhere()
     await screen.getByRole('button', { name: 'common.operation.delete', exact: true }).click()
@@ -135,19 +148,16 @@ describe('Knowledge document deletion', () => {
     await expect
       .element(screen.getByRole('region', { name: 'knowledgeSpace.documents', exact: true }))
       .toHaveFocus()
-    expect(api.remove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 
   it('uses the latest revision when the list refreshes with confirmation open', async () => {
-    const { screen, open, refreshRevision } = await setup(['Alpha'])
+    const { screen, open, remove, refreshRevision } = await setup(['Alpha'])
     await open('Alpha')
     await refreshRevision()
     await screen.getByRole('button', { name: 'common.operation.delete', exact: true }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-    expect(api.remove).toHaveBeenCalledWith(
-      expect.objectContaining({ body: { expectedRevision: 2 } }),
-      { context: { silent: true } },
-    )
+    expect(remove).toHaveBeenCalledWith(expect.objectContaining({ body: { expectedRevision: 2 } }))
   })
 
   it.each([
@@ -169,23 +179,21 @@ describe('Knowledge document deletion', () => {
       .toHaveFocus()
   })
   it('holds focus and prevents dismissal while deletion is pending', async () => {
-    const { screen, open } = await setup(['Alpha'])
-    const request =
-      createDeferred<
-        Awaited<
-          ReturnType<
-            typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete
-          >
-        >
-      >()
-    api.remove.mockReturnValueOnce(request.promise)
+    const { screen, open, remove } = await setup(['Alpha'])
+    const request = hold(remove)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.delete', exact: true })
     await confirm.click()
     await expect.element(confirm).toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Deletion service unavailable'))
+    request.reject(
+      apiError({
+        status: 503,
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Deletion service unavailable',
+      }),
+    )
     await expect
       .element(screen.getByText('Deletion service unavailable', { exact: true }))
       .toBeVisible()

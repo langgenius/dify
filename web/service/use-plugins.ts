@@ -1,22 +1,13 @@
 import type {
   GetWorkspacesCurrentPluginByCategoryListData,
-  ParserMarketplaceUpgrade,
   PluginCategoryInstalledPluginResponse,
   PluginCategoryListResponse,
   PluginEntity,
   PluginInstallationItemResponse,
-  PluginInstallTask,
   PluginInstallTaskStartResponse,
   PluginListResponse,
-  PluginParameterOption,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  PluginInfoFromMarketPlace,
-  PluginsFromMarketplaceByInfoResponse,
-  PluginsFromMarketplaceResponse,
-} from '@dify/contracts/marketplace'
-import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
-import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
   Dependency,
@@ -28,7 +19,6 @@ import type {
   Plugin,
   PluginDeclaration,
   PluginDetail,
-  PluginTask,
   ReferenceSetting,
   VersionInfo,
 } from '@/app/components/plugins/types'
@@ -44,21 +34,13 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { pluginTaskListInput, upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
+import { pluginTaskListQueryOptions } from '@/service/plugin-install-queries'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
-// oxlint-disable-next-line no-restricted-imports
-import { getMarketplace, postMarketplace } from './base'
-
-const NAME_SPACE = 'plugins'
-const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-
-type PluginTaskListResponse = {
-  tasks: PluginTask[]
-}
 
 const getString = (value: unknown) => {
   return typeof value === 'string' ? value : ''
@@ -478,138 +460,6 @@ export const normalizeInstalledPluginDetail = (plugin: InstalledPluginResponse):
   }
 }
 
-const isUnfinishedPluginTask = (task: PluginTask) =>
-  task.status === TaskStatus.pending || task.status === TaskStatus.running
-
-// Each plugin status records its task so a single status can be cleared.
-const normalizeStartedPluginTask = (task: PluginInstallTask): PluginTask => ({
-  ...task,
-  plugins: task.plugins.map((plugin) => ({
-    ...plugin,
-    taskId: task.id,
-  })),
-})
-
-const upsertStartedPluginTask = (
-  queryClient: QueryClient,
-  response: PluginInstallTaskStartResponse,
-) => {
-  if (!response.task) return
-
-  const startedTask = normalizeStartedPluginTask(response.task)
-
-  queryClient.setQueryData<PluginTaskListResponse>(usePluginTaskListKey, (previous) => {
-    if (!previous) return { tasks: [startedTask] }
-
-    const existingTaskIndex = previous.tasks.findIndex((task) => task.id === startedTask.id)
-    if (existingTaskIndex === -1) return { tasks: [startedTask, ...previous.tasks] }
-
-    return {
-      tasks: previous.tasks.map((task) => (task.id === startedTask.id ? startedTask : task)),
-    }
-  })
-}
-
-const preserveLocalUnfinishedPluginTasks = (
-  previousData: PluginTaskListResponse | undefined,
-  nextData: PluginTaskListResponse,
-) => {
-  if (!previousData) return nextData
-
-  const nextTaskIds = new Set(nextData.tasks.map((task) => task.id))
-  const missingUnfinishedTasks = previousData.tasks.filter(
-    (task) => !nextTaskIds.has(task.id) && isUnfinishedPluginTask(task),
-  )
-  if (!missingUnfinishedTasks.length) return nextData
-
-  return {
-    ...nextData,
-    tasks: [...missingUnfinishedTasks, ...nextData.tasks],
-  }
-}
-
-export const useCheckInstalled = ({
-  pluginIds,
-  enabled,
-}: {
-  pluginIds: string[]
-  enabled: boolean
-}) => {
-  return useQuery(
-    consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
-      input: { body: { plugin_ids: pluginIds } },
-      enabled,
-      staleTime: 0,
-      select: (response) => ({
-        plugins: response.plugins.map(normalizeInstalledPluginDetail),
-      }),
-    }),
-  )
-}
-
-export const useInvalidateCheckInstalled = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
-    })
-  }
-}
-
-const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
-const useRecommendedMarketplacePlugins = ({
-  collection = '__recommended-plugins-tools',
-  enabled = true,
-  limit = 15,
-}: {
-  collection?: string
-  enabled?: boolean
-  limit?: number
-} = {}) => {
-  return useQuery<Plugin[]>({
-    queryKey: [...useRecommendedMarketplacePluginsKey, collection, limit],
-    queryFn: async () => {
-      const response = await postMarketplace<{ data: { plugins: Plugin[] } }>(
-        `/collections/${collection}/plugins`,
-        {
-          body: {
-            limit,
-          },
-        },
-      )
-      return response.data.plugins.map((plugin) => getFormattedPlugin(plugin))
-    },
-    enabled,
-    staleTime: 60 * 1000,
-  })
-}
-
-export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) => {
-  const { data: plugins = [], isLoading } = useRecommendedMarketplacePlugins({
-    collection: '__recommended-plugins-tools',
-    enabled,
-    limit,
-  })
-
-  return {
-    plugins,
-    isLoading,
-  }
-}
-
-export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15) => {
-  const { data: plugins = [], isLoading } = useRecommendedMarketplacePlugins({
-    collection: '__recommended-plugins-triggers',
-    enabled,
-    limit,
-  })
-
-  return {
-    plugins,
-    isLoading,
-  }
-}
-
 type UseInstalledPluginListOptions = {
   category?: PluginCategoryEnum
   enabled?: boolean
@@ -761,153 +611,60 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
-  const invalidateAllBuiltInTools = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
-    })
-  return (category?: PluginCategoryEnum) => {
-    if (category) {
-      const invalidateCategoryPluginList = queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
-          type: 'infinite',
-          input: { params: { category } },
+  return useCallback(
+    (category?: PluginCategoryEnum) => {
+      // Plugin installs and updates can change a provider's actions and their parameter schemas.
+      const invalidateAllBuiltInTools = () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey:
+              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.tools.get.key(),
+          }),
+        ])
+      if (category) {
+        const invalidateCategoryPluginList = queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+            type: 'infinite',
+            input: { params: { category } },
+          }),
+        })
+        const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
+            type: 'query',
+            input: { query: { category } },
+          }),
+        })
+
+        if (category === PluginCategoryEnum.tool)
+          return Promise.all([
+            invalidateCategoryPluginList,
+            invalidateCategoryInstalledIds,
+            invalidateAllBuiltInTools(),
+          ]).then(() => undefined)
+
+        return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
+          () => undefined,
+        )
+      }
+
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
         }),
-      })
-      const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
-          type: 'query',
-          input: { query: { category } },
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
         }),
-      })
-
-      if (category === PluginCategoryEnum.tool)
-        return Promise.all([
-          invalidateCategoryPluginList,
-          invalidateCategoryInstalledIds,
-          invalidateAllBuiltInTools(),
-        ]).then(() => undefined)
-
-      return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
-        () => undefined,
-      )
-    }
-
-    return Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
-      }),
-      invalidateAllBuiltInTools(),
-    ]).then(() => undefined)
-  }
-}
-
-export const useInstallPackageFromMarketPlace = (
-  options?: MutateOptions<PluginInstallTaskStartResponse, Error, string>,
-) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    ...options,
-    mutationFn: (uniqueIdentifier: string) => {
-      return consoleClient.workspaces.current.plugin.install.marketplace.post({
-        body: { plugin_unique_identifiers: [uniqueIdentifier] },
-      })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+        }),
+        invalidateAllBuiltInTools(),
+      ]).then(() => undefined)
     },
-    onSuccess: (data, variables, context, mutation) => {
-      upsertStartedPluginTask(queryClient, data)
-      options?.onSuccess?.(data, variables, context, mutation)
-    },
-  })
-}
-
-export async function startMarketplacePluginUpgrade(
-  queryClient: QueryClient,
-  body: ParserMarketplaceUpgrade,
-) {
-  const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body })
-  upsertStartedPluginTask(queryClient, response)
-  return response
-}
-
-export const useUpdatePackageFromMarketPlace = (
-  options?: MutateOptions<PluginInstallTaskStartResponse, Error, ParserMarketplaceUpgrade>,
-) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    ...options,
-    mutationFn: (body: ParserMarketplaceUpgrade) =>
-      startMarketplacePluginUpgrade(queryClient, body),
-  })
-}
-
-export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: string) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'pluginDeclaration', pluginUniqueIdentifier],
-    queryFn: () =>
-      consoleClient.workspaces.current.plugin.marketplace.pkg.get({
-        query: { plugin_unique_identifier: pluginUniqueIdentifier },
-      }),
-    enabled: !!pluginUniqueIdentifier,
-  })
-}
-
-export const useInstallPackageFromLocal = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (uniqueIdentifier: string) => {
-      return consoleClient.workspaces.current.plugin.install.pkg.post({
-        body: { plugin_unique_identifiers: [uniqueIdentifier] },
-      })
-    },
-    onSuccess: (data) => {
-      upsertStartedPluginTask(queryClient, data)
-    },
-  })
-}
-
-export const useInstallPackageFromGitHub = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      repoUrl,
-      selectedVersion,
-      selectedPackage,
-      uniqueIdentifier,
-    }: {
-      repoUrl: string
-      selectedVersion: string
-      selectedPackage: string
-      uniqueIdentifier: string
-    }) => {
-      return consoleClient.workspaces.current.plugin.install.github.post({
-        body: {
-          repo: repoUrl,
-          version: selectedVersion,
-          package: selectedPackage,
-          plugin_unique_identifier: uniqueIdentifier,
-        },
-      })
-    },
-    onSuccess: (data) => {
-      upsertStartedPluginTask(queryClient, data)
-    },
-  })
-}
-
-export const useUploadGitHub = (payload: { repo: string; version: string; package: string }) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'uploadGitHub', payload],
-    queryFn: () =>
-      consoleClient.workspaces.current.plugin.upload.github.post({
-        body: payload,
-      }),
-    retry: 0,
-  })
+    [queryClient],
+  )
 }
 
 export const useInstallOrUpdate = ({
@@ -915,8 +672,18 @@ export const useInstallOrUpdate = ({
 }: {
   onSuccess?: (res: InstallStatusResponse[]) => void
 }) => {
-  const queryClient = useQueryClient()
-  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
+  const { mutateAsync: installFromGitHub } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.github.post.mutationOptions(),
+  )
+  const { mutateAsync: installFromMarketplace } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
+  )
+  const { mutateAsync: installFromPackage } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.pkg.post.mutationOptions(),
+  )
+  const { mutateAsync: upgradeFromMarketplace } = useMutation(
+    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions(),
+  )
 
   return useMutation({
     mutationFn: (data: {
@@ -960,7 +727,7 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await consoleClient.workspaces.current.plugin.install.github.post({
+                const response = await installFromGitHub({
                   body: {
                     repo: data.value.repo!,
                     version: data.value.release! || data.value.version!,
@@ -968,7 +735,6 @@ export const useInstallOrUpdate = ({
                     plugin_unique_identifier: uniqueIdentifier,
                   },
                 })
-                upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
                 isFinishedInstallation = all_installed
@@ -988,13 +754,11 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response =
-                  await consoleClient.workspaces.current.plugin.install.marketplace.post({
-                    body: {
-                      plugin_unique_identifiers: [uniqueIdentifier],
-                    },
-                  })
-                upsertStartedPluginTask(queryClient, response)
+                const response = await installFromMarketplace({
+                  body: {
+                    plugin_unique_identifiers: [uniqueIdentifier],
+                  },
+                })
                 const { task_id, all_installed } = response
                 taskId = task_id
                 isFinishedInstallation = all_installed
@@ -1011,12 +775,11 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await consoleClient.workspaces.current.plugin.install.pkg.post({
+                const response = await installFromPackage({
                   body: {
                     plugin_unique_identifiers: [uniqueIdentifier],
                   },
                 })
-                upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
                 isFinishedInstallation = all_installed
@@ -1025,19 +788,20 @@ export const useInstallOrUpdate = ({
             if (isInstalled) {
               if (item.type === 'package') {
                 await uninstallPlugin(installedPayload.installedId, { preserveCredentials: true })
-                const response = await consoleClient.workspaces.current.plugin.install.pkg.post({
+                const response = await installFromPackage({
                   body: {
                     plugin_unique_identifiers: [uniqueIdentifier],
                   },
                 })
-                upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
                 isFinishedInstallation = all_installed
               } else {
-                const response = await updatePackageFromMarketPlace({
-                  original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
-                  new_plugin_unique_identifier: uniqueIdentifier,
+                const response = await upgradeFromMarketplace({
+                  body: {
+                    original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
+                    new_plugin_unique_identifier: uniqueIdentifier,
+                  },
                 })
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -1067,31 +831,12 @@ export const useInstallOrUpdate = ({
   })
 }
 
-export const useDebugKey = () => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'debugKey'],
-    queryFn: () => consoleClient.workspaces.current.plugin.debuggingKey.get(),
+const pluginPermissionSettingsQueryKey = () =>
+  consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
+const pluginAutoUpgradeSettingsQueryKey = (category: PluginCategoryEnum) =>
+  consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+    input: { query: { category } },
   })
-}
-
-type PluginAutoUpgradeSettingsResponse = {
-  category: PluginCategoryEnum
-  auto_upgrade: AutoUpdateConfig
-}
-
-type MarketplacePluginInfoRequest = {
-  organization?: string
-  plugin?: string
-  version?: string
-}
-
-const useReferenceSettingKey = [NAME_SPACE, 'referenceSettings']
-const usePluginPermissionSettingsKey = [...useReferenceSettingKey, 'permission']
-const usePluginAutoUpgradeSettingsKey = [...useReferenceSettingKey, 'autoUpgrade']
-const pluginAutoUpgradeSettingsQueryKey = (category: PluginCategoryEnum) => [
-  ...usePluginAutoUpgradeSettingsKey,
-  category,
-]
 
 const areStringArraysEqual = (left: string[], right: string[]) => {
   return left.length === right.length && left.every((value, index) => value === right[index])
@@ -1131,30 +876,21 @@ const areAutoUpgradeSettingsEqual = (
 //   return isAdmin
 // }
 
-export const usePluginPermissionSettings = () => {
-  return useQuery({
-    queryKey: usePluginPermissionSettingsKey,
-    queryFn: () => consoleClient.workspaces.current.plugin.permission.fetch.get(),
-  })
+// Settings saves are not optimistic: the setting keeps its saved value while a save is
+// pending, shows the accepted value once the server confirms it, and is read again afterwards
+// (the invalidation fallback waits until no plugin write is pending).
+async function writeSavedSetting(queryClient: QueryClient, queryKey: QueryKey, value: unknown) {
+  if (queryClient.isFetching({ queryKey })) await queryClient.cancelQueries({ queryKey })
+  queryClient.setQueryData(queryKey, value)
 }
 
-export const usePluginAutoUpgradeSettings = (category: PluginCategoryEnum) => {
-  return useQuery({
-    queryKey: pluginAutoUpgradeSettingsQueryKey(category),
-    queryFn: () =>
-      consoleClient.workspaces.current.plugin.autoUpgrade.fetch.get({ query: { category } }),
-    staleTime: 60 * 1000,
-  })
-}
-
-export const useInvalidateReferenceSettings = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: useReferenceSettingKey,
-    })
-  }
-}
+const permissionChangeKey = () =>
+  consoleQuery.workspaces.current.plugin.permission.change.post.mutationKey()
+// Categories are separate settings, so each has its own pending count.
+const autoUpgradeChangeKey = (category: PluginCategoryEnum) => [
+  ...consoleQuery.workspaces.current.plugin.autoUpgrade.change.post.mutationKey(),
+  category,
+]
 
 export const useMutationPluginPermissionSettings = ({
   onSuccess,
@@ -1164,26 +900,12 @@ export const useMutationPluginPermissionSettings = ({
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: permissionChangeKey(),
     mutationFn: (payload: Permissions) => {
       return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
-    onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: usePluginPermissionSettingsKey })
-      const previousPermission = queryClient.getQueryData<Permissions>(
-        usePluginPermissionSettingsKey,
-      )
-      const hadPreviousPermission = previousPermission !== undefined
-
-      queryClient.setQueryData(usePluginPermissionSettingsKey, payload)
-
-      return { previousPermission, hadPreviousPermission }
-    },
-    onError: (_error, _payload, context) => {
-      if (context?.hadPreviousPermission)
-        queryClient.setQueryData(usePluginPermissionSettingsKey, context.previousPermission)
-      else queryClient.removeQueries({ queryKey: usePluginPermissionSettingsKey })
-    },
-    onSuccess: () => {
+    onSuccess: async (_data, payload) => {
+      await writeSavedSetting(queryClient, pluginPermissionSettingsQueryKey(), payload)
       onSuccess?.()
     },
   })
@@ -1199,6 +921,7 @@ export const useMutationPluginAutoUpgradeSettings = ({
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: autoUpgradeChangeKey(category),
     mutationFn: (payload: AutoUpdateConfig) => {
       return consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
         body: {
@@ -1207,28 +930,13 @@ export const useMutationPluginAutoUpgradeSettings = ({
         },
       })
     },
-    onMutate: async (payload) => {
-      const queryKey = pluginAutoUpgradeSettingsQueryKey(category)
-      await queryClient.cancelQueries({ queryKey })
-      const previousAutoUpgrade =
-        queryClient.getQueryData<PluginAutoUpgradeSettingsResponse>(queryKey)
-      const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
-
-      queryClient.setQueryData(queryKey, {
-        category,
+    // The category this save started for; the caller may have moved to another one since.
+    onMutate: () => ({ category }),
+    onSuccess: async (_data, payload, { category: savedCategory }) => {
+      await writeSavedSetting(queryClient, pluginAutoUpgradeSettingsQueryKey(savedCategory), {
+        category: savedCategory,
         auto_upgrade: payload,
-      } satisfies PluginAutoUpgradeSettingsResponse)
-
-      return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
-    },
-    onError: (_error, _payload, context) => {
-      // Roll back the category this save started for; the caller may have moved to another one.
-      if (!context) return
-      if (context.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
-      else queryClient.removeQueries({ queryKey: context.queryKey })
-    },
-    onSuccess: () => {
+      })
       onSuccess?.()
     },
   })
@@ -1243,148 +951,23 @@ export const useMutationReferenceSettings = ({
   currentReferenceSetting?: ReferenceSetting
   onSuccess?: () => void
 }) => {
-  const queryClient = useQueryClient()
+  const permission = useMutationPluginPermissionSettings()
+  const autoUpgrade = useMutationPluginAutoUpgradeSettings({ category })
 
-  return useMutation({
-    mutationFn: (payload: ReferenceSetting) => {
-      const mutations: Array<Promise<unknown>> = []
+  const mutate = (payload: ReferenceSetting) => {
+    const saves: Array<Promise<unknown>> = []
+    if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
+      saves.push(permission.mutateAsync(payload.permission))
+    if (!areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade))
+      saves.push(autoUpgrade.mutateAsync(payload.auto_upgrade))
+    // Failures are reported by the mutation cache.
+    Promise.all(saves).then(
+      () => onSuccess?.(),
+      () => {},
+    )
+  }
 
-      if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
-        mutations.push(
-          consoleClient.workspaces.current.plugin.permission.change.post({
-            body: payload.permission,
-          }),
-        )
-
-      if (
-        !areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade)
-      ) {
-        mutations.push(
-          consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
-            body: {
-              category,
-              auto_upgrade: payload.auto_upgrade,
-            },
-          }),
-        )
-      }
-
-      return Promise.all(mutations)
-    },
-    onMutate: async (payload) => {
-      const shouldUpdatePermission = !arePermissionsEqual(
-        payload.permission,
-        currentReferenceSetting?.permission,
-      )
-      const shouldUpdateAutoUpgrade = !areAutoUpgradeSettingsEqual(
-        payload.auto_upgrade,
-        currentReferenceSetting?.auto_upgrade,
-      )
-      const autoUpgradeQueryKey = pluginAutoUpgradeSettingsQueryKey(category)
-
-      await Promise.all([
-        shouldUpdatePermission
-          ? queryClient.cancelQueries({ queryKey: usePluginPermissionSettingsKey })
-          : Promise.resolve(),
-        shouldUpdateAutoUpgrade
-          ? queryClient.cancelQueries({ queryKey: autoUpgradeQueryKey })
-          : Promise.resolve(),
-      ])
-
-      const previousPermission = queryClient.getQueryData<Permissions>(
-        usePluginPermissionSettingsKey,
-      )
-      const previousAutoUpgrade =
-        queryClient.getQueryData<PluginAutoUpgradeSettingsResponse>(autoUpgradeQueryKey)
-      const hadPreviousPermission = previousPermission !== undefined
-      const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
-
-      if (shouldUpdatePermission)
-        queryClient.setQueryData(usePluginPermissionSettingsKey, payload.permission)
-
-      if (shouldUpdateAutoUpgrade) {
-        queryClient.setQueryData(autoUpgradeQueryKey, {
-          category,
-          auto_upgrade: payload.auto_upgrade,
-        } satisfies PluginAutoUpgradeSettingsResponse)
-      }
-
-      return {
-        previousPermission,
-        previousAutoUpgrade,
-        hadPreviousPermission,
-        hadPreviousAutoUpgrade,
-        shouldUpdatePermission,
-        shouldUpdateAutoUpgrade,
-      }
-    },
-    onError: (_error, _payload, context) => {
-      if (context?.shouldUpdatePermission && context.hadPreviousPermission)
-        queryClient.setQueryData(usePluginPermissionSettingsKey, context.previousPermission)
-      else if (context?.shouldUpdatePermission)
-        queryClient.removeQueries({ queryKey: usePluginPermissionSettingsKey })
-
-      if (context?.shouldUpdateAutoUpgrade && context.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(
-          pluginAutoUpgradeSettingsQueryKey(category),
-          context.previousAutoUpgrade,
-        )
-      else if (context?.shouldUpdateAutoUpgrade)
-        queryClient.removeQueries({ queryKey: pluginAutoUpgradeSettingsQueryKey(category) })
-    },
-    onSuccess,
-  })
-}
-
-export const useRemoveAutoUpgrade = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (payload: { plugin_id: string; category: PluginCategoryEnum }) => {
-      return consoleClient.workspaces.current.plugin.autoUpgrade.exclude.post({ body: payload })
-    },
-    onSuccess: (_data, payload) => {
-      queryClient.invalidateQueries({
-        queryKey: pluginAutoUpgradeSettingsQueryKey(payload.category),
-      })
-    },
-  })
-}
-
-export const useFetchPluginsInMarketPlaceByIds = (
-  unique_identifiers: string[],
-  options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>,
-) => {
-  return useQuery({
-    ...options,
-    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByIds', unique_identifiers],
-    queryFn: () =>
-      postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
-        body: {
-          unique_identifiers,
-        },
-      }),
-    enabled: unique_identifiers?.filter((i) => !!i).length > 0,
-    retry: 0,
-  })
-}
-
-export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoRequest[]) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
-    queryFn: () =>
-      postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
-        body: {
-          plugin_tuples: infos.map((info) => ({
-            org: info.organization,
-            name: info.plugin,
-            version: info.version,
-          })),
-        },
-      }),
-    enabled: infos?.filter((i) => !!i).length > 0,
-    retry: 0,
-  })
+  return { mutate, isPending: permission.isPending || autoUpgrade.isPending }
 }
 
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
@@ -1393,27 +976,8 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
-  const query = useQuery<PluginTaskListResponse>({
-    enabled: canManagement,
-    queryKey: usePluginTaskListKey,
-    queryFn: () =>
-      consoleClient.workspaces.current.plugin.tasks
-        .get({ query: { page: 1, page_size: 100 } })
-        .then(({ tasks }) => ({ tasks: tasks.map(normalizeStartedPluginTask) })),
-    structuralSharing: (previousData, nextData) =>
-      preserveLocalUnfinishedPluginTasks(
-        previousData as PluginTaskListResponse | undefined,
-        nextData as PluginTaskListResponse,
-      ),
-    refetchInterval: (lastQuery) => {
-      const lastData = lastQuery.state.data
-      const taskDone = lastData?.tasks.every(
-        (task) => task.status === TaskStatus.success || task.status === TaskStatus.failed,
-      )
-      return taskDone ? false : 5000
-    },
-  })
-  const { data, isFetched, isRefetching, refetch } = query
+  const query = useQuery(pluginTaskListQueryOptions({ enabled: canManagement }))
+  const { data, isFetched, isRefetching } = query
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
@@ -1437,87 +1001,31 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       )
   }, [category, data, isRefetching, refreshPluginList])
 
-  const handleRefetch = useCallback(() => {
-    refetch()
-  }, [refetch])
+  const invalidatePluginTasks = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+          input: pluginTaskListInput,
+        }),
+      }),
+    [queryClient],
+  )
 
   const handleInstallTaskStart = useCallback(
     (response: PluginInstallTaskStartResponse) => {
       if (response.all_installed) return
 
-      upsertStartedPluginTask(queryClient, response)
-      refetch()
+      upsertStartedPluginTask(consoleQuery, queryClient, response)
+      void invalidatePluginTasks()
     },
-    [queryClient, refetch],
+    [invalidatePluginTasks, queryClient],
   )
 
   return {
     data,
     pluginTasks: data?.tasks || [],
     isFetched,
-    handleRefetch,
+    invalidatePluginTasks,
     handleInstallTaskStart,
   }
-}
-
-export const useMutationClearTaskPlugin = () => {
-  return useMutation({
-    mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
-      return consoleClient.workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post({
-        params: { task_id: taskId, identifier: pluginId },
-      })
-    },
-  })
-}
-
-export const usePluginManifestInfo = (pluginUID: string) => {
-  return useQuery({
-    enabled: !!pluginUID,
-    queryKey: [NAME_SPACE, 'manifest', pluginUID],
-    queryFn: () =>
-      getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace; version: { version: string } } }>(
-        `/plugins/${pluginUID}`,
-      ),
-    retry: 0,
-  })
-}
-
-// Untranslated labels fall back to en_US, matching renderI18nObject. Dynamic options have no
-// display conditions.
-const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOption => ({
-  value,
-  label: {
-    en_US: label.en_US,
-    zh_Hans: label.zh_Hans ?? label.en_US,
-    ...(label.ja_JP != null && { ja_JP: label.ja_JP }),
-    ...(label.pt_BR != null && { pt_BR: label.pt_BR }),
-  },
-  icon: icon ?? undefined,
-  show_on: [],
-})
-
-export const useFetchDynamicOptions = (
-  plugin_id: string,
-  provider: string,
-  action: string,
-  parameter: string,
-  // The backend requires a provider type; callers without one render tool options.
-  provider_type: 'tool' | 'trigger' = 'tool',
-  extra?: Record<string, unknown>,
-) => {
-  return useMutation({
-    mutationFn: () =>
-      consoleClient.workspaces.current.plugin.parameters.dynamicOptions
-        .get({
-          query: {
-            plugin_id,
-            provider,
-            action,
-            parameter,
-            provider_type,
-            ...extra,
-          },
-        })
-        .then(({ options }) => ({ options: options.map(toDynamicOption) })),
-  })
 }

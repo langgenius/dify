@@ -1,7 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import Footer from '../footer'
 
 const mocks = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), importDSL: vi.fn() }))
@@ -66,7 +70,9 @@ it('invalidates the dataset list after a successful DSL import and opens the new
     dataset_id: 'dataset-1',
     pipeline_id: 'pipeline-1',
   })
-  const { queryClient } = render(<Footer />)
+  const { queryClient } = render(<Footer />, {
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+  })
   const listKey = consoleQuery.datasets.get.queryKey({ input: { query: { page: 1, limit: 20 } } })
   queryClient.setQueryData(listKey, { data: [], has_more: false, limit: 20, page: 1, total: 0 })
   await user.click(screen.getByRole('button', { name: 'datasetPipeline.creation.importDSL' }))

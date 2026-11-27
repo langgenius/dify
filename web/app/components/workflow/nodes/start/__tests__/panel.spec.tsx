@@ -14,11 +14,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/service/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useConversationVarValues: () => ({ data: [] }),
-  useSysVarValues: () => ({ data: [] }),
-}))
 const panelProps = {
   getInputVars: () => [],
   toVarInputs: () => [],

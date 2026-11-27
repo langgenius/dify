@@ -232,7 +232,7 @@ export function SourceProviderSelector({
           aria-disabled={disabled || undefined}
           className={cn(
             buttonVariants({ variant: 'ghost-accent', size: 'small' }),
-            'gap-1 pr-1.5 pl-2.25 text-[13px] leading-4 font-normal active:bg-state-accent-active',
+            'gap-1 ps-2.25 pe-1.5 text-[13px] leading-4 font-normal active:bg-state-accent-active',
           )}
           data-disabled={disabled ? '' : undefined}
           href={buildIntegrationPath('data-source')}
@@ -294,7 +294,7 @@ export function SourceNameField({
     <Field name={name} className={cn('gap-1.5', className)}>
       <FieldLabel className={labelClassName}>
         {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
-        <span aria-hidden className="ml-0.5 text-text-destructive">
+        <span aria-hidden className="ms-0.5 text-text-destructive">
           *
         </span>
       </FieldLabel>

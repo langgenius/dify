@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import InvitationLink from '../invitation-link'
+import { InvitationLink } from '../invitation-link'
 
 vi.mock('copy-to-clipboard')
 

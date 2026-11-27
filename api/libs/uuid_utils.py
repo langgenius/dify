@@ -2,6 +2,7 @@ import secrets
 import struct
 import time
 import uuid
+from collections.abc import Iterable
 
 # Reference for UUIDv7 specification:
 # RFC 9562, Section 5.7 - https://www.rfc-editor.org/rfc/rfc9562.html#section-5.7
@@ -15,6 +16,19 @@ _PACK_TIMESTAMP = ">Q"
 # Define the format for packing the 12-bit random data A (as specified in RFC 9562 Section 5.7)
 # into an unsigned 16-bit integer (big-endian).
 _PACK_RAND_A = ">H"
+
+
+def filter_uuid_strings(values: Iterable[str]) -> list[str]:
+    """Keep strings accepted by UUID parsing in their original spelling and order."""
+
+    def valid(value: str) -> bool:
+        try:
+            uuid.UUID(value)
+        except (TypeError, ValueError):
+            return False
+        return True
+
+    return [value for value in values if valid(value)]
 
 
 def _create_uuidv7_bytes(timestamp_ms: int, random_bytes: bytes) -> bytes:

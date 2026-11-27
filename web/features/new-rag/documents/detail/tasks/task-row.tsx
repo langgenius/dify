@@ -10,8 +10,9 @@ import { useTranslation } from 'react-i18next'
 import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-task-failure'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -24,7 +25,6 @@ import {
   taskGraphIsIncomplete,
   taskIsActive,
 } from '../../model'
-import { backgroundTaskFromApi } from '../../models'
 import { taskLifecycle, taskProgress, taskTime } from '../../tasks/drawer-model'
 import { DocumentGraphStatus } from '../../tasks/graph-status'
 import { documentDetailKnowledgeSpaceIdAtom } from '../state/inputs'
@@ -43,20 +43,23 @@ export function DocumentTaskRow({
   cancelActionCount,
   documentTitle,
   documentsPending,
-  onSettled,
+  onFailed,
   retryActionCount,
   task,
 }: {
   cancelActionCount: number
   documentTitle?: string
   documentsPending: boolean
-  onSettled: () => Promise<unknown>
+  // A rejected cancel or retry may still have reached the server; the fallback refreshes after
+  // a successful one.
+  onFailed: () => Promise<unknown>
   retryActionCount: number
   task: BackgroundTask
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canEdit = useAtomValueRawSync(documentCanEditAtom)
@@ -68,37 +71,20 @@ export function DocumentTaskRow({
   currentLifecycleRef.current = currentLifecycle
   const [actionFailure, setActionFailure] = useState<{
     lifecycle: string
+    error: unknown
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
-  const cancelTask = useMutation({
-    mutationFn: async () =>
-      backgroundTaskFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post(
-          {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
-            },
-          },
-        ),
-      ),
-  })
-  const retryTask = useMutation({
-    mutationFn: async () =>
-      backgroundTaskFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
-          {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
-            },
-          },
-          { context: { silent: true } },
-        ),
-      ),
-  })
+  const cancelTask = useMutation(
+    // Cancel and retry failures are shown next to the task's action button.
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
+  )
+  const retryTask = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
+  )
   const pending = Boolean(cancelTask.isPending || retryTask.isPending)
 
   useLayoutEffect(
@@ -178,20 +164,29 @@ export function DocumentTaskRow({
     const actionFocusTarget = document.activeElement
     setActionFailure(undefined)
     try {
-      if (action === 'cancel') await cancelTask.mutateAsync()
-      else await retryTask.mutateAsync()
+      const input = {
+        params: {
+          control_space_id: knowledgeSpaceId,
+          task_id: task.id,
+          task_kind: task.taskKind,
+        },
+      }
+      if (action === 'cancel') await cancelTask.mutateAsync(input)
+      else await retryTask.mutateAsync(input)
       if (currentLifecycleRef.current !== actionLifecycle) return
       if (document.activeElement === actionFocusTarget) focusDrawerCloseButton()
     } catch (error) {
-      const permissionDenied = getHttpErrorStatus(error) === 403
-      if (permissionDenied) void retryWritePermission(refreshWritePermission)
-      else {
-        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-        if (currentLifecycleRef.current === actionLifecycle)
-          setActionFailure({ lifecycle: actionLifecycle, messageKey })
-      }
-    } finally {
-      void onSettled()
+      // A 403 is also how a knowledge rate limit fails, so the failure stays recorded while write
+      // access is rechecked; it is shown only if that access holds.
+      if (getHttpErrorStatus(error) === 403) void retryWritePermission(refreshWritePermission)
+      const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+      if (currentLifecycleRef.current === actionLifecycle)
+        setActionFailure({
+          lifecycle: actionLifecycle,
+          error,
+          messageKey,
+        })
+      void onFailed()
     }
   }
 
@@ -227,11 +222,14 @@ export function DocumentTaskRow({
         {taskFailureMessageKey && (
           <KnowledgeTaskFailure messageKey={taskFailureMessageKey} failure={task.failure} />
         )}
-        {actionFailure?.lifecycle === currentLifecycle && (
+        {canEdit && actionFailure?.lifecycle === currentLifecycle && (
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
             {actionFailureMessageKey
               ? tError(($) => $[actionFailureMessageKey])
-              : t(($) => $.taskActionFailed)}
+              : describeRequestError(
+                  actionFailure.error,
+                  t(($) => $.taskActionFailed),
+                )}
           </p>
         )}
       </div>

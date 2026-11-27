@@ -17,7 +17,7 @@ import pytest
 import redis
 from testcontainers.redis import RedisContainer
 
-from libs.broadcast_channel.channel import BroadcastChannel, Subscription, SupportsPreparedSubscription, Topic
+from libs.broadcast_channel.channel import BroadcastChannel, Subscription, SupportsPreparedSubscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel, _StreamsSubscription
 
@@ -182,29 +182,27 @@ class TestRedisStreamsBroadcastChannelIntegration:
             subscription.close()
 
     def test_topic_isolation(self, broadcast_channel: BroadcastChannel) -> None:
-        """Messages from different topics should remain isolated."""
+        """Each prepared subscription should receive the message published to its own topic."""
         topic1 = broadcast_channel.topic(self._get_test_topic_name())
         topic2 = broadcast_channel.topic(self._get_test_topic_name())
         message1 = b"message-for-topic-1"
         message2 = b"message-for-topic-2"
 
-        def consume_single_message(topic: Topic) -> bytes:
-            subscription = topic.subscribe()
-            try:
-                self._start_subscription(subscription)
-                return self._receive_message(subscription)
-            finally:
-                subscription.close()
+        subscriber1 = topic1.as_subscriber()
+        subscriber2 = topic2.as_subscriber()
+        assert isinstance(subscriber1, SupportsPreparedSubscription)
+        assert isinstance(subscriber2, SupportsPreparedSubscription)
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            consumer1_future = executor.submit(consume_single_message, topic1)
-            consumer2_future = executor.submit(consume_single_message, topic2)
-            time.sleep(0.1)
+        # Fix both stream cursors before publishing so late listener startup cannot skip either message.
+        with (
+            subscriber1.prepare_subscription() as subscription1,
+            subscriber2.prepare_subscription() as subscription2,
+        ):
             topic1.publish(message1)
             topic2.publish(message2)
 
-            assert consumer1_future.result(timeout=5.0) == message1
-            assert consumer2_future.result(timeout=5.0) == message2
+            assert self._receive_message(subscription1) == message1
+            assert self._receive_message(subscription2) == message2
 
     def test_concurrent_producers_publish_all_messages(self, broadcast_channel: BroadcastChannel) -> None:
         """Concurrent producers should not lose messages for a live subscription."""

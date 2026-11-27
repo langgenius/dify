@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from typing import Protocol, cast
 
@@ -8,6 +9,7 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import NotFound, ServiceUnavailable
 
+from controllers.common.fields import SimpleResultResponse
 from controllers.openapi._models import (
     MAX_PAGE_LIMIT,
     AppDescribeResponse,
@@ -20,8 +22,9 @@ from controllers.openapi._models import (
 from controllers.openapi.apps import AppDescribeApi, AppListQuery
 from controllers.openapi.apps import AppDescribeQuery as _app_describe_query_AppDescribeQuery
 from controllers.openapi.apps_permitted_external import PermittedExternalAppDescribeApi, PermittedExternalAppsListApi
-from machinery.context import AppRequestContext
+from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app.query_service import AppDescription
 from services.entities.app_entities import AppListParams, AppSummary
 from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
@@ -138,6 +141,50 @@ def test_external_failure_is_translated_at_http_boundary(
         cast(Endpoint[PermittedExternalAppsListResponse], api.get).__handler__(
             api, query=PermittedExternalAppsListQuery()
         )
+
+
+def _handler(view: Callable[..., object]) -> Callable[..., object]:
+    """Return the bare view ``@endpoint`` attaches as ``__handler__``."""
+    handler = vars(view).get("__handler__")
+    assert callable(handler)
+    return handler
+
+
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-id", trace_id=None, account_id=str(uuid.uuid4()), active_workspace_id=str(uuid.uuid4())
+    )
+
+
+def test_delete_delegates_to_the_console_service(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[RequestContext, str]] = []
+
+    def delete(ctx: RequestContext, app_id: str) -> None:
+        calls.append((ctx, app_id))
+
+    monkeypatch.setattr(app_query_services.apps.console, "delete", delete)
+    ctx = _request_context()
+    app_id = str(uuid.uuid4())
+    api = AppDescribeApi()
+    with app.test_request_context():
+        result = _handler(api.delete)(api, ctx, app_id)
+
+    assert result == SimpleResultResponse(result="success")
+    assert calls == [(ctx, app_id)]
+
+
+def test_delete_translates_a_missing_app_to_404(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def missing(_ctx: RequestContext, _app_id: str) -> None:
+        raise ConsoleAppNotFoundError("app not found")
+
+    monkeypatch.setattr(app_query_services.apps.console, "delete", missing)
+    api = AppDescribeApi()
+    with app.test_request_context(), pytest.raises(NotFound, match="app not found"):
+        _handler(api.delete)(api, _request_context(), str(uuid.uuid4()))
 
 
 """Unit tests for AppListQuery — the /apps query-param validator.

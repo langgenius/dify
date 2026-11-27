@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "更多 Agent 操作",
   "nodes.agent.roster.openPanel": "打开 {{name}} 详情",
   "nodes.agent.roster.panelLabel": "{{name}} 详情",
+  "nodes.agent.sessionContinuity.description": "开启时，Agent 保留当前聊天中的历史。关闭时，每条用户消息都会开启新会话。",
+  "nodes.agent.sessionContinuity.title": "延续 Agent 会话",
   "nodes.agent.strategy.configureTip": "请配置 Agent 策略。",
   "nodes.agent.strategy.configureTipDesc": "配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。",
   "nodes.agent.strategy.label": "Agent 策略",

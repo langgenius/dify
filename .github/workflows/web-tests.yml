@@ -9,57 +9,97 @@ on:
 permissions:
   contents: read
 
+env:
+  # Pull requests run only tests affected by the PR merge commit (`HEAD^1` is the base branch).
+  # Partial coverage would replace Codecov's carried-forward flags, so only full runs upload it.
+  VITEST_SCOPE_ARGS: ${{ github.event_name == 'pull_request' && '--changed=HEAD^1 --passWithNoTests' || '--coverage' }}
+  # Web shards run the files the plan job selected on pull requests, so they skip `--changed`.
+  WEB_COVERAGE_ARGS: ${{ github.event_name == 'pull_request' && '' || '--coverage' }}
+
 jobs:
-  openapi-sdk-test:
-    name: OpenAPI SDK and Next.js adapters
+  plan:
+    name: Plan Web Test Shards
     runs-on: depot-ubuntu-24.04-4
-    # Leave time for contract checks after a cold toolchain installation.
-    timeout-minutes: 20
+    timeout-minutes: 10
+    outputs:
+      unit-shards: ${{ steps.plan.outputs.unit-shards }}
+      unit-total: ${{ steps.plan.outputs.unit-total }}
+      browser-shards: ${{ steps.plan.outputs.browser-shards }}
+      browser-total: ${{ steps.plan.outputs.browser-total }}
     steps:
       - name: Checkout code
+        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `--changed` diffs the PR merge commit against its base-branch parent.
+          fetch-depth: 2
 
       - name: Setup web environment
-        timeout-minutes: 15
+        if: ${{ github.event_name == 'pull_request' }}
         uses: ./.github/actions/setup-web
         with:
           cache-save: 'false'
 
-      - name: Setup Python for in-memory Console schema export
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Plan shards from selected test files
+        id: plan
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          # Selected component tests take about 0.9s per file on one machine; 200 files keep a
+          # shard near three minutes, close to the other Web CI jobs.
+          FILES_PER_SHARD: 200
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            mkdir -p "$RUNNER_TEMP/selected-tests"
+            (cd web && vp test list --filesOnly --changed=HEAD^1 --passWithNoTests) > "$RUNNER_TEMP/selected-tests/all.txt"
+            # Shards receive these paths, relative to `web/`, instead of recomputing `--changed`.
+            # Vitest matches path filters by substring, so a short path may add a few extra files.
+            sed -n 's/^\[unit\] //p' "$RUNNER_TEMP/selected-tests/all.txt" > "$RUNNER_TEMP/selected-tests/unit.txt"
+            sed -n 's/^\[browser[^]]*\] //p' "$RUNNER_TEMP/selected-tests/all.txt" > "$RUNNER_TEMP/selected-tests/browser.txt"
+            unit_files=$(( $(wc -l < "$RUNNER_TEMP/selected-tests/unit.txt") ))
+            browser_files=$(( $(wc -l < "$RUNNER_TEMP/selected-tests/browser.txt") ))
+          else
+            # Full runs keep the fixed shard counts that the coverage uploads use.
+            unit_files=$((FILES_PER_SHARD * 4))
+            browser_files=$((FILES_PER_SHARD * 2))
+          fi
+          shards() {
+            local count=$(( ($1 + FILES_PER_SHARD - 1) / FILES_PER_SHARD ))
+            echo $(( count < $2 ? count : $2 ))
+          }
+          unit_total=$(shards "$unit_files" 4)
+          browser_total=$(shards "$browser_files" 2)
+          echo "Selected $unit_files unit and $browser_files browser test files: $unit_total unit and $browser_total browser shards." | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo "unit-total=$unit_total"
+            echo "unit-shards=$(jq -cn --argjson total "$unit_total" '[range(1; $total + 1)]')"
+            echo "browser-total=$browser_total"
+            echo "browser-shards=$(jq -cn --argjson total "$browser_total" '[range(1; $total + 1)]')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload selected tests
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          enable-cache: true
-          python-version: '3.13'
-          cache-dependency-glob: api/uv.lock
-
-      - name: Install schema exporter dependencies
-        run: uv sync --project api --frozen
-
-      - name: Test SDK types, runtime and Vite integration
-        run: pnpm --filter @dify/openapi-content-mapper test
-
-      - name: Verify the packed SDK in an independent npm project
-        run: pnpm --filter @dify/openapi-content-mapper test:package
-
-      - name: Test Next.js adapters and tree-shaking
-        run: pnpm --filter @dify/openapi-content-mapper test:next
-
-      - name: Verify standalone Console imports, error maps and editor support
-        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs integration/type-navigation.test.mjs
-
-      - name: Check all Console types against the reviewed migration differences
-        run: pnpm --filter @dify/openapi-content-mapper check:console
+          name: web-selected-tests
+          path: |
+            ${{ runner.temp }}/selected-tests/unit.txt
+            ${{ runner.temp }}/selected-tests/browser.txt
+          if-no-files-found: error
+          retention-days: 1
 
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    needs: plan
+    if: ${{ needs.plan.outputs.unit-total != '0' }}
     runs-on: depot-ubuntu-24.04-4
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        shardIndex: ${{ fromJSON(needs.plan.outputs.unit-shards) }}
+        shardTotal: ${{ fromJSON(format('[{0}]', needs.plan.outputs.unit-total)) }}
     defaults:
       run:
         shell: bash
@@ -77,11 +117,28 @@ jobs:
         with:
           cache-save: ${{ matrix.shardIndex == 1 }}
 
+      - name: Download selected tests
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web-selected-tests
+          path: ${{ runner.temp }}/selected-tests
+
       - name: Run tests
-        run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        env:
+          SELECTED_TESTS: ${{ github.event_name == 'pull_request' && format('{0}/selected-tests/unit.txt', runner.temp) || '' }}
+        run: |
+          files=()
+          if [[ -n "$SELECTED_TESTS" ]]; then
+            # An empty list would make Vitest run the whole project, so treat it as a planning error.
+            [[ -s "$SELECTED_TESTS" ]] || { echo "No selected tests in $SELECTED_TESTS" >&2; exit 1; }
+            while IFS= read -r file; do files+=("$file"); done < "$SELECTED_TESTS"
+          fi
+          vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} $WEB_COVERAGE_ARGS "${files[@]}"
 
       # Codecov combines the shard uploads under the same commit and web flag.
       - name: Report coverage
+        if: ${{ github.event_name != 'pull_request' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: web/coverage/coverage-final.json
@@ -94,13 +151,15 @@ jobs:
 
   browser-test:
     name: Web Browser Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    needs: plan
+    if: ${{ needs.plan.outputs.browser-total != '0' }}
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2]
-        shardTotal: [2]
+        shardIndex: ${{ fromJSON(needs.plan.outputs.browser-shards) }}
+        shardTotal: ${{ fromJSON(format('[{0}]', needs.plan.outputs.browser-total)) }}
     defaults:
       run:
         shell: bash
@@ -121,14 +180,29 @@ jobs:
         timeout-minutes: 15
         run: vp exec playwright install --with-deps --only-shell chromium
 
+      - name: Download selected tests
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web-selected-tests
+          path: ${{ runner.temp }}/selected-tests
+
       - name: Run browser tests
         env:
           # Unit uploads already include all authored sources, including untested modules.
           DIFY_TEST_COVERAGE_ONLY_EXECUTED: 'true'
-        run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+          SELECTED_TESTS: ${{ github.event_name == 'pull_request' && format('{0}/selected-tests/browser.txt', runner.temp) || '' }}
+        run: |
+          files=()
+          if [[ -n "$SELECTED_TESTS" ]]; then
+            # An empty list would make Vitest run the whole project, so treat it as a planning error.
+            [[ -s "$SELECTED_TESTS" ]] || { echo "No selected tests in $SELECTED_TESTS" >&2; exit 1; }
+            while IFS= read -r file; do files+=("$file"); done < "$SELECTED_TESTS"
+          fi
+          vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} $WEB_COVERAGE_ARGS "${files[@]}"
 
       - name: Report browser coverage
-        if: ${{ !cancelled() && hashFiles('web/coverage/coverage-final.json') != '' }}
+        if: ${{ !cancelled() && github.event_name != 'pull_request' && hashFiles('web/coverage/coverage-final.json') != '' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: web/coverage/coverage-final.json
@@ -163,6 +237,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # `--changed` diffs the PR merge commit against its base-branch parent.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
@@ -174,7 +250,12 @@ jobs:
         run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui tests
-        run: vp test run --project unit --coverage --silent=passed-only
+        run: vp test run --project unit --silent=passed-only $VITEST_SCOPE_ARGS
+
+      # Storybook tests share this machine's setup and still report when unit tests fail.
+      - name: Run dify-ui Storybook tests
+        if: ${{ !cancelled() }}
+        run: vp run test:storybook
 
       - name: Upload dify-ui test failure artifacts
         if: ${{ failure() && !cancelled() }}
@@ -189,6 +270,7 @@ jobs:
           retention-days: 7
 
       - name: Report coverage
+        if: ${{ github.event_name != 'pull_request' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: packages/dify-ui/coverage/coverage-final.json
@@ -198,42 +280,3 @@ jobs:
           name: dify-ui
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  dify-ui-storybook-test:
-    name: dify-ui Storybook Tests
-    runs-on: depot-ubuntu-24.04-4
-    timeout-minutes: 20
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./packages/dify-ui
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup web environment
-        uses: ./.github/actions/setup-web
-        with:
-          cache-save: 'false'
-
-      - name: Install Chromium for Browser Mode
-        timeout-minutes: 15
-        run: vp exec playwright install --with-deps --only-shell chromium
-
-      - name: Run dify-ui Storybook tests
-        run: vp run test:storybook
-
-      - name: Upload dify-ui Storybook test failure artifacts
-        if: ${{ failure() && !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: dify-ui-storybook-test-failures
-          path: |
-            packages/dify-ui/.vitest/attachments/
-            packages/dify-ui/.vitest-browser/
-          if-no-files-found: ignore
-          include-hidden-files: true
-          retention-days: 7

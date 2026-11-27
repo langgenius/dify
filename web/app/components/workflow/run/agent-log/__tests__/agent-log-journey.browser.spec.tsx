@@ -9,14 +9,6 @@ import { useLogs } from '../../hooks'
 import { AgentLogTrigger } from '../agent-log-trigger'
 import AgentResultPanel from '../agent-result-panel'
 
-// boundary: Monaco's worker/asset runtime is external; keep Dify's read-only editor and JSON serialization real.
-vi.mock('@monaco-editor/react', () => ({
-  default: ({ value, options }: { value: string; options: { readOnly: boolean } }) => (
-    <textarea aria-label="Log data" value={value} readOnly={options.readOnly} />
-  ),
-  loader: { config: () => {} },
-}))
-
 const logItem = (
   message_id: string,
   label: string,
@@ -119,12 +111,13 @@ it('expands and collapses readable log data together with its nested-action cont
   const screen = await setup(trace({ agentLog: [planner] }))
   await screen.getByRole('button', { name: /Plan and execute/ }).click()
   await expect.element(screen.getByText('1.234s', { exact: true })).toBeVisible()
-  const data = screen.getByRole('textbox', { name: 'Log data' })
+  const data = screen.getByRole('textbox', { name: 'Editor content' })
   const actions = screen.getByRole('button', { name: '1 Action Logs' })
   await expect.element(data).not.toBeInTheDocument()
   await expect.element(actions).not.toBeInTheDocument()
   await screen.getByText('Planner', { exact: true }).click()
-  await expect.element(data).toHaveValue('{\n  "thought": "inspect data"\n}')
+  await expect.element(screen.getByText('"thought"')).toBeVisible()
+  await expect.element(screen.getByText('"inspect data"')).toBeVisible()
   await expect.element(data).toHaveAttribute('readonly')
   await expect.element(actions).toBeVisible()
   await screen.getByText('Planner', { exact: true }).click()

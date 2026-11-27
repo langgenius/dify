@@ -1,8 +1,7 @@
 import type { TextGenerationTranslate } from '../../../types'
 import type { ResultInputValue } from '../../result-request'
 import type { PromptConfig } from '@/models/debug'
-// oxlint-disable-next-line no-restricted-imports -- This fixture uses the existing SSE transport callback contract without issuing HTTP requests.
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
@@ -13,7 +12,7 @@ import { useResultRunState } from '../use-result-run-state'
 import { useResultSender } from '../use-result-sender'
 
 type CompletionHandlers = {
-  onData: NonNullable<IOtherOptions['onData']>
+  onData: NonNullable<StreamCallbacks['onData']>
   onCompleted: () => void
   onError: () => void
   onMessageReplace: (message: { answer: string }) => void

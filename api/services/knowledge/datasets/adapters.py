@@ -15,6 +15,7 @@ from machinery.context import RequestContext
 from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
+from repositories.knowledge.dataset_read_repository import get_external_knowledge_info
 from repositories.knowledge.dataset_repository import _get_dataset
 from services.app.query_service import RelatedApps
 from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeSnapshotService, upgrade_discovery_response
@@ -243,6 +244,13 @@ class SQLAlchemyDatasetOperations:
                 DatasetPermissionService.check_permission(
                     account, dataset, data.get("permission"), data.get("partial_member_list"), session=session
                 )
+            binding_fields = ("external_knowledge_id", "external_knowledge_api_id")
+            if dataset.provider == "external" and any(key not in data for key in binding_fields):
+                binding = get_external_knowledge_info(dataset, session=session)
+                if binding is None:
+                    raise ValueError("External knowledge binding not found.")
+                for key in binding_fields:
+                    data.setdefault(key, binding[key])
             # The legacy updater consumes fields from its input; retain the
             # member selection for the permission update in this transaction.
             dataset = DatasetService.update_dataset(ref.dataset_id, dict(data), account, session=session)

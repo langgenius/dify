@@ -288,16 +288,13 @@ describe('ActionsMenu', () => {
       await user.clear(input)
       await user.type(input, 'Renamed Dataset{Enter}')
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(mockUpdateDataset).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            name: 'Renamed Dataset',
-            description: 'Dataset description',
-          }),
-        },
-        { silent: true },
-      )
+      expect(mockUpdateDataset).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          name: 'Renamed Dataset',
+          description: 'Dataset description',
+        }),
+      })
       expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
       expect(queryClient.getQueryState(datasetDetailKey)?.isInvalidated).toBe(true)
     })

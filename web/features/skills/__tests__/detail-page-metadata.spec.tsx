@@ -1,7 +1,8 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import {
   createAgentReference,
   createSkillDetail,
@@ -349,6 +350,26 @@ describe('SkillDetailPage metadata', () => {
         'Renamed skill',
       )
     })
+  })
+
+  it('shows the save failure when a rename fails with an unknown code', async () => {
+    const user = userEvent.setup()
+    mocks.skillMetadataMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'unknown_failure',
+        message: 'Server says why',
+      }),
+    )
+    renderSkillDetailPage()
+
+    await user.click(await screen.findByRole('button', { name: 'common.operation.rename' }))
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    await user.clear(renameInput)
+    await user.type(renameInput, 'Renamed skill{Enter}')
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.saveFailed'),
+    )
   })
 
   it('starts inline rename from the sidebar More menu', async () => {
@@ -929,40 +950,48 @@ describe('SkillDetailPage metadata', () => {
     renderSkillDetailPage()
 
     const ownerValue = await screen.findByRole('textbox', { name: 'owner value' })
-    fireEvent.change(ownerValue, { target: { value: 'success' } })
-    fireEvent.blur(ownerValue)
+    // Both edits autosave after 1s; drive that debounce without spending the test budget on it.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const originalAsyncWrapper = getConfig().asyncWrapper
+    // RTL's asyncWrapper drains a timer it only advances through Jest globals.
+    configure({ asyncWrapper: (callback) => callback() })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
+    try {
+      await act(async () => {
+        await user.clear(ownerValue)
+        await user.type(ownerValue, 'success')
+        await user.tab()
+      })
+      await act(() => vi.advanceTimersByTimeAsync(1000))
 
-    await waitFor(
-      () => {
-        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            body: expect.objectContaining({
-              content: expect.stringContaining('  owner: success'),
-              path: 'SKILL.md',
-            }),
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            content: expect.stringContaining('  owner: success'),
+            path: 'SKILL.md',
           }),
-          expect.anything(),
-        )
-      },
-      { timeout: 2500 },
-    )
+        }),
+        expect.anything(),
+      )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove owner' }))
+      await act(async () => user.click(screen.getByRole('button', { name: 'Remove owner' })))
+      expect(screen.queryByRole('textbox', { name: 'owner value' })).not.toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(1000))
 
-    await waitFor(
-      () => {
-        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            body: expect.objectContaining({
-              content: expect.not.stringContaining('  owner:'),
-              path: 'SKILL.md',
-            }),
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            content: expect.not.stringContaining('  owner:'),
+            path: 'SKILL.md',
           }),
-          expect.anything(),
-        )
-      },
-      { timeout: 2500 },
-    )
+        }),
+        expect.anything(),
+      )
+    } finally {
+      configure({ asyncWrapper: originalAsyncWrapper })
+      vi.useRealTimers()
+    }
   })
 
   it('does not render Skill metadata controls for non-SKILL markdown files', async () => {

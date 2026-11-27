@@ -901,6 +901,7 @@ class TestAppRunner:
                 "query": "q",
                 "message_id": "msg",
                 "trace_scope": trace_scope,
+                "platform_owned": False,
             }
         ]
 

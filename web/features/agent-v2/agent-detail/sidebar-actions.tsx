@@ -2,7 +2,12 @@
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
@@ -13,10 +18,11 @@ import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { DeleteAgentForm } from '@/features/agent-v2/delete-agent-form'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
-import { DuplicateAgentDialog } from '@/features/agent-v2/roster/components/duplicate-agent-dialog'
-import { EditAgentDialog } from '@/features/agent-v2/roster/components/edit-agent-dialog'
+import { DuplicateAgentDialogContent } from '@/features/agent-v2/roster/components/duplicate-agent-dialog'
+import { EditAgentDialogContent } from '@/features/agent-v2/roster/components/edit-agent-dialog'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type AgentDetailSidebarActionAgent = AgentFormSource &
   Pick<AgentAppPartial, 'app_id' | 'permission_keys'>
@@ -25,26 +31,22 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const { t } = useTranslation(['agentRoster', 'agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tApp } = useTranslation(['app'])
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const describeRequestError = useRequestErrorDescriber()
+  const [editDialog] = useState(() => createDialogHandle())
+  const [duplicateDialog] = useState(() => createDialogHandle())
+  const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
+  const agentUpdate = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
+  const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const router = useRouter()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
   const canDuplicate = useCanCreateAgents() && capabilities.canPreview
-  const handleEditOpen = () => {
-    setIsEditOpen(true)
-  }
-
-  const handleDuplicateOpen = () => {
-    setIsDuplicateOpen(true)
-  }
-
   const handleExport = () => {
-    if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
       toast.error(tApp(($) => $.exportFailed))
       return
@@ -84,13 +86,13 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
         />
         <MenuContent align="end" className="w-max min-w-40">
           {capabilities.canEdit && (
-            <MenuItem className="gap-2" onClick={handleEditOpen}>
+            <MenuItem className="gap-2" onClick={() => editDialog.open(null)}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
             </MenuItem>
           )}
           {canDuplicate && (
-            <MenuItem className="gap-2" onClick={handleDuplicateOpen}>
+            <MenuItem className="gap-2" onClick={() => duplicateDialog.open(null)}>
               <span
                 aria-hidden
                 className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
@@ -112,7 +114,11 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
               <MenuSeparator />
             )}
           {capabilities.canDelete && (
-            <MenuItem variant="destructive" className="gap-2" onClick={() => setIsDeleteOpen(true)}>
+            <MenuItem
+              variant="destructive"
+              className="gap-2"
+              onClick={() => deleteDialog.open(null)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
               <span>{tCommon(($) => $['operation.delete'])}</span>
             </MenuItem>
@@ -120,21 +126,61 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
         </MenuContent>
       </Menu>
       {capabilities.canEdit && (
-        <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
+        <Dialog
+          handle={editDialog}
+          disablePointerDismissal
+          onOpenChange={(open, details) => {
+            if (!open && agentUpdate.isPending && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) agentUpdate.reset()
+          }}
+        >
+          <EditAgentDialogContent
+            agent={agent}
+            pending={agentUpdate.isPending}
+            onSubmit={(body) => {
+              if (agentUpdate.isPending) return
+              agentUpdate.mutate(
+                { params: { agent_id: agent.id }, body },
+                { onSuccess: () => editDialog.close() },
+              )
+            }}
+          />
+        </Dialog>
       )}
       {canDuplicate && (
-        <DuplicateAgentDialog
-          agent={agent}
-          open={isDuplicateOpen}
-          onOpenChange={setIsDuplicateOpen}
-        />
+        <Dialog
+          handle={duplicateDialog}
+          disablePointerDismissal
+          onOpenChange={(open, details) => {
+            if (!open && agentCopy.isPending && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) agentCopy.reset()
+          }}
+        >
+          <DuplicateAgentDialogContent
+            agent={agent}
+            pending={agentCopy.isPending}
+            onSubmit={(body) => {
+              if (agentCopy.isPending) return
+              agentCopy.mutate(
+                { params: { agent_id: agent.id }, body },
+                { onSuccess: () => duplicateDialog.close() },
+              )
+            }}
+          />
+        </Dialog>
       )}
       {capabilities.canDelete && (
         <AlertDialog
-          open={isDeleteOpen}
+          handle={deleteDialog}
           onOpenChange={(open, details) => {
-            if (!open && deletion.isPending) details.cancel()
-            else setIsDeleteOpen(open)
+            if (!open && deletion.isPending && details.reason !== 'imperative-action')
+              details.cancel()
           }}
           onOpenChangeComplete={(open) => {
             if (!open) deletion.reset()
@@ -144,14 +190,21 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             <DeleteAgentForm
               agentName={agent.name}
               isPending={deletion.isPending}
-              error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+              error={
+                deletion.isError
+                  ? describeRequestError(
+                      deletion.error,
+                      t(($) => $['roster.deleteFailed']),
+                    )
+                  : undefined
+              }
               onSubmit={() => {
                 if (deletion.isPending) return
                 deletion.mutate(
                   { params: { agent_id: agent.id } },
                   {
                     onSuccess: () => {
-                      setIsDeleteOpen(false)
+                      deleteDialog.close()
                       router.replace('/agents')
                     },
                   },

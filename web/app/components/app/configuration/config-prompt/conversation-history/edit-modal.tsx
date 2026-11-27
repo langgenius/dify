@@ -38,52 +38,56 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
             {t(($) => $['feature.conversationHistory.editModal.title'], { ns: 'appDebug' })}
           </DialogTitle>
         </DialogHeader>
-        <DialogBody>
-          <div className="text-sm leading-5.25 font-medium text-text-primary">
-            {t(($) => $['feature.conversationHistory.editModal.userPrefix'], { ns: 'appDebug' })}
-          </div>
-          <input
-            className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
-            value={tempData.user_prefix}
-            onChange={(e) =>
-              setTempData({
-                ...tempData,
-                user_prefix: e.target.value,
-              })
-            }
-          />
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (saveLoading) return
+            onSave(tempData)
+          }}
+        >
+          <DialogBody>
+            <div className="text-sm leading-5.25 font-medium text-text-primary">
+              {t(($) => $['feature.conversationHistory.editModal.userPrefix'], { ns: 'appDebug' })}
+            </div>
+            <input
+              className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
+              value={tempData.user_prefix}
+              onChange={(e) =>
+                setTempData({
+                  ...tempData,
+                  user_prefix: e.target.value,
+                })
+              }
+            />
 
-          <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
-            {t(($) => $['feature.conversationHistory.editModal.assistantPrefix'], {
-              ns: 'appDebug',
-            })}
-          </div>
-          <input
-            className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
-            value={tempData.assistant_prefix}
-            onChange={(e) =>
-              setTempData({
-                ...tempData,
-                assistant_prefix: e.target.value,
-              })
-            }
-            placeholder={t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' })}
-          />
-        </DialogBody>
+            <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
+              {t(($) => $['feature.conversationHistory.editModal.assistantPrefix'], {
+                ns: 'appDebug',
+              })}
+            </div>
+            <input
+              className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
+              value={tempData.assistant_prefix}
+              onChange={(e) =>
+                setTempData({
+                  ...tempData,
+                  assistant_prefix: e.target.value,
+                })
+              }
+              placeholder={t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' })}
+            />
+          </DialogBody>
 
-        <DialogFooter>
-          <Button className="shrink-0" onClick={onClose}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
-            className="shrink-0"
-            onClick={() => onSave(tempData)}
-            loading={saveLoading}
-          >
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button className="shrink-0" onClick={onClose}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button type="submit" variant="primary" className="shrink-0" loading={saveLoading}>
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

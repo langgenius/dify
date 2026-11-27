@@ -38,11 +38,25 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     ],
   },
   checkValid(payload: IfElseNodeType, t: TFunction<['workflow']>) {
-    let errorMessages = ''
-    const { cases } = payload
-    if (!cases || cases.length === 0)
-      errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: 'IF' })
+    const { cases, _targetBranches } = payload
+    if (!Array.isArray(cases)) {
+      return {
+        isValid: false,
+        errorMessage: t(($) => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: 'IF' }),
+      }
+    }
 
+    if (
+      !Array.isArray(_targetBranches) ||
+      !_targetBranches.some((branch) => branch?.id === 'false')
+    ) {
+      return {
+        isValid: false,
+        errorMessage: t(($) => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: 'ELSE' }),
+      }
+    }
+
+    let errorMessages = ''
     cases.forEach((caseItem, index) => {
       if (!caseItem.conditions.length)
         errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {

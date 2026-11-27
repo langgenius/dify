@@ -87,11 +87,11 @@ function Chip<T extends ItemValue>({
           className={cn(
             'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
             hasValue &&
-              'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
+              'border-components-button-secondary-border! bg-components-button-secondary-bg! pe-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
             className,
           )}
         >
-          <span className="flex min-w-0 grow items-center gap-1 text-left">
+          <span className="flex min-w-0 grow items-center gap-1 text-start">
             {showLeftIcon && (
               <span aria-hidden="true" className="p-0.5">
                 {leftIcon || (
@@ -137,7 +137,7 @@ function Chip<T extends ItemValue>({
             type="button"
             disabled={disabled}
             aria-label={clearLabel}
-            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+            className="group/clear absolute inset-e-1.5 top-1/2 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onClear}
           >
             <span

@@ -1,44 +1,37 @@
-import type {
-  PostFilesUploadData,
-  PostFilesUploadResponse,
-} from '@dify/contracts/api/console/files/types.gen'
+import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { IconPickerInputValue, IconPickerValue } from '..'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { dropFixtureFile } from '@/test/browser-file-drag'
 import { createDeferred } from '@/test/deferred'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import { createGifFile } from '@/test/fixtures/image-files'
 import gifDataUrl from '@/test/fixtures/media/preview.gif?url&inline'
-import { guardPreviewFetch } from '@/test/fixtures/preview-files'
 import { createIconPickerEnvironment, defaultIcon } from '@/test/icon-picker'
 import { IconPicker, IconPickerContent, IconPickerIcon, IconPickerTrigger } from '..'
 import { IconPickerCaller } from './icon-picker-caller'
 
-const { uploadImage } = vi.hoisted(() => ({
-  uploadImage:
-    vi.fn<(input: Pick<PostFilesUploadData, 'body'>) => Promise<PostFilesUploadResponse>>(),
+// The contract requires UUID file ids; derive a stable one from each readable key.
+const fileId = (key: string) =>
+  `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
+    .join('')
+    .slice(0, 12)
+    .padStart(12, '0')}`
+const fake = setupFakeApi(() => ({
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: fileId('uploaded'),
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
+      },
+    },
+  },
 }))
-// boundary: console file upload is the external persistence service for the rendered picker.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
-  }
-})
-// boundary: isolated picker rendering has no Next route, while upload only requires empty params.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
-
-let restoreFetch: () => void
-beforeEach(() => {
-  // boundary: preview transport rejects backend requests while native local URLs stay real.
-  restoreFetch = guardPreviewFetch()
-  uploadImage.mockReset()
-})
 afterEach(() => {
-  restoreFetch()
   vi.restoreAllMocks()
 })
 
@@ -80,17 +73,19 @@ async function expectSavedImage(id: string, file: File) {
   expect(new Uint8Array(await preview.arrayBuffer())).toEqual(
     new Uint8Array(await file.arrayBuffer()),
   )
-  expect(new Uint8Array(await uploadImage.mock.lastCall![0].body.file.arrayBuffer())).toEqual(
-    new Uint8Array(await file.arrayBuffer()),
-  )
+  expect(
+    new Uint8Array(await fake.console.files.upload.post.mock.lastCall![0].body.file.arrayBuffer()),
+  ).toEqual(new Uint8Array(await file.arrayBuffer()))
   await expect.element(page.getByRole('button', { name: 'Choose icon' })).toHaveFocus()
 }
 
 it('keeps the image draft after an upload failure and saves the retried bytes', async () => {
   await page.viewport(640, 600)
-  uploadImage.mockRejectedValueOnce(new Error('Upload failed'))
-  uploadImage.mockResolvedValueOnce({
-    id: 'retried-image',
+  fake.console.files.upload.post.mockRejectedValueOnce(
+    apiError({ status: 415, code: 'unsupported_file_type', message: 'Upload failed' }),
+  )
+  fake.console.files.upload.post.mockResolvedValueOnce({
+    id: fileId('retried-image'),
     name: 'icon.gif',
     size: createGifFile().size,
   })
@@ -98,26 +93,36 @@ it('keeps the image draft after an upload failure and saves the retried bytes', 
   await save().click()
   await expect
     .element(page.getByRole('alert'))
-    .toHaveTextContent('common.imageUploader.uploadFromComputerUploadError')
+    .toHaveTextContent('requestErrors.code.unsupported_file_type')
   await expect.element(saved()).toHaveTextContent(JSON.stringify(defaultIcon))
   await save().click()
-  await expectSavedImage('retried-image', file)
+  await expectSavedImage(fileId('retried-image'), file)
+})
+
+it('falls back to the localized upload error when the server sends no message', async () => {
+  await page.viewport(640, 600)
+  fake.console.files.upload.post.mockRejectedValueOnce(networkError())
+  await selectImage()
+  await save().click()
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('common.imageUploader.uploadFromComputerUploadError')
 })
 
 it('ignores an upload that finishes after Cancel and preserves a newly opened draft', async () => {
   await page.viewport(640, 600)
   const request = createDeferred<PostFilesUploadResponse>()
-  uploadImage.mockReturnValueOnce(request.promise)
+  fake.console.files.upload.post.mockReturnValueOnce(request.promise)
   const file = await selectImage()
   await save().click()
-  await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
+  await expect.poll(() => fake.console.files.upload.post.mock.calls.length).toBe(1)
   await page.getByRole('button', { name: 'app.iconPicker.cancel' }).click()
   await expect.element(dialog()).not.toBeInTheDocument()
   const trigger = page.getByRole('button', { name: 'Choose icon' })
   await expect.element(trigger).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await page.getByRole('radio', { name: 'app.iconPicker.color.green' }).click()
-  request.resolve({ id: 'late-image', name: file.name, size: file.size })
+  request.resolve({ id: fileId('late-image'), name: file.name, size: file.size })
   await request.promise
   await page.getByRole('combobox', { name: 'app.iconPicker.search' }).fill('new draft')
   await expect.element(dialog()).toBeVisible()
@@ -130,7 +135,7 @@ it('ignores an upload that finishes after Cancel and preserves a newly opened dr
   await expect
     .element(saved())
     .toHaveTextContent(JSON.stringify({ ...defaultIcon, background: '#F3FEE7' }))
-  expect(uploadImage).toHaveBeenCalledTimes(1)
+  expect(fake.console.files.upload.post).toHaveBeenCalledTimes(1)
 })
 
 it('keeps an existing image when browsing produces no valid replacement', async () => {
@@ -151,7 +156,7 @@ it('keeps an existing image when browsing produces no valid replacement', async 
   await save().click()
   await expect.element(dialog()).not.toBeInTheDocument()
   await expect.element(saved()).toHaveTextContent(JSON.stringify(value))
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
 })
 
 it('allows retry after the browser refuses to read the image preview', async () => {
@@ -168,11 +173,15 @@ it('allows retry after the browser refuses to read the image preview', async () 
     .element(page.getByRole('alert'))
     .toHaveTextContent('common.imageUploader.uploadFromComputerReadError')
   await expect.element(save()).toBeEnabled()
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
   read.mockRestore()
-  uploadImage.mockResolvedValueOnce({ id: 'read-retry', name: file.name, size: file.size })
+  fake.console.files.upload.post.mockResolvedValueOnce({
+    id: fileId('read-retry'),
+    name: file.name,
+    size: file.size,
+  })
   await save().click()
-  await expectSavedImage('read-retry', file)
+  await expectSavedImage(fileId('read-retry'), file)
 })
 
 it('resolves a missing emoji background only when the caller confirms', async () => {
@@ -229,7 +238,7 @@ it('keeps current edits across a committed-prop update and reads that update on 
   await expect
     .element(page.getByRole('status', { name: 'Accepted icon' }))
     .toHaveTextContent(JSON.stringify(next))
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
 })
 
 it.each(['upload', 'preview'] as const)(
@@ -238,7 +247,10 @@ it.each(['upload', 'preview'] as const)(
     await page.viewport(640, 600)
     await selectImage()
     let restoreRead: (() => void) | undefined
-    if (failure === 'upload') uploadImage.mockRejectedValueOnce(new Error('Upload failed'))
+    if (failure === 'upload')
+      fake.console.files.upload.post.mockRejectedValueOnce(
+        apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }),
+      )
     else {
       // boundary: force the browser FileReader failure cleared by choosing a replacement.
       const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementationOnce(function (
@@ -255,21 +267,23 @@ it.each(['upload', 'preview'] as const)(
     const replacement = createGifFile('replacement.gif')
     await page.getByTestId('image-input').upload(replacement)
     await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
-    uploadImage.mockResolvedValueOnce({
-      id: 'replacement',
+    fake.console.files.upload.post.mockResolvedValueOnce({
+      id: fileId('replacement'),
       name: replacement.name,
       size: replacement.size,
     })
     await save().click()
-    await expectSavedImage('replacement', replacement)
-    expect(uploadImage.mock.lastCall![0].body.file).toMatchObject({ name: 'replacement.gif' })
+    await expectSavedImage(fileId('replacement'), replacement)
+    expect(fake.console.files.upload.post.mock.lastCall![0].body.file).toMatchObject({
+      name: 'replacement.gif',
+    })
   },
 )
 
 it('blocks replacement during upload and restores the original draft after failure', async () => {
   await page.viewport(640, 600)
   const request = createDeferred<PostFilesUploadResponse>()
-  uploadImage.mockReturnValueOnce(request.promise)
+  fake.console.files.upload.post.mockReturnValueOnce(request.promise)
   const file = await selectImage()
   await save().click()
   const change = page.getByRole('button', { name: 'common.operation.change' })
@@ -286,13 +300,19 @@ it('blocks replacement during upload and restores the original draft after failu
     dialog().getByRole('img', { name: 'app.iconPicker.image' }),
     'test/fixtures/media/preview.gif',
   )
-  request.reject(new Error('Upload failed'))
+  request.reject(apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }))
   await expect.element(page.getByRole('alert')).toBeVisible()
   await expect.element(change).toBeEnabled()
-  uploadImage.mockResolvedValueOnce({ id: 'original', name: file.name, size: file.size })
+  fake.console.files.upload.post.mockResolvedValueOnce({
+    id: fileId('original'),
+    name: file.name,
+    size: file.size,
+  })
   await save().click()
-  await expectSavedImage('original', file)
-  expect(uploadImage.mock.lastCall![0].body.file).toMatchObject({ name: 'icon.gif' })
+  await expectSavedImage(fileId('original'), file)
+  expect(fake.console.files.upload.post.mock.lastCall![0].body.file).toMatchObject({
+    name: 'icon.gif',
+  })
 })
 
 it('replaces the committed image only after selecting and confirming the new file', async () => {
@@ -300,9 +320,13 @@ it('replaces the committed image only after selecting and confirming the new fil
   const previous = { type: 'image' as const, fileId: 'existing', url: gifDataUrl }
   const file = await selectImage(previous)
   await expect.element(saved()).toHaveTextContent(JSON.stringify(previous))
-  uploadImage.mockResolvedValueOnce({ id: 'new-image', name: file.name, size: file.size })
+  fake.console.files.upload.post.mockResolvedValueOnce({
+    id: fileId('new-image'),
+    name: file.name,
+    size: file.size,
+  })
   await save().click()
-  await expectSavedImage('new-image', file)
+  await expectSavedImage(fileId('new-image'), file)
 })
 
 it('preserves a decoded linked icon on cancellation and replaces it only after confirmation', async () => {
@@ -322,7 +346,7 @@ it('preserves a decoded linked icon on cancellation and replaces it only after c
   await expect.element(dialog()).not.toBeInTheDocument()
   await expect.element(saved()).toMatchTextContent('"type":"emoji"')
   await expect.element(image).not.toBeInTheDocument()
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
 })
 
 it('keeps emoji-only callers out of image upload', async () => {
@@ -335,5 +359,5 @@ it('keeps emoji-only callers out of image upload', async () => {
   await save().click()
   await expect.element(dialog()).not.toBeInTheDocument()
   await expect.element(saved()).toHaveTextContent(JSON.stringify(defaultIcon))
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
 })

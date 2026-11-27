@@ -1,8 +1,9 @@
 import logging
 from collections.abc import Callable
-from typing import cast
+from typing import Annotated, cast
 
 from flask import Request as FlaskRequest
+from pydantic import UUID4, BaseModel, Field, ValidationError
 
 from core.db.session_factory import session_factory
 from extensions.ext_application_services import application_services
@@ -12,10 +13,19 @@ from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.errors.billing import BillingUpstreamError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationNotEntitledError,
+    WorkflowCollaborationService,
+    WorkflowPageResume,
+)
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
+
+
+class WorkflowPageResumePayload(BaseModel):
+    page_id: UUID4
+    sequence: Annotated[int, Field(strict=True, ge=1)]
 
 
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
@@ -65,17 +75,28 @@ def socket_connect(sid, environ, auth=None):
 
 @_sio_on("user_connect")
 @observe_workflow_event("user_connect", sio)
-def handle_user_connect(sid, data):
+def handle_user_connect(sid: str, data: object) -> dict[str, object] | tuple[dict[str, str], int]:
+    """Validate an optional page resume before admitting an authenticated socket to the room.
+
+    Legacy clients may send the workflow ID alone. Invalid payloads return a 400 ACK
+    before any room state is changed.
     """
-    Handle user connect event. Each session (tab) is treated as an independent collaborator.
-    """
-    workflow_id = data.get("workflow_id")
-    if not workflow_id:
+    if not isinstance(data, dict) or not isinstance(workflow_id := data.get("workflow_id"), str) or not workflow_id:
         return {"msg": "workflow_id is required"}, 400
+
+    resume = None
+    if (raw_resume := data.get("resume")) is not None:
+        try:
+            payload = WorkflowPageResumePayload.model_validate(raw_resume)
+        except ValidationError:
+            return {"msg": "invalid resume"}, 400
+        resume = WorkflowPageResume(payload.page_id.hex, payload.sequence)
 
     try:
         with sio.app.app_context(), session_factory.create_session() as session:
-            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+            result = collaboration_service.authorize_and_join_workflow_room(
+                workflow_id, sid, session=session, resume=resume
+            )
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
         return {"msg": "collaboration_unavailable"}, 503
@@ -86,6 +107,13 @@ def handle_user_connect(sid, data):
 
     user_id, is_leader = result
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
+
+
+@_sio_on("get_online_user_avatars")
+def handle_get_online_user_avatars(sid: str, _data: object = None) -> dict[str, str]:
+    """Return avatar URLs to the requesting socket using its server-side room membership."""
+    with sio.app.app_context():
+        return collaboration_service.get_online_user_avatars(sid, avatar_service=application_services().accounts.avatar)
 
 
 @observe_workflow_event("disconnect", sio)

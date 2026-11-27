@@ -1,13 +1,14 @@
 import type { VersionInfo } from '../../types'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useCheckInstalled as useDoCheckInstalled } from '@/service/use-plugins'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
 
 type Props = Readonly<{
   pluginIds: string[]
   enabled: boolean
 }>
 const useCheckInstalled = (props: Props) => {
-  const { data, isLoading, error } = useDoCheckInstalled(props)
+  const { data, isLoading, error } = useQuery(installedPluginsByIdsQueryOptions(props))
 
   const installedInfo = useMemo(() => {
     if (!data) return undefined

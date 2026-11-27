@@ -16,7 +16,9 @@ it.each<[Locale, string]>([
   ['de-DE', ''],
 ])('links to the current website comparison pages for %s', (language, prefix) => {
   locale = language
-  render(<PricingFooter />)
+  const { rerender } = render(<PricingFooter category="cloud" />)
   const link = screen.getByRole('link', { name: 'billing.plansCommon.comparePlanAndFeatures' })
   expect(link).toHaveAttribute('href', `https://dify.ai${prefix}/pricing/dify-cloud#compare`)
+  rerender(<PricingFooter category="self-hosted" />)
+  expect(link).toHaveAttribute('href', `https://dify.ai${prefix}/pricing/dify-enterprise#compare`)
 })

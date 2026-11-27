@@ -1,8 +1,9 @@
 import type { ContextMenuActions } from '@langgenius/dify-ui/context-menu'
+import type { ReactNode } from 'react'
 import type { AvailableNodesMetaData } from '../../hooks-store'
 import { ContextMenu, ContextMenuTrigger } from '@langgenius/dify-ui/context-menu'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { use, useLayoutEffect, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -11,11 +12,11 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { WorkflowContext } from '../../context'
 import { EditorResourceScope } from '../../editor-resource/provider'
-import { HooksStoreContext } from '../../hooks-store/provider'
-import { createHooksStore } from '../../hooks-store/store'
+import { HooksStoreContextProvider } from '../../hooks-store/provider'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
 import codeDefault from '../../nodes/code/default'
 import { SelectionContextmenu } from '../../selection-contextmenu'
@@ -25,23 +26,6 @@ import { parseWorkflowClipboardText } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 import { useSelectionInteractions } from '../use-selection-interactions'
 import 'reactflow/dist/style.css'
-
-vi.mock('@/next/navigation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/next/navigation')>()
-  return {
-    ...actual,
-    useRouter: () =>
-      ({
-        bfcacheId: 'test-router',
-        push: vi.fn(),
-        replace: vi.fn(),
-        back: vi.fn(),
-        forward: vi.fn(),
-        refresh: vi.fn(),
-        prefetch: vi.fn(),
-      }) satisfies ReturnType<typeof actual.useRouter>,
-  }
-})
 
 const nodes = [
   createNode({
@@ -64,19 +48,21 @@ const nodes = [
   }),
 ]
 const edges = [createEdge({ id: 'between', type: 'default', source: 'one', target: 'two' })]
-function SelectionCanvas() {
+// Feed the real node catalog through the hooks store provider, as the workflow editor does.
+function CatalogHooksStore({ children }: { children: ReactNode }) {
   const catalog = useWorkflowNodeCatalog()
-  const hooksStore = use(HooksStoreContext)!
-  useLayoutEffect(() => {
-    // The editor's legacy store type requires a complete map; use its real catalog.
+  const availableNodesMetaData = useMemo(() => {
+    // The editor's legacy store type requires a complete map.
     const nodesMap = catalog.nodesMap as NonNullable<AvailableNodesMetaData['nodesMap']>
-    hooksStore.setState({
-      availableNodesMetaData: {
-        nodes: catalog.nodes.map((node) => nodesMap[node.metaData.type]),
-        nodesMap,
-      },
-    })
-  }, [catalog, hooksStore])
+    return { nodes: catalog.nodes.map((node) => nodesMap[node.metaData.type]), nodesMap }
+  }, [catalog])
+  return (
+    <HooksStoreContextProvider availableNodesMetaData={availableNodesMetaData}>
+      {children}
+    </HooksStoreContextProvider>
+  )
+}
+function SelectionCanvas() {
   const menuRef = useRef<ContextMenuActions>(null)
   const selection = useSelectionInteractions()
   const { handleNodesCopy } = useNodesInteractions()
@@ -125,23 +111,32 @@ async function setup() {
     createAppDetailFixture({ mode: 'workflow' }),
   )
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  // boundary: the system clipboard is shared by spec files running in parallel, so the written payload is captured at the API.
   const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+  const { NavigationProvider } = createTestNavigation({ url: '/app/app-1/workflow' })
   const screen = await render(
-    <NuqsTestingAdapter>
-      <Wrapper>
-        <EditorResourceScope
-          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
-        >
-          <WorkflowContext value={createWorkflowStore({})}>
-            <HooksStoreContext value={createHooksStore({})}>
+    <NavigationProvider>
+      <NuqsTestingAdapter>
+        <Wrapper>
+          <EditorResourceScope
+            resource={{
+              kind: 'app',
+              collaborationEnabled: false,
+              appId: 'app-1',
+              mode: 'workflow',
+            }}
+          >
+            <WorkflowContext value={createWorkflowStore({})}>
               <ReactFlowProvider>
-                <SelectionCanvas />
+                <CatalogHooksStore>
+                  <SelectionCanvas />
+                </CatalogHooksStore>
               </ReactFlowProvider>
-            </HooksStoreContext>
-          </WorkflowContext>
-        </EditorResourceScope>
-      </Wrapper>
-    </NuqsTestingAdapter>,
+            </WorkflowContext>
+          </EditorResourceScope>
+        </Wrapper>
+      </NuqsTestingAdapter>
+    </NavigationProvider>,
   )
   return { screen, write }
 }

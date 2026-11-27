@@ -304,14 +304,6 @@ export const zAgentSoulLockedError = zErrorResponse.and(
 )
 
 /**
- * AgentBuildDraftApplyResponse
- */
-export const zAgentBuildDraftApplyResponse = z.object({
-  draft: z.record(z.string(), z.unknown()),
-  result: z.string(),
-})
-
-/**
  * InvalidComposerConfigError
  *
  * Invalid agent composer config.
@@ -324,6 +316,14 @@ export const zInvalidComposerConfigError = zErrorResponse.and(
 )
 
 /**
+ * AgentBuildDraftApplyResponse
+ */
+export const zAgentBuildDraftApplyResponse = z.object({
+  draft: z.record(z.string(), z.unknown()),
+  result: z.string(),
+})
+
+/**
  * PlaintextSecretNotAllowedError
  *
  * Plaintext secret values are not allowed in Agent config.
@@ -332,6 +332,18 @@ export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
   z.object({
     code: z.literal('plaintext_secret_not_allowed_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentVersionConflictError
+ *
+ * Agent config version changed. Please reload and try again.
+ */
+export const zAgentVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_conflict_error'),
+    status: z.literal(409),
   }),
 )
 
@@ -1279,24 +1291,6 @@ export const zAgentLogListResponse = z.object({
 export const zAnyJsonValue = z.unknown()
 
 /**
- * AgentThought
- */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zAnyJsonValue,
-})
-
-/**
  * MessageFile
  */
 export const zMessageFile = z.object({
@@ -1593,6 +1587,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -1812,42 +1807,6 @@ export const zAgentLogFeedbackResponse = z.object({
   content: z.string().nullish(),
   from_source: z.enum(['admin', 'user']),
   rating: z.enum(['dislike', 'like']),
-})
-
-/**
- * AgentLogMessageItemResponse
- */
-export const zAgentLogMessageItemResponse = z.object({
-  answer: z.string(),
-  answer_tokens: z.int(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  currency: z.string(),
-  error: z.string().nullish(),
-  feedback_enabled: z.boolean().optional().default(false),
-  feedbacks: z.array(zAgentLogFeedbackResponse).optional(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  id: z.string(),
-  latency: z.number(),
-  message_id: z.string(),
-  message_tokens: z.int(),
-  query: z.string(),
-  status: z.string(),
-  total_price: z.string(),
-  total_tokens: z.int(),
-  updated_at: z.int().nullish(),
-})
-
-/**
- * AgentLogMessageListResponse
- */
-export const zAgentLogMessageListResponse = z.object({
-  data: z.array(zAgentLogMessageItemResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
@@ -2842,6 +2801,95 @@ export const zAgentAppFeaturesPayload = z.object({
 })
 
 /**
+ * ToolCallLimitMetadata
+ *
+ * Usage at this call's dispatch boundary and its authoritative disposition.
+ */
+export const zToolCallLimitMetadata = z.object({
+  execution_status: z.enum(['executed', 'not_executed', 'unconfirmed']),
+  limit: z.int().gt(0),
+  reason: z.enum(['call_limit_reached', 'duplicate_tool_call']).nullish(),
+  tool_identity: z.string().min(1),
+  used: z.int().gte(0),
+})
+
+/**
+ * AgentToolActivity
+ *
+ * One native tool call's application-owned, persistable display metadata.
+ *
+ * Native call identity is independent of its display name and the SQL thought
+ * row. Tool inputs, credentials and successful observations remain outside
+ * this sidecar; ``error`` is a bounded failure description for display.
+ * Missing metadata on older thoughts conveys no execution or quota claim.
+ */
+export const zAgentToolActivity = z.object({
+  call_limit: zToolCallLimitMetadata.nullish(),
+  error: z.string().nullish(),
+  id: z.string().min(1),
+  run_id: z.string().min(1),
+  status: z.enum(['cancelled', 'failed', 'not_executed', 'running', 'started', 'succeeded']),
+  tool_call_id: z.string().min(1),
+  tool_name: z.string().min(1),
+})
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_activity: zAgentToolActivity.nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
+/**
+ * AgentLogMessageItemResponse
+ */
+export const zAgentLogMessageItemResponse = z.object({
+  agent_thoughts: z.array(zAgentThought).optional(),
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string(),
+  error: z.string().nullish(),
+  feedback_enabled: z.boolean().optional().default(false),
+  feedbacks: z.array(zAgentLogFeedbackResponse).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  id: z.string(),
+  latency: z.number(),
+  message_id: z.string(),
+  message_tokens: z.int(),
+  query: z.string(),
+  status: z.string(),
+  total_price: z.string(),
+  total_tokens: z.int(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * AgentLogMessageListResponse
+ */
+export const zAgentLogMessageListResponse = z.object({
+  data: z.array(zAgentLogMessageItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * ToolProviderType
  *
  * Enum class for tool provider
@@ -3237,13 +3285,17 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
  * ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
  * ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
  * keeps compatibility with existing Agent tool config payloads; new callers
- * should send ``plugin_id`` + ``provider`` when available.
+ * should send ``plugin_id`` + ``provider`` when available. A per-run call
+ * limit is either absent/unlimited or a strict positive integer for one
+ * concrete operation; provider-wide entries cannot define a call limit.
  */
 export const zAgentSoulDifyToolConfig = z.object({
   credential_ref: zAgentSoulDifyToolCredentialRef.nullish(),
   credential_type: z.enum(['api-key', 'oauth2', 'unauthorized']).optional().default('api-key'),
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
+  last_max_calls_per_run: z.int().gt(0).nullish(),
+  max_calls_per_run: z.int().gt(0).nullish(),
   name: z.string().max(255).nullish(),
   plugin_id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
@@ -3357,6 +3409,7 @@ export const zDeclaredOutputConfig = z.object({
  * WorkflowNodeJobConfig
  */
 export const zWorkflowNodeJobConfig = z.object({
+  continue_agent_session: z.boolean().optional().default(true),
   declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   metadata: zWorkflowNodeJobMetadata.optional(),
@@ -3364,6 +3417,13 @@ export const zWorkflowNodeJobConfig = z.object({
   output_routes: zWorkflowOutputRoutes.optional(),
   previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
   schema_version: z.int().optional().default(1),
+  session_generation: z
+    .string()
+    .max(36)
+    .regex(/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/)
+    .readonly()
+    .optional()
+    .default(''),
   workflow_prompt: z.string().optional().default(''),
 })
 
@@ -3911,6 +3971,42 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   workflow_type: z.string().nullish(),
 })
 
+/**
+ * WorkflowNodeJobConfig
+ */
+export const zWorkflowNodeJobConfigWritable = z.object({
+  continue_agent_session: z.boolean().optional().default(true),
+  declared_outputs: z.array(zDeclaredOutputConfig).optional(),
+  human_contacts: z.array(zAgentHumanContactConfig).optional(),
+  metadata: zWorkflowNodeJobMetadata.optional(),
+  mode: zWorkflowNodeJobMode.optional().default('tell_agent_what_to_do'),
+  output_routes: zWorkflowOutputRoutes.optional(),
+  previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
+  schema_version: z.int().optional().default(1),
+  workflow_prompt: z.string().optional().default(''),
+})
+
+/**
+ * ComposerSavePayload
+ */
+export const zComposerSavePayloadWritable = z.object({
+  agent_soul: zAgentSoulConfig.nullish(),
+  binding: zComposerBindingPayload.nullish(),
+  client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  idempotency_key: z.string().nullish(),
+  new_agent_name: z.string().min(1).max(255).nullish(),
+  node_job: zWorkflowNodeJobConfigWritable.nullish(),
+  role: z.string().max(255).nullish(),
+  save_strategy: zComposerSaveStrategy,
+  soul_lock: zComposerSoulLockPayload.optional(),
+  variant: zComposerVariant,
+  version_note: z.string().nullish(),
+})
+
 export const zGetAgentQuery = z.object({
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
@@ -3956,6 +4052,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**
@@ -4081,7 +4178,7 @@ export const zGetAgentByAgentIdBuildDraftPath = z.object({
  */
 export const zGetAgentByAgentIdBuildDraftResponse = zAgentBuildDraftResponse
 
-export const zPutAgentByAgentIdBuildDraftBody = zComposerSavePayload
+export const zPutAgentByAgentIdBuildDraftBody = zComposerSavePayloadWritable
 
 export const zPutAgentByAgentIdBuildDraftPath = z.object({
   agent_id: z.uuid(),
@@ -4157,7 +4254,7 @@ export const zGetAgentByAgentIdComposerPath = z.object({
  */
 export const zGetAgentByAgentIdComposerResponse = zAgentAppComposerResponse
 
-export const zPutAgentByAgentIdComposerBody = zComposerSavePayload
+export const zPutAgentByAgentIdComposerBody = zComposerSavePayloadWritable
 
 export const zPutAgentByAgentIdComposerPath = z.object({
   agent_id: z.uuid(),
@@ -4177,7 +4274,7 @@ export const zGetAgentByAgentIdComposerCandidatesPath = z.object({
  */
 export const zGetAgentByAgentIdComposerCandidatesResponse = zAgentComposerCandidatesResponse
 
-export const zPostAgentByAgentIdComposerValidateBody = zComposerSavePayload
+export const zPostAgentByAgentIdComposerValidateBody = zComposerSavePayloadWritable
 
 export const zPostAgentByAgentIdComposerValidatePath = z.object({
   agent_id: z.uuid(),

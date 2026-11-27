@@ -4,6 +4,7 @@ from http import HTTPStatus
 
 from flask_restx import Resource
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._models import (
@@ -50,6 +51,7 @@ def passed_on_draft(run: WorkflowRun | None, draft: Workflow) -> bool:
 class ReleaseCheckApi(Resource):
     @endpoint(
         op="check.console_app.release",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Is the draft ready to publish: draft valid, last test passed on this draft, and what changed",
         examples=(Example(title="Before publishing", input={"app_id": "<app_id>"}),),

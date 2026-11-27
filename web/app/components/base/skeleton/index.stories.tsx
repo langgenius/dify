@@ -24,7 +24,7 @@ const SkeletonDemo = () => {
       </div>
       <div className="space-y-3 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
         <SkeletonRow className="items-start">
-          <SkeletonRectangle className="mr-4 size-10 rounded-full" />
+          <SkeletonRectangle className="me-4 size-10 rounded-full" />
           <SkeletonContainer className="w-full">
             <SkeletonRectangle className="h-3 w-1/3" />
             <SkeletonRectangle className="h-3 w-full" />

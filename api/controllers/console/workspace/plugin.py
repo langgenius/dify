@@ -84,6 +84,15 @@ _PLUGIN_PACKAGE_UPLOAD_PARAMS = {
     }
 }
 
+_PLUGIN_BUNDLE_UPLOAD_PARAMS = {
+    "bundle": {
+        "description": "Plugin bundle to upload",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
+
 
 class AutoUpgradeSettingsResponse(TypedDict):
     strategy_setting: TenantPluginAutoUpgradeStrategySetting
@@ -808,6 +817,7 @@ class PluginUploadFromGithubApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/bundle")
 class PluginUploadFromBundleApi(Resource):
+    @console_ns.doc(consumes=["multipart/form-data"], params=_PLUGIN_BUNDLE_UPLOAD_PARAMS)
     @console_ns.response(200, "Success", console_ns.models[PluginBundleUploadResponse.__name__])
     @setup_required
     @login_required

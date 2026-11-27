@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Agent versiyalarını dərc et və idarə et",
   "agent.acl.test_and_run": "Agenti sına və işə sal",
   "agent.create": "Agentlər yarat",
+  "agent.tag.manage": "Agent etiketlərini idarə et",
   "api_extension.manage": "API genişlənməsinin konfiqurasiyasını idarə et",
   "app.access_config": "Tətbiqə giriş icazələrini konfiqurasiya et",
   "app.acl.access_config": "Giriş icazələrinə bax və onları idarə et",

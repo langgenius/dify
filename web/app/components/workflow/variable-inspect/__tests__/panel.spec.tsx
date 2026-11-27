@@ -10,10 +10,10 @@ import { EVENT_WORKFLOW_STOP } from '../types'
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.triggers.get': async () => [],
     }),
   }
@@ -78,7 +78,6 @@ it('selects an environment variable and shows its details', async () => {
         description: '',
       },
     ],
-    bottomPanelWidth: 560,
   })
   await user.click(screen.getByText('API_KEY'))
   expect(screen.getByText('workflowDebug.debug.variableInspect.envNode')).toBeVisible()

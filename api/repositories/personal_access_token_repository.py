@@ -187,16 +187,19 @@ class PersonalAccessTokenRepository:
 
     def _record(self, session: Session, token: PersonalAccessToken) -> PersonalAccessTokenRecord:
         """Project a persisted token, rejecting invalid resource kinds or scope modes."""
+        resource_rows = tuple(
+            session.scalars(
+                select(PersonalAccessTokenResource).where(
+                    PersonalAccessTokenResource.token_id == token.id,
+                )
+            )
+        )
         resources = tuple(
             PersonalAccessTokenResourceRef(
                 _RESOURCE_TYPE.validate_python(row.resource_type),
                 row.resource_id,
             )
-            for row in session.scalars(
-                select(PersonalAccessTokenResource).where(
-                    PersonalAccessTokenResource.token_id == token.id,
-                )
-            )
+            for row in resource_rows
         )
         workspace_ids = tuple(
             session.scalars(
@@ -217,6 +220,7 @@ class PersonalAccessTokenRepository:
                 workspace_mode=_SCOPE_MODE.validate_python(token.workspace_scope_mode),
                 workspace_ids=workspace_ids,
             ),
+            resource_workspace_ids=frozenset(row.workspace_id for row in resource_rows),
         )
 
     def revoke(self, account_id: str, token_id: str) -> None:

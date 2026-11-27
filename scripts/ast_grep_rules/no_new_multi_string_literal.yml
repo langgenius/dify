@@ -1,0 +1,65 @@
+id: no-new-multi-string-literal
+language: python
+severity: error
+message: Use StrEnum for multiple string alternatives; keep Literal for single-value tags.
+utils:
+  typing-import:
+    kind: import_from_statement
+    has:
+      field: module_name
+      regex: '^(typing|typing_extensions)$'
+  literal-reference:
+    any:
+      - pattern: typing.Literal
+      - pattern: typing_extensions.Literal
+      - all:
+          - pattern: $MODULE.Literal
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                any:
+                  - pattern:
+                      context: import typing as $MODULE
+                      selector: aliased_import
+                  - pattern:
+                      context: import typing_extensions as $MODULE
+                      selector: aliased_import
+      - all:
+          - kind: identifier
+          - pattern: Literal
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - matches: typing-import
+                  - has:
+                      stopBy: neighbor
+                      all:
+                        - kind: dotted_name
+                        - regex: '^Literal$'
+      - all:
+          - kind: identifier
+          - pattern: $IMPORTED
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - pattern:
+                      context: from typing import Literal as $IMPORTED
+                      selector: aliased_import
+                  - inside:
+                      matches: typing-import
+                      stopBy: neighbor
+rule:
+  all:
+    - any:
+        - kind: subscript
+        - kind: generic_type
+    - has:
+        matches: literal-reference

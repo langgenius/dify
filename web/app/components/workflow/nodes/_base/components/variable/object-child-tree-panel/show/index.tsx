@@ -16,7 +16,7 @@ const ShowPanel: FC<Props> = ({ payload, rootClassName }) => {
   const required = 'required' in schema && Array.isArray(schema.required) ? schema.required : []
 
   return (
-    <div className="relative -left-1.75">
+    <div className="relative -inset-s-1.75">
       {Object.entries(properties).map(([name, field]: [string, unknown]) => (
         <Field
           key={name}

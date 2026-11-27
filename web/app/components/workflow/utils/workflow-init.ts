@@ -1,10 +1,16 @@
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { LoopNodeType } from '../nodes/loop/types'
+import type { ParameterExtractorNodeType } from '../nodes/parameter-extractor/types'
 import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
+import type { StartNodeType } from '../nodes/start/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { Edge, Node } from '../types'
 import { cloneDeep } from 'es-toolkit/object'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { getConnectedEdges } from 'reactflow'
 import {
   hasAgentV2OutputRoutes,
@@ -20,10 +26,14 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
+import { LogicalOperator } from '../nodes/if-else/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '../types'
+
+const normalizeModelProvider = (provider: unknown) =>
+  typeof provider === 'string' ? correctModelProvider(provider) : ''
 
 // An edge belongs to a cycle exactly when both endpoints belong to the same
 // strongly connected component. Ancestors and links between cycles must survive.
@@ -227,33 +237,51 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       .filter((edge) => edge.target === node.id)
       .map((edge) => edge.targetHandle || 'target')
 
+    if (node.data.type === BlockEnum.Start) {
+      const nodeData = node.data as StartNodeType
+      if (!Array.isArray(nodeData.variables)) nodeData.variables = []
+    }
+
     if (node.data.type === BlockEnum.IfElse) {
       const nodeData = node.data as IfElseNodeType
 
-      if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
-        ;(node.data as IfElseNodeType).cases = [
+      if (!Array.isArray(nodeData.cases)) {
+        const { cases, conditions, logical_operator } = nodeData
+        // Only an explicit empty case list represents an ELSE-only node.
+        nodeData.cases = [
           {
             case_id: 'true',
-            logical_operator: nodeData.logical_operator,
-            conditions: nodeData.conditions,
+            logical_operator: logical_operator ?? LogicalOperator.and,
+            conditions: cases == null && Array.isArray(conditions) ? conditions : [],
           },
         ]
       }
-      node.data._targetBranches = branchNameCorrect([
-        ...(node.data as IfElseNodeType).cases.map((item) => ({ id: item.case_id, name: '' })),
+      nodeData._targetBranches = branchNameCorrect([
+        ...nodeData.cases.map((item) => ({ id: item.case_id, name: '' })),
         { id: 'false', name: '' },
       ])
-      // delete conditions and logical_operator if cases is not empty
-      if (nodeData.cases.length > 0 && nodeData.conditions && nodeData.logical_operator) {
+      if (nodeData.cases.length > 0) {
         delete nodeData.conditions
         delete nodeData.logical_operator
       }
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {
-      node.data._targetBranches = (node.data as QuestionClassifierNodeType).classes.map((topic) => {
-        return topic
-      })
+      const nodeData = node.data as QuestionClassifierNodeType
+      if (!Array.isArray(nodeData.classes)) nodeData.classes = []
+      if (!Array.isArray(nodeData.query_variable_selector)) nodeData.query_variable_selector = []
+      nodeData._targetBranches = [...nodeData.classes]
+    }
+
+    if (node.data.type === BlockEnum.ParameterExtractor) {
+      const nodeData = node.data as ParameterExtractorNodeType
+      if (!Array.isArray(nodeData.query)) nodeData.query = []
+    }
+
+    if (node.data.type === BlockEnum.KnowledgeBase) {
+      const nodeData = node.data as KnowledgeBaseNodeType
+      if (!Array.isArray(nodeData.index_chunk_variable_selector))
+        nodeData.index_chunk_variable_selector = []
     }
 
     if (hasAgentV2OutputRoutes(node.data))
@@ -279,23 +307,28 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       loopNodeData.error_handle_mode = loopNodeData.error_handle_mode || ErrorHandleMode.Terminated
     }
 
-    // legacy provider handle
-    if (node.data.type === BlockEnum.LLM)
-      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
-
     if (
-      node.data.type === BlockEnum.KnowledgeRetrieval &&
-      (node as any).data.multiple_retrieval_config?.reranking_model
-    )
-      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctModelProvider(
-        (node as any).data.multiple_retrieval_config?.reranking_model.provider,
-      )
+      node.data.type === BlockEnum.LLM ||
+      node.data.type === BlockEnum.QuestionClassifier ||
+      node.data.type === BlockEnum.ParameterExtractor
+    ) {
+      const nodeData = node.data as
+        | LLMNodeType
+        | QuestionClassifierNodeType
+        | ParameterExtractorNodeType
+      if (isPlainObject(nodeData.model)) {
+        nodeData.model.provider = normalizeModelProvider(nodeData.model.provider)
+      } else {
+        nodeData.model = { provider: '', name: '', mode: 'chat', completion_params: {} }
+      }
+    }
 
-    if (node.data.type === BlockEnum.QuestionClassifier)
-      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
-
-    if (node.data.type === BlockEnum.ParameterExtractor)
-      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+    if (node.data.type === BlockEnum.KnowledgeRetrieval) {
+      const config = (node.data as KnowledgeRetrievalNodeType).multiple_retrieval_config
+      const rerankingModel = config?.reranking_model
+      if (isPlainObject(rerankingModel))
+        rerankingModel.provider = normalizeModelProvider(rerankingModel.provider)
+    }
 
     if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
       node.data.retry_config = {

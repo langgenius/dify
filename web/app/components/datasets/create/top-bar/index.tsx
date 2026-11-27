@@ -36,7 +36,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
       <Link
         href={fallbackRoute}
         replace
-        className="inline-flex h-12 items-center justify-start gap-1 py-2 pr-6 pl-2"
+        className="inline-flex h-12 items-center justify-start gap-1 py-2 ps-2 pe-6"
       >
         <div className="p-2">
           <RiArrowLeftLine className="size-4 text-text-primary" />

@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateCheckInstalled } from '@/service/use-plugins'
 import { PluginSource } from '../../../types'
 import {
   beginGitHubPluginIntent,
@@ -43,17 +42,18 @@ export const usePluginOperations = ({
   const queryClient = useQueryClient()
   const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const { refreshPluginList } = useRefreshPluginList()
-  const invalidateCheckInstalled = useInvalidateCheckInstalled()
 
   const isFromMarketplace = detail.source === PluginSource.marketplace
   const { id, plugin_id } = detail
   const { category, name } = detail.declaration || detail
   const handlePluginUpdated = useCallback(
     async (isDelete?: boolean) => {
-      invalidateCheckInstalled()
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
+      })
       await onUpdate?.(isDelete)
     },
-    [invalidateCheckInstalled, onUpdate],
+    [onUpdate, queryClient],
   )
 
   const handleUpdate = useCallback(async () => {

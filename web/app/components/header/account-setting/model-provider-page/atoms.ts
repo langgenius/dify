@@ -1,6 +1,12 @@
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { selectAtom } from 'jotai/utils'
 import { useCallback, useMemo } from 'react'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { hasPermission } from '@/utils/permission'
+
+export const canConfigureModelsAtom = atom((get) =>
+  hasPermission(get(workspacePermissionKeysAtom), 'plugin.model_config'),
+)
 
 const expandedAtom = atom<Record<string, boolean>>({})
 

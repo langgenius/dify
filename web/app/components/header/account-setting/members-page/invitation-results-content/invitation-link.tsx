@@ -11,7 +11,7 @@ type IInvitationLinkProps = {
   value: MemberInviteSuccessResponse
 }
 
-const InvitationLink = ({ value }: IInvitationLinkProps) => {
+export const InvitationLink = ({ value }: IInvitationLinkProps) => {
   const { t } = useTranslation(['appApi'])
   const [isCopied, setIsCopied] = useState(false)
 
@@ -76,5 +76,3 @@ const InvitationLink = ({ value }: IInvitationLinkProps) => {
     </div>
   )
 }
-
-export default InvitationLink

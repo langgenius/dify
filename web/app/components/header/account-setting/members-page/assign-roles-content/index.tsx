@@ -18,17 +18,17 @@ type AssignRolesContentProps = {
   selectedRoles: Role[]
   allowMultipleRoles?: boolean
   isSubmitting?: boolean
-  hasSubmitError?: boolean
+  submitError?: string
   searchInputRef: Ref<HTMLInputElement>
   onSubmit: (roles: Role[]) => void
 }
 
-const AssignRolesContent = ({
+export const AssignRolesContent = ({
   selectedRoles,
   allowMultipleRoles = true,
   searchInputRef,
   isSubmitting = false,
-  hasSubmitError = false,
+  submitError,
   onSubmit,
 }: AssignRolesContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
@@ -82,9 +82,9 @@ const AssignRolesContent = ({
         onSelectedRolesChange={setSelected}
       />
 
-      {hasSubmitError && (
+      {submitError && (
         <p role="alert" className="px-6 pt-2 system-sm-regular text-text-destructive">
-          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {submitError}
         </p>
       )}
       <DialogFooter>
@@ -106,5 +106,3 @@ const AssignRolesContent = ({
     </form>
   )
 }
-
-export default AssignRolesContent

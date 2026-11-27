@@ -3,6 +3,7 @@
 import type { ZendeskRuntime } from './runtime'
 import { useEffect, useSyncExternalStore } from 'react'
 import { zendeskRuntime } from './runtime'
+import { getAppliedTheme } from './theme'
 
 const ZENDESK_SCRIPT_LOAD_TIMEOUT = 15_000
 const activeLoaders = new WeakMap<ZendeskRuntime, number>()
@@ -31,6 +32,16 @@ export function ZendeskScript({ nonce, runtime = zendeskRuntime, widgetKey }: Ze
   )
 
   useEffect(() => {
+    if (status !== 'ready') return
+
+    const syncTheme = () => runtime.syncTheme(getAppliedTheme())
+    const observer = new MutationObserver(syncTheme)
+    observer.observe(document.documentElement, { attributeFilter: ['data-theme'] })
+    syncTheme()
+    return () => observer.disconnect()
+  }, [runtime, status])
+
+  useEffect(() => {
     if (status !== 'loading') return
 
     retainLoader(runtime)
@@ -46,7 +57,7 @@ export function ZendeskScript({ nonce, runtime = zendeskRuntime, widgetKey }: Ze
     let timeoutId: number
     const handleLoad = () => {
       window.clearTimeout(timeoutId)
-      runtime.markReady()
+      runtime.markReady(getAppliedTheme())
     }
     const handleError = () => {
       window.clearTimeout(timeoutId)

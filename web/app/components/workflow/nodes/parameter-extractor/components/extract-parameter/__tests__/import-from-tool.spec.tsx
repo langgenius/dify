@@ -11,13 +11,6 @@ import {
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ImportFromTool from '../import-from-tool'
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({
-    plugins: [],
-    isLoading: false,
-  }),
-}))
-
 const mockToolCollections = vi.hoisted(() => ({
   builtIn: [] as ToolWithProvider[],
   custom: [] as ToolWithProvider[],

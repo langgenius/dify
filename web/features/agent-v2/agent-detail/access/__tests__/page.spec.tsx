@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { TEST_NETWORK_ACCESS_GROUP_ID, TEST_WORKSPACE_ID } from '@/test/console/ids'
 import {
   createNetworkAccessGroupFixture,
   seedAppNetworkAccessGroup,
@@ -63,7 +64,7 @@ function setup(overrides: Partial<AgentAppDetailWithSite> = {}, configured = fal
   const binding = configured
     ? {
         id: 'binding-1',
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         app_id: 'public-app',
         enabled: true,
         group_id: policy.id,
@@ -86,7 +87,7 @@ function setup(overrides: Partial<AgentAppDetailWithSite> = {}, configured = fal
   )
   const rendered = renderWithConsoleQuery(renderPage(agent.id), {
     queryClient,
-    currentWorkspace: { id: 'workspace-1', role: 'editor' },
+    currentWorkspace: { id: TEST_WORKSPACE_ID, role: 'editor' },
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
   return { ...rendered, agent, policy, appBinding, renderPage }
@@ -114,7 +115,7 @@ describe('Agent IP access configuration', () => {
         writes.push({ url: request.url, body })
       }
       if (request.url.includes('/workspaces/current/network-access-groups'))
-        return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [policy] })
+        return Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [policy] })
       return Response.json(appBinding)
     })
 
@@ -133,7 +134,7 @@ describe('Agent IP access configuration', () => {
           url: 'http://localhost:5001/console/api/apps/public-app/network-access-group',
           body: {
             enabled: true,
-            group_id: 'group-1',
+            group_id: TEST_NETWORK_ACCESS_GROUP_ID,
             access_points: ['webapp', 'service_api'],
             expected_version: 0,
           },

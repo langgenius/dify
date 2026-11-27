@@ -86,13 +86,11 @@ function renderCard(
     accessMode = AccessMode.PUBLIC,
     appOverrides = {},
     canManageAccessPoint = true,
-    onRefreshApp = vi.fn().mockResolvedValue(undefined),
     showAccessControl = true,
   }: {
     accessMode?: AccessMode | null
     appOverrides?: Partial<AppDetailWithSite>
     canManageAccessPoint?: boolean
-    onRefreshApp?: () => Promise<void>
     showAccessControl?: boolean
   } = {},
 ) {
@@ -112,7 +110,6 @@ function renderCard(
       <QueryConnectedWebAppCard
         availability={availability}
         canManageAccessPoint={canManageAccessPoint}
-        onRefreshApp={onRefreshApp}
         showAccessControl={showAccessControl}
         workflow={workflow}
       />
@@ -123,13 +120,11 @@ function renderCard(
 function QueryConnectedWebAppCard({
   availability,
   canManageAccessPoint,
-  onRefreshApp,
   showAccessControl,
   workflow,
 }: {
   availability: 'available' | 'loading' | 'unavailable'
   canManageAccessPoint: boolean
-  onRefreshApp: () => Promise<void>
   showAccessControl: boolean
   workflow?: PublishedWorkflow
 }) {
@@ -145,7 +140,6 @@ function QueryConnectedWebAppCard({
       canDeploy
       canManageAccessPoint={canManageAccessPoint}
       showAccessControl={showAccessControl}
-      onRefreshApp={onRefreshApp}
       onSaveSiteConfig={vi.fn().mockResolvedValue(true)}
       workflow={workflow}
     />

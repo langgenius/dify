@@ -11,14 +11,12 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
-import { deploymentEditionAtom } from '@/features/system-features/state'
-import { annotationBatchImport } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
@@ -41,21 +39,13 @@ export type IBatchModalProps = {
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
 
@@ -66,12 +56,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
-        {
-          params: { app_id: appId, job_id: jobID },
-        },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
+        params: { app_id: appId, job_id: jobID },
+      })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -90,11 +77,19 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   }
 
   const runBatch = async (csv: File) => {
-    const formData = new FormData()
-    formData.append('file', csv)
     try {
-      const res = await annotationBatchImport(appId, formData, { silent: true })
-      setImportStatus(res.job_status)
+      const res = await consoleClient.apps.byAppId.annotations.batchImport.post({
+        params: { app_id: appId },
+        body: { file: csv },
+      })
+      setImportStatus(res.job_status ?? undefined)
+      // A rejected CSV or quota check returns `error_msg` without a job to poll.
+      if (!res.job_id) {
+        toast.error(
+          `${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}${res.error_msg ? `: ${res.error_msg}` : ''}`,
+        )
+        return
+      }
       checkProcess(res.job_id)
     } catch (e: any) {
       toast.error(

@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Публикация и управление версиями агента",
   "agent.acl.test_and_run": "Тестирование и запуск агента",
   "agent.create": "Создание агентов",
+  "agent.tag.manage": "Управление тегами агентов",
   "api_extension.manage": "Управление конфигурацией API-расширений",
   "app.access_config": "Настройка прав доступа к приложению",
   "app.acl.access_config": "Просмотр и управление правами доступа",

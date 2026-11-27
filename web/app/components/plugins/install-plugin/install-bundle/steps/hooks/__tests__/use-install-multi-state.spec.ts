@@ -13,10 +13,12 @@ import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import { useInstallMultiState } from '../use-install-multi-state'
 
 const requests = vi.hoisted(() => ({ marketplace: vi.fn(), installed: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: requests.marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByVersions: requests.marketplace,
+  })
+})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -107,14 +109,17 @@ describe('bundle metadata', () => {
     ])
     const { result } = renderHook(() => useInstallMultiState(input))
     await waitFor(() => expect(input.onLoadedAllPlugin).toHaveBeenCalledWith({}))
-    expect(requests.marketplace).toHaveBeenCalledWith('/plugins/versions/batch', {
-      body: {
-        plugin_tuples: [
-          { org: 'test', name: 'second', version: '2.0.0' },
-          { org: 'test', name: 'remote', version: '1.0.0' },
-        ],
+    expect(requests.marketplace).toHaveBeenCalledWith(
+      {
+        body: {
+          plugin_tuples: [
+            { org: 'test', name: 'second', version: '2.0.0' },
+            { org: 'test', name: 'remote', version: '1.0.0' },
+          ],
+        },
       },
-    })
+      expect.anything(),
+    )
     expect(result.current.plugins).toMatchObject([
       { plugin_id: 'test/local:1.0.0' },
       { plugin_id: 'test/second', version: '2.0.0' },

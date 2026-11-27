@@ -2,7 +2,7 @@ import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.ge
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
-import { webAppLogout } from '@/service/webapp-auth'
+import { webAppLogout } from '@/service/common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import WebSSOForm from '../page'
 
@@ -34,7 +34,7 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/share', () => serviceMocks)
 
-vi.mock('@/service/webapp-auth', () => ({
+vi.mock('@/service/common', () => ({
   webAppLogout: vi.fn(),
 }))
 

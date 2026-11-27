@@ -5,10 +5,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { createTestQueryClient } from '@/test/query-client'
 import { InviteModal } from '../index'
 
 vi.mock('@/config', async (importOriginal) => ({
@@ -33,6 +35,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': fetchFeatures,
       'workspaces.current.rbac.roles.get': fetchRoles,
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.inviteEmail.post': (input: unknown) =>
         validate({
           context: {},
@@ -54,6 +57,9 @@ describe('InviteModal', () => {
         mutations: { retry: false },
       },
     })
+  // Seats and members refresh through the invalidation fallback, as in the app.
+  const createAppQueryClient = () =>
+    createTestQueryClient(undefined, { invalidation: createMutationInvalidation() })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -90,13 +96,13 @@ describe('InviteModal', () => {
     workspaceMembers?: GetFeaturesResponse['workspace_members']
   } = {}) => {
     seedCurrentWorkspaceQuery(queryClient)
-    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD', is_email_setup: isEmailSetup })
     const features = seedFeatures(queryClient, { workspace_members: workspaceMembers })
     fetchFeatures.mockResolvedValue(features)
 
     const result = render(
       <QueryClientTestProvider queryClient={queryClient}>
-        <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
+        <InviteModal onSend={onSend} />
       </QueryClientTestProvider>,
     )
     if (open) {
@@ -140,7 +146,7 @@ describe('InviteModal', () => {
     const user = userEvent.setup()
     const request = createDeferred<MemberInviteResponse>()
     inviteMember.mockReturnValueOnce(request.promise)
-    const queryClient = createQueryClient()
+    const queryClient = createAppQueryClient()
     const membersKey = consoleQuery.workspaces.current.members.get.queryKey()
     queryClient.setQueryData(membersKey, { accounts: [] })
     const view = await renderModal({ queryClient })

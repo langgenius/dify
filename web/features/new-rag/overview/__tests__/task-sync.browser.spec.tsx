@@ -9,60 +9,44 @@ import {
   createConsoleQueryWrapper,
   seedFeatures,
 } from '@/test/console/query-data'
-import { createOverviewTask as task } from '@/test/new-rag-overview'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createOverviewData, createOverviewTask as task } from '@/test/new-rag-overview'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { OverviewActivity } from '../overview-activity'
 import { AttentionPanel } from '../overview-attention'
 import { OverviewTaskSync } from '../overview-task-sync'
 import { OverviewStateBoundary } from '../state-boundary'
 
-type SpaceInput = {
-  params: {
-    control_space_id: string
-  }
-}
+const ATTENTION_PATH = '/knowledge-fs/spaces/:spaceId/overview/attention'
 
-const service = vi.hoisted(() => ({
-  attention: vi.fn(),
-  activity: vi.fn(),
-  tasks: vi.fn(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleQueryOverrides } =
-    await import('@/test/console/service-responses')
-  const { createOverviewData } = await import('@/test/new-rag-overview')
+function installOverviewApi() {
   const data = createOverviewData()
-  const spaceQuery = (handler: (spaceId: string, signal: AbortSignal) => unknown) => ({
-    queryOptions: ({ input }: { input: SpaceInput }) => ({
-      queryFn: ({ signal }: { signal: AbortSignal }) =>
-        handler(input.params.control_space_id, signal),
-    }),
-  })
-  return {
-    ...actual,
-    consoleQuery: withConsoleQueryOverrides(
-      withConsoleResponses(actual.consoleQuery, {
-        'knowledgeFs.spaces.byControlSpaceId.overview.stats.get': () => data.stats,
-        'knowledgeFs.spaces.byControlSpaceId.overview.inventory.get': () => data.inventory,
-        'knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get': async () => data.outcomes,
-        'workspaces.current.members.get': () => ({ accounts: [] }),
-      }),
-      {
-        'knowledgeFs.spaces.byControlSpaceId.overview.attention.get': spaceQuery(service.attention),
-        'knowledgeFs.spaces.byControlSpaceId.overview.activity.get': spaceQuery(service.activity),
-        'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': {
-          infiniteOptions: ({ input }: { input: (page: null) => SpaceInput }) => ({
-            queryFn: ({ signal }: { signal: AbortSignal }) =>
-              service.tasks(input(null).params.control_space_id, signal),
-          }),
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            overview: {
+              stats: { get: () => data.stats },
+              inventory: { get: () => data.inventory },
+              queryOutcomes: { get: () => data.outcomes },
+              activity: { get: () => ({ data: [], next_cursor: null }) },
+            },
+            backgroundTasks: {
+              get: async () => ({ data: [task('running')], next_cursor: null }),
+            },
+          },
         },
       },
-    ),
-  }
-})
+      workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+    },
+    routes: [
+      // A REST route rather than a contract handler: the scenario observes whether the
+      // client aborted the pending snapshot request, which only the raw request exposes.
+      route('GET', 'console', ATTENTION_PATH, async () => ({ data: [] })),
+    ],
+  })
+}
 
 const billingKeys = {
   features: () => consoleQuery.features.get.queryKey(),
@@ -85,22 +69,20 @@ const failedIssue: KnowledgeFsOverviewAttentionResponse = {
 }
 
 describe('overview task completion synchronization', () => {
+  let fake: ReturnType<typeof installOverviewApi>
+  const attention = () => fake.route('GET', 'console', ATTENTION_PATH)
+  const tasks = () => fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
   let client: ReturnType<typeof createConsoleQueryClient>
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    onTestFinished(guardUnexpectedFetch())
+    fake = installOverviewApi()
+    onTestFinished(fake)
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     onTestFinished(() => {
       client.clear()
       vi.useRealTimers()
     })
-    service.attention.mockReset()
-    service.activity.mockReset()
-    service.tasks.mockReset()
     client = createConsoleQueryClient()
-    service.activity.mockResolvedValue({ data: [], next_cursor: null })
-    service.attention.mockResolvedValue({ data: [] })
-    service.tasks.mockResolvedValue({ data: [task('running')], next_cursor: null })
     seedFeatures(client, { documents_upload_quota: { size: 1, limit: 10 } })
     client.setQueryData(
       billingKeys['vector-space'](),
@@ -129,7 +111,7 @@ describe('overview task completion synchronization', () => {
 
   it('cancels a pre-terminal snapshot and fetches failures after the last active task stops', async () => {
     let resolveStale!: (value: { data: KnowledgeFsOverviewAttentionResponse[] }) => void
-    service.attention.mockImplementation(
+    attention().mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveStale = resolve
@@ -137,15 +119,15 @@ describe('overview task completion synchronization', () => {
     )
     await mount('CLOUD')
     await expect
-      .poll(() => service.attention.mock.calls.some(([, signal]) => !signal.aborted))
+      .poll(() => attention().mock.calls.some(([{ request }]) => !request.signal.aborted))
       .toBe(true)
-    await expect.poll(() => service.tasks).toHaveBeenCalledOnce()
+    await expect.poll(() => tasks()).toHaveBeenCalledOnce()
     expect(client.getQueryState(billingKeys.features())?.isInvalidated).toBe(false)
     expect(client.getQueryState(billingKeys['vector-space']())?.isInvalidated).toBe(false)
-    const staleSignal = service.attention.mock.calls.at(-1)![1] as AbortSignal
+    const staleSignal = attention().mock.calls.at(-1)![0].request.signal
     expect(staleSignal.aborted).toBe(false)
-    service.tasks.mockResolvedValue({ data: [task('failed')], next_cursor: null })
-    service.attention.mockResolvedValue({ data: [failedIssue] })
+    tasks().mockResolvedValue({ data: [task('failed')], next_cursor: null })
+    attention().mockResolvedValue({ data: [failedIssue] })
     // Complete via a public refetch before any interval can cancel the pending snapshot.
     await client.invalidateQueries({ queryKey: tasksKey() })
     await expect
@@ -159,9 +141,9 @@ describe('overview task completion synchronization', () => {
     await expect
       .element(page.getByText('knowledgeOverview.overview.attention.failedDocument.title'))
       .toBeVisible()
-    const calls = service.attention.mock.calls.length
+    const calls = attention().mock.calls.length
     await vi.advanceTimersByTimeAsync(4000)
-    expect(service.attention).toHaveBeenCalledTimes(calls)
+    expect(attention()).toHaveBeenCalledTimes(calls)
   })
 
   it.each(['features', 'vector-space'] as const)(
@@ -186,9 +168,9 @@ describe('overview task completion synchronization', () => {
         .catch((error: unknown) => error)
       try {
         await mount('CLOUD')
-        await expect.poll(() => service.tasks).toHaveBeenCalledOnce()
-        service.tasks.mockResolvedValue({ data: [task('failed')], next_cursor: null })
-        service.attention.mockResolvedValue({ data: [failedIssue] })
+        await expect.poll(() => tasks()).toHaveBeenCalledOnce()
+        tasks().mockResolvedValue({ data: [task('failed')], next_cursor: null })
+        attention().mockResolvedValue({ data: [failedIssue] })
         await client.invalidateQueries({ queryKey: tasksKey() })
         await expect
           .element(page.getByText('knowledgeOverview.overview.attention.failedDocument.title'))
@@ -218,20 +200,20 @@ describe('overview task completion synchronization', () => {
     }
     client.setQueryData(otherSpaceAttentionKey, { data: [otherIssue] })
     await mount()
-    await expect.poll(() => service.tasks).toHaveBeenCalledOnce()
-    service.tasks.mockResolvedValue({ data: [task('failed')], next_cursor: null })
-    service.attention.mockResolvedValue({ data: [failedIssue] })
+    await expect.poll(() => tasks()).toHaveBeenCalledOnce()
+    tasks().mockResolvedValue({ data: [task('failed')], next_cursor: null })
+    attention().mockResolvedValue({ data: [failedIssue] })
     await client.invalidateQueries({ queryKey: tasksKey() })
     await expect
       .element(page.getByText('knowledgeOverview.overview.attention.failedDocument.title'))
       .toBeVisible()
-    service.tasks.mockResolvedValue({ data: [task('running')], next_cursor: null })
+    tasks().mockResolvedValue({ data: [task('running')], next_cursor: null })
     await client.invalidateQueries({ queryKey: tasksKey() })
-    service.tasks.mockResolvedValue({
+    tasks().mockResolvedValue({
       data: [{ ...task('completed'), updated_at: '2026-09-08T00:00:03Z' }],
       next_cursor: null,
     })
-    service.attention.mockResolvedValue({ data: [] })
+    attention().mockResolvedValue({ data: [] })
     await client.invalidateQueries({ queryKey: tasksKey() })
     await expect.element(page.getByText('knowledgeOverview.overview.noIssues')).toBeVisible()
     await expect

@@ -30,9 +30,7 @@
   "batch.templateDownloadError": "Failed to download the XLSX template.",
   "batch.title": "Batch Test",
   "batch.uploadAndRun": "Upload & Run Test",
-  "batch.uploadDropzoneEmphasis": "completed",
-  "batch.uploadDropzonePrefix": "Drag and drop your",
-  "batch.uploadDropzoneSuffix": "XLSX or CSV file",
+  "batch.uploadDropzone": "Drag and drop your <strong>completed</strong> XLSX or CSV file",
   "batch.uploadDropzoneUploadButton": "Upload file",
   "batch.uploadError": "Failed to upload file.",
   "batch.uploadHint": "Select a .xlsx or .csv file",
@@ -77,6 +75,7 @@
   "entry.checkFailed": "The published version could not be checked. Please try again.",
   "entry.duplicateNodeNames": "The published version has nodes with the same name ({{names}}). You can continue evaluating, but renaming them and publishing a new version will make results easier to distinguish.",
   "entry.duplicateNodeNamesTitle": "Duplicate node names",
+  "entry.triggerUnsupported": "Trigger-started workflows cannot be evaluated. Publish a workflow with a User Input start node.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",
@@ -99,6 +98,7 @@
   "history.status.cancelled": "Cancelled",
   "history.status.completed": "Completed",
   "history.status.failed": "Failed",
+  "history.status.notCompleted": "Task could not be completed",
   "history.status.partiallyFailed": "Completed with failures",
   "history.status.pending": "Pending",
   "history.status.running": "Running",
@@ -169,5 +169,7 @@
   "results.status.passed": "Passed",
   "results.title": "Test Details",
   "title": "Evaluation",
-  "unavailableUntilPublished": "Publish first to set up evaluation."
+  "unavailableUntilPublished": "Publish first to set up evaluation.",
+  "upgradePreview.description": "Upgrade to a Professional or Team plan to configure metrics and run batch tests on your own data.",
+  "upgradePreview.title": "You're previewing Evaluation with sample data"
 }

@@ -7,23 +7,16 @@ import { useTranslation } from 'react-i18next'
 
 type ActionsProps = {
   onApplyTemplate: () => void
-  showMoreOperations: boolean
   openEditModal: () => void
   handleExportDSL: (includeSecret?: boolean) => void
-  handleDelete: () => void
+  onDelete?: () => void
 }
 
-const Actions = ({
-  onApplyTemplate,
-  showMoreOperations,
-  openEditModal,
-  handleExportDSL,
-  handleDelete,
-}: ActionsProps) => {
+const Actions = ({ onApplyTemplate, openEditModal, handleExportDSL, onDelete }: ActionsProps) => {
   const { t } = useTranslation(['common', 'datasetPipeline'])
 
   return (
-    <div className="pointer-events-none absolute bottom-0 left-0 z-10 flex w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
+    <div className="pointer-events-none absolute inset-s-0 bottom-0 z-10 flex w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
       <Button variant="primary" onClick={onApplyTemplate} className="grow">
         <span aria-hidden className="i-ri-add-line size-4" />
         <span>{t(($) => $['operations.choose'], { ns: 'datasetPipeline' })}</span>
@@ -36,7 +29,7 @@ const Actions = ({
           </Button>
         }
       />
-      {showMoreOperations && (
+      {onDelete && (
         <Menu>
           <MenuTrigger
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -64,12 +57,7 @@ const Actions = ({
               {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
             </MenuItem>
             <MenuSeparator />
-            <MenuItem
-              variant="destructive"
-              onClick={() => {
-                handleDelete()
-              }}
-            >
+            <MenuItem variant="destructive" onClick={onDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </MenuItem>
           </MenuContent>

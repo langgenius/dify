@@ -75,14 +75,14 @@ export function RunMode({ text }: RunModeProps) {
         className={cn(
           'flex h-7 items-center gap-x-1 px-1.5 system-xs-medium text-text-accent hover:bg-state-accent-hover',
           isDisabled && 'cursor-not-allowed bg-state-accent-hover',
-          isDisabled ? 'rounded-l-md' : 'rounded-md',
+          isDisabled ? 'rounded-s-md' : 'rounded-md',
         )}
         onClick={handleRun}
         disabled={isDisabled}
       >
         {!isDisabled && (
           <>
-            <RiPlayLargeLine className="mr-1 size-4" />
+            <RiPlayLargeLine className="me-1 size-4" />
             {workflowRunningData
               ? t(($) => $['common.reRun'], { ns: 'pipeline' })
               : (text ?? t(($) => $['common.testRun'], { ns: 'pipeline' }))}
@@ -90,13 +90,13 @@ export function RunMode({ text }: RunModeProps) {
         )}
         {isRunning && (
           <>
-            <RiLoader2Line className="mr-1 size-4 animate-spin" />
+            <RiLoader2Line className="me-1 size-4 animate-spin" />
             {t(($) => $['common.processing'], { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
-            <RiDatabase2Line className="mr-1 size-4" />
+            <RiDatabase2Line className="me-1 size-4" />
             {t(($) => $['common.preparingDataSource'], { ns: 'pipeline' })}
           </>
         )}
@@ -112,7 +112,7 @@ export function RunMode({ text }: RunModeProps) {
         <button
           type="button"
           className={cn(
-            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            'flex size-7 items-center justify-center rounded-e-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           )}
           aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           onClick={handleStop}
@@ -127,7 +127,7 @@ export function RunMode({ text }: RunModeProps) {
         <button
           type="button"
           className={cn(
-            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            'flex size-7 items-center justify-center rounded-e-md bg-state-accent-active focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           )}
           aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
           onClick={handleCancelPreparingDataSource}

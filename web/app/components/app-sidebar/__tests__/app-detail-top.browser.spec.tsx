@@ -42,7 +42,7 @@ describe('AppDetailTop', () => {
     gotoAnythingDialogHandle.close()
   })
 
-  it('opens quick search from the app breadcrumb and restores focus on Escape', async () => {
+  it('shows the Studio return link alongside quick search and restores focus on Escape', async () => {
     const screen = await renderTop(
       <>
         <RememberedStudioTop />
@@ -52,7 +52,7 @@ describe('AppDetailTop', () => {
     const home = screen.getByRole('link', { name: 'navigation.mainNav.home' })
     const studio = screen.getByRole('link', { name: 'navigation.menus.apps' })
     const search = screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' })
-    await expect.element(home).toHaveAttribute('href', '/')
+    await expect.element(home).not.toBeInTheDocument()
     await expect.element(studio).toHaveAttribute('href', '/apps?tag=agent')
 
     await userEvent.click(search)

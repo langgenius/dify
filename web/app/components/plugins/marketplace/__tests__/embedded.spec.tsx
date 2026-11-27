@@ -4,20 +4,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-const mockFetchPluginBanners = vi.fn()
+const listBanners = vi.hoisted(() => vi.fn())
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'zh-Hans',
 }))
 
-vi.mock('../home/banners', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../home/banners')>()
-
-  return {
-    ...original,
-    fetchPluginBanners: (...args: unknown[]) => mockFetchPluginBanners(...args),
-  }
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { banners: { list: listBanners } })
 })
 
 vi.mock('../view', () => ({
@@ -55,20 +51,24 @@ describe('EmbeddedMarketplace', () => {
   })
 
   it('loads homepage banners on the client for the active locale', async () => {
-    mockFetchPluginBanners.mockResolvedValue([
-      {
-        id: 'banner-1',
-        title: 'Trending',
-        sort: 1,
-        language: 'zh-Hans',
-        style_type: 'blog',
-        content: {
-          blog_title: 'Dify update',
-          link: 'https://dify.ai/blog',
-          link_target_type: 'blog',
-        },
+    listBanners.mockResolvedValue({
+      data: {
+        banners: [
+          {
+            id: 'banner-1',
+            title: 'Trending',
+            sort: 1,
+            language: 'zh-Hans',
+            style_type: 'blog',
+            content: {
+              blog_title: 'Dify update',
+              link: 'https://dify.ai/blog',
+              link_target_type: 'blog',
+            },
+          },
+        ] satisfies PluginBanner[],
       },
-    ] satisfies PluginBanner[])
+    })
 
     const { EmbeddedMarketplace } = await import('../embedded')
 
@@ -76,7 +76,10 @@ describe('EmbeddedMarketplace', () => {
 
     expect(await screen.findByText('Trending banners: 1')).toBeInTheDocument()
     expect(screen.getByText('Install enabled')).toBeInTheDocument()
-    expect(mockFetchPluginBanners).toHaveBeenCalledWith('zh-Hans')
+    expect(listBanners).toHaveBeenCalledWith(
+      { query: { page: 'plugins', language: 'zh-Hans' } },
+      expect.anything(),
+    )
   })
 
   it('uses server-rendered homepage banners without requesting them again on hydration', async () => {
@@ -108,7 +111,7 @@ describe('EmbeddedMarketplace', () => {
     )
 
     expect(screen.getByText('Trending banners: 1')).toBeInTheDocument()
-    expect(mockFetchPluginBanners).not.toHaveBeenCalled()
+    expect(listBanners).not.toHaveBeenCalled()
   })
 
   it('refetches banners when the client locale differs from the server-rendered locale', async () => {
@@ -126,7 +129,7 @@ describe('EmbeddedMarketplace', () => {
         },
       },
     ] satisfies PluginBanner[]
-    mockFetchPluginBanners.mockResolvedValue([])
+    listBanners.mockResolvedValue({ data: { banners: [] } })
 
     const { EmbeddedMarketplace } = await import('../embedded')
 
@@ -141,7 +144,10 @@ describe('EmbeddedMarketplace', () => {
     )
 
     expect(await screen.findByText('Trending banners: 0')).toBeInTheDocument()
-    expect(mockFetchPluginBanners).toHaveBeenCalledWith('zh-Hans')
+    expect(listBanners).toHaveBeenCalledWith(
+      { query: { page: 'plugins', language: 'zh-Hans' } },
+      expect.anything(),
+    )
   })
 
   it('does not request homepage banners for the default catalog variant', async () => {
@@ -150,6 +156,6 @@ describe('EmbeddedMarketplace', () => {
     render(<EmbeddedMarketplace variant="default" />, { wrapper: Wrapper })
 
     expect(screen.getByText('Trending banners: 0')).toBeInTheDocument()
-    expect(mockFetchPluginBanners).not.toHaveBeenCalled()
+    expect(listBanners).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import override
 
+from core.db.session_factory import session_factory
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolProviderType
@@ -57,6 +58,7 @@ class BuiltinTool(Tool):
             tool_name=self.entity.identity.name,
             prompt_messages=prompt_messages,
             caller_user_id=self.runtime.user_id,
+            session_maker=session_factory.get_session_maker(),
         )
 
     @override

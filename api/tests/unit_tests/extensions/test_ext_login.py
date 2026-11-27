@@ -152,7 +152,7 @@ def test_console_account_loader_respects_handler_admission_metadata(
     app.add_url_rule("/personal", view_func=PersonalView.as_view("personal"))
     app.add_url_rule("/inherited", view_func=InheritedView.as_view("inherited"))
     app.add_url_rule("/function", view_func=lambda: "ok")
-    loader = account_application_services.accounts.identity.get_account_by_id
+    loader = account_application_services.accounts.identity.load_account
     ext_login.bind_account_only_loader(app, loader)
     path = "/personal" if route == "workspace" else f"/{route}"
     method = "POST" if route == "workspace" else "GET"

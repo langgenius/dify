@@ -47,7 +47,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
         <div className="min-w-0 flex-1 system-sm-medium text-text-secondary">{title}</div>
         <div className="flex min-w-0 shrink-0 items-center justify-end">
           {info && (
-            <div className="mr-2 truncate system-xs-regular text-text-tertiary" title={info}>
+            <div className="me-2 truncate system-xs-regular text-text-tertiary" title={info}>
               {info}
             </div>
           )}
@@ -82,7 +82,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
               })}
               onValueChange={handlePresetResponseChange}
             />
-            <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">
+            <div className="absolute inset-e-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">
               <span>{presetResponse.length}</span>/<span className="text-text-tertiary">100</span>
             </div>
           </div>

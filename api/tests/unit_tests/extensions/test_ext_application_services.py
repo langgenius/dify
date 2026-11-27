@@ -95,7 +95,6 @@ from services.account.oauth_adapters import (
     RedisOAuthAccountClaimLock,
     WorkspaceProvisioningOAuthGateway,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
@@ -1000,9 +999,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert oauth._sessions is not oauth._workspaces
     assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
     assert oauth._workspace_policy is oauth._registration_policy
-    avatar_files = services.accounts.avatar._files
-    assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
-    assert avatar_files._session_factory is sqlite_session_factory
+    assert services.accounts.avatar._avatars is accounts
 
 
 def test_build_application_services_requires_invitation_for_cloud_initialization(

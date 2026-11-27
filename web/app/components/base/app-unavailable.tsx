@@ -22,7 +22,7 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
   return (
     <div className={cn('flex h-screen w-screen items-center justify-center', className)}>
       <h1
-        className="mr-5 h-12.5 shrink-0 pr-5 text-[24px] leading-12.5 font-medium"
+        className="me-5 h-12.5 shrink-0 pe-5 text-[24px] leading-12.5 font-medium"
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
         }}

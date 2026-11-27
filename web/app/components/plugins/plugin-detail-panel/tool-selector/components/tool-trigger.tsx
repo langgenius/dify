@@ -37,7 +37,7 @@ export function ToolTrigger({
       className={cn(
         'group w-full justify-start bg-components-input-bg-normal px-3 hover:bg-state-base-hover-alt focus-visible:ring-inset',
         open && 'bg-state-base-hover-alt',
-        value?.provider_name && 'py-1.5 pl-1.5',
+        value?.provider_name && 'py-1.5 ps-1.5',
         className,
       )}
     >

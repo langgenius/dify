@@ -27,14 +27,11 @@ const { webhook, createBinding } = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.triggers.get': async () => [],
-    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.workflows.triggers.webhook.get': webhook,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': createBinding,
       'agent.byAgentId.get': async () => createAgentFixture({ id: 'agent-1' }),

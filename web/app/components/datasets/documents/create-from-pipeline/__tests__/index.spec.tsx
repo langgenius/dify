@@ -17,19 +17,19 @@ import { DatasetACLPermission } from '@/utils/permission'
 import CreateFromPipeline from '../index'
 
 const api = vi.hoisted(() => ({
-  upload: vi.fn<typeof import('@/service/base').upload>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   capacity: vi.fn<typeof import('@/service/console').consoleClient.features.vectorSpace.get>(),
   replace: vi.fn(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload: api.upload,
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.vectorSpace.get': api.capacity,
       'rag.pipelines.datasourcePlugins.get': async () => [],
@@ -127,6 +127,7 @@ function renderPage({
       workspacePermissionKeys: ['dataset.create_and_management'],
     },
   )
+  return { queryClient }
 }
 
 const nextButton = () => screen.getByRole('button', { name: 'datasetCreation.stepOne.button' })
@@ -177,4 +178,25 @@ it('lets paid users advance after an upload even when capacity usage is unknown'
   expect(
     await screen.findByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
   ).toBeEnabled()
+})
+
+it('keeps the uploaded document while the pipeline reloads in the background', async () => {
+  const user = userEvent.setup()
+  const { queryClient } = renderPage()
+  await uploadDocument(user)
+  expect(await screen.findByText('Guide.pdf')).toBeInTheDocument()
+
+  // A refetch that has not landed yet, such as one after a write elsewhere in the pipeline.
+  void queryClient
+    .query({
+      queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+        input: { params: { pipeline_id: 'pipeline-1' } },
+      }),
+      queryFn: () => new Promise<never>(() => {}),
+      staleTime: 0,
+    })
+    .catch(() => undefined)
+
+  await waitFor(() => expect(screen.getByText('Guide.pdf')).toBeInTheDocument())
+  expect(nextButton()).toBeInTheDocument()
 })

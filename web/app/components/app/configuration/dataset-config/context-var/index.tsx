@@ -18,7 +18,7 @@ const ContextVar: FC<Props> = (props) => {
     <div
       className={cn(
         notSetVar
-          ? 'rounded-br-xl rounded-bl-xl border-[#FEF0C7] bg-[#FEF0C7]'
+          ? 'rounded-ee-xl rounded-es-xl border-[#FEF0C7] bg-[#FEF0C7]'
           : 'border-components-panel-border-subtle',
         'flex h-12 items-center justify-between border-t px-3',
       )}
@@ -30,7 +30,7 @@ const ContextVar: FC<Props> = (props) => {
             className="i-custom-vender-line-development-brackets-x size-4 text-text-accent"
           />
         </div>
-        <div id={titleId} className="mr-1 text-sm font-medium text-text-secondary">
+        <div id={titleId} className="me-1 text-sm font-medium text-text-secondary">
           {t(($) => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}
         </div>
         <Infotip>

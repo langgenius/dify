@@ -47,7 +47,7 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from libs.external_api import ExternalApi, register_external_error_handlers
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
@@ -57,7 +57,6 @@ from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
 from services.errors.billing import BillingUpstreamUnavailableError
-from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -226,6 +225,52 @@ class TestCurrentContextInjection:
         setup_required.assert_called_once()
         login_required.assert_called_once()
         account_initialization_required.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("status", "admitted"),
+        [(AccountStatus.ACTIVE, True), (AccountStatus.UNINITIALIZED, False)],
+    )
+    def test_console_account_admission_without_active_workspace(self, status: AccountStatus, admitted: bool):
+        current_user = make_account()
+        current_user.status = status
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant_optional",
+                return_value=(current_user, None),
+            ),
+            patch("controllers.console.flask_admission.current_account_with_tenant") as with_tenant,
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(require_active_workspace=False)
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                if admitted:
+                    result = Handler().get()
+                    assert result.account_id == current_user.id
+                    assert result.active_workspace_id == ""
+                else:
+                    with pytest.raises(AccountNotInitializedError):
+                        Handler().get()
+
+        with_tenant.assert_not_called()
+        account_initialization_required.assert_not_called()
+
+    def test_console_account_admission_without_active_workspace_rejects_role_checks(self):
+        with pytest.raises(ValueError, match="active workspace"):
+            flask_admission.console_account_admission(
+                require_active_workspace=False, allowed_roles=frozenset({TenantAccountRole.OWNER})
+            )
 
     def test_console_email_registration_admission_checks_features_once(self):
         with (
@@ -828,11 +873,22 @@ class TestEditionChecks:
         def evaluation_view():
             return "evaluation_success"
 
-        config_overrides(DEPLOYMENT_EDITION=edition)
+        config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=True)
 
         assert evaluation_view() == "evaluation_success"
 
-    def test_evaluation_edition_required_rejects_community(self) -> None:
+    @pytest.mark.parametrize(
+        ("edition", "enabled"),
+        [
+            (DeploymentEdition.COMMUNITY, True),
+            (DeploymentEdition.ENTERPRISE, False),
+            (DeploymentEdition.CLOUD, False),
+        ],
+    )
+    def test_evaluation_edition_required_rejects_unavailable_deployments(
+        self, config_overrides: Callable[..., None], edition: DeploymentEdition, enabled: bool
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=enabled)
         app = Flask(__name__)
 
         @evaluation_edition_required
@@ -846,43 +902,41 @@ class TestEditionChecks:
 
 
 class TestBillingPaidPlanRequired:
-    @pytest.mark.parametrize("plan", ["professional", "team"])
-    def test_should_allow_paid_plan(self, plan: str):
+    @pytest.mark.parametrize("plan", [CloudPlan.PROFESSIONAL, CloudPlan.TEAM])
+    def test_should_allow_paid_plan(self, plan: CloudPlan):
         @cloud_edition_billing_paid_plan_required
         def paid_view():
             return "paid_success"
 
-        billing_info = builders.subscription_info(plan)
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
             ),
-            patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info) as get_info,
+            patch(
+                "controllers.console.wraps.FeatureService.get_workspace_plan", return_value=plan
+            ) as get_workspace_plan,
         ):
             result = paid_view()
 
         assert result == "paid_success"
-        get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
+        get_workspace_plan.assert_called_once_with("tenant123")
 
-    @pytest.mark.parametrize("plan", ["sandbox", "unknown"])
-    def test_should_reject_non_paid_plan(self, plan: str):
+    @pytest.mark.parametrize("plan", [CloudPlan.SANDBOX, None])
+    def test_should_reject_non_paid_plan(self, plan: CloudPlan | None):
         app = create_app_with_login()
 
         @cloud_edition_billing_paid_plan_required
         def paid_view():
             return "paid_success"
 
-        billing_info = builders.subscription_info(
-            subscription=builders.subscription_plan().model_copy(update={"plan": plan})
-        )
         with app.test_request_context():
             with (
                 patch(
                     "controllers.console.wraps.current_account_with_tenant",
                     return_value=(MockUser("test_user"), "tenant123"),
                 ),
-                patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info),
+                patch("controllers.console.wraps.FeatureService.get_workspace_plan", return_value=plan),
                 pytest.raises(HTTPException) as exc_info,
             ):
                 paid_view()
@@ -904,7 +958,7 @@ class TestBillingPaidPlanRequired:
                     return_value=(MockUser("test_user"), "tenant123"),
                 ),
                 patch(
-                    "controllers.console.wraps.BillingService.get_info",
+                    "controllers.console.wraps.FeatureService.get_workspace_plan",
                     side_effect=BillingUpstreamUnavailableError("billing unavailable"),
                 ),
                 pytest.raises(HTTPException) as exc_info,
@@ -916,7 +970,7 @@ class TestBillingPaidPlanRequired:
 
     @pytest.mark.parametrize("plan", ["professional", "team"])
     def test_evaluation_guard_allows_cloud_paid_plan(self, config_overrides: Callable[..., None], plan: str) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -928,16 +982,16 @@ class TestBillingPaidPlanRequired:
                 return_value=(MockUser("test_user"), "tenant123"),
             ),
             patch(
-                "controllers.console.wraps.BillingService.get_info",
-                return_value=builders.subscription_info(plan),
-            ) as get_info,
+                "controllers.console.wraps.FeatureService.get_workspace_plan",
+                return_value=CloudPlan(plan),
+            ) as get_workspace_plan,
         ):
             assert evaluation_view() == "allowed"
 
-        get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
+        get_workspace_plan.assert_called_once_with("tenant123")
 
     def test_evaluation_guard_rejects_cloud_sandbox(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -949,8 +1003,8 @@ class TestBillingPaidPlanRequired:
                 return_value=(MockUser("test_user"), "tenant123"),
             ),
             patch(
-                "controllers.console.wraps.BillingService.get_info",
-                return_value=builders.subscription_info("sandbox"),
+                "controllers.console.wraps.FeatureService.get_workspace_plan",
+                return_value=CloudPlan.SANDBOX,
             ),
             pytest.raises(HTTPException) as exc_info,
         ):
@@ -961,23 +1015,7 @@ class TestBillingPaidPlanRequired:
         assert exc_info.value.error_code == "paid_plan_required"
 
     def test_evaluation_guard_skips_billing_for_enterprise(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-
-        @evaluation_paid_plan_required
-        def evaluation_view() -> str:
-            return "allowed"
-
-        with (
-            patch(
-                "controllers.console.wraps.current_account_with_tenant",
-                side_effect=AssertionError("no tenant lookup"),
-            ),
-            patch("controllers.console.wraps.BillingService.get_info", side_effect=AssertionError("no billing")),
-        ):
-            assert evaluation_view() == "allowed"
-
-    def test_evaluation_guard_fails_closed_on_billing_error(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -989,7 +1027,25 @@ class TestBillingPaidPlanRequired:
                 return_value=(MockUser("test_user"), "tenant123"),
             ),
             patch(
-                "controllers.console.wraps.BillingService.get_info",
+                "controllers.console.wraps.FeatureService.get_workspace_plan", side_effect=AssertionError("no billing")
+            ),
+        ):
+            assert evaluation_view() == "allowed"
+
+    def test_evaluation_guard_fails_closed_on_billing_error(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
+
+        @evaluation_paid_plan_required
+        def evaluation_view() -> str:
+            return "allowed"
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.FeatureService.get_workspace_plan",
                 side_effect=BillingUpstreamUnavailableError("billing unavailable"),
             ),
             pytest.raises(HTTPException) as exc_info,
@@ -999,7 +1055,7 @@ class TestBillingPaidPlanRequired:
         assert exc_info.value.code == 503
 
     def test_evaluation_guard_serves_documented_paid_plan_error(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
         app = Flask(__name__)
         blueprint = Blueprint("evaluation_plan_guard", __name__, url_prefix="/check")
         api = ExternalApi(blueprint)
@@ -1020,8 +1076,8 @@ class TestBillingPaidPlanRequired:
                 return_value=(MockUser("test_user"), "tenant123"),
             ),
             patch(
-                "controllers.console.wraps.BillingService.get_info",
-                return_value=builders.subscription_info("sandbox"),
+                "controllers.console.wraps.FeatureService.get_workspace_plan",
+                return_value=CloudPlan.SANDBOX,
             ),
         ):
             response = app.test_client().get("/check/evaluation")

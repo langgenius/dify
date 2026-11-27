@@ -54,7 +54,7 @@ export function FileItem({
           aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
           variant="secondary"
           size="sm"
-          className="absolute -top-1.5 -right-1.5 z-11 hidden rounded-full group-hover/file-item:flex"
+          className="absolute -inset-e-1.5 -top-1.5 z-11 hidden rounded-full group-hover/file-item:flex"
           onClick={() => onRemove?.(id)}
         >
           <span
@@ -68,7 +68,7 @@ export function FileItem({
           <Dialog disablePointerDismissal>
             <DialogTrigger
               title={name}
-              className="line-clamp-2 w-full cursor-pointer text-left system-xs-medium break-all text-text-tertiary"
+              className="line-clamp-2 w-full cursor-pointer text-start system-xs-medium break-all text-text-tertiary"
             >
               {name}
             </DialogTrigger>
@@ -82,7 +82,7 @@ export function FileItem({
       </div>
       <div className="relative flex items-center justify-between">
         <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
-          <FileTypeIcon size="sm" type={getFileAppearanceType(name, type)} className="mr-1" />
+          <FileTypeIcon size="sm" type={getFileAppearanceType(name, type)} className="me-1" />
           {ext && (
             <>
               {ext}
@@ -95,7 +95,7 @@ export function FileItem({
           <IconButton
             aria-label={t(($) => $['operation.download'], { ns: 'common' })}
             size="md"
-            className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
+            className="absolute -inset-e-1 -top-1 hidden group-hover/file-item:flex"
             onClick={(e) => {
               e.stopPropagation()
               downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })

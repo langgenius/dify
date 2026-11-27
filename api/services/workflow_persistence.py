@@ -304,8 +304,7 @@ class WorkflowPersistenceLayer(Layer):
         domain_execution.status = WorkflowNodeExecutionStatus.RETRY
         domain_execution.error = event.error
         self._append_retry_history(domain_execution, event)
-        self._workflow_node_execution_repository.save(domain_execution)
-        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._workflow_node_execution_repository.save_with_execution_data(domain_execution)
         _inspector_publish_node_changed(
             workflow_run_id=self._get_workflow_execution().id_,
             node_id=domain_execution.node_id,
@@ -490,8 +489,7 @@ class WorkflowPersistenceLayer(Layer):
                 domain_execution.process_data,
             )
 
-        self._workflow_node_execution_repository.save(domain_execution)
-        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._workflow_node_execution_repository.save_with_execution_data(domain_execution)
 
     def persist_unfinished_nodes_synchronously(self) -> None:
         """Make paused participants durable before exposing a resumable pause."""

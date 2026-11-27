@@ -238,22 +238,13 @@ def _deduct_credit_pool_quota_capped(
     """Apply post-generation credit accounting without failing message persistence on quota exhaustion."""
     from services.credit_pool_service import CreditPoolService
 
-    if request_id is None and metadata is None:
-        deducted_credits = CreditPoolService.deduct_credits_capped(
-            tenant_id=tenant_id,
-            credits_required=credits_required,
-            pool_type=pool_type,
-            session=db.session(),
-        )
-    else:
-        deducted_credits = CreditPoolService.deduct_credits_capped(
-            tenant_id=tenant_id,
-            credits_required=credits_required,
-            pool_type=pool_type,
-            request_id=request_id,
-            metadata=metadata,
-            session=db.session(),
-        )
+    deducted_credits = CreditPoolService.deduct_credits_capped(
+        tenant_id=tenant_id,
+        credits_required=credits_required,
+        pool_type=pool_type,
+        request_id=request_id,
+        metadata=metadata,
+    )
     if deducted_credits < credits_required:
         logger.warning(
             "Credit pool exhausted during message-created accounting, "

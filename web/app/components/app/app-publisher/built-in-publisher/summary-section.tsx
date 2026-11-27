@@ -242,7 +242,7 @@ export function PublisherSummarySection({
           </>
         )}
       </div>
-      <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
+      <div className="flex items-center gap-1 py-0.5 ps-1 pe-0.5">
         <PublisherTimelineMarker position="bottom" />
         <p role="status" className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
           {published ? (

@@ -16,6 +16,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createNode } from '../../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../../__tests__/workflow-test-env'
+import { collaborationManager } from '../../../collaboration/core/collaboration-manager'
 import { BlockEnum } from '../../../types'
 import webhookDefault from '../../trigger-webhook/default'
 import Panel from '../panel'
@@ -67,14 +68,7 @@ function GraphState() {
   return <output aria-label="Graph">{JSON.stringify(useNodes())}</output>
 }
 
-it('replaces the placeholder and generates webhook URLs only after the graph is persisted', async () => {
-  const user = userEvent.setup()
-  const pending = createDeferred<{ hash: string; updated_at: number }>()
-  persistDraft.mockReturnValue(pending.promise)
-  fetchWebhook.mockResolvedValue({
-    webhook_url: 'https://hooks.example.com/live',
-    webhook_debug_url: 'https://hooks.example.com/debug',
-  })
+function renderPanel() {
   const placeholder = createNode({
     id: 'placeholder-1',
     data: { type: BlockEnum.StartPlaceholder, selected: true },
@@ -109,6 +103,18 @@ it('replaces the placeholder and generates webhook URLs only after the graph is 
       nodes: [placeholder, createNode({ id: 'other-node', data: { selected: true } })],
     },
   )
+  return { store }
+}
+
+it('replaces the placeholder and generates webhook URLs only after the graph is persisted', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<{ hash: string; updated_at: number }>()
+  persistDraft.mockReturnValue(pending.promise)
+  fetchWebhook.mockResolvedValue({
+    webhook_url: 'https://hooks.example.com/live',
+    webhook_debug_url: 'https://hooks.example.com/debug',
+  })
+  const { store } = renderPanel()
   await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
   const nodes = JSON.parse(screen.getByLabelText('Graph').textContent!)
   expect(nodes[0]).toMatchObject({
@@ -132,7 +138,6 @@ it('replaces the placeholder and generates webhook URLs only after the graph is 
         }),
       }),
     }),
-    expect.anything(),
   )
   expect(fetchWebhook).not.toHaveBeenCalled()
   await act(async () => pending.resolve({ hash: 'saved-hash', updated_at: 123 }))
@@ -148,4 +153,42 @@ it('replaces the placeholder and generates webhook URLs only after the graph is 
   })
   expect(store.getState().syncWorkflowDraftHash).toBe('saved-hash')
   expect(store.getState().draftUpdatedAt).toBe(123000)
+})
+
+it('writes the selected start node through the collaborative graph', async () => {
+  const user = userEvent.setup()
+  persistDraft.mockReturnValue(new Promise(() => {}))
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  onTestFinished(() => collabSetNodes.mockRestore())
+  renderPanel()
+  await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
+  expect(collabSetNodes).toHaveBeenCalledWith(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'placeholder-1',
+        data: expect.objectContaining({ type: BlockEnum.StartPlaceholder }),
+      }),
+    ]),
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'placeholder-1',
+        data: expect.objectContaining({ type: BlockEnum.TriggerWebhook }),
+      }),
+    ]),
+    expect.any(String),
+  )
+})
+
+it('keeps the placeholder untouched while the collaborative graph is not ready', async () => {
+  const user = userEvent.setup()
+  const canApply = vi
+    .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+    .mockReturnValue(false)
+  onTestFinished(() => canApply.mockRestore())
+  const { store } = renderPanel()
+  await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
+  const nodes = JSON.parse(screen.getByLabelText('Graph').textContent!)
+  expect(nodes[0].data.type).toBe(BlockEnum.StartPlaceholder)
+  expect(store.getState().hasSelectedStartNode).toBeFalsy()
+  expect(persistDraft).not.toHaveBeenCalled()
 })

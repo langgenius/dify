@@ -233,6 +233,7 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    AGENT = "agent"
     SNIPPET = "snippet"
     SKILL = "skill"
 

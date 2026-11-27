@@ -2,12 +2,15 @@
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
+import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { updateFromGitHub } from '@/service/plugins'
-import { useInstallPackageFromGitHub, usePluginTaskList } from '@/service/use-plugins'
+import { usePluginTaskList } from '@/service/use-plugins'
 import Card from '../../../card'
 import { TaskStatus } from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
@@ -54,7 +57,9 @@ const Loaded: React.FC<LoadedProps> = ({
   const hasInstalled = !!installedVersion
 
   const [isInstalling, setIsInstalling] = React.useState(false)
-  const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
+  const { mutateAsync: installPackageFromGitHub } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.github.post.mutationOptions(),
+  )
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
@@ -99,10 +104,12 @@ const Loaded: React.FC<LoadedProps> = ({
           isInstalled = all_installed
         } else {
           const response = await installPackageFromGitHub({
-            repoUrl: `${owner}/${repo}`,
-            selectedVersion,
-            selectedPackage,
-            uniqueIdentifier,
+            body: {
+              repo: `${owner}/${repo}`,
+              version: selectedVersion,
+              package: selectedPackage,
+              plugin_unique_identifier: uniqueIdentifier,
+            },
           })
           const { all_installed, task_id } = response
           handleInstallTaskStart(response)
@@ -130,7 +137,7 @@ const Loaded: React.FC<LoadedProps> = ({
         onFailed(e)
         return
       }
-      onFailed()
+      onFailed(getRequestErrorMessage(e))
     } finally {
       setIsInstalling(false)
     }

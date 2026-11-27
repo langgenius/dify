@@ -190,7 +190,7 @@ const MemoryConfig: FC<Props> = ({
                   disabled={readonly || !payload.window?.enabled}
                 >
                   <NumberFieldGroup>
-                    <NumberFieldInput className="pr-0" />
+                    <NumberFieldInput className="pe-0" />
                   </NumberFieldGroup>
                 </NumberField>
               </Fieldset>

@@ -21,7 +21,7 @@ type Props = Readonly<{
   hideSearch?: boolean
 }>
 
-const MemberList: FC<Props> = ({
+export const MemberList: FC<Props> = ({
   searchValue,
   list,
   value,
@@ -82,7 +82,7 @@ const MemberList: FC<Props> = ({
                 key={account.id}
                 disabled={isSelected}
                 className={cn(
-                  'group flex w-full cursor-pointer appearance-none items-center gap-2 rounded-lg border-none bg-transparent py-1 pr-3 pl-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                  'group flex w-full cursor-pointer appearance-none items-center gap-2 rounded-lg border-none bg-transparent py-1 ps-2 pe-3 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                   isSelected && 'cursor-default bg-transparent hover:bg-transparent',
                 )}
                 onClick={() => onSelect(account.id)}
@@ -95,8 +95,8 @@ const MemberList: FC<Props> = ({
                   <div className="system-sm-medium text-text-secondary">
                     {account.name}
                     {account.status === 'pending' && (
-                      <span className="ml-1 system-xs-medium text-text-warning">
-                        {t(($) => $['members.pending'], { ns: 'workspaceMembers' })}
+                      <span className="ms-1 system-xs-medium text-text-warning">
+                        {t(($) => $['members.invited'], { ns: 'workspaceMembers' })}
                       </span>
                     )}
                     {email === account.email && (
@@ -130,5 +130,3 @@ const MemberList: FC<Props> = ({
     </div>
   )
 }
-
-export default MemberList

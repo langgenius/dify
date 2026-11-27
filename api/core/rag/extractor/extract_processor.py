@@ -158,6 +158,7 @@ class ExtractProcessor:
                             upload_file.created_by if upload_file else None,
                             source_file_id=upload_file.id if upload_file else None,
                             session=session,
+                            session_maker=get_session_maker(),
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
@@ -170,7 +171,11 @@ class ExtractProcessor:
                     elif file_extension == ".docx":
                         assert upload_file is not None
                         extractor = WordExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id,
+                            upload_file.created_by,
+                            session=session,
+                            session_maker=get_session_maker(),
                         )
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -209,6 +214,7 @@ class ExtractProcessor:
                             upload_file.created_by if upload_file else None,
                             source_file_id=upload_file.id if upload_file else None,
                             session=session,
+                            session_maker=get_session_maker(),
                         )
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
@@ -217,7 +223,11 @@ class ExtractProcessor:
                     elif file_extension == ".docx":
                         assert upload_file is not None
                         extractor = WordExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
+                            file_path,
+                            upload_file.tenant_id,
+                            upload_file.created_by,
+                            session=session,
+                            session_maker=get_session_maker(),
                         )
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)

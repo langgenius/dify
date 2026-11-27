@@ -22,6 +22,7 @@ describe('RetentionUpgradeNotice', () => {
   ) {
     const { wrapper, queryClient } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: deploymentEdition },
+      features: null,
     })
     if (plan) seedFeatures(queryClient, { billing: { subscription: { plan } } })
     else {

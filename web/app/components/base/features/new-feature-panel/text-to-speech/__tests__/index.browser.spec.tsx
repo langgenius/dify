@@ -1,12 +1,11 @@
 import { page, userEvent } from 'vite-plus/test/browser'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TtsAutoPlay } from '@/types/app'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import TextToSpeech from '../index'
 
 vi.unmock('react-i18next')
-// boundary: the component runs without a Next application router.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/configuration' }))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
@@ -20,9 +19,13 @@ it('retains voice preferences across disable and enable, then prevents readonly 
     voice: 'alloy',
     autoPlay: TtsAutoPlay.enabled,
   }
-  const { screen, store, rerender } = await renderFeature(<TextToSpeech disabled={false} />, {
-    text2speech: preferences,
-  })
+  const { NavigationProvider } = createTestNavigation({ url: '/configuration' })
+  const { screen, store, rerender } = await renderFeature(
+    <NavigationProvider>
+      <TextToSpeech disabled={false} />
+    </NavigationProvider>,
+    { text2speech: preferences },
+  )
   const toggle = screen.getByRole('switch')
   await expect.element(screen.getByText('alloy', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('On', { exact: true })).toBeVisible()
@@ -48,7 +51,11 @@ it('retains voice preferences across disable and enable, then prevents readonly 
   await expect.element(dialog.getByRole('switch')).not.toBeChecked()
   await dialog.getByRole('button', { name: 'Close', exact: true }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  await rerender(<TextToSpeech disabled />)
+  await rerender(
+    <NavigationProvider>
+      <TextToSpeech disabled />
+    </NavigationProvider>,
+  )
   await expect.element(toggle).toBeDisabled()
   await screen.getByText('Text to Speech', { exact: true }).hover()
   await expect.element(screen.getByRole('button', { name: 'Voice Settings' })).toBeDisabled()

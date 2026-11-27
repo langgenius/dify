@@ -7,7 +7,9 @@ export const getMarketplacePluginsInfiniteQueryOptions = (
   queryParams: PluginsSearchParams | undefined,
 ) =>
   infiniteQueryOptions({
-    queryKey: marketplaceQuery.searchAdvanced.queryKey({
+    // An infinite key, so invalidateMarketplacePluginLists reaches every paged search.
+    queryKey: marketplaceQuery.searchAdvanced.key({
+      type: 'infinite',
       input: {
         body: queryParams ?? { query: '' },
         params: { kind: queryParams?.type === 'bundle' ? 'bundles' : 'plugins' },

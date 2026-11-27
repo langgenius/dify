@@ -58,7 +58,7 @@ const ImageList: FC<ImageListProps> = ({
         {list.map((item, index) => (
           <li
             key={item._id}
-            className="group relative mr-1 rounded-lg border-[0.5px] border-black/5"
+            className="group relative me-1 rounded-lg border-[0.5px] border-black/5"
           >
             {item.type === TransferMethod.local_file && item.progress !== 100 && (
               <>
@@ -81,7 +81,7 @@ const ImageList: FC<ImageListProps> = ({
                   )}
                 </div>
                 {item.progress > -1 && (
-                  <span className="absolute top-[50%] left-[50%] z-1 translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
+                  <span className="absolute inset-s-[50%] top-[50%] z-1 translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
                     {item.progress}%
                   </span>
                 )}
@@ -143,7 +143,7 @@ const ImageList: FC<ImageListProps> = ({
               <button
                 type="button"
                 className={cn(
-                  'absolute -top-2.25 -right-2.25 z-10 h-4.5 w-4.5 items-center justify-center border-none bg-transparent p-0',
+                  'absolute -inset-e-2.25 -top-2.25 z-10 h-4.5 w-4.5 items-center justify-center border-none bg-transparent p-0',
                   'rounded-2xl shadow-lg hover:bg-state-base-hover',
                   item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
                 )}

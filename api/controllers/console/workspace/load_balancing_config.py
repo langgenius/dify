@@ -23,7 +23,7 @@ from services.model_load_balancing_service import ModelLoadBalancingService
 class LoadBalancingCredentialPayload(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict[str, object]
+    credentials: dict[str, str | bool]
 
 
 class LoadBalancingCredentialValidateResponse(ResponseModel):

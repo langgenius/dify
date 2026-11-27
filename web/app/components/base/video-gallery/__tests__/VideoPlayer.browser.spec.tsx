@@ -57,7 +57,8 @@ it('seeks and changes volume at native pointer positions', async () => {
   await userEvent.click(progress, {
     position: { x: progressBounds.width * 0.75, y: progressBounds.height / 2 },
   })
-  await expect.poll(() => video.currentTime / video.duration).toBeCloseTo(0.75, 1)
+  await expect.poll(() => video.seeking).toBe(false)
+  expect(video.currentTime / video.duration).toBeCloseTo(0.75, 1)
 
   const volume = screen.getByTestId('video-volume-slider')
   const volumeBounds = volume.element().getBoundingClientRect()

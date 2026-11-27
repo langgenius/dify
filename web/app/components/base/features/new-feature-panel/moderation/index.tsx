@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
+import { codeBasedExtensionsQueryOptions } from '@/service/console/code-based-extension-query'
 import { ModerationDialogContent } from './dialog-content'
 
 type Props = Readonly<{

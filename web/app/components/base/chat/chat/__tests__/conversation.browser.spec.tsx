@@ -1,19 +1,28 @@
+import type { ReactNode } from 'react'
 import type { ChatProps } from '../index'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Chat from '../index'
 import { chatItem, renderChatOwner } from './chat-owner-preset'
 
 vi.unmock('react-i18next')
-// boundary: Chat reads route params without a running Next application.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 beforeEach(async () => {
   await page.viewport(1000, 800)
   onTestFinished(guardUnexpectedFetch())
 })
+
+// Chat reads route params; the real hooks run inside a test App Router.
+async function renderChat(ui: ReactNode) {
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
+  const screen = await renderChatOwner(<NavigationProvider>{ui}</NavigationProvider>)
+  return {
+    rerender: (next: ReactNode) => screen.rerender(<NavigationProvider>{next}</NavigationProvider>),
+  }
+}
 
 function Conversation(props: Partial<ChatProps>) {
   const [messages, setMessages] = useState(props.chatList ?? [])
@@ -46,7 +55,7 @@ function Conversation(props: Partial<ChatProps>) {
 }
 
 it('sends native Enter input and displays the accepted message with an empty composer', async () => {
-  await renderChatOwner(<Conversation inputPlaceholder="Ask the assistant" />)
+  await renderChat(<Conversation inputPlaceholder="Ask the assistant" />)
   const input = page.getByPlaceholder('Ask the assistant')
   await input.fill('Hello')
   await userEvent.keyboard('{Enter}')
@@ -62,7 +71,7 @@ it('lays out messages in conversation order and exposes the last answer actions 
     chatItem({ id: 'q2', content: 'Second question', isAnswer: false }),
     chatItem({ id: 'a2', content: 'Second answer' }),
   ]
-  const screen = await renderChatOwner(
+  const screen = await renderChat(
     <div style={{ height: 600 }}>
       <Chat chatList={messages} isResponding noChatInput />
     </div>,
@@ -94,7 +103,7 @@ it('lays out messages in conversation order and exposes the last answer actions 
 
 it('edits a question through the real Chat owner and then withdraws editing permission', async () => {
   const question = chatItem({ id: 'question', isAnswer: false, content: 'Original question' })
-  const screen = await renderChatOwner(
+  const screen = await renderChat(
     <Conversation
       chatList={[question]}
       noChatInput
@@ -123,7 +132,7 @@ it('edits a question through the real Chat owner and then withdraws editing perm
 })
 
 it('activates a follow-up by keyboard and renders that selected question', async () => {
-  await renderChatOwner(
+  await renderChat(
     <Conversation
       config={createChatConfigFixture({ suggested_questions_after_answer: { enabled: true } })}
       suggestedQuestions={['First question', 'Second question']}
@@ -146,7 +155,7 @@ it.each([
   { scenario: 'empty suggestions', props: { suggestedQuestions: [] } },
   { scenario: 'missing sender', props: { onSend: undefined } },
 ])('omits follow-up actions with $scenario', async ({ props }) => {
-  await renderChatOwner(
+  await renderChat(
     <Chat
       chatList={[]}
       noChatInput
@@ -165,7 +174,7 @@ it('filters opening suggestions, sends a real selection, and removes suggestions
     isOpeningStatement: true,
     suggestedQuestions: ['What is Dify?', 'How to use it?', '  ', ''],
   })
-  const screen = await renderChatOwner(<Conversation chatList={[opening]} noChatInput />)
+  const screen = await renderChat(<Conversation chatList={[opening]} noChatInput />)
   await expect.element(page.getByRole('button', { name: 'What is Dify?' })).toBeVisible()
   expect(page.getByRole('button').all()).toHaveLength(2)
   await page.getByRole('button', { name: 'What is Dify?' }).click()
@@ -178,7 +187,7 @@ it('filters opening suggestions, sends a real selection, and removes suggestions
 })
 
 it('keeps opening suggestions disabled in a readonly conversation', async () => {
-  await renderChatOwner(
+  await renderChat(
     <Conversation
       readonly
       noChatInput
@@ -192,7 +201,7 @@ it('keeps opening suggestions disabled in a readonly conversation', async () => 
 })
 
 it('stops streaming through the visible control and removes it after the owner settles', async () => {
-  await renderChatOwner(<Conversation isResponding noChatInput />)
+  await renderChat(<Conversation isResponding noChatInput />)
   await page.getByRole('button', { name: 'Stop responding' }).click()
   await expect
     .element(page.getByRole('button', { name: 'Stop responding' }))
@@ -200,7 +209,7 @@ it('stops streaming through the visible control and removes it after the owner s
 })
 
 it('honors the owner stop/input capabilities while retaining conversation content', async () => {
-  const screen = await renderChatOwner(<Chat chatList={[]} isResponding noStopResponding />)
+  const screen = await renderChat(<Chat chatList={[]} isResponding noStopResponding />)
   await expect
     .element(page.getByRole('button', { name: 'Stop responding' }))
     .not.toBeInTheDocument()
@@ -214,7 +223,7 @@ it('honors the owner stop/input capabilities while retaining conversation conten
 it.each([{ readonly: true }, { inputDisabled: true }])(
   'blocks native input for %j',
   async (props) => {
-    await renderChatOwner(<Conversation {...props} />)
+    await renderChat(<Conversation {...props} />)
     const input = page.getByRole('textbox')
     if (props.readonly) await expect.element(input).toHaveAttribute('readonly')
     else await expect.element(input).toBeDisabled()

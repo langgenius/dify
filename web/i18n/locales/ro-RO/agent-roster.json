@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Șterge filtrele",
   "roster.createAgent": "Creează agent",
   "roster.createDialog.description": "Creați un Agent reutilizabil în acest workspace.",
   "roster.createDialog.title": "Creează agent",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Editați informațiile",
   "roster.empty": "Niciun agent încă",
   "roster.emptySearch": "Niciun agent corespunzător",
+  "roster.emptySearchDescription": "Încercați o altă căutare sau ștergeți filtrele curente.",
   "roster.filters.all": "Toți",
   "roster.filters.createdByMe": "Create de mine",
   "roster.filters.drafts": "Ciorne",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Crearea agentului inline a eșuat. Reîmprospătați și încercați din nou.",
   "roster.nodeSelector.dialogLabel": "Selectați un agent",
   "roster.nodeSelector.manageInAgentConsole": "Gestionați în Agents",
-  "roster.nodeSelector.searchPlaceholder": "Căutați…",
+  "roster.nodeSelector.searchPlaceholder": "Căutați agenți…",
   "roster.nodeSelector.startFromScratch": "Începeți de la zero",
   "roster.references.label": "Workflow-uri care folosesc {{name}}",
   "roster.references.trigger": "Workflow-uri care folosesc {{name}}",

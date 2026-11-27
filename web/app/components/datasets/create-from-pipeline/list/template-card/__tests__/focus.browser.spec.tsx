@@ -5,12 +5,8 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ChunkingMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { createTestNavigation } from '@/test/next-navigation'
 import TemplateCard from '../index'
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-// boundary: analytics must not emit product telemetry from a browser test.
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 
 const pipeline: PipelineTemplate = {
   id: 'template-1',
@@ -36,7 +32,7 @@ function TemplateCardFixture({ queryClient }: { queryClient: QueryClient }) {
     <QueryClientProvider client={queryClient}>
       <Button>Before template</Button>
       <div className="w-80">
-        <TemplateCard pipeline={pipeline} type="built-in" showMoreOperations={false} />
+        <TemplateCard pipeline={pipeline} type="built-in" />
       </div>
     </QueryClientProvider>
   )
@@ -61,7 +57,12 @@ describe('Template card focus', () => {
       }),
       templateInfo,
     )
-    const screen = await render(<TemplateCardFixture queryClient={queryClient} />)
+    const { NavigationProvider } = createTestNavigation({ url: '/datasets/create-from-pipeline' })
+    const screen = await render(
+      <NavigationProvider>
+        <TemplateCardFixture queryClient={queryClient} />
+      </NavigationProvider>,
+    )
     await screen.getByRole('button', { name: 'Before template' }).click()
     await userEvent.tab()
     const choose = screen.getByRole('button', { name: 'datasetPipeline.operations.choose' })

@@ -16,17 +16,20 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { Uploader } from '@/features/dsl-import/uploader'
+import DSLImportWarningDescription from '@/features/dsl-import/warning-description'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -35,9 +38,7 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
-import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
-import { Uploader } from './uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -98,9 +99,12 @@ function CreateFromDSLModal({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const importMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (source: ImportSource) => {
       if (
         source.type === CreateFromDSLModalTab.FROM_FILE &&
@@ -124,7 +128,7 @@ function CreateFromDSLModal({
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -134,11 +138,9 @@ function CreateFromDSLModal({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
   const isPackageImport =
@@ -146,15 +148,8 @@ function CreateFromDSLModal({
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
   // URL imports are classified by the server before applying the appropriate quota.
   const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
-  const isAppQuotaUnavailable =
-    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    requiresAppQuota &&
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = requiresAppQuota && appQuota === undefined
+  const isAppsFull = requiresAppQuota && appQuota !== undefined && isQuotaReached(appQuota)
   const isImporting = importMutation.isPending
   const isConfirming = confirmImportMutation.isPending
 
@@ -346,6 +341,7 @@ function CreateFromDSLModal({
               >
                 {t(($) => $.importFromDSLUrl, { ns: 'app' })}
               </TabsTab>
+              <TabsIndicator />
             </TabsList>
             <TabsPanel
               value={CreateFromDSLModalTab.FROM_FILE}

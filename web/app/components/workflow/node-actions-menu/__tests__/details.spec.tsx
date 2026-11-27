@@ -7,6 +7,7 @@ import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { seedToolProviders } from '@/test/console/tool-providers'
+import { seedTriggerPlugins } from '@/test/console/trigger-plugins'
 import { BlockClassification } from '../../block-selector/types'
 import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
@@ -47,19 +48,12 @@ let workflowTools: ToolProviderListResponse = []
 const renderWorkflowFlowComponent: typeof renderWorkflowFlow = (ui, options) => {
   const { queryClient } = createConsoleQueryWrapper()
   seedToolProviders(queryClient, { builtInTools: [], customTools: [], workflowTools, mcpTools: [] })
+  seedTriggerPlugins(queryClient)
   return renderWorkflowFlow(ui, { ...options, queryClient })
 }
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
-}))
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-  useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)

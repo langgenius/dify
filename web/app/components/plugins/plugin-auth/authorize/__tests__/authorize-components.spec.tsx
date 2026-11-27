@@ -10,7 +10,6 @@ const commands = vi.hoisted(() => ({
   add: vi.fn(),
   saveOAuth: vi.fn(),
   authorize: vi.fn(),
-  invalidate: vi.fn(),
 }))
 vi.mock('../../hooks/use-credential', () => ({
   useAddPluginCredentialHook: () => ({ mutateAsync: commands.add }),
@@ -23,7 +22,6 @@ vi.mock('../../hooks/use-credential', () => ({
   useGetPluginOAuthUrlHook: () => ({ mutateAsync: commands.authorize, isPending: false }),
   useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: commands.saveOAuth }),
   useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: vi.fn() }),
-  useInvalidPluginOAuthClientSchemaHook: () => commands.invalidate,
 }))
 const payload = { category: AuthCategory.tool, provider: 'test-provider' }
 beforeEach(() => {

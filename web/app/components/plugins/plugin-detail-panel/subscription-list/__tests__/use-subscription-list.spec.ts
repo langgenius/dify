@@ -1,16 +1,28 @@
 import type { SimpleDetail } from '../../store'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { useSubscriptionList } from '../use-subscription-list'
 
 let mockDetail: SimpleDetail | undefined
-const mockRefetch = vi.fn()
 
-const mockTriggerSubscriptions = vi.fn()
-
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerSubscriptions: (...args: unknown[]) => mockTriggerSubscriptions(...args),
+const mocks = vi.hoisted(() => ({
+  listSubscriptions: vi.fn(),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async (input) => {
+        mocks.listSubscriptions(input)
+        return []
+      },
+    }),
+  }
+})
 
 vi.mock('../../store', () => ({
   usePluginStore: (
@@ -21,15 +33,10 @@ vi.mock('../../store', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   mockDetail = undefined
-  mockTriggerSubscriptions.mockReturnValue({
-    data: [],
-    isLoading: false,
-    refetch: mockRefetch,
-  })
 })
 
 describe('useSubscriptionList', () => {
-  it('should request subscriptions with provider from store', () => {
+  it('should request subscriptions with provider from store', async () => {
     mockDetail = {
       id: 'detail-1',
       plugin_id: 'plugin-1',
@@ -39,16 +46,24 @@ describe('useSubscriptionList', () => {
       declaration: {},
     }
 
-    const { result } = renderHook(() => useSubscriptionList())
+    const { result } = renderHook(() => useSubscriptionList(), {
+      wrapper: createConsoleQueryWrapper().wrapper,
+    })
 
-    expect(mockTriggerSubscriptions).toHaveBeenCalledWith('test-provider')
+    await waitFor(() => expect(result.current.subscriptions).toEqual([]))
+    expect(mocks.listSubscriptions).toHaveBeenCalledWith({
+      params: { provider: 'test-provider' },
+    })
     expect(result.current.detail).toEqual(mockDetail)
   })
 
-  it('should request subscriptions with empty provider when detail is missing', () => {
-    const { result } = renderHook(() => useSubscriptionList())
+  it('should not request subscriptions when detail is missing', () => {
+    const { result } = renderHook(() => useSubscriptionList(), {
+      wrapper: createConsoleQueryWrapper().wrapper,
+    })
 
-    expect(mockTriggerSubscriptions).toHaveBeenCalledWith('')
+    expect(mocks.listSubscriptions).not.toHaveBeenCalled()
+    expect(result.current.subscriptions).toBeUndefined()
     expect(result.current.detail).toBeUndefined()
   })
 })

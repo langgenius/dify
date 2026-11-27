@@ -77,7 +77,11 @@ How we prioritize:
 
 ### AI-assisted contributions
 
-AI tools are welcome, but you are responsible for understanding and verifying every change you submit. Describe the problem, your solution, and actual test results in your own words. Unreviewed or repetitive low-quality submissions may be closed.
+AI tools are welcome, but you are responsible for understanding and verifying every change you submit. Describe the problem, your solution, and actual test results in your own words.
+
+Contributors without write access may have at most **3 open pull requests** at a time, including drafts. For established external contributors, this limit is lifted.
+
+Unreviewed or repetitive low-quality submissions may be closed, and accounts that repeatedly submit them may be blocked from the repository.
 
 ### Setup the project
 

@@ -352,13 +352,13 @@ const ConditionItem = ({
                           aria-hidden
                           className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-text-accent"
                         />
-                        <div className="ml-0.5 truncate system-xs-medium">
+                        <div className="ms-0.5 truncate system-xs-medium">
                           {selectedSubVarOption.name}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-left system-sm-regular text-components-input-text-placeholder">
+                    <div className="text-start system-sm-regular text-components-input-text-placeholder">
                       {t(($) => $['placeholder.select'], { ns: 'common' })}
                     </div>
                   )}
@@ -371,15 +371,15 @@ const ConditionItem = ({
                           <SelectItem
                             key={option.value}
                             value={option.value}
-                            className="h-8 py-0 pr-5 pl-1"
+                            className="h-8 py-0 ps-1 pe-5"
                           >
                             <div className="flex h-6 items-center justify-between">
                               <div className="flex h-full items-center">
                                 <span
                                   aria-hidden
-                                  className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
+                                  className="me-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
                                 />
-                                <SelectItemText className="mr-0 system-sm-medium text-text-secondary">
+                                <SelectItemText className="me-0 system-sm-medium text-text-secondary">
                                   {option.name}
                                 </SelectItemText>
                               </div>
@@ -490,7 +490,7 @@ const ConditionItem = ({
         )}
       </div>
       <div
-        className="mt-1 ml-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+        className="ms-1 mt-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}

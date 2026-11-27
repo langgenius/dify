@@ -1,10 +1,7 @@
-from collections.abc import Iterator
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     EasyUIBasedAppConfig,
@@ -22,8 +19,7 @@ from core.app.entities.app_invoke_entities import (
 from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from events.event_handlers import update_provider_when_message_created
-from models import AppMode, Message, TenantCreditPool
-from models.enums import ProviderQuotaType as ModelProviderQuotaType
+from models import AppMode, Message
 from models.provider import ProviderType
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
@@ -49,29 +45,11 @@ def _app_config(tenant_id: str, app_mode: AppMode) -> EasyUIBasedAppConfig:
     )
 
 
-@pytest.fixture
-def credit_pool_session_factory(sqlite_session_factory: sessionmaker[Session]) -> Iterator[sessionmaker[Session]]:
-    """Bind message-created accounting to fixture-owned SQLite sessions."""
-    with patch("events.event_handlers.update_provider_when_message_created.db.session", sqlite_session_factory):
-        yield sqlite_session_factory
-
-
 def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient(
-    credit_pool_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Given a complete trial invocation and limited balance, cap the debit at the remaining balance."""
     tenant_id = str(uuid4())
-    pool_id = str(uuid4())
-    pool = TenantCreditPool(
-        tenant_id=tenant_id,
-        pool_type=ModelProviderQuotaType.TRIAL,
-        quota_limit=10,
-        quota_used=9,
-    )
-    pool.id = pool_id
-    with credit_pool_session_factory.begin() as session:
-        session.add(pool)
-
     system_configuration = SystemConfiguration(
         enabled=True,
         current_quota_type=ProviderQuotaType.TRIAL,
@@ -99,6 +77,10 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
     message.id = "message-1"
 
     with (
+        patch(
+            "services.credit_pool_service.CreditPoolService.deduct_credits_capped",
+            return_value=1,
+        ) as mock_deduct,
         patch.object(update_provider_when_message_created, "_execute_provider_updates"),
     ):
         update_provider_when_message_created.handle(
@@ -106,10 +88,10 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
             application_generate_entity=application_generate_entity,
         )
 
-    with credit_pool_session_factory() as session:
-        quota_used = session.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == pool_id))
-
-    assert quota_used == 10
+    mock_deduct.assert_called_once()
+    assert mock_deduct.call_args.kwargs["credits_required"] == 3
+    assert mock_deduct.call_args.kwargs["pool_type"] == ProviderQuotaType.TRIAL
+    assert "Credit pool exhausted during message-created accounting" in caplog.text
 
 
 def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
@@ -227,6 +209,7 @@ def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount
         tenant_id="tenant-id",
         credits_required=3,
         pool_type="trial",
-        session=ANY,
+        request_id=None,
+        metadata=None,
     )
     assert "Credit pool exhausted during message-created accounting" not in caplog.text

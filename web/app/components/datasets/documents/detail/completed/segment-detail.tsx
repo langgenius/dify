@@ -136,7 +136,7 @@ export function SegmentDetail({
       <div
         className={cn(
           'flex shrink-0 items-center justify-between',
-          fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4',
+          fullScreen ? 'border border-divider-subtle py-3 ps-6 pe-4' : 'ps-4 pe-3 pt-3',
         )}
       >
         <div className="flex flex-col">
@@ -162,7 +162,7 @@ export function SegmentDetail({
                 loading={loading}
                 showRegenerationButton={runtimeMode === 'general'}
               />
-              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
+              <Separator orientation="vertical" className="ms-4 me-2 h-3.5" />
             </>
           )}
           <button
@@ -170,7 +170,7 @@ export function SegmentDetail({
             aria-label={t(($) => $[fullScreen ? 'operation.zoomOut' : 'operation.zoomIn'], {
               ns: 'common',
             })}
-            className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            className="me-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
             {fullScreen ? (

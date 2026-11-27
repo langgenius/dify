@@ -5,6 +5,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { CommonCreateModal } from '../common-modal'
@@ -18,7 +19,8 @@ const requests = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   const prefix = 'workspaces.current.triggerProvider.byProvider.subscriptions.builder'
   return {
     ...actual,
@@ -27,6 +29,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${prefix}.verifyAndUpdate.bySubscriptionBuilderId.post`]: requests.verify,
       [`${prefix}.build.bySubscriptionBuilderId.post`]: requests.build,
       [`${prefix}.update.bySubscriptionBuilderId.post`]: requests.update,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       [`${prefix}.logs.bySubscriptionBuilderId.get`]: async () => ({ logs: [] }),
     }),
   }
@@ -91,23 +95,17 @@ it('initializes a builder, verifies entered credentials and submits validated co
     <CommonCreateModal createType={SupportedCreationMethods.APIKEY} onClose={onClose} />,
   )
   await waitFor(() =>
-    expect(requests.create).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { provider: 'provider-a' },
-        body: { credential_type: TriggerCredentialType.ApiKey },
-      },
-      { context: { silent: true } },
-    ),
+    expect(requests.create).toHaveBeenCalledExactlyOnceWith({
+      params: { provider: 'provider-a' },
+      body: { credential_type: TriggerCredentialType.ApiKey },
+    }),
   )
   await user.type(screen.getByRole('textbox', { name: /API key/ }), 'secret')
   await user.click(screen.getByRole('button', { name: verifyName }))
-  expect(requests.verify).toHaveBeenCalledWith(
-    {
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { credentials: { api_key: 'secret' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.verify).toHaveBeenCalledWith({
+    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    body: { credentials: { api_key: 'secret' } },
+  })
   expect(
     await screen.findByRole('button', { name: 'pluginTrigger.modal.common.verifying' }),
   ).toBeDisabled()
@@ -125,14 +123,37 @@ it('initializes a builder, verifies entered credentials and submits validated co
   await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'dify')
   await user.click(screen.getByRole('button', { name: createName }))
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(requests.build).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { name: 'Repo updates', parameters: { repo: 'dify' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.build).toHaveBeenCalledExactlyOnceWith({
+    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    body: { name: 'Repo updates', parameters: { repo: 'dify' } },
+  })
   expect(requests.refetch).toHaveBeenCalledOnce()
+})
+
+it.each([
+  [
+    'the translated reason',
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'paid_plan_required',
+      message: 'Server says why',
+    }),
+    'requestErrors.code.paid_plan_required',
+  ],
+  [
+    'the localized fallback',
+    new TypeError('Failed to fetch'),
+    'pluginTrigger.modal.errors.createFailed',
+  ],
+])('reports %s when the builder cannot be initialized', async (_case, error, message) => {
+  // boundary: the failure is logged before it is reported.
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.mocked(toast.error).mockClear()
+  requests.create.mockRejectedValueOnce(error)
+  renderWithConsoleQuery(
+    <CommonCreateModal createType={SupportedCreationMethods.APIKEY} onClose={vi.fn()} />,
+  )
+  await waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith(message))
+  consoleError.mockRestore()
 })
 
 it('shows a verification failure and lets the user correct credentials before continuing', async () => {
@@ -155,7 +176,6 @@ it('shows a verification failure and lets the user correct credentials before co
   await screen.findByRole('textbox', { name: subscriptionName })
   expect(requests.verify).toHaveBeenLastCalledWith(
     expect.objectContaining({ body: { credentials: { api_key: 'correct' } } }),
-    { context: { silent: true } },
   )
 })
 
@@ -198,21 +218,15 @@ it('debounces manual property edits and validates them before creating the subsc
   await user.type(screen.getByRole('textbox', { name: /Channel/ }), 'release')
   expect(requests.update).not.toHaveBeenCalled()
   await waitFor(() =>
-    expect(requests.update).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-        body: { properties: { channel: 'release' } },
-      },
-      { context: { silent: true } },
-    ),
+    expect(requests.update).toHaveBeenCalledExactlyOnceWith({
+      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+      body: { properties: { channel: 'release' } },
+    }),
   )
   await user.click(screen.getByRole('button', { name: createName }))
-  expect(requests.build).toHaveBeenCalledWith(
-    {
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { name: 'Manual updates' },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.build).toHaveBeenCalledWith({
+    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    body: { name: 'Manual updates' },
+  })
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
 })

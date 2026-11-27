@@ -1,13 +1,14 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toIconInfo } from '@/app/components/datasets/dataset-fields'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { consoleClient } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
 
@@ -37,7 +38,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     try {
-      const res = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+      const res = await fetchPipelineWorkflowDraft(pipelineId)
       setData(res)
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)
@@ -62,32 +63,37 @@ export const usePipelineInit = () => {
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: unknown) {
-      if (error instanceof ORPCError && pipelineId) {
-        if (error.code === 'draft_workflow_not_exist') {
-          workflowStore.setState({
-            notInitialWorkflow: true,
-            shouldAutoOpenStartNodeSelector: true,
-          })
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft
-            .post(
-              {
-                params: { pipeline_id: pipelineId },
-                body: {
-                  graph: {
-                    nodes: nodesTemplate,
-                    edges: edgesTemplate,
-                  },
-                  environment_variables: [],
-                },
+      const draftMissing =
+        error instanceof ORPCError &&
+        isDefinedError(error) &&
+        error.code === 'draft_workflow_not_exist'
+      if (!draftMissing) {
+        // The editor stays on its loading state, so the failure is reported here.
+        reportRequestError(error)
+        return
+      }
+      if (pipelineId) {
+        workflowStore.setState({
+          notInitialWorkflow: true,
+          shouldAutoOpenStartNodeSelector: true,
+        })
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft
+          .post({
+            params: { pipeline_id: pipelineId },
+            body: {
+              graph: {
+                nodes: nodesTemplate,
+                edges: edgesTemplate,
               },
-              { context: { silent: true } },
-            )
-            .then((res) => {
-              const { setDraftUpdatedAt } = workflowStore.getState()
-              setDraftUpdatedAt(res.updated_at)
-              handleGetInitialWorkflowData()
-            })
-        }
+              environment_variables: [],
+            },
+          })
+          .then((res) => {
+            const { setDraftUpdatedAt } = workflowStore.getState()
+            setDraftUpdatedAt(res.updated_at)
+            handleGetInitialWorkflowData()
+          })
+          .catch(reportRequestError)
       }
     }
   }, [nodesTemplate, edgesTemplate, workflowStore, pipelineId])
