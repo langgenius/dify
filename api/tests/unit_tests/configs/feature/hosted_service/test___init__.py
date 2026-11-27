@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from configs.feature.hosted_service import HostedModerationConfig
+from configs.feature.hosted_service import HostedCreditConfig, HostedModerationConfig
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
 
 
@@ -32,3 +32,12 @@ def test_hosted_batch_limits_reject_invalid_environment_values(
     monkeypatch.setenv(name, value)
     with pytest.raises(ValidationError, match=name):
         HostedModerationConfig(_env_file=None)
+
+
+def test_credit_rates_follow_the_current_price_table_without_changing_legacy_matches() -> None:
+    prices = HostedCreditConfig(HOSTED_MODEL_CREDIT_CONFIG="free:0,paid:2,paid:5,paid :9,bad:n/a")
+
+    assert [prices.get_model_credits(name) for name in ("free", "paid", "bad", "unknown")] == [0, 5, 1, 1]
+
+    prices.HOSTED_MODEL_CREDIT_CONFIG = "free:3,paid:0"
+    assert [prices.get_model_credits(name) for name in ("free", "paid")] == [3, 0]

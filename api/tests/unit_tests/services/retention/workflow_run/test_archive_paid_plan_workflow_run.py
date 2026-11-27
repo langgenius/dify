@@ -206,7 +206,7 @@ class TestWorkflowRunArchiverSqliteCases:
             repo.get_runs_batch_by_time_range.side_effect = [_db_disconnect_error(), empty_runs]
             archiver = WorkflowRunArchiver(workflow_run_repo=repo)
 
-            with patch("services.retention.workflow_run.db_retry.time.sleep") as sleep:
+            with patch("services.retention.workflow_run.db_retry.sleep") as sleep:
                 runs = archiver._get_runs_batch(None)
 
             assert runs == []
@@ -219,7 +219,7 @@ class TestWorkflowRunArchiverSqliteCases:
             archiver = WorkflowRunArchiver(workflow_run_repo=repo)
 
             with (
-                patch("services.retention.workflow_run.db_retry.time.sleep") as sleep,
+                patch("services.retention.workflow_run.db_retry.sleep") as sleep,
                 pytest.raises(RuntimeError, match="broken pipe"),
             ):
                 archiver._get_runs_batch(None)
@@ -458,7 +458,7 @@ class TestWorkflowRunArchiverSqliteCases:
                 patch.object(
                     archiver, "_archive_bundle", side_effect=[_db_disconnect_error(), success]
                 ) as archive_bundle,
-                patch("services.retention.workflow_run.db_retry.time.sleep") as sleep,
+                patch("services.retention.workflow_run.db_retry.sleep") as sleep,
             ):
                 results = archiver._archive_bundle_groups(session_maker, MagicMock(), [[run]])
 
@@ -476,7 +476,7 @@ class TestWorkflowRunArchiverSqliteCases:
 
             with (
                 patch.object(archiver, "_archive_bundle", side_effect=[_db_disconnect_error()] * 3) as archive_bundle,
-                patch("services.retention.workflow_run.db_retry.time.sleep") as sleep,
+                patch("services.retention.workflow_run.db_retry.sleep") as sleep,
             ):
                 results = archiver._archive_bundle_groups(session_maker, MagicMock(), [[run]])
 

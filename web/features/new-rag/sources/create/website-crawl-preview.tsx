@@ -19,7 +19,8 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from '
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { createRequestId } from '../../request-id'
 import { newKnowledgeDetailPath } from '../../routes'
 import { WebsiteDatasourceParameterForm } from '../setup/datasource-parameter-form'
@@ -431,6 +432,7 @@ export function WebsiteCrawlPreview({
   syncPolicyField?: ReactNode
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const { mutateAsync: createSource } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.post.mutationOptions(),
@@ -474,10 +476,10 @@ export function WebsiteCrawlPreview({
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [pollPaused, setPollPaused] = useState(false)
-  const [requestFailure, setRequestFailure] = useState<{ code: string; message?: string }>()
+  const [requestFailure, setRequestFailure] = useState<{ code: string; error?: unknown }>()
   const requestError = requestFailure?.code
   const [discarding, setDiscarding] = useState(false)
-  const [discardError, setDiscardError] = useState<{ message?: string } | false>(false)
+  const [discardError, setDiscardError] = useState<{ error?: unknown } | false>(false)
   const [workflowUncertain, setWorkflowUncertain] = useState(false)
   const [selectionUncertain, setSelectionUncertain] = useState(false)
   const [selectionInteractionLocked, setSelectionInteractionLocked] = useState(false)
@@ -809,7 +811,7 @@ export function WebsiteCrawlPreview({
             uncertainWorkflowRef.current = undefined
             updateWorkflowUncertain(false)
           }
-          setRequestFailure({ code: 'START_FAILED', message: getRequestErrorMessage(error) })
+          setRequestFailure({ code: 'START_FAILED', error })
           return undefined
         } finally {
           actionPendingRef.current = false
@@ -865,7 +867,7 @@ export function WebsiteCrawlPreview({
             }
             return acceptRun(reconciled)
           } catch (error) {
-            setRequestFailure({ code: 'RETRY_FAILED', message: getRequestErrorMessage(error) })
+            setRequestFailure({ code: 'RETRY_FAILED', error })
             return undefined
           }
         }
@@ -889,14 +891,14 @@ export function WebsiteCrawlPreview({
               uncertainWorkflowRef.current = undefined
               updateWorkflowUncertain(false)
             }
-            setRequestFailure({ code: 'RETRY_FAILED', message: getRequestErrorMessage(error) })
+            setRequestFailure({ code: 'RETRY_FAILED', error })
             return undefined
           }
           uncertainWorkflowRef.current = reconcileRetry
           updateWorkflowUncertain(true)
           const reconciled = await reconcileRetry()
           if (!reconciled) {
-            setRequestFailure({ code: 'RETRY_FAILED', message: getRequestErrorMessage(error) })
+            setRequestFailure({ code: 'RETRY_FAILED', error })
             return undefined
           }
           return acceptRun(reconciled)
@@ -994,7 +996,7 @@ export function WebsiteCrawlPreview({
         if (!isTerminal(nextRun.state)) timer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
       } catch (error) {
         if (disposed) return
-        setRequestFailure({ code: 'POLL_FAILED', message: getRequestErrorMessage(error) })
+        setRequestFailure({ code: 'POLL_FAILED', error })
         setPollPaused(true)
       }
     }
@@ -1026,7 +1028,7 @@ export function WebsiteCrawlPreview({
           updateRun(reconciled)
           return true
         } catch (error) {
-          setRequestFailure({ code: 'CANCEL_FAILED', message: getRequestErrorMessage(error) })
+          setRequestFailure({ code: 'CANCEL_FAILED', error })
           return false
         }
       }
@@ -1040,13 +1042,13 @@ export function WebsiteCrawlPreview({
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
           cancelFingerprintRef.current = undefined
-          setRequestFailure({ code: 'CANCEL_FAILED', message: getRequestErrorMessage(error) })
+          setRequestFailure({ code: 'CANCEL_FAILED', error })
           return false
         }
         try {
           const reconciled = await getSourceWorkflow(knowledgeSpaceId, targetRun.id)
           if (!isCancelConfirmed(targetRun, reconciled)) {
-            setRequestFailure({ code: 'CANCEL_FAILED', message: getRequestErrorMessage(error) })
+            setRequestFailure({ code: 'CANCEL_FAILED', error })
             return false
           } else {
             cancelFingerprintRef.current = undefined
@@ -1054,7 +1056,7 @@ export function WebsiteCrawlPreview({
             return true
           }
         } catch (error) {
-          setRequestFailure({ code: 'CANCEL_FAILED', message: getRequestErrorMessage(error) })
+          setRequestFailure({ code: 'CANCEL_FAILED', error })
           return false
         }
       }
@@ -1172,7 +1174,7 @@ export function WebsiteCrawlPreview({
       } catch (error) {
         discardRequestedRef.current = false
         setDiscarding(false)
-        setDiscardError({ message: getRequestErrorMessage(error) })
+        setDiscardError({ error })
         return
       }
     }
@@ -1272,8 +1274,10 @@ export function WebsiteCrawlPreview({
             </div>
             {requestError === 'CANCEL_FAILED' && (
               <p role="alert" className="px-4 pb-3 system-xs-regular text-text-destructive">
-                {requestFailure?.message ??
-                  t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' })}
+                {describeRequestError(
+                  requestFailure?.error,
+                  t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' }),
+                )}
               </p>
             )}
             {run.progressTotal !== undefined && run.progressTotal > 0 && (
@@ -1356,10 +1360,12 @@ export function WebsiteCrawlPreview({
                         ns: 'knowledgeSources',
                         provider: providerName,
                       })
-                    : (requestFailure?.message ??
-                      (requestError === 'START_FAILED'
-                        ? t(($) => $.crawlStartFailed)
-                        : t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' })))}
+                    : describeRequestError(
+                        requestFailure?.error,
+                        requestError === 'START_FAILED'
+                          ? t(($) => $.crawlStartFailed)
+                          : t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' }),
+                      )}
             </p>
           </div>
         )}
@@ -1397,7 +1403,10 @@ export function WebsiteCrawlPreview({
       )}
       {discardError && requestError !== 'CANCEL_FAILED' && (
         <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
-          {discardError.message ?? t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' })}
+          {describeRequestError(
+            discardError.error,
+            t(($) => $.crawlFailedDescription, { ns: 'knowledgeSources' }),
+          )}
         </p>
       )}
     </section>

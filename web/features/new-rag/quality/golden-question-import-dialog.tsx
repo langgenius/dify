@@ -18,7 +18,7 @@ import { useIsMutating, useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useKnowledgeSpace } from '../space/context'
 import { maxGoldenQuestionCsvBytes, maxGoldenQuestionCsvRows } from './golden-question-csv-limits'
 
@@ -51,12 +51,13 @@ export function GoldenQuestionImportDialog({
 
 function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation(['dataset', 'knowledgeQuality', 'knowledgeSpace'])
+  const describeRequestError = useRequestErrorDescriber()
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
   const [rows, setRows] = useState<KnowledgeFsGoldenQuestionBulkImportRowPayload[]>([])
   const [fileName, setFileName] = useState('')
   const [csvError, setCsvError] = useState<GoldenQuestionCsvError>()
-  const [submitError, setSubmitError] = useState<string>()
+  const [submitError, setSubmitError] = useState<{ error: unknown }>()
   const [reading, setReading] = useState(false)
   // Only the latest file selection may publish rows; earlier reads can resolve later.
   const readGenerationRef = useRef(0)
@@ -120,7 +121,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
         params: { control_space_id: knowledgeSpaceId },
       })
     } catch (error) {
-      setSubmitError(getRequestErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
+      setSubmitError({ error })
     }
   }
 
@@ -232,7 +233,10 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
             )}
             {submitError && (
               <p role="alert" className="mt-3 body-xs-regular text-text-destructive">
-                {submitError}
+                {describeRequestError(
+                  submitError.error,
+                  t(($) => $.unknownError, { ns: 'dataset' }),
+                )}
               </p>
             )}
           </DialogBody>

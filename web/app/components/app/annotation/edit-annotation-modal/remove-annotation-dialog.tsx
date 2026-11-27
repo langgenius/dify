@@ -15,7 +15,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type RemoveAnnotationDialogProps = {
   appId: string
@@ -31,6 +31,7 @@ export function RemoveAnnotationDialog({
   onRemoved,
 }: RemoveAnnotationDialogProps) {
   const { t } = useTranslation(['appAnnotation', 'appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const actionsRef = useRef<AlertDialogActions>(null)
   const removal = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions({
@@ -67,8 +68,10 @@ export function RemoveAnnotationDialog({
         {removal.isError && (
           <AlertDialogBody>
             <p role="alert" className="text-text-destructive">
-              {getRequestErrorMessage(removal.error) ??
-                t(($) => $['api.actionFailed'], { ns: 'common' })}
+              {describeRequestError(
+                removal.error,
+                t(($) => $['api.actionFailed'], { ns: 'common' }),
+              )}
             </p>
           </AlertDialogBody>
         )}

@@ -40,6 +40,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm import model_access
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.tools.entities.common_entities import I18nObjectDict
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -103,11 +104,18 @@ AgentAppRuntimeToolDefinition = AgentRuntimeToolDefinition
 
 @dataclass(frozen=True, slots=True)
 class AgentAppRuntimeRequest:
+    """Backend request plus API-owned, credential-free display snapshots.
+
+    Tool labels never enter the backend request or metadata. Empty labels cover
+    native-only requests and retain compatibility with internal constructors.
+    """
+
     request: CreateRunRequest
     redacted_request: dict[str, Any]
     metadata: dict[str, Any]
     binding_id: str
     available_tools: tuple[AgentAppRuntimeToolDefinition, ...] = ()
+    tool_labels: Mapping[str, I18nObjectDict] = field(default_factory=dict)
 
 
 class AgentAppRuntimeRequestBuilder:
@@ -123,6 +131,12 @@ class AgentAppRuntimeRequestBuilder:
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
     def build(self, context: AgentAppRuntimeBuildContext) -> AgentAppRuntimeRequest:
+        """Prepare one admitted turn's native input and detached display labels.
+
+        Tool/provider resolution keeps its existing validation and error paths.
+        Successful results freeze labels by exposed name for the API recorder;
+        those labels never enter SDK configuration or request metadata.
+        """
         agent_soul = context.agent_soul
         if agent_soul.model is None:
             raise AgentAppRuntimeRequestBuildError(
@@ -238,6 +252,7 @@ class AgentAppRuntimeRequestBuilder:
             redacted_request=redacted,
             metadata=metadata,
             binding_id=context.binding_id,
+            tool_labels={name: label.copy() for name, label in tool_layers.tool_labels.items()},
             available_tools=(
                 build_runtime_tool_definitions(
                     tool_layers=tool_layers,

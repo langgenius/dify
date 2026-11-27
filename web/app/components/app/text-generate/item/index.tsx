@@ -14,7 +14,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
@@ -114,7 +114,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         installedAppId,
       )
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     setChildFeedback(childFeedback)
@@ -157,7 +157,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       })
       setChildMessageId(res.id)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     } finally {
       stopQuerying()
     }
@@ -188,7 +188,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         messageId: messageId!,
       })
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     const promptLog = buildPromptLogItem(data)
@@ -217,7 +217,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         try {
           await submitHumanInputFormService(formToken, submission, formVersion)
         } catch (error) {
-          toastRequestError(error)
+          reportRequestError(error)
           throw error
         }
       } else {
@@ -226,7 +226,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
           await submitHumanInputForm(formToken, submission, formVersion)
         } catch (error) {
-          toastRequestError(error)
+          reportRequestError(error)
           throw error
         }
       }

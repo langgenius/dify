@@ -90,5 +90,14 @@ class _RedisSubscription(RedisSubscriptionBase):
         return self._pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
 
     @override
+    def _get_subscription_message(self, timeout: float) -> dict[str, Any] | None:
+        assert self._pubsub is not None
+        return self._pubsub.get_message(ignore_subscribe_messages=False, timeout=timeout)
+
+    @override
+    def _get_subscription_ack_type(self) -> str:
+        return "subscribe"
+
+    @override
     def _get_message_type(self) -> str:
         return "message"

@@ -217,11 +217,11 @@ it('mounts a separate alert when contact details fail', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('contacts.details.error')
 })
 
-it('shows the server message when removal fails', async () => {
+it('shows the translated reason when removal fails', async () => {
   const user = userEvent.setup()
   api.remove.mockRejectedValueOnce(
-    createHttpError(new Response(null, { status: 400 }), {
-      code: 'removal_failed',
+    createHttpError(new Response(null, { status: 403 }), {
+      code: 'access_denied',
       message: 'Server says why',
     }),
   )
@@ -233,10 +233,12 @@ it('shows the server message when removal fails', async () => {
   await user.click(
     within(dialog).getByRole('button', { name: 'contacts.directory.removeSelected' }),
   )
-  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'requestErrors.code.access_denied',
+  )
 })
 
-it('shows the server message when the directory fails to load', async () => {
+it('shows the load failure when the directory fails with an unknown code', async () => {
   api.list.mockRejectedValue(
     createHttpError(new Response(null, { status: 503 }), {
       code: 'service_unavailable',
@@ -244,6 +246,6 @@ it('shows the server message when the directory fails to load', async () => {
     }),
   )
   setup()
-  expect(await screen.findByText('Server says why')).toBeVisible()
+  expect(await screen.findByText('contacts.directory.errorDescription')).toBeVisible()
   expect(screen.getByText('contacts.directory.errorTitle')).toBeVisible()
 })

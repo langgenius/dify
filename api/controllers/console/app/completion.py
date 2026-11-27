@@ -1,10 +1,12 @@
 import json
 import logging
-from collections.abc import Generator, Iterator, Mapping
+from collections.abc import Generator, Iterable, Iterator, Mapping
+from contextlib import contextmanager
+from http import HTTPStatus
 from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
@@ -15,7 +17,6 @@ from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
     AgentPreviewUnavailableError,
     AppUnavailableError,
@@ -26,6 +27,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -39,21 +41,26 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import uuid_value
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
+from services.agent.agent_app_contracts import AgentAppNotFoundError
+from services.agent.console_runtime import AgentConsoleConversationMissingError, AgentConsolePreviewDisabledError
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
 from services.app_generate_service import AppGenerateService
@@ -62,6 +69,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
+_AGENT_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 
 
 @runtime_checkable
@@ -78,6 +86,14 @@ def _resolve_debugger_chat_streaming(
     if response_mode_provided and response_mode == "blocking":
         raise BadRequest("Agent App only supports streaming response mode.")
     return True
+
+
+class AgentChatConversationNotFoundError(BaseHTTPException):
+    """Preserve the Console's not-found response for an unavailable debug conversation."""
+
+    error_code = "not_found"
+    description = "Conversation Not Exists."
+    code = HTTPStatus.NOT_FOUND
 
 
 class BaseMessagePayload(BaseModel):
@@ -286,28 +302,33 @@ class AgentChatMessageApi(Resource):
     @console_ns.doc(description="Generate an Agent App chat message for debugging")
     @console_ns.doc(params={"agent_id": "Agent ID"})
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully")
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(404, "Agent or conversation not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = AgentRosterService(session).get_agent_runtime_app_model(
-            tenant_id=current_tenant_id, agent_id=str(agent_id)
-        )
-        return _create_chat_message(
-            session=session,
-            current_tenant_id=current_tenant_id,
-            current_user=current_user,
-            app_model=app_model,
-            agent_id=str(agent_id),
-        )
+    @console_ns.response(HTTPStatus.OK, "Chat message generated successfully")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent or conversation not found")
+    @console_account_admission(
+        allowed_roles=_AGENT_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())]
+    )
+    def post(self, context: RequestContext, agent_id: UUID) -> Response:
+        """Start the admitted Agent's debug conversation and preflight its stream before responding."""
+        raw = console_ns.payload or {}
+        payload = ChatMessagePayload.model_validate(raw)
+        if isinstance(raw, dict) and "response_mode" in raw and payload.response_mode == "blocking":
+            raise BadRequest("Agent App only supports streaming response mode.")
+        args = payload.model_dump(exclude_none=True, by_alias=True)
+        args.update(response_mode="streaming", auto_generate_name=False)
+        trace_id = get_external_trace_id(request)
+        if trace_id:
+            args["external_trace_id"] = trace_id
+        with _chat_generation_errors():
+            stream = application_services().agent_apps.runtime.generate_chat(
+                context,
+                str(agent_id),
+                args=args,
+                draft_type=AgentConfigDraftType(payload.draft_type),
+                conversation_id=payload.conversation_id,
+            )
+        # response-contract:ignore compact_generate_response
+        return helper.compact_generate_response(_raise_agent_stream_error_before_response(stream))
 
 
 @console_ns.route("/agent/<uuid:agent_id>/build-chat/finalize")
@@ -324,28 +345,32 @@ class AgentBuildChatFinalizeApi(Resource):
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(404, "Agent, build draft, or conversation not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = AgentRosterService(session).get_agent_runtime_app_model(
-            tenant_id=current_tenant_id, agent_id=str(agent_id)
-        )
-        return _create_build_chat_finalization_message(
-            session=session,
-            current_tenant_id=current_tenant_id,
-            current_user=current_user,
-            app_model=app_model,
-            agent_id=str(agent_id),
-        )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent, build draft, or conversation not found")
+    @console_account_admission(
+        allowed_roles=_AGENT_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())]
+    )
+    def post(self, context: RequestContext, agent_id: UUID) -> tuple[dict[str, str], HTTPStatus]:
+        """Drain the admitted account's Build turn to the first message-end event."""
+        args: dict[str, Any] = {
+            "query": _BUILD_CHAT_FINALIZATION_QUERY,
+            "inputs": {},
+            "response_mode": "streaming",
+            "draft_type": "debug_build",
+            "auto_generate_name": False,
+        }
+        trace_id = get_external_trace_id(request)
+        if trace_id:
+            args["external_trace_id"] = trace_id
+        with _chat_generation_errors():
+            stream = application_services().agent_apps.runtime.generate_chat(
+                context, str(agent_id), args=args, draft_type=AgentConfigDraftType.DEBUG_BUILD, conversation_id=None
+            )
+        if isinstance(stream, Mapping):
+            raise CompletionRequestError("Build chat finalization did not complete.")
+        _drain_streaming_generate_response(stream)
+        return {"result": "success"}, HTTPStatus.OK
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
@@ -369,21 +394,16 @@ class AgentChatMessageStopApi(Resource):
     @console_ns.doc("stop_agent_chat_message")
     @console_ns.doc(description="Stop a running Agent App chat message generation")
     @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID to stop"})
-    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session(write=False)
-    def post(self, session: Session, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
-        app_model = resolve_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
-        return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
+    @console_ns.response(HTTPStatus.OK, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())])
+    def post(self, context: RequestContext, agent_id: UUID, task_id: str) -> tuple[dict[str, str], HTTPStatus]:
+        """Stop a task owned by the admitted account after resolving the Agent's runtime App."""
+        try:
+            application_services().agent_apps.access.resolve_runtime_app_id(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        application_services().app_tasks.stop_task(task_id, InvokeFrom.DEBUGGER, context.account_id)
+        return {"result": "success"}, HTTPStatus.OK
 
 
 def _resolve_current_user_agent_debug_conversation_id(
@@ -481,41 +501,7 @@ def _create_chat_message(
     )
 
 
-def _create_build_chat_finalization_message(
-    *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
-):
-    debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
-        session=session,
-        current_tenant_id=current_tenant_id,
-        current_user=current_user,
-        app_model=app_model,
-        agent_id=agent_id,
-        draft_type=AgentConfigDraftType.DEBUG_BUILD,
-    )
-    args: dict[str, Any] = {
-        "query": _BUILD_CHAT_FINALIZATION_QUERY,
-        "inputs": {},
-        "response_mode": "streaming",
-        "draft_type": "debug_build",
-        "conversation_id": debug_conversation_id,
-        "auto_generate_name": False,
-    }
-    external_trace_id = get_external_trace_id(request)
-    if external_trace_id:
-        args["external_trace_id"] = external_trace_id
-
-    response = _generate_chat_message(
-        session=session,
-        current_user=current_user,
-        app_model=app_model,
-        args=args,
-        streaming=True,
-    )
-    _drain_streaming_generate_response(response)
-    return {"result": "success"}, 200
-
-
-def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str]) -> None:
+def _drain_streaming_generate_response(response: Iterable[str]) -> None:
     """Consume a streamed app-generate response until a terminal message event arrives.
 
     Finalize keeps the normal Agent App streaming path so the existing queue,
@@ -566,7 +552,7 @@ def _generate_chat_message(
     args: dict[str, Any],
     streaming: bool,
 ):
-    try:
+    with _chat_generation_errors():
         return AppGenerateService.generate(
             session=session,
             app_model=app_model,
@@ -575,6 +561,17 @@ def _generate_chat_message(
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=streaming,
         )
+
+
+@contextmanager
+def _chat_generation_errors() -> Generator[None]:
+    """Translate the existing generation errors before an HTTP stream has started."""
+    try:
+        yield
+    except AgentConsoleConversationMissingError as exc:
+        raise AgentChatConversationNotFoundError from exc
+    except AgentConsolePreviewDisabledError as exc:
+        raise AgentPreviewUnavailableError from exc
     except services.errors.conversation.ConversationNotExistsError as caught_error:
         raise NotFound("Conversation Not Exists.") from caught_error
     except services.errors.conversation.ConversationCompletedError as caught_error:
@@ -590,6 +587,10 @@ def _generate_chat_message(
         raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description) from ex
+    except AgentAppNotFoundError as exc:
+        raise AgentNotFoundError from exc
+    except AgentNotFoundError:
+        raise
     except CompletionRequestError:
         raise
     except InvokeError as e:

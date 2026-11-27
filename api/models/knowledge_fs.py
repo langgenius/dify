@@ -443,6 +443,11 @@ class KnowledgeFSExternalAccessPolicy(DefaultFieldsDCMixin, TypeBase):
     )
     revision: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("0"), default=0)
     updated_by_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    # Personal agents act as the signed-in member with that member's own permissions, unlike the
+    # credential-bearing channels above, so this one defaults to allowed; managers can block it.
+    personal_agent_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("true"), default=True
+    )
 
 
 class KnowledgeFSApiCredential(DefaultFieldsDCMixin, TypeBase):

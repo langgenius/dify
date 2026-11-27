@@ -958,11 +958,11 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('shows the server message when saving library skills fails', async () => {
+  it('shows the save failure when saving library skills fails for an unknown code', async () => {
     const user = userEvent.setup()
     mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'bad_request',
         message: 'Server says why',
       }),
     )
@@ -991,7 +991,9 @@ describe('AgentSkills', () => {
     await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Server says why')
+      expect(toast.error).toHaveBeenCalledWith(
+        'agentV2.agentDetail.configure.skills.workspaceSelector.saveFailed',
+      )
     })
   })
 

@@ -492,22 +492,21 @@ describe('AgentTools', () => {
       })
     })
 
-    it('should remove all provider tools from the provider more-actions menu', async () => {
+    it('confirms before removing all operations from a provider', async () => {
       const user = userEvent.setup()
       renderAgentTools()
 
       await user.click(
         screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+          name: 'agentV2.agentDetail.configure.tools.removeProvider',
         }),
       )
-      await user.click(
-        screen.getByRole('menuitem', {
-          name: /agentV2\.agentDetail\.configure\.tools\.removeProvider/,
-        }),
-      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
-      expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument())
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.tools.add' }),
+      ).toHaveFocus()
       expect(readComposerState().tools).toEqual([
         expect.objectContaining({ id: 'lark-cli', kind: 'cli' }),
       ])
@@ -547,7 +546,7 @@ describe('AgentTools', () => {
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+          name: 'agentV2.agentDetail.configure.tools.removeProvider',
         }),
       ).not.toBeInTheDocument()
 

@@ -8,7 +8,7 @@ import { useLocale } from '#i18n'
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
@@ -43,7 +43,7 @@ export default function CheckCode() {
         router.push(`/webapp-reset-password/set-password?${params.toString()}`)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     } finally {
       setIsLoading(false)
     }
@@ -58,7 +58,7 @@ export default function CheckCode() {
         router.replace(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }
 

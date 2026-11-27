@@ -4,6 +4,7 @@ from collections.abc import Generator, Iterable, Mapping, Sequence
 from typing import Any, override
 
 from pydantic.json_schema import JsonValue
+from sqlalchemy.orm import sessionmaker
 
 from core.app.llm.quota import ModelQuotaReservation
 from core.credit_usage import CreditUsageAppTypeInput, CreditUsageCreatedByInput
@@ -179,7 +180,8 @@ def make_failing_moderated_model(
 
 class RecordingProviderManager(ProviderManager):
     def __init__(self, bundle: ProviderModelBundle) -> None:
-        super().__init__(model_runtime=bundle.model_type_instance.model_runtime)
+        # The recorded bundle answers every lookup, so an unbound maker makes any database access fail loudly.
+        super().__init__(model_runtime=bundle.model_type_instance.model_runtime, session_maker=sessionmaker())
         self.bundle = bundle
         self.lookups = 0
 

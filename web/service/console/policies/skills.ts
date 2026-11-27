@@ -1,5 +1,5 @@
 import type { RouterUtils } from '@orpc/tanstack-query'
-import type { QueryClient } from '@tanstack/react-query'
+import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsoleQuery, WorkspaceCurrentPolicies } from './types'
 import { setSkillDetailCache } from '../skill-cache'
@@ -34,20 +34,35 @@ export function skillPolicies(
             },
           },
         },
-        // The publisher writes the published detail itself; waits for the version list the new
-        // version appears in and the skill lists.
+        // Writes the published version into the skill's detail, then waits for that detail, the
+        // version list the new version appears in, and the skill lists.
         publish: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) =>
-                invalidateQueryKeys(client, [
+              onSuccess: async (version, { params }, _result, { client }) => {
+                const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
+                  input: { params: { skill_id: params.skill_id } },
+                })
+                // Reads started before the publish must not overwrite the written version.
+                await cancelSkillDetailCacheReads(consoleQuery, client, detailKey)
+                const detail = client.getQueryData(detailKey)
+                if (detail)
+                  setSkillDetailCache(consoleQuery, client, params.skill_id, {
+                    ...detail,
+                    latest_published_at: version.created_at,
+                    latest_published_version_id: version.id,
+                    latest_published_version_number: version.version_number,
+                  })
+                return invalidateQueryKeys(client, [
+                  detailKey,
                   consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({
                     type: 'query',
                     input: { params: { skill_id: params.skill_id } },
                   }),
                   consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
                   consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-                ]),
+                ])
+              },
             },
           },
         },
@@ -55,41 +70,34 @@ export function skillPolicies(
         // SKILL.md: merge the response into the cached detail, then refetch it.
         patch: {
           mutationOptions: {
-            onSuccess: async (skill, { params, body }, _result, { client }) => {
+            // Agents list the skills bound to them.
+            meta: { alsoInvalidate: ['workspaces.current.agents'] },
+            onSuccess: async (skill, { params }, _result, { client }) => {
               const input = { params: { skill_id: params.skill_id } }
               const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
                 input,
               })
-              // A detail refetch started before the save must not overwrite it.
-              await client.cancelQueries({ queryKey: detailKey })
+              // A detail or list read started before the save must not overwrite it.
+              await cancelSkillDetailCacheReads(consoleQuery, client, detailKey)
               const cached = client.getQueryData(detailKey)
               if (cached)
                 setSkillDetailCache(consoleQuery, client, params.skill_id, { ...cached, ...skill })
-              void invalidateQueryKeys(client, [
-                detailKey,
-                consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({ input }),
-                consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
-                consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-                ...(body.tags ? [consoleQuery.workspaces.current.skills.tags.get.key()] : []),
-              ])
+              // The rest of the skill and its lists refresh with the fallback.
+              void invalidateQueryKeys(client, [detailKey])
             },
           },
         },
         restore: {
           post: {
             mutationOptions: {
-              // Waits for the restored skill's detail and the skill lists; versions and agent
-              // bindings refresh in the background.
+              meta: { alsoInvalidate: ['workspaces.current.agents'] },
+              // Waits for the restored skill's detail and the skill lists.
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const input = { params: { skill_id: variables.params.skill_id } }
                 const skills = consoleQuery.workspaces.current.skills
                 const restored = invalidateQueryKeys(context.client, [
                   skills.bySkillId.get.key({ input }),
-                ])
-                void invalidateQueryKeys(context.client, [
-                  skills.bySkillId.versions.get.key({ input }),
-                  consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
                 ])
                 return Promise.all([
                   restored,
@@ -134,15 +142,11 @@ export function skillPolicies(
         },
         delete: {
           mutationOptions: {
+            meta: { alsoInvalidate: ['workspaces.current.agents'] },
+            // Waits for the skill lists it deletes from.
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              // Waits for the skill lists it deletes from; tags and agent bindings refresh in the
-              // background.
-              const lists = invalidateSkillListQueries(consoleQuery, context.client)
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
-              ])
-              return lists
+              return invalidateSkillListQueries(consoleQuery, context.client)
             },
           },
         },
@@ -153,27 +157,36 @@ export function skillPolicies(
         skills: {
           put: {
             mutationOptions: {
-              // Waits for the agent's skill bindings it replaces; the composer refreshes in the
-              // background.
-              onSuccess: (_data, { params }, _result, { client }) => {
-                const input = { params: { agent_id: params.agent_id } }
-                const bindings = invalidateQueryKeys(client, [
+              // The agent's composer shows its skills.
+              meta: { alsoInvalidate: ['agent'] },
+              // Waits for the agent's skill bindings it replaces.
+              onSuccess: (_data, { params }, _result, { client }) =>
+                invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.agents.byAgentId.skills.get.key({
                     type: 'query',
-                    input,
+                    input: { params: { agent_id: params.agent_id } },
                   }),
-                ])
-                void invalidateQueryKeys(client, [
-                  consoleQuery.agent.byAgentId.composer.get.key({ type: 'query', input }),
-                ])
-                return bindings
-              },
+                ]),
             },
           },
         },
       },
     },
   }
+}
+
+// Cancels the reads `setSkillDetailCache` writes: the skill's detail and the skill lists.
+function cancelSkillDetailCacheReads(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  detailKey: QueryKey,
+) {
+  const { skills } = query.workspaces.current
+  return Promise.all([
+    client.cancelQueries({ queryKey: detailKey, exact: true }),
+    client.cancelQueries({ queryKey: skills.get.key({ type: 'query' }) }),
+    client.cancelQueries({ queryKey: skills.get.key({ type: 'infinite' }) }),
+  ])
 }
 
 // Refreshes a skill's versions; the returned promise waits for the version list only.

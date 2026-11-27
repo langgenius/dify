@@ -38,7 +38,7 @@ import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/re
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
 import { useContactsFeatureContext } from './composition-context'
@@ -164,9 +164,10 @@ function ImBindingEditor({
   onUnbind?: () => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const imErrorMessage = (error: unknown, fallback: string) => {
     const key = imErrorKey(error)
-    return key ? t(($) => $[key]) : (getRequestErrorMessage(error) ?? fallback)
+    return key ? t(($) => $[key]) : describeRequestError(error, fallback)
   }
   const { imCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
   const providerLabel = getContactChannelLabel(provider)
@@ -469,6 +470,7 @@ function ContactIMChannels({
   removing: boolean
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const context = useContactsFeatureContext()
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
@@ -619,8 +621,10 @@ function ContactIMChannels({
       {configured.isError && canBind && (
         <div className="mt-2">
           <p role="alert" className="system-xs-regular text-text-destructive">
-            {getRequestErrorMessage(configured.error) ??
-              t(($) => $['imBinding.channelsLoadFailed'])}
+            {describeRequestError(
+              configured.error,
+              t(($) => $['imBinding.channelsLoadFailed']),
+            )}
           </p>
           <Button
             size="small"

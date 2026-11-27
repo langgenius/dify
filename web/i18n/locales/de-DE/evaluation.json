@@ -75,6 +75,7 @@
   "entry.checkFailed": "Die veröffentlichte Version konnte nicht überprüft werden. Bitte versuchen Sie es erneut.",
   "entry.duplicateNodeNames": "Die veröffentlichte Version enthält gleichnamige Knoten ({{names}}). Sie können die Evaluierung fortsetzen. Benennen Sie die Knoten um und veröffentlichen Sie eine neue Version, damit sich die Ergebnisse leichter unterscheiden lassen.",
   "entry.duplicateNodeNamesTitle": "Doppelte Knotennamen",
+  "entry.triggerUnsupported": "Workflows, die durch einen Trigger gestartet werden, können nicht evaluiert werden. Veröffentlichen Sie einen Workflow mit einem Benutzereingabe-Startknoten.",
   "history.actions.cancel": "Lauf abbrechen",
   "history.actions.downloadFailed": "Die Evaluierungsdatei konnte nicht heruntergeladen werden.",
   "history.actions.downloadResultFile": "Ergebnis herunterladen",

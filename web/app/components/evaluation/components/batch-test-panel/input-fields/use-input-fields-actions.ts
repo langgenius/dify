@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import { useEvaluationActions, useEvaluationTemplateColumns } from '../../../queries'
@@ -34,6 +34,7 @@ export const useInputFieldsActions = ({
   templateFileName,
 }: UseInputFieldsActionsParams) => {
   const { t } = useTranslation(['evaluation'])
+  const describeRequestError = useRequestErrorDescriber()
   const resource = useEvaluationResource(resourceType, resourceId)
   const setBatchTab = useEvaluationStore((state) => state.setBatchTab)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
@@ -62,7 +63,12 @@ export const useInputFieldsActions = ({
       onError: (error) => {
         setUploadedFileMeta(null)
         setUploadedFile(resourceType, resourceId, null)
-        toast.error(getRequestErrorMessage(error) ?? t(($) => $['batch.uploadError']))
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $['batch.uploadError']),
+          ),
+        )
       },
     }),
   )
@@ -88,7 +94,12 @@ export const useInputFieldsActions = ({
       const file = await evaluationActions.downloadTemplate(templateConfigPayload)
       downloadBlob({ data: file, fileName: templateFileName })
     } catch (error) {
-      toast.error(getRequestErrorMessage(error) ?? t(($) => $['batch.templateDownloadError']))
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['batch.templateDownloadError']),
+        ),
+      )
     }
   }
 
@@ -122,7 +133,12 @@ export const useInputFieldsActions = ({
       setIsUploadPopoverOpen(false)
       setBatchTab(resourceType, resourceId, 'history')
     } catch (error) {
-      toast.error(getRequestErrorMessage(error) ?? t(($) => $['batch.runFailed']))
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['batch.runFailed']),
+        ),
+      )
     }
   }
 

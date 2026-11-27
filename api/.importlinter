@@ -506,7 +506,7 @@ type = forbidden
 source_modules =
     repositories.conversation_repository
     repositories.conversation_lifecycle
-    repositories.agent_workspace_repository
+    repositories.agent.agent_workspace_repository
 forbidden_modules =
     services.conversation_service
     services.agent.workspace_service
@@ -1320,11 +1320,12 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:agent-app-access-service-boundary]
-name = Agent App access and Sandbox services and contracts are framework and persistence neutral
+name = Agent App access, configuration and Sandbox contracts are framework and persistence neutral
 type = forbidden
 source_modules =
-    services.app.agent_app_service
-    services.app.agent_app_contracts
+    services.agent.agent_app_service
+    services.agent.agent_app_contracts
+    services.agent.agent_config_contracts
     services.agent.sandbox_service
     services.agent.sandbox_contracts
 forbidden_modules =
@@ -1380,6 +1381,18 @@ forbidden_modules =
     services.audio_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-agent-runtime-controller-boundary]
+name = Console Agent chat and audio handlers do not import repositories directly
+type = forbidden
+source_modules =
+    controllers.console.app.audio
+    controllers.console.app.completion
+forbidden_modules =
+    repositories
+# The files still host legacy App handlers. Agent routes reach the runtime
+# through the composition root, which imports concrete repositories.
+allow_indirect_imports = True
 
 [importlinter:contract:account-lifecycle-boundary]
 name = Account lifecycle use cases and contracts are framework and persistence neutral
@@ -1662,7 +1675,7 @@ allow_indirect_imports = True
 name = Agent version persistence depends on its contract rather than the service
 type = forbidden
 source_modules =
-    repositories.agent_version_repository
+    repositories.agent.agent_version_repository
 forbidden_modules =
     services.agent.version_service
 allow_indirect_imports = True
@@ -1671,7 +1684,7 @@ allow_indirect_imports = True
 name = Agent roster persistence depends on contracts rather than application services
 type = forbidden
 source_modules =
-    repositories.agent_roster_repository
+    repositories.agent.agent_roster_repository
 forbidden_modules =
     services.agent.roster_service
     services.agent.invite_options
@@ -1700,24 +1713,35 @@ type = forbidden
 source_modules =
     services.agent.roster_service
 forbidden_modules =
-    repositories.agent_roster_repository
+    repositories.agent.agent_roster_repository
 allow_indirect_imports = True
 
 [importlinter:contract:agent-app-repository-boundary]
 name = Agent App persistence depends on Agent contracts rather than service implementations
 type = forbidden
 source_modules =
-    repositories.app.agent_app_repository
-    repositories.app.agent_runtime_app
+    repositories.agent.agent_app_repository
+    repositories.agent.agent_runtime_app
 forbidden_modules =
     services.agent
 allow_indirect_imports = True
 ignore_imports =
-    # This neutral store port is covered by the application boundary below.
-    repositories.app.agent_app_repository -> services.agent.build_session_store
-    repositories.app.agent_app_repository -> services.agent.app_composer_store
-    repositories.app.agent_app_repository -> services.agent.errors
-    repositories.app.agent_app_repository -> services.agent.roster_service
+    # These contracts have their own framework and persistence boundaries.
+    repositories.agent.agent_app_repository -> services.agent.agent_app_contracts
+    repositories.agent.agent_app_repository -> services.agent.agent_config_contracts
+    repositories.agent.agent_app_repository -> services.agent.build_session_store
+    repositories.agent.agent_app_repository -> services.agent.app_composer_store
+    repositories.agent.agent_app_repository -> services.agent.errors
+
+[importlinter:contract:agent-sandbox-repository-boundary]
+name = Agent Sandbox persistence does not call legacy roster or workspace services
+type = forbidden
+source_modules =
+    repositories.agent.agent_sandbox_repository
+forbidden_modules =
+    services.agent.roster_service
+    services.agent.workspace_service
+allow_indirect_imports = True
 
 [importlinter:contract:agent-build-session-service-boundary]
 name = Agent Build session use cases and contracts are framework and persistence neutral
@@ -1776,8 +1800,8 @@ allow_indirect_imports = True
 name = Agent observability queries do not depend on legacy Agent service implementations
 type = forbidden
 source_modules =
-    repositories.agent_observability_repository
-    repositories.app.agent_runtime_app
+    repositories.agent.agent_observability_repository
+    repositories.agent.agent_runtime_app
 forbidden_modules =
     services.agent.roster_service
 allow_indirect_imports = True

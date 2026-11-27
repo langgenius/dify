@@ -30,8 +30,8 @@ from models.agent_config_entities import (
 )
 from models.agent_soul_state import agent_soul_has_model, backfill_cli_tool_ids
 from models.workflow import Workflow
-from repositories.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
-from repositories.agent_drafts import (
+from repositories.agent.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
+from repositories.agent.agent_drafts import (
     agent_soul_matches_active_config,
     create_composer_snapshot,
     get_or_create_agent_draft,
@@ -40,7 +40,7 @@ from repositories.agent_drafts import (
     rebase_workflow_only_normal_draft,
     save_agent_draft,
 )
-from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from repositories.agent.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent.app_composer import composer_validation_findings
 from services.agent.app_composer_store import AgentComposerSnapshotMissingError
@@ -445,35 +445,6 @@ class AgentComposerService:
         if state["active_config_snapshot"] is not None:
             state["active_config_snapshot"]["created_by"] = None
         return state
-
-    @classmethod
-    def load_agent_soul_for_debug(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        draft_type: AgentConfigDraftType,
-    ) -> AgentSoulConfig:
-        """Load the same normal or account-owned build draft used by Agent debug chat."""
-        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            draft = find_agent_draft(
-                session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                draft_type=draft_type,
-                account_id=account_id,
-            )
-            if draft is None:
-                raise AgentVersionNotFoundError()
-            return AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        state = cls.load_agent_composer(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            session=session,
-        )
-        return AgentSoulConfig.model_validate(state["agent_soul"])
 
     @classmethod
     def _load_agent_composer_for_agent(

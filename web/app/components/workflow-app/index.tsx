@@ -18,7 +18,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -119,7 +119,7 @@ const WorkflowAppWithAdditionalContext = () => {
         setShowInputsPanel(true)
         setShowDebugAndPreviewPanel(true)
       })
-      .catch((error) => toastRequestError(error))
+      .catch((error) => reportRequestError(error))
   }, [appACLCapabilities.canTestAndRun, appId, replayRunId, workflowStore])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {

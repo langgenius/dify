@@ -19,7 +19,7 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { consoleClient } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import Form from '../../_base/components/before-run-form/form'
 import {
   buildSubmitData,
@@ -167,6 +167,7 @@ const ServerPreviewTrigger = ({
   availableNodes = [],
 }: PreviewTriggerProps & { nodeId: string }) => {
   const { t } = useTranslation(['appDebug', 'workflow', 'common', 'workflowHumanInput'])
+  const describeRequestError = useRequestErrorDescriber()
   const resource = useAtomValue(editorResourceAtom)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { hasSetInspectVar, systemVars, conversationVars } = useInspectVarsCrud()
@@ -291,10 +292,16 @@ const ServerPreviewTrigger = ({
               {preview.isError ? (
                 <p role="alert">
                   {preview.error instanceof HumanInputDraftSyncError
-                    ? (getRequestErrorMessage(preview.error.cause) ??
-                      t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }))
-                    : (getRequestErrorMessage(preview.error) ??
-                      t(($) => $.error, { ns: 'common' }))}
+                    ? describeRequestError(
+                        preview.error.cause,
+                        t(($) => $['nodes.humanInputV2.template.testSaveFailed'], {
+                          ns: 'workflow',
+                        }),
+                      )
+                    : describeRequestError(
+                        preview.error,
+                        t(($) => $.error, { ns: 'common' }),
+                      )}
                 </p>
               ) : inputVars.length ? (
                 <p className="system-sm-semibold text-text-secondary">

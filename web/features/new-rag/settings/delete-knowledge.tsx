@@ -13,7 +13,7 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { newKnowledgeListPath } from '../routes'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
@@ -22,6 +22,7 @@ import { knowledgeSettingsHasPendingSaveAtom } from './state/workflow'
 export function DeleteKnowledgeAction() {
   const { t } = useTranslation(['knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)
@@ -89,7 +90,10 @@ export function DeleteKnowledgeAction() {
           isPending={mutation.isPending}
           error={
             mutation.isError
-              ? (getRequestErrorMessage(mutation.error) ?? tCommon(($) => $['api.actionFailed']))
+              ? describeRequestError(
+                  mutation.error,
+                  tCommon(($) => $['api.actionFailed']),
+                )
               : undefined
           }
           onSubmit={deleteKnowledge}

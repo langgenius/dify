@@ -128,7 +128,7 @@ describe('roster agent deletion', () => {
     expect(service.deleteAgent).toHaveBeenCalledTimes(2)
   })
 
-  it('shows the server message when deletion fails', async () => {
+  it('shows the deletion failure over an uncataloged server message', async () => {
     const user = userEvent.setup()
     service.deleteAgent.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
@@ -139,7 +139,7 @@ describe('roster agent deletion', () => {
     await openDeletion(user)
     await user.click(screen.getByRole('button', { name: 'Autofill' }))
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to delete agent.')
   })
 
   it('starts a fresh confirmation session after cancelling a failed deletion', async () => {

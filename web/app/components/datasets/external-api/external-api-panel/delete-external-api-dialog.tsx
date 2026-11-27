@@ -17,7 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 
 const endpoints = consoleQuery.datasets.externalKnowledgeApi
@@ -36,6 +36,7 @@ function DeleteExternalApiConfirmation({
   onConfirm: () => void
 }) {
   const { t } = useTranslation(['common', 'dataset'])
+  const describeRequestError = useRequestErrorDescriber()
   const usage = useQuery(
     endpoints.byExternalKnowledgeApiId.useCheck.get.queryOptions({
       input: { params: { external_knowledge_api_id: api.id } },
@@ -49,7 +50,10 @@ function DeleteExternalApiConfirmation({
   )
   const usageCount = usage.data?.is_using ? usage.data.count : 0
   const description = usage.isError
-    ? (getRequestErrorMessage(usage.error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
+    ? describeRequestError(
+        usage.error,
+        t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     : !usage.isSuccess || usage.isFetching
       ? t(($) => $.loading, { ns: 'common' })
       : usageCount > 0

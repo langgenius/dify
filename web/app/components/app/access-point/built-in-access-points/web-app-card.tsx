@@ -67,7 +67,6 @@ type WebAppAccessPointCardProps = {
   canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
-  onRefreshApp: () => Promise<void>
   onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<boolean>
   workflow: PublishedWorkflow
 }
@@ -78,7 +77,6 @@ export function WebAppAccessPointCard({
   canDeploy,
   canManageAccessPoint,
   highlighted,
-  onRefreshApp,
   onSaveSiteConfig,
   showAccessControl,
   workflow,
@@ -280,7 +278,7 @@ export function WebAppAccessPointCard({
           app={appInfo}
           onClose={() => setShowAccess(false)}
           onConfirm={async () => {
-            await Promise.all([onRefreshApp(), refetchUserCanAccessApp()])
+            await refetchUserCanAccessApp()
             setShowAccess(false)
           }}
         />

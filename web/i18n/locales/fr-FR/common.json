@@ -110,7 +110,6 @@
   "feedback.placeholder": "Veuillez décrire ce qui n'a pas fonctionné ou comment nous pourrions nous améliorer...",
   "feedback.subtitle": "Veuillez nous dire ce qui n'a pas fonctionné avec cette réponse.",
   "feedback.title": "Fournir des retours",
-  "fileUploader.fileExtensionBlocked": "Ce type de fichier est bloqué pour des raisons de sécurité",
   "fileUploader.fileExtensionNotSupport": "Extension de fichier non prise en charge",
   "fileUploader.pasteFileLink": "Coller le lien du fichier",
   "fileUploader.pasteFileLinkInputPlaceholder": "Entrez l’URL...",

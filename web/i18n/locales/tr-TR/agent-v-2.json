@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Araçlar, ajanın web aramak veya uygulamalarınızı çağırmak gibi eylemler gerçekleştirmesini sağlar",
   "agentDetail.configure.tools.empty.title": "Henüz araç yok",
   "agentDetail.configure.tools.label": "Araçlar",
-  "agentDetail.configure.tools.moreActions": "{{name}} için daha fazla eylem",
   "agentDetail.configure.tools.removeAction": "{{name}} kaldır",
   "agentDetail.configure.tools.removeProvider": "Tüm araçları kaldır",
   "agentDetail.configure.tools.richTip": "Workspace'inizden Dify araçları ekleyin. <docLink>Daha fazla bilgi</docLink>\n\nAgent'ın sandbox içinde yüklediği araçlar burada görünmez, ancak kullanıma açık kalır.",
@@ -373,5 +372,17 @@
   "agentDetail.versionHistory.restore": "Geri yükle",
   "agentDetail.versionHistory.versionName": "Sürüm {{version}}",
   "agentDetail.versionHistory.viewOnly": "Yalnızca görüntüle",
-  "exportAgent": "Ajanı dışa aktar"
+  "exportAgent": "Ajanı dışa aktar",
+  "toolCallLimit.invalid": "0’dan büyük bir tam sayı girin.",
+  "toolCallLimit.label": "{{toolName}} çağrı sınırı",
+  "toolCallLimit.maximum": "En fazla çağrı",
+  "toolCallLimit.notExecuted": "Yürütülmedi",
+  "toolCallLimit.reached": "Çağrı sınırına ulaşıldı (çalıştırma başına {{limit}}). Bu istek yürütülmedi.",
+  "toolCallLimit.reason": "Neden",
+  "toolCallLimit.set": "Sınır belirle",
+  "toolCallLimit.summary_one": "Çalıştırma başına {{count}} çağrı",
+  "toolCallLimit.summary_other": "Çalıştırma başına {{count}} çağrı",
+  "toolCallLimit.title": "Çalıştırma başına çağrı sınırı",
+  "toolCallLimit.used_one": "{{limit}} çağrının {{used}} tanesi kullanıldı",
+  "toolCallLimit.used_other": "{{limit}} çağrının {{used}} tanesi kullanıldı"
 }

@@ -4,14 +4,15 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
+import { leaveCompletedSetup } from '../leave-completed-setup'
 
 type InitPasswordFormValues = {
   password: string
@@ -22,7 +23,6 @@ const isIncorrectPasswordError = (error: Error | null) =>
 
 const InitPasswordPopup = () => {
   const router = useRouter()
-  const queryClient = useQueryClient()
   const { t } = useTranslation(['login', 'common'])
   const pageTitle = t(($) => $.adminInitPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
@@ -43,6 +43,10 @@ const InitPasswordPopup = () => {
     [validatePassword.error, t],
   )
   const hasFormError = validatePassword.isError && !fieldErrors
+  const formErrorMessage = useRequestErrorMessage(
+    validatePassword.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   const handleSubmit = ({ password }: InitPasswordFormValues) => {
     if (isSubmitting) return
@@ -50,9 +54,9 @@ const InitPasswordPopup = () => {
       { body: { password } },
       {
         onSuccess: () => {
-          queryClient.setQueryData(consoleQuery.init.get.queryKey(), { status: 'finished' })
           router.replace('/install')
         },
+        onError: (error) => leaveCompletedSetup(error, router.replace),
       },
     )
   }
@@ -86,8 +90,7 @@ const InitPasswordPopup = () => {
       </Field>
       {hasFormError && (
         <p role="alert" className="mb-4 system-sm-regular text-text-destructive">
-          {getRequestErrorMessage(validatePassword.error) ??
-            t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {formErrorMessage}
         </p>
       )}
       <Button type="submit" variant="primary" loading={isSubmitting} className="w-full">

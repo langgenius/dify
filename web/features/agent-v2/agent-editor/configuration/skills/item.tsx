@@ -9,7 +9,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langge
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { MissingReferenceWarning } from '../common/missing-reference-warning'
@@ -93,7 +93,7 @@ export function AgentSkillItem({
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])
   const handleDownload = useCallback(() => {
-    void downloadSkill().catch((error: unknown) => toastRequestError(error))
+    void downloadSkill().catch((error: unknown) => reportRequestError(error))
   }, [downloadSkill])
   const onDownloadSkill = canDownload ? handleDownload : undefined
   const hasActions = (!skill.isMissing && !!onDownloadSkill) || canRemove

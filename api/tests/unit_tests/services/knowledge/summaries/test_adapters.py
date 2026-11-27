@@ -316,7 +316,7 @@ class TestVectorizeSummary:
 
         vector.add_texts.side_effect = write_vector
         sleep = MagicMock()
-        monkeypatch.setattr(summary_module.time, "sleep", sleep)
+        monkeypatch.setattr(summary_module, "sleep", sleep)
 
         SummaryIndexAdapter.vectorize_summary(summary, segment, dataset, session=sqlite_session)
 

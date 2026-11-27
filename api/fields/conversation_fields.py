@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Annotated, Any
 
+from dify_agent.protocol.tool_call_limits import AgentToolActivity
 from pydantic import Field, WithJsonSchema, field_validator, model_validator
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
@@ -239,6 +240,7 @@ class AgentThought(ResponseModel):
     created_at: int | None = None
     observation: str | None = None
     files: list[str]
+    tool_activity: AgentToolActivity | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("created_at", mode="before")
     @classmethod

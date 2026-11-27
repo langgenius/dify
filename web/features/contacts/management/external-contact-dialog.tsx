@@ -17,9 +17,8 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getImageUploadErrorMessage } from '@/app/components/base/image-uploader/utils'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import AvatarInnerRing from './assets/avatar-inner-ring.svg'
 import AvatarOuterRing from './assets/avatar-outer-ring.svg'
@@ -33,6 +32,8 @@ type ExternalContactDialogProps = {
 }
 
 const maxContactNameLength = 255
+
+type AvatarFailure = { kind: 'format' } | { kind: 'size' } | { kind: 'request'; error: unknown }
 
 function isValidEmail(value: string) {
   const input = document.createElement('input')
@@ -61,6 +62,7 @@ function ExternalContactForm({
 }: Omit<ExternalContactDialogProps, 'open'> & { onBusyChange: (busy: boolean) => void }) {
   const { t } = useTranslation(['contacts', 'common'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const create = useMutation(
     consoleQuery.workspaces.current.humanInput.v2.contacts.external.post.mutationOptions({
       meta: { errorToast: false },
@@ -78,10 +80,22 @@ function ExternalContactForm({
   )
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [uploadedAvatar, setUploadedAvatar] = useState<{ id: string; url: string }>()
-  const [avatarError, setAvatarError] = useState<string | null>(null)
+  // The failure itself is kept so its text follows the current language.
+  const [avatarFailure, setAvatarFailure] = useState<AvatarFailure | null>(null)
   const [name, setName] = useState(contact?.name ?? '')
   const [emailError, setEmailError] = useState<string>()
   const avatarErrorId = useId()
+  const avatarError =
+    avatarFailure?.kind === 'format'
+      ? t(($) => $['imageInput.supportedFormats'], { ns: 'common' })
+      : avatarFailure?.kind === 'size'
+        ? t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 3 })
+        : avatarFailure
+          ? describeRequestError(
+              avatarFailure.error,
+              tCommon(($) => $['imageUploader.uploadFromComputerUploadError']),
+            )
+          : null
   const pending = create.isPending || update.isPending
   const busy = pending || uploadAvatar.isPending
   const error = create.error ?? update.error
@@ -101,28 +115,19 @@ function ExternalContactForm({
     if (busy) return
     const extension = file.name.split('.').pop()?.toLowerCase()
     if (!extension || !ALLOW_FILE_EXTENSIONS.includes(extension)) {
-      setAvatarError(t(($) => $['imageInput.supportedFormats'], { ns: 'common' }))
+      setAvatarFailure({ kind: 'format' })
       return
     }
     if (file.size > 3 * 1024 * 1024) {
-      setAvatarError(
-        t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 3 }),
-      )
+      setAvatarFailure({ kind: 'size' })
       return
     }
-    setAvatarError(null)
+    setAvatarFailure(null)
     uploadAvatar.mutate(
       { body: { file } },
       {
         onSuccess: ({ id }) => setUploadedAvatar({ id, url: URL.createObjectURL(file) }),
-        onError: (error) =>
-          setAvatarError(
-            getImageUploadErrorMessage(
-              error,
-              tCommon(($) => $['imageUploader.uploadFromComputerUploadError']),
-              tCommon,
-            ),
-          ),
+        onError: (error) => setAvatarFailure({ kind: 'request', error }),
       },
     )
   }
@@ -230,7 +235,7 @@ function ExternalContactForm({
               disabled={busy}
               onClick={() => {
                 setUploadedAvatar(undefined)
-                setAvatarError(null)
+                setAvatarFailure(null)
                 uploadAvatar.reset()
               }}
             >
@@ -292,10 +297,12 @@ function ExternalContactForm({
             role="alert"
             className="mx-6 mt-4 rounded-lg bg-state-destructive-hover p-3 system-sm-regular text-text-destructive"
           >
-            {getRequestErrorMessage(error) ??
-              (contact
+            {describeRequestError(
+              error,
+              contact
                 ? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })
-                : t(($) => $['external.result.failed']))}
+                : t(($) => $['external.result.failed']),
+            )}
           </p>
         )}
         <div className="flex justify-end gap-2 px-6 pt-5 pb-6">

@@ -6,15 +6,25 @@ import type {
   AgentProviderTool,
   AgentToolAction,
 } from '@/features/agent-v2/agent-composer/form-state'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugins/plugin-auth'
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
@@ -26,6 +36,7 @@ import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import { marketplacePluginManifestQueryOptions } from '@/service/plugin-list-queries'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
+import { ToolCallLimit } from './call-limit'
 
 function ProviderIcon({
   icon,
@@ -225,12 +236,13 @@ const ProviderToolActionItem = memo(
     }, [action.id, onRemoveAction])
 
     return (
-      <div className="group relative flex min-h-7 items-center gap-1 rounded-md py-px ps-1 pe-0 hover:bg-state-base-hover">
+      <div className="group relative flex min-h-6.5 items-center gap-1 rounded-md py-px ps-1 pe-0 hover:bg-state-base-hover">
         <div className="absolute inset-s-[13.5px] top-0 bottom-0 w-px bg-divider-regular" />
-        <div className="flex min-w-0 flex-1 items-center py-1 ps-7">
-          <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+        <div className="flex h-6 min-w-0 flex-1 items-center gap-1 ps-7">
+          <span className="min-w-0 truncate system-sm-regular text-text-secondary">
             {action.name}
           </span>
+          <ToolCallLimit action={action} toolId={tool.id} readOnly={readOnly} />
         </div>
         {!readOnly && (
           <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
@@ -298,7 +310,10 @@ export const AgentProviderToolItem = memo(
     ) => void
   }) => {
     const { t } = useTranslation(['agentV2'])
+    const { t: tCommon } = useTranslation(['common'])
     const readOnly = useAgentOrchestrateReadOnly()
+    const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+    const removeConfirmedRef = useRef(false)
     const theme = useResolvedTheme()
     const shouldFetchPluginManifest =
       isInstalled === false && !!tool.pluginId && !tool.pluginUniqueIdentifier
@@ -326,7 +341,10 @@ export const AgentProviderToolItem = memo(
           <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pe-1 text-start system-sm-medium text-text-secondary select-none">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
-              <span className="min-w-0 truncate system-sm-medium text-text-primary">
+              <span
+                title={displayName}
+                className="min-w-0 truncate system-sm-medium text-text-primary"
+              >
                 {displayName}
               </span>
               <span
@@ -338,26 +356,48 @@ export const AgentProviderToolItem = memo(
             </span>
           </CollapsibleTrigger>
           {!readOnly && (
-            <Menu modal={false}>
-              <MenuTrigger
+            <AlertDialog
+              open={removeDialogOpen}
+              onOpenChange={setRemoveDialogOpen}
+              onOpenChangeComplete={(open) => {
+                if (!open && removeConfirmedRef.current) {
+                  removeConfirmedRef.current = false
+                  onRemoveProvider()
+                }
+              }}
+            >
+              <AlertDialogTrigger
                 render={
                   <IconButton
-                    aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
-                      name: tool.name,
-                    })}
-                    className="shrink-0 data-popup-open:bg-state-base-hover"
+                    aria-label={t(($) => $['agentDetail.configure.tools.removeProvider'])}
+                    tone="destructive"
                   >
-                    <span aria-hidden className="i-ri-more-fill size-4" />
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
                   </IconButton>
                 }
               />
-              <MenuContent align="end" className="w-44">
-                <MenuItem variant="destructive" className="gap-2" onClick={onRemoveProvider}>
-                  <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                  <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
-                </MenuItem>
-              </MenuContent>
-            </Menu>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t(($) => $['agentDetail.configure.tools.removeProvider'])}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>{displayName}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton>
+                    {tCommon(($) => $['operation.cancel'])}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    onClick={() => {
+                      removeConfirmedRef.current = true
+                      setRemoveDialogOpen(false)
+                    }}
+                  >
+                    {tCommon(($) => $['operation.remove'])}
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {isInstalled === false && (
             <div className="shrink-0">
@@ -373,20 +413,18 @@ export const AgentProviderToolItem = memo(
           )}
         </div>
 
-        <CollapsiblePanel>
-          {isExpanded && (
-            <div className="flex flex-col">
-              {tool.actions.map((action) => (
-                <ProviderToolActionItem
-                  key={action.id}
-                  action={action}
-                  tool={tool}
-                  onConfigureAction={onConfigureAction}
-                  onRemoveAction={onRemoveAction}
-                />
-              ))}
-            </div>
-          )}
+        <CollapsiblePanel keepMounted>
+          <div className="flex flex-col">
+            {tool.actions.map((action) => (
+              <ProviderToolActionItem
+                key={action.id}
+                action={action}
+                tool={tool}
+                onConfigureAction={onConfigureAction}
+                onRemoveAction={onRemoveAction}
+              />
+            ))}
+          </div>
         </CollapsiblePanel>
       </Collapsible>
     )

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from core.app.features.rate_limiting.rate_limit import RateLimit
-from core.errors.error import AppInvokeQuotaExceededError
+from core.errors.error import AppInvokeQuotaExceededError, AppInvokeQuotaWaitTimeoutError
 
 
 class TestRateLimit:
@@ -325,6 +325,89 @@ class TestRateLimitEnterExit:
         rate_limit.exit(RateLimit._UNLIMITED_REQUEST_ID)
 
         redis_patch.hdel.assert_not_called()
+
+    def test_enter_with_wait_retries_until_a_slot_is_available(
+        self, redis_patch, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        redis_patch.configure_mock(
+            **{
+                "exists.return_value": False,
+                "setex.return_value": True,
+                "hlen.side_effect": [1, 1, 0],
+                "hset.return_value": True,
+            }
+        )
+        sleeps: list[float] = []
+        monkeypatch.setattr("core.app.features.rate_limiting.rate_limit.time.sleep", sleeps.append)
+        rate_limit = RateLimit("waiting-client", 1)
+
+        request_id = rate_limit.enter_with_wait(
+            request_id="evaluation-request",
+            timeout_seconds=5,
+            poll_interval_seconds=0.25,
+        )
+
+        assert request_id == "evaluation-request"
+        assert sleeps == [0.25, 0.25]
+        redis_patch.hset.assert_called_once()
+
+    def test_enter_with_wait_raises_after_the_deadline(self, redis_patch, monkeypatch: pytest.MonkeyPatch) -> None:
+        redis_patch.configure_mock(
+            **{
+                "exists.return_value": False,
+                "setex.return_value": True,
+                "hlen.return_value": 1,
+            }
+        )
+        monotonic_values = iter([10.0, 11.0])
+        monkeypatch.setattr(
+            "core.app.features.rate_limiting.rate_limit.time.monotonic",
+            lambda: next(monotonic_values),
+        )
+        rate_limit = RateLimit("timed-out-client", 1)
+
+        with pytest.raises(AppInvokeQuotaWaitTimeoutError, match="timed-out-client"):
+            rate_limit.enter_with_wait(timeout_seconds=0.5)
+
+        redis_patch.hset.assert_not_called()
+
+    def test_enter_with_wait_observes_cancellation_before_acquiring(self, redis_patch) -> None:
+        redis_patch.configure_mock(
+            **{
+                "exists.return_value": False,
+                "setex.return_value": True,
+            }
+        )
+        rate_limit = RateLimit("cancelled-client", 1)
+
+        def cancel() -> None:
+            raise RuntimeError("evaluation cancelled")
+
+        with pytest.raises(RuntimeError, match="evaluation cancelled"):
+            rate_limit.enter_with_wait(timeout_seconds=5, cancellation_check=cancel)
+
+        redis_patch.hlen.assert_not_called()
+        redis_patch.hset.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_message"),
+        [
+            ({"timeout_seconds": 0}, "timeout_seconds must be greater than 0"),
+            (
+                {"timeout_seconds": 1, "poll_interval_seconds": 0},
+                "poll_interval_seconds must be greater than 0",
+            ),
+        ],
+    )
+    def test_enter_with_wait_rejects_nonpositive_intervals(
+        self,
+        kwargs: dict[str, float],
+        expected_message: str,
+    ) -> None:
+        rate_limit = RateLimit(f"invalid-wait-{expected_message}", 0)
+
+        with pytest.raises(ValueError, match=expected_message):
+            rate_limit.enter_with_wait(**kwargs)
 
 
 class TestRateLimitGenerator:

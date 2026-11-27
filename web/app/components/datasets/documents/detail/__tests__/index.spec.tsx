@@ -399,13 +399,16 @@ describe('DocumentDetail', () => {
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
-    it('shows the server message in the dialog when deletion fails', async () => {
+    it('shows the translated error code in the dialog when deletion fails', async () => {
       mocks.state.dataset = {
         embedding_available: true,
         permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.DeleteFile],
       }
       mocks.deleteDocuments.mockRejectedValue(
-        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'archived_document_immutable',
+          message: 'Server says why',
+        }),
       )
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       const user = userEvent.setup()
@@ -416,7 +419,9 @@ describe('DocumentDetail', () => {
       const dialog = screen.getByRole('alertdialog')
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
 
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'requestErrors.code.archived_document_immutable',
+      )
       expect(mocks.push).not.toHaveBeenCalled()
     })
 
@@ -428,7 +433,12 @@ describe('DocumentDetail', () => {
       await user.click(screen.getByRole('switch'))
       await act(async () => vi.advanceTimersByTimeAsync(600))
 
-      expectDocumentListInvalidated(queryClient)
+      // The document list refreshes with the invalidation fallback, not from the page.
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: 'ds-1' } },
+        }),
+      })
       expect(mocks.detailRefetch).toHaveBeenCalledTimes(1)
       expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
         queryKey: segmentListKey,

@@ -5,7 +5,7 @@ import { AppSourceType } from '@/service/share'
 import { AudioPlayer } from '../audio'
 
 const mockToastRequestError = vi.hoisted(() => vi.fn())
-vi.mock('@/app/query-error-toast', () => ({ toastRequestError: mockToastRequestError }))
+vi.mock('@/app/query-error-toast', () => ({ reportRequestError: mockToastRequestError }))
 
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
 
