@@ -1031,7 +1031,7 @@ def test_load_or_create_fails_before_binding_create_when_caller_row_is_missing(
     executed_statements: list[str],
 ) -> None:
     sleep = MagicMock()
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.sleep", sleep)
 
     with pytest.raises(AgentWorkspaceNotFoundError, match="Workflow node execution caller is unavailable"):
         WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
@@ -1056,7 +1056,7 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
                 observer.add(_execution_row())
                 observer.commit()
 
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", make_caller_visible)
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.sleep", make_caller_visible)
 
     scope = WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
         tenant_id="tenant-1",
