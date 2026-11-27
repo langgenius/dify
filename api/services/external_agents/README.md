@@ -89,8 +89,8 @@ Configuration lives in `configs/feature/external_agents.py`; deployment may tigh
 | Worker batch / maintenance | 100 rows / 60 seconds. |
 | Files per direction / raw total | 5 / 30 MiB. Document 15 MiB, image 10 MiB; PDF, TXT, MD, PNG and JPEG input profile. |
 
-Build the API image from this PR's repository root. The Dockerfile copies the managed Graphon package as well as
-`api`; a historical released API image does not contain this implementation. Use a Compose override to point `api`,
+Build the API image from the repository root. The image installs Graphon from the Git revision in `api/uv.lock`.
+Use a Compose override to point `api`,
 `worker`, `worker_beat` and `worker_external_agents` at the same built image. With the existing database, Redis,
 storage and SSRF proxy configured:
 
@@ -319,11 +319,14 @@ Keep the existing private revision graph and database version unchanged until al
 
 This consolidation does not itself deploy to, stamp or alter an existing dev database.
 
-## Managed Graphon source in the single PR
+## Graphon dependency
 
-`packages/graphon` is managed source from [langgenius/graphon at
-4fa22141774dff80e90e4dfa98ea3e6fbf0421bb](https://github.com/langgenius/graphon/tree/4fa22141774dff80e90e4dfa98ea3e6fbf0421bb)
-(0.8.0), preserving its license and provenance. `UPSTREAM.md` lists the identity-only `ExternalWaitReason` and generic
-Boolean/ArrayBoolean default-value patches and their tests. API dependencies resolve this package through the uv
-workspace path; the API image includes it. This delivers the coordinated change in one PR without requiring an
-unpublished Graphon release or runtime monkey-patching.
+Graphon owns the identity-only `ExternalWaitReason` used by paused Workflow executions. Dify owns external task
+submission, persistence, deadlines and resume policy. The API pins a 0.8-compatible commit in
+[langgenius/graphon](https://github.com/langgenius/graphon) that provides the wait reason and Boolean defaults.
+Local installs, CI and API images use the same commit from `api/uv.lock`.
+
+Replace the compatibility pin with a Graphon release that includes the [upstream wait reason](https://github.com/langgenius/graphon/pull/446)
+when Dify adopts Graphon 0.9 through [#45356](https://github.com/langgenius/dify/pull/45356). Verify pause and resume
+after streamed Loop and Iteration replies as part of that upgrade. The [nested reply checkpoint work](https://github.com/langgenius/graphon/issues/356)
+is tracked upstream.
