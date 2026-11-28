@@ -162,7 +162,12 @@ class LindormVectorStore(BaseVector):
     @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         query: dict[str, Any] = {
-            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}}
+            # Without an explicit size the search returns the default page of 10 hits,
+            # so a metadata-field delete would leave most of the matching documents
+            # behind (e.g. an app with more than 10 annotations). 10000 is the default
+            # index.max_result_window, the most a single search can return.
+            "size": 10000,
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}},
         }
         if self._using_ugc:
             query["query"]["bool"]["must"].append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
@@ -174,9 +179,19 @@ class LindormVectorStore(BaseVector):
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
-        ids = self.get_ids_by_metadata_field(key, value)
-        if ids:
-            self.delete_by_ids(ids)
+        """Delete every document matching the metadata field, in one request.
+
+        The previous implementation read the matching ids first (a search returns at most
+        ``index.max_result_window`` hits, 10 by default) and then checked each id with a
+        separate existence call before bulk-deleting. Deleting through ``delete_by_query``
+        has neither limit and leaves the whole match to the server.
+        """
+        query: dict[str, Any] = {
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}}
+        }
+        if self._using_ugc:
+            query["query"]["bool"]["must"].append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
+        self._client.delete_by_query(index=self._collection_name, body=query)
 
     @override
     def delete_by_ids(self, ids: list[str]):
