@@ -46,6 +46,7 @@ class FileChunk:
 
     total_length: int
     bytes_written: int = field(default=0, init=False)
+    next_sequence: int = field(default=0, init=False)
     data: bytearray = field(init=False)
 
     def __post_init__(self) -> None:
@@ -203,7 +204,7 @@ class DifyPluginDaemonToolClient:
                 response_model=DifyPluginToolInvokeMessage,
             )
         ]
-        return merge_blob_chunks(raw_messages)
+        return merge_blob_chunks(raw_messages, require_complete=True)
 
     async def _iter_stream_response[T: BaseModel](
         self,
@@ -283,11 +284,14 @@ def merge_blob_chunks(
     *,
     max_file_size: int = 30 * 1024 * 1024,
     max_chunk_size: int = 8192,
+    require_complete: bool = False,
 ) -> list[DifyPluginToolInvokeMessage]:
     """Merge streamed blob chunks into complete blob messages.
 
     This mirrors Dify API's plugin-daemon chunk-merging behavior before the
-    higher-level observation conversion logic sees tool stream messages.
+    higher-level observation conversion logic sees tool stream messages. When
+    ``require_complete`` is enabled, chunks must arrive in order, keep a
+    consistent declared length, and exactly fill that length before ending.
     """
     files: dict[str, FileChunk] = {}
     merged_messages: list[DifyPluginToolInvokeMessage] = []
@@ -310,23 +314,32 @@ def merge_blob_chunks(
                     raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
-            if files[chunk_id].bytes_written + len(blob_data) > max_file_size:
+            current_file = files[chunk_id]
+            next_offset = current_file.bytes_written + len(blob_data)
+            if next_offset > max_file_size:
                 del files[chunk_id]
                 raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
             if len(blob_data) > max_chunk_size:
                 raise ValueError(f"File chunk is too large which reached the limit of {max_chunk_size / 1024}KB")
 
-            files[chunk_id].data[files[chunk_id].bytes_written : files[chunk_id].bytes_written + len(blob_data)] = (
-                blob_data
-            )
-            files[chunk_id].bytes_written += len(blob_data)
+            if require_complete and (
+                resp.message.sequence != current_file.next_sequence
+                or total_length != current_file.total_length
+                or next_offset > current_file.total_length
+                or (is_end and next_offset != current_file.total_length)
+            ):
+                raise ValueError("Plugin file chunks have an invalid sequence or length")
+
+            current_file.data[current_file.bytes_written : next_offset] = blob_data
+            current_file.bytes_written = next_offset
+            current_file.next_sequence += 1
 
             if is_end:
                 merged_messages.append(
                     DifyPluginToolInvokeMessage(
                         type=DifyPluginToolInvokeMessage.MessageType.BLOB,
                         message=DifyPluginToolInvokeMessage.BlobMessage(
-                            blob=bytes(files[chunk_id].data[: files[chunk_id].bytes_written])
+                            blob=bytes(current_file.data[: current_file.bytes_written])
                         ),
                         meta=resp.meta,
                     )
@@ -334,6 +347,9 @@ def merge_blob_chunks(
                 del files[chunk_id]
         else:
             merged_messages.append(resp)
+
+    if require_complete and files:
+        raise ValueError("Plugin file stream ended before the final chunk")
 
     return merged_messages
 

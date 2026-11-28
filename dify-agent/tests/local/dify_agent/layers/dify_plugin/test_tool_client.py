@@ -11,7 +11,8 @@ message collapses the whole ``message`` union and the tool invocation fails with
 
 See langgenius/dify-official-plugins#3512.
 
-Blob chunk merging validates the plugin-declared size before allocating.
+Blob chunk merging validates the plugin-declared size before allocating and,
+in strict mode, rejects incomplete or inconsistent file streams.
 """
 
 from __future__ import annotations
@@ -133,3 +134,97 @@ def test_merge_blob_chunks_keeps_non_chunk_messages_in_order() -> None:
         DifyPluginToolInvokeMessage.MessageType.BLOB,
         DifyPluginToolInvokeMessage.MessageType.TEXT,
     ]
+
+
+def test_merge_blob_chunks_strict_mode_merges_interleaved_files() -> None:
+    """Independent files may interleave as long as each sequence is complete."""
+    chunks = [
+        blob_chunk(chunk_id="file1", sequence=0, total_length=2, blob=b"a", end=False),
+        blob_chunk(chunk_id="file2", sequence=0, total_length=1, blob=b"x", end=True),
+        blob_chunk(chunk_id="file1", sequence=1, total_length=2, blob=b"b", end=True),
+    ]
+
+    merged = merge_blob_chunks(chunks, require_complete=True)
+
+    blobs = [
+        message.message.blob
+        for message in merged
+        if isinstance(message.message, DifyPluginToolInvokeMessage.BlobMessage)
+    ]
+    assert blobs == [
+        b"x",
+        b"ab",
+    ]
+
+
+def test_merge_blob_chunks_strict_mode_accepts_empty_chunk() -> None:
+    chunks = [
+        blob_chunk(chunk_id="file1", sequence=0, total_length=1, blob=b"", end=False),
+        blob_chunk(chunk_id="file1", sequence=1, total_length=1, blob=b"x", end=True),
+    ]
+
+    merged = merge_blob_chunks(chunks, require_complete=True)
+
+    assert len(merged) == 1
+    assert isinstance(merged[0].message, DifyPluginToolInvokeMessage.BlobMessage)
+    assert merged[0].message.blob == b"x"
+
+
+@pytest.mark.parametrize("sequence", [1, 2])
+def test_merge_blob_chunks_strict_mode_rejects_invalid_first_sequence(sequence: int) -> None:
+    chunks = [blob_chunk(chunk_id="file1", sequence=sequence, total_length=1, blob=b"x", end=True)]
+
+    with pytest.raises(ValueError, match="invalid sequence or length"):
+        merge_blob_chunks(chunks, require_complete=True)
+
+
+@pytest.mark.parametrize(
+    ("second_sequence", "second_total_length", "second_blob"),
+    [
+        (0, 4, b"cd"),
+        (2, 4, b"cd"),
+        (1, 5, b"cd"),
+        (1, 4, b"cde"),
+    ],
+)
+def test_merge_blob_chunks_strict_mode_rejects_inconsistent_follow_up_chunk(
+    second_sequence: int, second_total_length: int, second_blob: bytes
+) -> None:
+    chunks = [
+        blob_chunk(chunk_id="file1", sequence=0, total_length=4, blob=b"ab", end=False),
+        blob_chunk(
+            chunk_id="file1",
+            sequence=second_sequence,
+            total_length=second_total_length,
+            blob=second_blob,
+            end=True,
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="invalid sequence or length"):
+        merge_blob_chunks(chunks, require_complete=True)
+
+
+def test_merge_blob_chunks_strict_mode_rejects_early_final_chunk() -> None:
+    chunks = [blob_chunk(chunk_id="file1", sequence=0, total_length=2, blob=b"x", end=True)]
+
+    with pytest.raises(ValueError, match="invalid sequence or length"):
+        merge_blob_chunks(chunks, require_complete=True)
+
+
+def test_merge_blob_chunks_strict_mode_rejects_unfinished_stream() -> None:
+    chunks = [blob_chunk(chunk_id="file1", sequence=0, total_length=2, blob=b"x", end=False)]
+
+    with pytest.raises(ValueError, match="ended before the final chunk"):
+        merge_blob_chunks(chunks, require_complete=True)
+
+
+def test_merge_blob_chunks_default_mode_preserves_legacy_sequence_behavior() -> None:
+    """Callers that do not request strict validation retain the old behavior."""
+    chunks = [blob_chunk(chunk_id="file1", sequence=5, total_length=1, blob=b"x", end=True)]
+
+    merged = merge_blob_chunks(chunks)
+
+    assert len(merged) == 1
+    assert isinstance(merged[0].message, DifyPluginToolInvokeMessage.BlobMessage)
+    assert merged[0].message.blob == b"x"
