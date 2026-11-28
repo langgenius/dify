@@ -584,3 +584,252 @@ def test_parse_openapi_to_tool_bundle_fills_variables_of_the_request_env_server(
 
     assert len(bundles) == 1
     assert bundles[0].server_url == "https://acme.example.com/"
+
+
+def test_parse_openapi_to_tool_bundle_resolves_parameter_schema_ref(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.1.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/items": {
+                "get": {
+                    "operationId": "listItems",
+                    "parameters": [
+                        {
+                            "name": "limit",
+                            "in": "query",
+                            "description": "Max items",
+                            "schema": {"$ref": "#/components/schemas/PageLimit"},
+                        },
+                        {
+                            "name": "offset",
+                            "in": "query",
+                            "schema": {"$ref": "#/components/schemas/PageLimit", "default": 0},
+                        },
+                    ],
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "PageLimit": {"type": "integer", "default": 20},
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    params = {p.name: p for p in bundles[0].parameters or []}
+    assert params["limit"].type == ToolParameter.ToolParameterType.NUMBER
+    assert params["limit"].default == 20
+    assert params["offset"].type == ToolParameter.ToolParameterType.NUMBER
+    assert params["offset"].default == 0
+    # Component schema must not be mutated by sibling overrides.
+    assert openapi["components"]["schemas"]["PageLimit"]["default"] == 20
+
+
+def test_parse_openapi_to_tool_bundle_resolves_inline_body_property_refs_and_all_of(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.1.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/orders": {
+                "post": {
+                    "operationId": "createOrder",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["quantity"],
+                                    "properties": {
+                                        "quantity": {"$ref": "#/components/schemas/Quantity"},
+                                        "express": {
+                                            "description": "Use express shipping",
+                                            "allOf": [{"$ref": "#/components/schemas/Flag"}],
+                                        },
+                                        "attachments": {
+                                            "type": "array",
+                                            "items": {"$ref": "#/components/schemas/BinaryUpload"},
+                                        },
+                                    },
+                                }
+                            }
+                        },
+                    },
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Quantity": {"type": "integer", "description": "Item count", "default": 1},
+                "Flag": {"type": "boolean", "default": False, "description": "Default flag description"},
+                "BinaryUpload": {"type": "string", "format": "binary"},
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    params = {p.name: p for p in bundles[0].parameters or []}
+    assert params["quantity"].type == ToolParameter.ToolParameterType.NUMBER
+    assert params["quantity"].default == 1
+    assert params["quantity"].llm_description == "Item count"
+    assert params["quantity"].required is True
+
+    assert params["express"].type == ToolParameter.ToolParameterType.BOOLEAN
+    assert params["express"].default is False
+    assert params["express"].llm_description == "Use express shipping"
+
+    assert params["attachments"].type == ToolParameter.ToolParameterType.FILES
+
+
+def test_parse_openapi_to_tool_bundle_resolves_body_top_level_all_of(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/records": {
+                "post": {
+                    "operationId": "createRecord",
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {"$ref": "#/components/schemas/BaseRecord"},
+                                        {"$ref": "#/components/schemas/ExtraFields"},
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "BaseRecord": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {"name": {"type": "string"}},
+                },
+                "ExtraFields": {
+                    "type": "object",
+                    "required": ["priority"],
+                    "properties": {"priority": {"type": "integer", "default": 3}},
+                },
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    params = {p.name: p for p in bundles[0].parameters or []}
+    assert params["name"].type == ToolParameter.ToolParameterType.STRING
+    assert params["name"].required is True
+    assert params["priority"].type == ToolParameter.ToolParameterType.NUMBER
+    assert params["priority"].required is True
+    assert params["priority"].default == 3
+
+
+def test_parse_openapi_to_tool_bundle_handles_circular_schema_refs(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/nodes": {
+                "post": {
+                    "operationId": "createNode",
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Node"},
+                            }
+                        }
+                    },
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "count": {"$ref": "#/components/schemas/CycleA"},
+                        "parent": {"$ref": "#/components/schemas/Node"},
+                    },
+                },
+                "CycleA": {"$ref": "#/components/schemas/CycleB"},
+                "CycleB": {"$ref": "#/components/schemas/CycleA"},
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    params = {p.name: p for p in bundles[0].parameters or []}
+    assert set(params) == {"count", "parent"}
+
+
+def test_parse_openapi_to_tool_bundle_handles_non_mapping_schemas_and_missing_param_schema(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.1.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/raw": {
+                "post": {
+                    "operationId": "submitRaw",
+                    "parameters": [
+                        {
+                            "name": "tag",
+                            "in": "query",
+                            "description": "Parameter without schema mapping",
+                        }
+                    ],
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AllowAny",
+                                    "allOf": [True, {"type": "string"}],
+                                }
+                            }
+                        }
+                    },
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "AllowAny": True,
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    params = {p.name: p for p in bundles[0].parameters or []}
+    assert set(params) == {"tag"}
+    assert params["tag"].type == ToolParameter.ToolParameterType.STRING

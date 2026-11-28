@@ -71,12 +71,16 @@ class ApiBasedToolSchemaParser:
             parameters = []
             if "parameters" in interface["operation"]:
                 for i, parameter in enumerate(interface["operation"]["parameters"]):
-                    if "$ref" in parameter:
-                        root = openapi
-                        reference = parameter["$ref"].split("/")[1:]
-                        for ref in reference:
-                            root = root[ref]
-                        interface["operation"]["parameters"][i] = root
+                    resolved_param = (
+                        dict(ApiBasedToolSchemaParser._resolve_ref(openapi, parameter["$ref"]))
+                        if "$ref" in parameter
+                        else dict(parameter)
+                    )
+                    if "schema" in resolved_param and isinstance(resolved_param["schema"], Mapping):
+                        resolved_param["schema"] = ApiBasedToolSchemaParser._resolve_schema(
+                            openapi, resolved_param["schema"]
+                        )
+                    interface["operation"]["parameters"][i] = resolved_param
                 for parameter in interface["operation"]["parameters"]:
                     # Handle complex type defaults that are not supported by PluginParameter
                     default_value = None
@@ -115,37 +119,17 @@ class ApiBasedToolSchemaParser:
                         if "schema" not in content:
                             continue
 
-                        if "$ref" in content["schema"]:
-                            # get the reference
-                            root = openapi
-                            reference = content["schema"]["$ref"].split("/")[1:]
-                            for ref in reference:
-                                root = root[ref]
-                            # overwrite the content
-                            interface["operation"]["requestBody"]["content"][content_type]["schema"] = root
-
-                            # handle allOf reference in schema properties
-                            for prop_dict in root.get("properties", {}).values():
-                                for item in prop_dict.get("allOf", []):
-                                    if "$ref" in item:
-                                        ref_schema = openapi
-                                        reference = item["$ref"].split("/")[1:]
-                                        for ref in reference:
-                                            ref_schema = ref_schema[ref]
-                                    else:
-                                        ref_schema = item
-                                    for key, value in ref_schema.items():
-                                        if isinstance(value, list):
-                                            if key not in prop_dict:
-                                                prop_dict[key] = []
-                                            # extends list field
-                                            if isinstance(prop_dict[key], list):
-                                                prop_dict[key].extend(value)
-                                        elif key not in prop_dict:
-                                            # add new field
-                                            prop_dict[key] = value
-                                if "allOf" in prop_dict:
-                                    del prop_dict["allOf"]
+                        body_schema = ApiBasedToolSchemaParser._resolve_schema(openapi, content["schema"])
+                        if isinstance(body_schema.get("properties"), Mapping):
+                            body_schema["properties"] = {
+                                prop_name: (
+                                    ApiBasedToolSchemaParser._resolve_schema(openapi, prop_schema)
+                                    if isinstance(prop_schema, Mapping)
+                                    else prop_schema
+                                )
+                                for prop_name, prop_schema in body_schema["properties"].items()
+                            }
+                        interface["operation"]["requestBody"]["content"][content_type]["schema"] = body_schema
 
                         # parse body parameters
                         if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
@@ -219,6 +203,62 @@ class ApiBasedToolSchemaParser:
             )
 
         return bundles
+
+    @staticmethod
+    def _resolve_ref(openapi: Mapping[str, Any], ref: str) -> Any:
+        """Follow a local JSON Pointer reference inside ``openapi``.
+
+        Preconditions: ``ref`` is a local pointer starting with ``#/``.
+        Postconditions: Returns the referenced node without mutating ``openapi``.
+        """
+        root: Any = openapi
+        for token in ref.split("/")[1:]:
+            root = root[token]
+        return root
+
+    @staticmethod
+    def _resolve_schema(
+        openapi: Mapping[str, Any],
+        schema: Mapping[str, Any],
+        seen_refs: frozenset[str] = frozenset(),
+    ) -> dict[str, Any]:
+        """Resolve local ``$ref`` and ``allOf`` entries in a schema without mutating ``openapi``.
+
+        Preconditions: ``openapi`` is a parsed OpenAPI document and ``schema`` is a schema mapping.
+        Postconditions: Returns a new dict with resolvable local ``$ref``/``allOf`` (and array
+        ``items`` references) flattened while preserving sibling keywords and guarding against
+        circular references via ``seen_refs``.
+        """
+        resolved: dict[str, Any] = dict(schema)
+
+        ref = resolved.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/") and ref not in seen_refs:
+            target = ApiBasedToolSchemaParser._resolve_ref(openapi, ref)
+            if isinstance(target, Mapping):
+                target_resolved = ApiBasedToolSchemaParser._resolve_schema(openapi, target, seen_refs | {ref})
+                siblings = {k: v for k, v in resolved.items() if k != "$ref"}
+                resolved = {**target_resolved, **siblings}
+
+        all_of_items = resolved.pop("allOf", None)
+        if isinstance(all_of_items, list):
+            for item in all_of_items:
+                if isinstance(item, Mapping):
+                    item_resolved = ApiBasedToolSchemaParser._resolve_schema(openapi, item, seen_refs)
+                    for key, value in item_resolved.items():
+                        if isinstance(value, list):
+                            existing = resolved.get(key)
+                            resolved[key] = [*existing, *value] if isinstance(existing, list) else list(value)
+                        elif isinstance(value, Mapping):
+                            existing = resolved.get(key)
+                            resolved[key] = {**value, **existing} if isinstance(existing, Mapping) else dict(value)
+                        elif key not in resolved:
+                            resolved[key] = value
+
+        items = resolved.get("items")
+        if isinstance(items, Mapping) and ("$ref" in items or "allOf" in items):
+            resolved["items"] = ApiBasedToolSchemaParser._resolve_schema(openapi, items, seen_refs)
+
+        return resolved
 
     @staticmethod
     def _resolve_server_url(server: Mapping[str, Any]) -> str:
