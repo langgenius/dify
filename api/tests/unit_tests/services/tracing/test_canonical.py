@@ -165,6 +165,47 @@ def test_message_record_becomes_a_root_span_with_one_llm_child() -> None:
     assert root.start_time.tzinfo is UTC
 
 
+@pytest.mark.parametrize("app_name", ["My Classifier", "分类助手"])
+def test_message_root_uses_the_app_name(app_name: str) -> None:
+    trace = CanonicalTraceBuilder().build(_message_record(app_name=app_name))
+
+    assert trace is not None
+    assert (trace.root.name, trace.root.attributes["trace_entity_type"]) == (app_name, "message")
+    assert trace.root.attributes["app_name"] == app_name
+    assert trace.spans[1].name == "llm"
+
+
+@pytest.mark.parametrize(
+    ("message_id", "expected_names"),
+    [
+        (None, ["My Classifier", "start_START", "llm_LLM"]),
+        (MESSAGE_ID, ["My Classifier", "workflow", "start_START", "llm_LLM"]),
+    ],
+)
+def test_workflow_root_uses_the_app_name(message_id: str | None, expected_names: list[str]) -> None:
+    trace = CanonicalTraceBuilder().build(
+        _workflow_record(message_id=message_id, metadata={"app_name": "My Classifier"})
+    )
+
+    assert trace is not None
+    assert [span.name for span in trace.spans] == expected_names
+    assert trace.root.attributes["app_name"] == "My Classifier"
+    workflow_span = next(span for span in trace.spans if span.span_id == span_id_for(WORKFLOW_RUN_ID))
+    assert workflow_span.attributes["trace_entity_type"] == "workflow"
+
+
+@pytest.mark.parametrize("app_name", [None, "", " \t", 42])
+def test_unusable_app_name_keeps_the_legacy_root_names(app_name: object) -> None:
+    builder = CanonicalTraceBuilder()
+    traces = (
+        builder.build(_message_record(app_name=app_name)),
+        builder.build(_workflow_record(message_id=None, metadata={"app_name": app_name})),
+        builder.build(_workflow_record(message_id=MESSAGE_ID, metadata={"app_name": app_name})),
+    )
+
+    assert [trace.root.name for trace in traces if trace is not None] == ["message", "workflow", "message"]
+
+
 def test_caller_trace_id_names_the_trace_and_is_kept_verbatim() -> None:
     record = _message_record().model_copy(update={"trace_id": "caller-trace"})
 
