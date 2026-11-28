@@ -857,3 +857,27 @@ def test_invalid_optional_metering_number_does_not_block_settings_startup(
     monkeypatch.setenv("DIFY_AGENT_SANDBOX_METERING_MAX_PAGES", value)
     settings = ServerSettings(_env_file=None)
     assert settings.sandbox_metering_max_pages == value
+
+
+def test_application_trace_max_batch_bytes_reads_its_environment_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_APPLICATION_TRACE_MAX_BATCH_BYTES", str(4 * 1024 * 1024))
+
+    settings = ServerSettings()
+
+    assert settings.application_trace_max_batch_bytes == 4 * 1024 * 1024
+
+
+def test_application_trace_max_batch_bytes_defaults_to_one_mib() -> None:
+    # The exporter's own default, kept as the default here so the two cannot drift.
+    assert ServerSettings().application_trace_max_batch_bytes == 1024 * 1024
+
+
+def test_application_trace_max_batch_bytes_rejects_a_non_positive_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_APPLICATION_TRACE_MAX_BATCH_BYTES", "0")
+
+    with pytest.raises(ValidationError):
+        ServerSettings()

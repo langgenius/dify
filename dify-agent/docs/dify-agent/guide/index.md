@@ -83,6 +83,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_OUTBOUND_HTTP_KEEPALIVE_EXPIRY` | `30` | Idle keep-alive expiry in seconds. |
 | `DIFY_AGENT_TRAJECTORY_ENABLED` | `false` | Opt-in switch for the separate Agent trajectory export pipeline. |
 | `DIFY_AGENT_APPLICATION_TRACING_ENABLED` | `false` | Collect API-authorized application spans into the Dify inner API tracing inbox. Requires the server inner API URL and key. |
+| `DIFY_AGENT_APPLICATION_TRACE_MAX_BATCH_BYTES` | `1048576` | Largest serialized application span, in bytes, that the collector will deliver; must be positive. A span above it is dropped and its invocation's trace is reported incomplete, so raise this together with the API-side `OPS_AGENT_TRACE_MAX_BYTES` for long agent turns. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` | empty | Full HTTP(S) OTLP traces endpoint required when trajectory export is enabled. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` | `{}` | JSON object of request headers sent with Agent OTLP trace exports. |
 | `DIFY_AGENT_TRAJECTORY_SERVICE_NAME` | `dify-agent-trajectory` | Resource service name attached to Agent trajectory spans. |

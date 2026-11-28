@@ -188,7 +188,11 @@ def configure_application_observability(settings: ServerSettings) -> Application
     if not settings.inner_api_key:
         logger.warning("Application tracing is enabled without an inner API credential; collector disabled")
         return None
-    exporter = JSONSpanExporter(inner_api_url=settings.inner_api_url, inner_api_key=settings.inner_api_key)
+    exporter = JSONSpanExporter(
+        inner_api_url=settings.inner_api_url,
+        inner_api_key=settings.inner_api_key,
+        max_batch_bytes=settings.application_trace_max_batch_bytes,
+    )
     processor = ApplicationBatchSpanProcessor(exporter)
     try:
         with _isolated_agent_environment():
