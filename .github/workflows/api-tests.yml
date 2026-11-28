@@ -75,6 +75,7 @@ jobs:
       matrix:
         python-version:
           - '3.13'
+          - '3.14'
         shardIndex:
           - 1
           - 2
@@ -150,7 +151,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # The shared timing baseline tracks one interpreter and its artifact names omit the
+      # Python version, so only the 3.13 shards publish observations.
       - name: Upload successful timing observations
+        if: ${{ matrix.python-version == '3.13' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-unit-durations-${{ matrix.shardIndex }}
@@ -174,11 +178,17 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   api-controllers:
-    name: API Controller Tests (3.13)
+    name: API Controller Tests (${{ matrix.python-version }})
     runs-on: depot-ubuntu-24.04-4
     env:
       PYTHONUNBUFFERED: '1'
-      COVERAGE_FILE: coverage-controllers-3.13
+      COVERAGE_FILE: coverage-controllers-${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.13'
+          - '3.14'
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -189,7 +199,7 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
-          python-version: '3.13'
+          python-version: ${{ matrix.python-version }}
           cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
@@ -215,7 +225,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: api-test-results-controllers-3.13
+          name: api-test-results-controllers-${{ matrix.python-version }}
           path: test-results/*.xml
           if-no-files-found: warn
           retention-days: 7
@@ -234,7 +244,7 @@ jobs:
           disable_search: true
           fail_ci_if_error: true
           flags: api
-          name: api-controllers-3.13
+          name: api-controllers-${{ matrix.python-version }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
