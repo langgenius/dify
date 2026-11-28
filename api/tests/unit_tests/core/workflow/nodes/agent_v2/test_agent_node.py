@@ -12,6 +12,8 @@ from dify_agent.protocol import (
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CancelRunRequest,
     CancelRunResponse,
+    CreateRunRequest,
+    CreateRunResponse,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
@@ -276,6 +278,37 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
                 data=RunSucceededEventData(
                     output=self.output_payload,
                     session_snapshot=SessionSnapshot(layers={}),
+                ),
+            ),
+        )
+
+
+class RetryingFileOutputBackendClient(FakeAgentBackendRunClient):
+    def __init__(self, *, outputs: list[dict[str, object]], snapshots: list[SessionSnapshot]) -> None:
+        super().__init__(scenario=FakeAgentBackendScenario.SUCCESS)
+        self.outputs = outputs
+        self.snapshots = snapshots
+        self.requests: list[CreateRunRequest] = []
+
+    @override
+    def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
+        self.requests.append(request)
+        return super().create_run(request)
+
+    @override
+    def _events(self, run_id: str):
+        from clients.agent_backend.fake_client import _FIXED_TIME
+
+        attempt = len(self.requests) - 1
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+            RunSucceededEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=_FIXED_TIME,
+                data=RunSucceededEventData(
+                    output=self.outputs[attempt],
+                    session_snapshot=self.snapshots[attempt],
                 ),
             ),
         )
@@ -812,6 +845,74 @@ def test_agent_node_structured_output_type_failure_stops_the_node():
     assert result.error_type == "output_type_check_failed"
     agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
     assert agent_log["output_failure_decision"] == "fail_node"
+
+
+@pytest.mark.parametrize(
+    "initial_snapshot",
+    [None, SessionSnapshot(layers={"history": {"marker": "initial"}})],
+)
+def test_agent_node_output_retry_uses_latest_persisted_session_snapshot(
+    initial_snapshot: SessionSnapshot | None,
+) -> None:
+    first_snapshot = SessionSnapshot(layers={"history": {"marker": "first"}})
+    second_snapshot = SessionSnapshot(layers={"history": {"marker": "second"}})
+    client = RetryingFileOutputBackendClient(
+        outputs=[{"score": "invalid"}, {"score": 42}],
+        snapshots=[first_snapshot, second_snapshot],
+    )
+    store = FakeSessionStore(snapshot=initial_snapshot)
+
+    events = list(
+        _node(
+            declared_outputs=[
+                {
+                    "name": "score",
+                    "type": DeclaredOutputType.NUMBER,
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ],
+            agent_backend_client=client,
+            session_store=store,
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [request.session_snapshot for request in client.requests] == [initial_snapshot, first_snapshot]
+    assert [snapshot for _scope, _binding_id, snapshot in store.saved] == [first_snapshot, second_snapshot]
+
+
+def test_agent_node_output_retry_keeps_last_persisted_snapshot_when_save_fails() -> None:
+    initial_snapshot = SessionSnapshot(layers={"history": {"marker": "initial"}})
+    first_snapshot = SessionSnapshot(layers={"history": {"marker": "first"}})
+    second_snapshot = SessionSnapshot(layers={"history": {"marker": "second"}})
+    client = RetryingFileOutputBackendClient(
+        outputs=[{"score": "invalid"}, {"score": 42}],
+        snapshots=[first_snapshot, second_snapshot],
+    )
+    store = ExplodingSessionStore(snapshot=initial_snapshot)
+
+    events = list(
+        _node(
+            declared_outputs=[
+                {
+                    "name": "score",
+                    "type": DeclaredOutputType.NUMBER,
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ],
+            agent_backend_client=client,
+            session_store=store,
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[-1]).node_run_result
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [request.session_snapshot for request in client.requests] == [initial_snapshot, initial_snapshot]
+    assert store.save_attempts == [first_snapshot, second_snapshot]
+    assert agent_backend["session_snapshot_persisted"] is False
+    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
