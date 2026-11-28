@@ -117,6 +117,34 @@ const createPayload = (overrides?: Partial<ParagraphFormInput>): ParagraphFormIn
 })
 
 describe('InputField', () => {
+  it('preserves and clears a select default when editing the field', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <InputField
+        nodeId="node-select-default"
+        isEdit
+        payload={{
+          type: InputVarType.select,
+          output_variable_name: 'decision',
+          default_value: 'approve',
+          option_source: { type: 'constant', selector: [], value: ['approve', 'reject'] },
+        }}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+    const defaultInput = screen.getByRole('textbox', { name: /prePopulateField/ })
+    expect(defaultInput).toHaveValue('approve')
+    await user.clear(defaultInput)
+    await user.type(defaultInput, 'reject')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ default_value: 'reject' }))
+    await user.clear(defaultInput)
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ default_value: '' }))
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -502,6 +530,11 @@ describe('InputField', () => {
 
     const error = 'appDebug.variableConfig.errorMsg.atLeastOneOption'
     expect(screen.getByRole('alert')).toHaveTextContent(error)
+    expect(
+      screen.getByRole('textbox', {
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      }),
+    ).toHaveValue('')
     expect(
       screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }),
     ).toHaveAccessibleDescription(error)
