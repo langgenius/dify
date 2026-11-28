@@ -351,4 +351,46 @@ describe('useTextGenerationBatch', () => {
     expect(result.current.exportRes).toEqual([])
     expect(result.current.noPendingTask).toBe(true)
   })
+
+  it('should parse checkbox csv aliases into booleans and keep other text unchanged', () => {
+    const { result } = renderBatchHook({
+      prompt_template: 'template',
+      prompt_variables: [
+        createVariable({ key: 'name', name: 'Name', type: 'string', required: true }),
+        createVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox', required: false }),
+      ],
+    })
+
+    act(() => {
+      result.current.handleRunBatch(
+        [
+          ['Name', 'Enabled'],
+          ['false', 'false'],
+          ['00123', 'true'],
+          ['Yes', ' YES '],
+          ['On', 'on'],
+          ['One', '1'],
+          ['No', 'no'],
+          ['Off', 'OFF'],
+          ['Zero', '0'],
+          ['blank', ''],
+          ['unknown', 'maybe'],
+        ],
+        { onStart: vi.fn() },
+      )
+    })
+
+    expect(result.current.allTaskList.map((task) => task.params.inputs)).toEqual([
+      { name: 'false', enabled: false },
+      { name: '00123', enabled: true },
+      { name: 'Yes', enabled: true },
+      { name: 'On', enabled: true },
+      { name: 'One', enabled: true },
+      { name: 'No', enabled: false },
+      { name: 'Off', enabled: false },
+      { name: 'Zero', enabled: false },
+      { name: 'blank', enabled: undefined },
+      { name: 'unknown', enabled: 'maybe' },
+    ])
+  })
 })
