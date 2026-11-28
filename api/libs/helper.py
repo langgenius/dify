@@ -27,6 +27,7 @@ from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.datetime_utils import to_utc_timestamp
 
 if TYPE_CHECKING:
     from models import Account
@@ -176,7 +177,9 @@ class TimestampField(fields.Raw):
 
     @override
     def format(self, value) -> int:
-        return int(value.timestamp())
+        # Naive datetimes come from database columns and are stored in UTC; reading
+        # them through ``datetime.timestamp()`` would apply the host timezone.
+        return to_utc_timestamp(value)
 
 
 class OptionalTimestampField(fields.Raw):
@@ -188,7 +191,7 @@ class OptionalTimestampField(fields.Raw):
     def format(self, value) -> int | None:
         if value is None:
             return None
-        return int(value.timestamp())
+        return to_utc_timestamp(value)
 
 
 @overload
@@ -204,9 +207,13 @@ def to_timestamp(value: None) -> None: ...
 
 
 def to_timestamp(value: datetime | int | None) -> int | None:
-    """Normalize API response timestamp values to epoch seconds."""
+    """Normalize API response timestamp values to epoch seconds.
+
+    Database columns hand back naive datetimes that are already UTC, so they must
+    not be interpreted in the host timezone.
+    """
     if isinstance(value, datetime):
-        return int(value.timestamp())
+        return to_utc_timestamp(value)
     return value
 
 
