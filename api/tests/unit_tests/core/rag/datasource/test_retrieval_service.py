@@ -1138,6 +1138,101 @@ class TestRetrievalServiceInternals:
         assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
         processor_instance.invoke.assert_called_once()
 
+    def test_filter_documents_by_vector_score_threshold_keeps_unscored_documents(self):
+        scored_doc = create_mock_document("scored", "scored-doc", 0.9)
+        low_scored_doc = create_mock_document("low", "low-doc", 0.1)
+        unscored_doc = Document(page_content="unscored", metadata={"doc_id": "unscored-doc"}, provider="dify")
+
+        result = RetrievalService._filter_documents_by_vector_score_threshold(
+            [scored_doc, low_scored_doc, unscored_doc], 0.5
+        )
+
+        assert {doc.metadata["doc_id"] for doc in result} == {"scored-doc", "unscored-doc"}
+
+    def test_retrieve_internal_hybrid_keeps_unscored_fulltext_documents_without_rerank_runner(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app, vector_engine
+    ):
+        """Hybrid search without a rerank runner must keep full-text documents lacking a score (#47357)."""
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+
+        vector_doc = create_mock_document("vector hit", "vec-doc", 0.9)
+        fulltext_doc = Document(
+            page_content="fulltext hit",
+            metadata={"doc_id": "ft-doc", "document_id": str(uuid4()), "dataset_id": str(uuid4())},
+            provider="dify",
+        )
+
+        with (
+            patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search") as mock_embedding_search,
+            patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search") as mock_fulltext,
+            patch("core.rag.datasource.retrieval_service.DataPostProcessor") as mock_processor_class,
+        ):
+            mock_embedding_search.side_effect = lambda **kwargs: kwargs["all_documents"].append(vector_doc)
+            mock_fulltext.side_effect = lambda **kwargs: kwargs["all_documents"].append(fulltext_doc)
+
+            processor_instance = Mock()
+            processor_instance.rerank_runner = None
+            processor_instance.invoke.side_effect = lambda **kwargs: kwargs["documents"]
+            mock_processor_class.return_value = processor_instance
+
+            all_documents: list[Document] = []
+            RetrievalService()._retrieve(
+                flask_app=internal_flask_app,
+                retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+                dataset=internal_dataset,
+                all_documents=all_documents,
+                exceptions=[],
+                query="query",
+                score_threshold=0.5,
+            )
+
+        assert {doc.metadata["doc_id"] for doc in all_documents} == {"vec-doc", "ft-doc"}
+
+    def test_retrieve_internal_hybrid_skips_threshold_filter_when_rerank_runner_present(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app, vector_engine
+    ):
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+
+        low_scored_doc = create_mock_document("low vector hit", "low-doc", 0.1)
+
+        with (
+            patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search") as mock_embedding_search,
+            patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search") as mock_fulltext,
+            patch("core.rag.datasource.retrieval_service.DataPostProcessor") as mock_processor_class,
+        ):
+            mock_embedding_search.side_effect = lambda **kwargs: kwargs["all_documents"].append(low_scored_doc)
+            mock_fulltext.side_effect = lambda **kwargs: None
+
+            processor_instance = Mock()
+            processor_instance.rerank_runner = Mock()
+            processor_instance.invoke.side_effect = lambda **kwargs: kwargs["documents"]
+            mock_processor_class.return_value = processor_instance
+
+            all_documents: list[Document] = []
+            RetrievalService()._retrieve(
+                flask_app=internal_flask_app,
+                retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+                dataset=internal_dataset,
+                all_documents=all_documents,
+                exceptions=[],
+                query="query",
+                score_threshold=0.5,
+            )
+
+        assert [doc.metadata["doc_id"] for doc in all_documents] == ["low-doc"]
+
     @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_info_success(self, mock_sign, sqlite_session: Session):
         upload_file = _upload_file(file_id="upload-1", name="file-name")
