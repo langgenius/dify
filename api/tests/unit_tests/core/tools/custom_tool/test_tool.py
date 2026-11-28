@@ -190,6 +190,65 @@ class TestApiToolRequestAssemblyCases:
         assert "b_param" in response.content.decode()
 
 
+def _build_imported_tool(*, location: str, required: bool, schema_type: str) -> ApiTool:
+    bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(
+        json.dumps(
+            {
+                "openapi": "3.0.3",
+                "info": {"title": "demo", "version": "1"},
+                "servers": [{"url": "https://api.example.com"}],
+                "paths": {
+                    "/items": {
+                        "get": {
+                            "operationId": "listItems",
+                            "parameters": [
+                                {
+                                    "name": "X-Value",
+                                    "in": location,
+                                    "required": required,
+                                    "schema": {"type": schema_type},
+                                }
+                            ],
+                            "responses": {"200": {"description": "ok"}},
+                        }
+                    }
+                },
+            }
+        )
+    )
+    tool = _build_tool()
+    return ApiTool(
+        entity=tool.entity.model_copy(update={"parameters": bundles[0].parameters}),
+        api_bundle=bundles[0],
+        runtime=ToolRuntime(tenant_id="tenant-1", credentials={"auth_type": "none"}),
+        provider_id="provider-id",
+    )
+
+
+def _capture_get_requests(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+    requests: list[dict[str, object]] = []
+
+    def _fake_get(url: str, **kwargs: object) -> Response:
+        requests.append(kwargs)
+        return httpx.Response(200, text="ok")
+
+    monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
+    return requests
+
+
+def _send(tool: ApiTool, engine: Engine, entrypoint: str, parameters: dict[str, Any]) -> None:
+    if entrypoint == "preview":
+        tool.validate_credentials({"auth_type": "none"}, parameters)
+        return
+    with Session(engine) as session:
+        list(tool.invoke(session=session, user_id="user-1", tool_parameters=parameters))
+
+
+def _sent_values(requests: list[dict[str, object]]) -> dict[str, object]:
+    assert len(requests) == 1
+    return {"query": requests[0]["params"], "header": requests[0]["headers"], "cookie": requests[0]["cookies"]}
+
+
 def _build_tool(*, openapi: dict[str, Any] | None = None) -> ApiTool:
     entity = ToolEntity(
         identity=ToolIdentity(
@@ -427,6 +486,114 @@ class TestCustomToolCases:
         invalid_method_tool = _build_tool(openapi={"parameters": []})
         with pytest.raises(ValueError, match="Invalid http method"):
             invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
+
+    @staticmethod
+    def test_do_http_request_omits_unset_query_header_and_cookie_parameters(monkeypatch: pytest.MonkeyPatch) -> None:
+        openapi = {
+            "parameters": [
+                {"name": "q", "in": "query", "required": False, "schema": {"type": "string", "default": None}},
+                {"name": "X-Request-Id", "in": "header", "required": False, "schema": {"type": "string"}},
+                {"name": "X-Tenant", "in": "header", "required": False, "schema": {"type": "string", "default": None}},
+                {"name": "session", "in": "cookie", "required": False, "schema": {"type": "string"}},
+            ]
+        }
+        tool = _build_tool(openapi=openapi)
+        captured: dict[str, object] = {}
+
+        def _fake_get(url: str, **kwargs: object) -> Response:
+            captured.update(kwargs)
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
+        tool.do_http_request("https://api.example.com/items", "GET", headers={}, parameters={})
+
+        assert captured["params"] == {}
+        assert captured["headers"] == {}
+        assert captured["cookies"] == {}
+
+    @staticmethod
+    @pytest.mark.parametrize("entrypoint", ["preview", "runtime"])
+    @pytest.mark.parametrize("location", ["query", "header", "cookie"])
+    @pytest.mark.parametrize("required", [True, False])
+    @pytest.mark.parametrize(
+        ("schema_type", "value"),
+        [("string", None), ("boolean", None), ("boolean", ""), ("integer", None), ("integer", "")],
+    )
+    def test_unset_parameter_is_omitted_or_rejected_in_preview_and_runtime(
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        entrypoint: str,
+        location: str,
+        required: bool,
+        schema_type: str,
+        value: str | None,
+    ) -> None:
+        tool = _build_imported_tool(location=location, required=required, schema_type=schema_type)
+        requests = _capture_get_requests(monkeypatch)
+
+        if required:
+            with pytest.raises(ToolParameterValidationError, match="Missing required parameter X-Value"):
+                _send(tool, sqlite_engine, entrypoint, {"X-Value": value})
+            assert requests == []
+        else:
+            _send(tool, sqlite_engine, entrypoint, {"X-Value": value})
+            assert _sent_values(requests) == {"query": {}, "header": {}, "cookie": {}}
+
+    @staticmethod
+    @pytest.mark.parametrize("entrypoint", ["preview", "runtime"])
+    @pytest.mark.parametrize("location", ["header", "cookie"])
+    @pytest.mark.parametrize("required", [True, False])
+    def test_explicit_empty_string_is_sent_in_preview_and_runtime(
+        monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, entrypoint: str, location: str, required: bool
+    ) -> None:
+        tool = _build_imported_tool(location=location, required=required, schema_type="string")
+        requests = _capture_get_requests(monkeypatch)
+
+        _send(tool, sqlite_engine, entrypoint, {"X-Value": ""})
+
+        assert _sent_values(requests)[location] == {"X-Value": ""}
+
+    @staticmethod
+    @pytest.mark.parametrize("entrypoint", ["preview", "runtime"])
+    def test_false_and_zero_are_sent_in_preview_and_runtime(
+        monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, entrypoint: str
+    ) -> None:
+        requests = _capture_get_requests(monkeypatch)
+
+        for schema_type, value in (("boolean", False), ("integer", 0)):
+            tool = _build_imported_tool(location="header", required=True, schema_type=schema_type)
+            _send(tool, sqlite_engine, entrypoint, {"X-Value": value})
+
+        assert [request["headers"] for request in requests] == [{"X-Value": "false"}, {"X-Value": "0"}]
+
+    @staticmethod
+    def test_do_http_request_serializes_header_and_cookie_values(monkeypatch: pytest.MonkeyPatch) -> None:
+        openapi = {
+            "parameters": [
+                {"name": "X-Dry-Run", "in": "header", "required": False, "schema": {"type": "boolean"}},
+                {"name": "X-Verbose", "in": "header", "required": False, "schema": {"type": "boolean"}},
+                {"name": "X-Page", "in": "header", "required": False, "schema": {"type": "integer"}},
+                {"name": "X-Offset", "in": "header", "required": False, "schema": {"type": "integer"}},
+                {"name": "beta", "in": "cookie", "required": False, "schema": {"type": "boolean"}},
+            ]
+        }
+        tool = _build_tool(openapi=openapi)
+        captured: dict[str, object] = {}
+
+        def _fake_get(url: str, **kwargs: object) -> Response:
+            captured.update(kwargs)
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.get", _fake_get)
+        tool.do_http_request(
+            "https://api.example.com/items",
+            "GET",
+            headers={},
+            parameters={"X-Dry-Run": True, "X-Verbose": False, "X-Page": 2, "X-Offset": 0, "beta": True},
+        )
+
+        assert captured["headers"] == {"X-Dry-Run": "true", "X-Verbose": "false", "X-Page": "2", "X-Offset": "0"}
+        assert captured["cookies"] == {"beta": "true"}
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json; charset=utf-8", "Application/JSON"])

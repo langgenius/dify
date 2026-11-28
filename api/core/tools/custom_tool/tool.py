@@ -12,7 +12,7 @@ from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
+from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from graphon.file.file_manager import download
 from libs.http_headers import content_type_media_type
@@ -21,6 +21,18 @@ API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
     int(getenv("API_TOOL_DEFAULT_READ_TIMEOUT", "60")),
 )
+
+
+def _serialize_scalar_parameter_value(value: Any) -> str:
+    """Serialize a header or cookie parameter value as text.
+
+    Accepts a set value (see ``ApiTool._is_unset_parameter``). Booleans become ``"true"``
+    or ``"false"``, matching how httpx serializes query parameters; every other value
+    uses ``str()``. Pure function, no side effects.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
 
 
 @dataclass
@@ -173,6 +185,41 @@ class ApiTool(Tool):
         else:
             return (parameter.get("schema", {}) or {}).get("default", "")
 
+    def _is_unset_parameter(self, parameter: dict[str, Any], parameters: dict[str, Any], value: Any) -> bool:
+        """Tell whether a query, cookie or header parameter has no value to send.
+
+        ``value`` is the result of ``get_parameter_value`` for ``parameter``. A parameter
+        is unset when it was not provided and has no schema default, or when its value is
+        ``None``. An empty string is a value for a string parameter, but not for any other
+        type, where it comes from an input that was left blank. Pure function, no side effects.
+        """
+        name = parameter["name"]
+        if value is None or (name not in parameters and "default" not in (parameter.get("schema") or {})):
+            return True
+        if not isinstance(value, str) or value != "":
+            return False
+        return any(
+            item.name == name and item.type != ToolParameter.ToolParameterType.STRING
+            for item in self.api_bundle.parameters or []
+        )
+
+    @override
+    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
+        """Cast declared parameters, keeping ``None`` and ``""`` for query, cookie and header ones.
+
+        The base cast turns a blank boolean into ``False`` and a ``None`` string into ``""``,
+        which ``do_http_request`` could no longer tell apart from a provided value.
+        """
+        result = super()._transform_tool_parameters_type(tool_parameters)
+        for parameter in self.api_bundle.openapi.get("parameters", []):
+            name = parameter["name"]
+            if parameter["in"] not in ("query", "cookie", "header") or name not in tool_parameters:
+                continue
+            value = tool_parameters[name]
+            if value is None or (isinstance(value, str) and value == ""):
+                result[name] = value
+        return result
+
     def do_http_request(
         self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
     ) -> httpx.Response:
@@ -180,8 +227,12 @@ class ApiTool(Tool):
         Send an HTTP request using the API bundle and supplied parameters.
 
         For application/x-www-form-urlencoded, list/tuple values become repeated
-        fields; other values keep their existing string representation. Invalid
-        required parameters raise before dispatch.
+        fields; other values keep their existing string representation. Optional
+        query, cookie and header parameters without a value (see
+        ``_is_unset_parameter``) are omitted; required ones raise
+        ``ToolParameterValidationError`` before dispatch. Header and cookie booleans
+        are sent as ``true``/``false``. Invalid required parameters raise before
+        dispatch.
         """
         method = method.lower()
 
@@ -207,15 +258,22 @@ class ApiTool(Tool):
             if parameter["in"] == "path":
                 path_params[parameter["name"]] = value
 
+            elif self._is_unset_parameter(parameter, parameters, value):
+                # A required query, cookie or header parameter must carry a value; an
+                # optional one without a value is left out of the request instead of
+                # being sent empty or as "None".
+                if parameter.get("required", False):
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
+
             elif parameter["in"] == "query":
                 if value != "":
                     params[parameter["name"]] = value
 
             elif parameter["in"] == "cookie":
-                cookies[parameter["name"]] = value
+                cookies[parameter["name"]] = _serialize_scalar_parameter_value(value)
 
             elif parameter["in"] == "header":
-                headers[parameter["name"]] = str(value)
+                headers[parameter["name"]] = _serialize_scalar_parameter_value(value)
 
         # check if there is a request body and handle it
         if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:
