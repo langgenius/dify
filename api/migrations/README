@@ -1,2 +1,36 @@
 Single-database configuration for Flask.
 
+End User authentication: online PostgreSQL rollout
+==================================================
+
+Use one migration runner. PostgreSQL commits short column changes, concurrent
+indexes, and Builder backfill batches before the final schema changes and
+Alembic stamp. If interrupted, retry the same direction: reuse matching healthy
+indexes and accept completed drops. Inspect conflicts and abandoned invalid
+builds before retrying; never drop a healthy index as routine recovery. Offline
+SQL assumes the exact starting schema and must retain its transaction boundaries.
+
+Builder origin is backfilled in batches of at most 1,000 accounts.
+In an online rollout the first pass can run with the legacy release serving.
+A legacy write can land behind a batch cursor or after the first pass finishes.
+Before enabling the new Account/Workspace writers:
+
+1. Complete the schema upgrade and initial backfill with the new image.
+2. Drain legacy writes that create accounts or change account initialization or
+   workspace ownership, including in-flight requests and jobs. Keep new writers
+   that depend on the origin column stopped until the next step succeeds;
+   otherwise NULL may be either legacy data or a legitimate new value.
+3. Run the cutover pass once using the new image and the migration database role:
+
+       flask finalize-builder-origin-backfill --confirm-before-cutover
+
+4. Start the new writers only after the cutover pass succeeds.
+
+Retry step 3 with writers still drained if interrupted. Committed origins are
+not overwritten, and accounts with no legacy origin remain NULL. Do not run the
+legacy pass after the new onboarding flow has started writing. For a stopped
+upgrade with no overlapping legacy writes, the initial pass is sufficient.
+MySQL retains ordinary DDL and the portable backfill. Schedule for its lock
+impact. MySQL DDL can commit implicitly, including before the revision stamp;
+inspect or restore the schema after an interruption before retrying.
+

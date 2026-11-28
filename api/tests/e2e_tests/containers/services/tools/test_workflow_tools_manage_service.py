@@ -5,13 +5,16 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from models.workflow import WorkflowType
 from services.app_service import AppService, CreateAppParams
+from services.tools import workflow_tools_manage_service
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
 from tests.e2e_tests.containers.helpers import generate_valid_password
@@ -223,12 +226,7 @@ class TestWorkflowToolManageService:
         assert created_tool_provider.tenant_id == account.current_tenant.id
         assert created_tool_provider.app_id == app.id
 
-        # Verify external service calls
-        mock_external_service_dependencies["workflow_tool_provider_controller"].from_db.assert_called_once()
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called_once()
-        mock_external_service_dependencies[
-            "tool_transform_service"
-        ].workflow_provider_to_controller.assert_called_once()
 
     def test_create_workflow_tool_duplicate_name_error(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -647,10 +645,7 @@ class TestWorkflowToolManageService:
         assert created_tool.version == workflow.version
         assert created_tool.updated_at is not None
 
-        # Verify external service calls
-        mock_external_service_dependencies["workflow_tool_provider_controller"].from_db.assert_called()
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called()
-        mock_external_service_dependencies["tool_transform_service"].workflow_provider_to_controller.assert_called()
 
     def test_update_workflow_tool_with_human_input_node_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -979,66 +974,42 @@ class TestWorkflowToolManageService:
         # Verify the result
         assert result == {"result": "success"}
 
-    def test_create_workflow_tool_db_commit_before_validation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test that database commit happens before validation, causing DB pollution on validation failure.
-
-        This test verifies the second bug:
-        - WorkflowToolProvider is committed to database BEFORE from_db validation
-        - If validation fails, the record remains in the database
-        - Subsequent attempts fail with "Tool already exists" error
-
-        This demonstrates why we need to validate BEFORE database commit.
-        """
-
-        fake = Faker()
-
-        # Create test data
-        app, account, workflow = self._create_test_app_and_account(
+    def test_create_workflow_tool_rejects_missing_input_before_commit(
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An invalid parameter reference must not leave behind a provider row."""
+        app, account, _ = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies
         )
-
-        tool_name = fake.word()
-
-        # Mock from_db to raise validation error
-        mock_external_service_dependencies["workflow_tool_provider_controller"].from_db.side_effect = ValueError(
-            "Validation failed: default parameter type mismatch"
+        monkeypatch.setattr(
+            workflow_tools_manage_service, "WorkflowToolProviderController", WorkflowToolProviderController
         )
+        tool_name = "missing-parameter"
 
-        # Attempt to create workflow tool (will fail at validation stage)
-        with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        with pytest.raises(ValueError, match="variable not found"):
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
                 workflow_app_id=app.id,
                 name=tool_name,
-                label=fake.word(),
-                icon={"type": "emoji", "emoji": "🔧"},
-                description=fake.text(max_nb_chars=200),
+                label="Invalid Tool",
+                icon={},
+                description="Tool with inputs absent from its published workflow",
                 parameters=self._create_test_workflow_tool_parameters(),
             )
 
-        assert "Validation failed" in str(exc_info.value)
-
-        # Verify the tool was NOT created in database
-        # This is the expected behavior (no pollution)
-
-        (
-            db_session_with_containers.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == account.current_tenant.id,
-                WorkflowToolProvider.name == tool_name,
+        assert (
+            db_session_with_containers.scalar(
+                select(WorkflowToolProvider.id).where(
+                    WorkflowToolProvider.tenant_id == account.current_tenant.id,
+                    WorkflowToolProvider.app_id == app.id,
+                )
             )
-            .count()
+            is None
         )
-
-        # The record should NOT exist because the transaction should be rolled back
-        # Currently, due to the bug, the record might exist (this test documents the bug)
-        # After the fix, this should always be 0
-        # For now, we document that the record may exist, demonstrating the bug
-        # assert tool_count == 0  # Expected after fix
 
     def test_delete_workflow_tool_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies

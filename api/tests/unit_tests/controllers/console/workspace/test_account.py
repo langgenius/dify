@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-from flask import Flask, Response, request
+from flask import Flask, Response, g, request
 from jsonschema import Draft202012Validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
-from werkzeug.exceptions import NotFound, UnprocessableEntity
+from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import console_ns
@@ -28,6 +28,7 @@ from controllers.console.error import (
     EmailDomainSuspendedError,
     InvalidAccountPasswordRequestError,
 )
+from controllers.console.workspace import account as account_controller
 from controllers.console.workspace.account import (
     AccountAvatarApi,
     AccountAvatarQuery,
@@ -61,16 +62,17 @@ from controllers.console.workspace.error import (
     InvalidAccountDeletionCodeError,
     MissingInvitationCodeRequestError,
 )
+from enums import DeploymentEdition
 from extensions.application_services.account import AccountServices
 from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, Tenant, TenantAccountJoin
 from models import AccountStatus as _workspace_account_AccountStatus
 from models.account import AccountStatus as _accounts_AccountStatus
 from models.account import TenantAccountRole
+from repositories.account.repository import SQLAlchemyAccountRepository
 from services import account_errors
 from services.account_education_service import AccountEducationService
 from services.account_email import normalize_email
@@ -87,6 +89,7 @@ from services.account_errors import (
     InvalidChangeEmailCodeError,
     MissingInvitationCodeError,
 )
+from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.billing_client import billing
 from services.entities.account_entities import (
     AccountEducationActivation,
@@ -94,6 +97,7 @@ from services.entities.account_entities import (
     AccountEducationNotEligible,
     AccountEducationVerification,
     AccountIntegrationStatus,
+    AccountProfile,
     AccountProfileChanges,
     ChangeEmailVerification,
 )
@@ -108,7 +112,8 @@ from services.entities.auth_entities import (
 from services.errors.billing import (
     UnknownErrorReason,
 )
-from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
+from tests.helpers.unit.model_factories import make_account_snapshot
 
 
 def _build_account(email: str, account_id: str = "acc", tenant: Tenant | None = None) -> Account:
@@ -742,6 +747,57 @@ def persist_account_with_tenant(
     return account, tenant
 
 
+@pytest.mark.parametrize("password_login_enabled", [False, True])
+@pytest.mark.parametrize("password_set", [False, True])
+def test_console_password_changes_respect_password_login_policy(
+    app: Flask,
+    account_application_services: ApplicationServices,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    password_login_enabled: bool,
+    password_set: bool,
+) -> None:
+    account, _ = persist_account_with_tenant(sqlite_session)
+    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
+    passwords = DefaultAccountPasswordHasher()
+    if password_set:
+        accounts.update_password(account.id, passwords.hash("old-password1"))
+    previous = accounts.get_credentials(account.id)
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        ENABLE_EMAIL_PASSWORD_LOGIN=password_login_enabled,
+    )
+    monkeypatch.setattr(account_controller, "application_services", lambda: account_application_services)
+    with app.test_request_context(
+        "/console/api/account/password",
+        method="POST",
+        json={"password": "old-password1", "new_password": "new-password2", "repeat_new_password": "new-password2"},
+    ):
+        g._login_user = account
+        if password_login_enabled:
+            result = AccountPasswordApi().post()
+            assert isinstance(result, dict)
+            assert result["is_password_set"] is True
+        else:
+            with pytest.raises(Forbidden) as error:
+                AccountPasswordApi().post()
+            assert error.value.code == 403
+
+    credentials = accounts.get_credentials(account.id)
+    if password_login_enabled:
+        assert credentials is not None
+        assert credentials.password_hash is not None
+        assert credentials.password_salt is not None
+        assert passwords.verify(
+            "new-password2", password_hash=credentials.password_hash, password_salt=credentials.password_salt
+        )
+    else:
+        assert credentials == previous
+
+
 class TestAccountsCases:
     @staticmethod
     @pytest.fixture
@@ -846,7 +902,7 @@ class TestAccountsCases:
         def test_get_profile_success(self, app: Flask, account_services: AccountServices) -> None:
             api = AccountProfileApi()
             method = inspect.unwrap(api.get)
-            user = make_account()
+            user = AccountProfile.from_account(make_account_snapshot(), has_owned_tenant=False, has_tenant=False)
             request_context = RequestContext(
                 request_id="request-1",
                 trace_id=None,
@@ -862,37 +918,9 @@ class TestAccountsCases:
                 result = method(api, request_context)
 
             assert result["id"] == user.id
+            assert result["has_owned_tenant"] is False
+            assert result["has_tenant"] is False
             get_profile.assert_called_once_with(request_context)
-
-        def test_get_profile_admits_an_account_without_a_workspace(
-            self, app: Flask, account_services: AccountServices
-        ) -> None:
-            user = make_account()
-            contexts: list[RequestContext] = []
-
-            def get_profile(context: RequestContext) -> Account:
-                contexts.append(context)
-                return user
-
-            with (
-                app.test_request_context("/account/profile"),
-                patch("controllers.console.wraps._is_setup_completed", return_value=True),
-                config_overrides_context(LOGIN_DISABLED=True),
-                patch(
-                    "controllers.console.flask_admission.current_account_with_tenant_optional",
-                    return_value=(user, None),
-                ),
-                patch(
-                    "controllers.console.flask_admission.current_account_with_tenant",
-                    side_effect=ActiveWorkspaceRequiredError(),
-                ),
-                patch.object(account_services.profile, "get", get_profile),
-            ):
-                result = AccountProfileApi().get()
-
-            assert isinstance(result, dict)
-            assert result["id"] == user.id
-            assert [context.active_workspace_id for context in contexts] == [""]
 
     class TestAccountProfilePatchApi:
         def test_json_schema_matches_runtime_patch_rules(self) -> None:

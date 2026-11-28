@@ -17,7 +17,10 @@ class MessageAccount:
 
 @dataclass(frozen=True, slots=True)
 class MessageEndUser:
+    """A normalized API caller; only Web admission opts into guest history transfers."""
+
     end_user_id: str
+    is_web_app: bool = False
 
 
 type MessageActor = MessageAccount | MessageEndUser

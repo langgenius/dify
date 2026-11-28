@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, override
 
 from pydantic import Field
 
+from context.connection_execution import ConnectionExecutionContext
 from graphon.entities import WorkflowExecution as GraphonWorkflowExecution
 
 if TYPE_CHECKING:
@@ -48,6 +49,9 @@ class WorkflowExecutionTiming:
 class WorkflowExecution(GraphonWorkflowExecution):
     """Carry settled active duration independently of wall-clock timestamps."""
 
+    connection_context: ConnectionExecutionContext | None = Field(default=None, frozen=True)
+    """None for runs without personal selections and legacy payloads."""
+
     accumulated_elapsed_time: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     """None preserves timestamp-based duration for older serialized executions."""
 
@@ -57,3 +61,38 @@ class WorkflowExecution(GraphonWorkflowExecution):
         if self.accumulated_elapsed_time is not None:
             return self.accumulated_elapsed_time
         return super().elapsed_time
+
+
+def serialize_connection_context(
+    context: ConnectionExecutionContext | None,
+    *,
+    tenant_id: str,
+    app_id: str | None,
+    workflow_id: str,
+    end_user_id: str | None,
+    account_id: str | None,
+) -> str | None:
+    """Serialize references only for the run's tenant, app, workflow and caller namespace.
+
+    A missing context preserves legacy execution. Personal contexts require an EndUser;
+    workspace contexts require their Account creator. Mismatches fail before persistence.
+    """
+    if context is None:
+        return None
+    identity_matches = (
+        end_user_id is not None and context.end_user_id == end_user_id and account_id is None
+        if context.workspace is None
+        else account_id is not None
+        and end_user_id is None
+        and context.end_user_id == ""
+        and context.account_id == account_id
+        and context.workspace.account_id == account_id
+    )
+    if (
+        context.tenant_id != tenant_id
+        or context.app_id != app_id
+        or context.workflow_id != workflow_id
+        or not identity_matches
+    ):
+        raise ValueError("Connection context does not match the workflow execution identity.")
+    return context.model_dump_json()

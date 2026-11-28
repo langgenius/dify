@@ -5816,6 +5816,7 @@ export default interface Resources {
     'code.workflow_paused_in_blocking_mode': "The workflow paused for human input, which the blocking response mode doesn't support."
     'code.workspace_im_override_not_allowed': 'Workspace IM overrides require centrally managed bindings.'
     'code.workspace_member_limit_reached': "The workspace has reached its member limit, so this invitation can't be accepted right now."
+    'forbidden.endUserLoginDisabled': 'End User sign-in is disabled.'
     'forbidden.executionDetails': "You don't have permission to view this tool's internal execution details."
     'forbidden.invalidOAuthContext': 'The authorization session is invalid. Start the authorization again.'
     'forbidden.invalidSignedRequest': 'The request link is invalid.'
@@ -5826,6 +5827,7 @@ export default interface Resources {
     'forbidden.ownerTransferPlan': "Your current plan doesn't allow transferring workspace ownership."
     'forbidden.ownerTransferPolicy': "The workspace policy doesn't allow transferring ownership."
     'forbidden.personalAccessTokenExpired': 'The personal access token has expired.'
+    'forbidden.webAppOriginNotAllowed': "Requests from this origin aren't allowed for this WebApp."
     'generic.network': "Can't reach the server. Check your network connection and try again."
     'generic.rateLimited': 'Too many requests. Wait a moment and try again.'
     'generic.server': 'The server ran into a problem. Try again later.'

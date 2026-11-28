@@ -8,7 +8,9 @@ from typing import override
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 import services.app_generate_service as ags_module
@@ -19,18 +21,21 @@ from core.app.features.rate_limiting import rate_limit as rate_limit_module
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
+from extensions.ext_database import db
 from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 from models.account import Account
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services.app_definition_query_service import ServiceApiEndUserAuthError
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.unit.config_override import apply_config_overrides
 
 """
@@ -134,6 +139,52 @@ def _make_workflow(
         _environment_variables=[],
         _conversation_variables=[],
     )
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("selection", ["historical", "republished"])
+def test_selected_workflow_rechecks_service_api_personal_auth(
+    app: Flask,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    selection: str,
+) -> None:
+    monkeypatch.setitem(db._app_engines, app, {None: sqlite_engine})
+    app_model = _make_app(mode)
+    safe_workflow = _make_workflow(workflow_id=str(uuid.uuid4()))
+    safe_workflow.version = "safe"
+    safe_workflow.features = "{}"
+    protected_workflow = _make_workflow(workflow_id=str(uuid.uuid4()))
+    protected_workflow.version = "protected"
+    protected_workflow.features = "{}"
+    protected_workflow.graph = json.dumps(
+        {"nodes": [{"id": "personal-tool", "data": {"type": "tool", "credential_source": "end_user"}}]}
+    )
+    app_model.workflow_id = safe_workflow.id
+    sqlite_session.add_all([app_model, safe_workflow, protected_workflow])
+    sqlite_session.commit()
+
+    admitted_workflow = AppGenerateService._get_workflow(app_model, InvokeFrom.SERVICE_API, session=sqlite_session)
+    assert admitted_workflow.id == safe_workflow.id
+    if selection == "republished":
+        app_model.workflow_id = protected_workflow.id
+        sqlite_session.commit()
+
+    with pytest.raises(ServiceApiEndUserAuthError, match="Service API end-user access is unavailable"):
+        AppGenerateService._get_workflow(
+            app_model,
+            InvokeFrom.SERVICE_API,
+            protected_workflow.id if selection == "historical" else None,
+            session=sqlite_session,
+        )
+
+    for invoke_from in (InvokeFrom.WEB_APP, InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER):
+        selected = AppGenerateService._get_workflow(
+            app_model, invoke_from, protected_workflow.id, session=sqlite_session
+        )
+        assert selected.id == protected_workflow.id
 
 
 class _RateLimitRedis:
@@ -706,6 +757,45 @@ class TestAppGenerateServiceCases:
                     streaming=False,
                     session=self.session,
                 )
+
+        @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+        @pytest.mark.parametrize("streaming", [False, True])
+        def test_web_protocol_id_is_not_a_version_selector(
+            self, mocker: MockerFixture, config_overrides: Callable[..., None], mode: AppMode, streaming: bool
+        ) -> None:
+            config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+            workflow = _make_workflow()
+            get_workflow = mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+            prepare = mocker.patch("services.app_generate_service.prepare_web_connection_execution", return_value=None)
+            generator_name = "WorkflowAppGenerator" if mode == AppMode.WORKFLOW else "AdvancedChatAppGenerator"
+            generate = mocker.patch(f"services.app_generate_service.{generator_name}.generate", return_value={})
+            mocker.patch(
+                "services.app_generate_service.MessageBasedAppGenerator.retrieve_events", return_value=iter(())
+            )
+            mocker.patch(
+                f"services.app_generate_service.{generator_name}.convert_to_event_stream",
+                side_effect=lambda value: value,
+            )
+            params = mocker.spy(AppExecutionParams, "new")
+            app = _make_app(mode)
+            requested_id = str(uuid.uuid4())
+            AppGenerateService.generate(
+                app_model=app,
+                user=_make_user(),
+                args={"inputs": {}, "connection_revision": requested_id, "connections": {}},
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming,
+                session=self.session,
+            )
+            get_workflow.assert_called_once_with(app, InvokeFrom.WEB_APP, None, session=self.session)
+            assert prepare.call_args.kwargs["workflow"] is workflow
+            assert prepare.call_args.kwargs["args"]["connection_revision"] == requested_id
+            forwarded = params.call_args.kwargs if streaming else generate.call_args.kwargs
+            assert forwarded["workflow"] is workflow
+            assert "workflow_id" not in forwarded["args"]
+            assert "connection_revision" not in forwarded["args"]
+            assert "connections" not in forwarded["args"]
+            assert "connection_context" in forwarded
 
     class TestStreamingRateLimit(_RealSessionTest):
         @pytest.mark.parametrize("app_mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])

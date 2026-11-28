@@ -3,10 +3,11 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
 from redis import RedisError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from extensions.ext_redis import RedisClientWrapper
-from models.account import Account
+from models.account import Account, AccountStatus, Tenant
 from services.account.email_registration_adapters import (
     AccountLifecycleRegistrationGateway,
     BillingAccountRegistrationPolicyGateway,
@@ -212,3 +213,22 @@ def test_registration_gateway_uses_account_lifecycle(account_domain: AccountDoma
     tokens = AccountSessionTokens("access", "refresh", "csrf")
     account_domain.sessions.issue.return_value = tokens
     assert gateway.login(account_id, ip_address="127.0.0.1") == tokens
+
+
+def test_cloud_registration_creates_a_login_capable_account_without_a_workspace(
+    account_domain: AccountDomain, sqlite_session: Session
+) -> None:
+    gateway = AccountLifecycleRegistrationGateway(accounts=account_domain.accounts, defer_workspace_creation=True)
+    account_id = gateway.create(
+        email="consumer@example.com",
+        password="ValidPass123!",
+        interface_language="en-US",
+        timezone="UTC",
+        ip_address="127.0.0.1",
+    )
+    account = sqlite_session.get(Account, account_id)
+    assert account is not None
+    assert account.status == AccountStatus.UNINITIALIZED
+    assert account.initialized_at is None
+    assert account.first_workspace_created_at is None
+    assert sqlite_session.scalar(select(Tenant.id)) is None

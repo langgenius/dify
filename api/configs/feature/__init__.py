@@ -1107,6 +1107,28 @@ class AuthConfig(BaseSettings):
     Configuration for authentication and OAuth
     """
 
+    CONSOLE_END_USER_AUTH_ENABLED: bool = Field(
+        default=False,
+        description="Expose EndUser authentication configuration for workflow tool nodes in Console. "
+        "Controls frontend feature entry points only; does not control WebApp login, "
+        "Guest personal Connections, or runtime authorization.",
+    )
+
+    END_USER_AUTH_ALLOW_ANONYMOUS: bool = Field(
+        default=False,
+        description="Allow Guest identities to manage and use personal Connections. Does not control Web App entry. "
+        "Defaults to true in Community and false in "
+        "Cloud/Enterprise when unset; explicit deployment settings take precedence.",
+    )
+
+    WEBAPP_ACCOUNT_PASSPORT_ENABLED: bool = Field(
+        default=False,
+        description="Enable End User login mode and explicit Account Passport exchange for Web Apps. "
+        "When unset, defaults to true in Cloud and false "
+        "in other editions; an explicit value overrides the edition default. Enable only after every API instance "
+        "supports it. Disabling issuance does not revoke existing Passports.",
+    )
+
     OAUTH_REDIRECT_PATH: str = Field(
         description="Redirect path for OAuth authentication callbacks",
         default="/console/api/oauth/authorize",
@@ -1561,6 +1583,19 @@ class CeleryScheduleTasksConfig(BaseSettings):
     CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
         description="Maximum IDs dispatched per cleanup sweep for each of conversations and detached Workspaces",
         default=100,
+    )
+    ENABLE_GUEST_CONNECTION_CLEANUP_TASK: bool = Field(
+        default=False,
+        description="Enable periodic expiration of inactive Guest Connections and delivery of their OAuth revocations.",
+    )
+    GUEST_CONNECTION_INACTIVITY_DAYS: PositiveInt = Field(
+        default=30, le=36500, description="Days of inactivity before a Guest Connection is eligible for cleanup."
+    )
+    GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES: PositiveInt = Field(
+        default=60, le=1440, description="Minutes between Guest Connection cleanup sweeps."
+    )
+    GUEST_CONNECTION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
+        default=100, le=1000, description="Maximum candidates read per page by a Guest Connection cleanup sweep."
     )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",

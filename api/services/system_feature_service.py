@@ -81,6 +81,21 @@ class SystemFeatureService:
         edition = deployment_edition if deployment_edition is not None else dify_config.DEPLOYMENT_EDITION
         return edition == DeploymentEdition.ENTERPRISE
 
+    @staticmethod
+    def has_account_billing(*, deployment_edition: DeploymentEdition) -> bool:
+        """Return whether account and workspace lifecycle operations use hosted billing."""
+        return deployment_edition == DeploymentEdition.CLOUD
+
+    @staticmethod
+    def requires_first_workspace_activation(*, deployment_edition: DeploymentEdition) -> bool:
+        """Return whether Builder workspace creation is deferred until explicit activation."""
+        return deployment_edition == DeploymentEdition.CLOUD
+
+    @staticmethod
+    def uses_console_signin_turnstile(*, deployment_edition: DeploymentEdition) -> bool:
+        """Return whether Console sign-in uses the hosted Turnstile integration."""
+        return deployment_edition == DeploymentEdition.CLOUD
+
     @classmethod
     def get_license_status(cls) -> feature_entities.LicenseStatus:
         """Return the deployment license status used by internal admission policies."""

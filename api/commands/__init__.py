@@ -47,6 +47,7 @@ from .retention import (
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
 from .system import (
     convert_to_agent_apps,
+    finalize_builder_origin_backfill,
     fix_app_site_missing,
     reset_encrypt_key_pair,
     upgrade_db,
@@ -80,6 +81,7 @@ __all__ = [
     "extract_plugins",
     "extract_unique_plugins",
     "file_usage",
+    "finalize_builder_origin_backfill",
     "fix_app_site_missing",
     "import_migration_data",
     "install_plugins",

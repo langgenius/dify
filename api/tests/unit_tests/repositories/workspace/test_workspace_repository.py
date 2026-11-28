@@ -19,9 +19,10 @@ from models.knowledge_fs import (
     KnowledgeFSLifecycleOutbox,
 )
 from repositories.workspace.workspace_repository import WorkspaceRepository
-from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError
+from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError, WorkspaceOwnerNotFoundError
 from services.workspace.contracts import (
     EffectiveCreditPool,
+    WorkspaceActivation,
     WorkspaceCreation,
     WorkspaceCustomConfig,
     WorkspaceFeatures,
@@ -460,6 +461,78 @@ class TestWorkspaceRepositoryCases:
                 assert identity.account_id == "owner"
                 contact_ids.append(identity.id)
         assert contact_ids[0] == contact_ids[1]
+
+    @staticmethod
+    def test_first_workspace_after_joining_keeps_the_invited_workspace_current(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    make_account("owner", status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)),
+                    make_tenant("invited"),
+                    TenantAccountJoin(
+                        tenant_id="invited", account_id="owner", role=TenantAccountRole.NORMAL, current=True
+                    ),
+                ]
+            )
+        repository = WorkspaceRepository(sqlite_session_factory)
+        assert repository.get_activation("owner") == WorkspaceActivation("invited", None)
+        prepare = partial(WorkspaceCreation, "first", "My Workspace", "public-key", 0, {})
+
+        created = repository.provision(prepare, owner_id="owner", first_workspace_after_joining="invited")
+
+        assert created is not None
+        assert created.id == "first"
+        assert repository.get_activation("owner") == WorkspaceActivation("invited", created.created_at)
+        assert repository.get_account_role(account_id="owner", tenant_id="first") == "owner"
+        assert repository.provision(prepare, owner_id="owner", first_workspace_after_joining="invited") is None
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("status", "active_workspaces", "invited_workspace"),
+        [
+            (AccountStatus.UNINITIALIZED, ("invited",), "invited"),
+            (AccountStatus.ACTIVE, (), "invited"),
+            (AccountStatus.ACTIVE, ("unrelated",), "invited"),
+            (AccountStatus.ACTIVE, ("invited", "another"), "invited"),
+            (AccountStatus.ACTIVE, ("invited",), None),
+        ],
+    )
+    def test_first_workspace_ineligible_owner_never_prepares_workspace(
+        sqlite_session_factory: sessionmaker[Session],
+        status: AccountStatus,
+        active_workspaces: tuple[str, ...],
+        invited_workspace: str | None,
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            session.add(make_account("owner", status=status, created_at=datetime(2026, 1, 1)))
+            for workspace_id in active_workspaces:
+                session.add(make_tenant(workspace_id))
+                session.add(
+                    TenantAccountJoin(tenant_id=workspace_id, account_id="owner", role=TenantAccountRole.NORMAL)
+                )
+
+        def prepare() -> WorkspaceCreation:
+            pytest.fail("Ineligible owners must be rejected before workspace preparation.")
+
+        repository = WorkspaceRepository(sqlite_session_factory)
+        assert (
+            repository.provision(
+                prepare,
+                owner_id="owner",
+                only_if_no_active_workspace=invited_workspace is None,
+                first_workspace_after_joining=invited_workspace,
+            )
+            is None
+        )
+        assert set(repository.list_ids_for_account("owner")) == set(active_workspaces)
+        assert repository.get_activation("owner").first_workspace_created_at is None
+
+    @staticmethod
+    def test_activation_reports_a_missing_owner(seeded: WorkspaceRepository) -> None:
+        with pytest.raises(WorkspaceOwnerNotFoundError):
+            seeded.get_activation("absent")
 
     @staticmethod
     def test_names_by_ids_returns_only_existing_requested_workspaces(seeded: WorkspaceRepository) -> None:

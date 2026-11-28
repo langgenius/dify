@@ -1,10 +1,20 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
+from models.account import (
+    Account,
+    AccountIntegrate,
+    AccountStatus,
+    InvitationCode,
+    InvitationCodeStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from repositories.account.repository import SQLAlchemyAccountRepository
@@ -32,6 +42,75 @@ def _persist_account(session: Session) -> Account:
     session.add(account)
     session.commit()
     return account
+
+
+@pytest.mark.parametrize("role", [None, TenantAccountRole.NORMAL, TenantAccountRole.OWNER])
+@pytest.mark.parametrize("status", [TenantStatus.NORMAL, TenantStatus.ARCHIVE])
+def test_profile_flags_are_scoped_to_existing_memberships(
+    sqlite_session_factory: sessionmaker[Session], role: TenantAccountRole | None, status: TenantStatus
+) -> None:
+    origin = datetime(2020, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com", first_workspace_created_at=origin)
+        other = Account(name="Other", email="other@example.com")
+        tenant = Tenant(name="Team", status=status)
+        foreign = Tenant(name="Foreign")
+        session.add_all([account, other, tenant, foreign])
+        session.add(TenantAccountJoin(account_id=other.id, tenant_id=foreign.id, role=TenantAccountRole.OWNER))
+        if role is not None:
+            session.add(TenantAccountJoin(account_id=account.id, tenant_id=tenant.id, role=role))
+        account_id = account.id
+
+    profile = SQLAlchemyAccountRepository(sqlite_session_factory).get_profile(account_id)
+
+    assert profile is not None
+    assert profile.has_owned_tenant is (role == TenantAccountRole.OWNER)
+    assert profile.has_tenant is (role is not None)
+    assert profile.first_workspace_created_at == origin
+
+
+def test_profile_ignores_dangling_memberships(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com")
+        session.add(account)
+        session.add(TenantAccountJoin(account_id=account.id, tenant_id="missing", role=TenantAccountRole.OWNER))
+        account_id = account.id
+
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+    profile = repository.get_profile(account_id)
+
+    assert profile is not None
+    assert profile.has_owned_tenant is False
+    assert profile.has_tenant is False
+    assert repository.get_profile("missing") is None
+
+
+@pytest.mark.parametrize("status", [AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED])
+def test_end_user_handoffs_preserve_earliest_time_for_only_the_verified_account(
+    sqlite_session_factory: sessionmaker[Session], status: AccountStatus
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com", status=status)
+        other = Account(name="Other", email="other@example.com")
+        session.add_all([account, other])
+        account_id, other_id = account.id, other.id
+
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+    start = datetime(2026, 11, 24, 10, tzinfo=UTC)
+    earlier = start - timedelta(minutes=1)
+    for event, expected in (
+        (start, start),
+        (start + timedelta(minutes=1), start),
+        (earlier, earlier),
+        (earlier, earlier),
+    ):
+        repository.record_end_user_handoff(account_id, occurred_at=event)
+        with sqlite_session_factory() as session:
+            account = session.get_one(Account, account_id)
+            assert account.be_end_user_at == expected.replace(tzinfo=None)
+            assert account.status == status
+            assert account.first_workspace_created_at is None
+            assert session.get_one(Account, other_id).be_end_user_at is None
 
 
 def test_update_profile_persists_multiple_fields(

@@ -68,6 +68,8 @@ export type IOtherOptions = {
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
+  /** Lets the caller handle a regular 401 without triggering Console session recovery. */
+  handleUnauthorizedLocally?: boolean
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
@@ -189,6 +191,13 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
     if (err instanceof ORPCError && requestGuard?.handleError(err.status, err.data, err))
       return Promise.reject(err)
     if (requestGuard?.isActive() === false) return Promise.reject(err)
+    if (
+      err instanceof ORPCError &&
+      err.status === 401 &&
+      err.code !== 'unauthorized_and_force_logout' &&
+      otherOptionsForBaseFetch.handleUnauthorizedLocally
+    )
+      return Promise.reject(err)
     if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 

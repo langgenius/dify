@@ -12,6 +12,23 @@ parameters, response schemas, and Swagger documentation.
 - Do not add new Flask-RESTX `fields.*` dictionaries, `Namespace.model(...)` exports, or `@marshal_with(...)` for migrated or new endpoints.
 - Do not use `@ns.expect(...)` for GET query parameters. Flask-RESTX documents that as a request body.
 
+## Console EndUser auth discovery
+
+The authenticated Console `/console/api/features` endpoint uses `ConsoleFeatureResponse` to extend workspace features
+with the required boolean `end_user_auth_enabled`. It reports `CONSOLE_END_USER_AUTH_ENABLED`, which defaults to false
+in every deployment edition and controls whether Console exposes EndUser authentication configuration for workflow
+tool nodes. The response field has no default: a missing field or failed query is unknown configuration, not a
+confirmed disabled capability.
+
+This is a Console frontend entry-point gate, not a runtime authorization switch. It is independent of
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED` and `END_USER_AUTH_ALLOW_ANONYMOUS`; it neither enables WebApp login or Guest personal
+Connections nor disables execution of existing workflows. Web `/api/parameters` retains its separate
+`account_login_enabled` and `allow_anonymous_end_user_auth` policies.
+
+This adds one scalar to the existing authenticated workspace feature request, with no additional I/O or state changes.
+Account admission, query failure behavior, SSR timing, and cache ownership are unchanged. The shared `FeatureModel`,
+public Console and Web `/system-features` responses, and backend authorization rules remain unchanged.
+
 ## Public System Features Contract
 
 The Console and Web `/system-features` endpoints share `SystemFeatureModel`. They are unauthenticated and may be
@@ -43,6 +60,95 @@ Route excluded values to their actual owner:
 - Serve surface-specific bootstrap state from a Console- or Web-specific endpoint and account for its SSR, caching,
   and failure cost explicitly.
 - Load large, slow, or page-specific data lazily through a consumer-owned query.
+
+### Web Account login discovery
+
+The Web `/api/system-features` endpoint extends the shared snapshot with a Web-only
+`WebSystemFeatureResponse`. Its required `console_web_url` lets anonymous WebApp
+clients discover the Web console base endpoint that hosts the Account login flow even
+when `/account/profile` returns 401. It comes from `CONSOLE_WEB_URL` regardless of
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED`, preserves deployment base paths, removes trailing
+slashes, and uses an empty string for the same-origin root. The `/signin` route belongs
+to the Console; WebApp clients compose it from the base URL and keep owning their return
+targets and PKCE proofs. The Console endpoint and shared `SystemFeatureModel` remain
+unchanged.
+
+This extension adds one scalar to the existing Web bootstrap request, no extra I/O,
+and no credentials. Existing SSR timing, caching ownership, and query failure behavior
+are unchanged. Clients must not interpret a failed bootstrap request or a missing
+field as confirmed disabled login.
+
+### Console WebApp discovery
+
+The Console `/console/api/system-features` endpoint extends the shared snapshot
+with `ConsoleSystemFeatureResponse.webapp_url`. Console clients can discover the
+WebApp frontend before Account or workspace bootstrap, without querying an
+authenticated App detail endpoint. This required string comes from `APP_WEB_URL`,
+falling back to `CONSOLE_WEB_URL` when unset. Deployment base paths are preserved,
+trailing slashes are removed, and an empty string means the same-origin root.
+Request hosts and forwarding headers never supply this address. The shared
+`SystemFeatureModel` and Web bootstrap response do not expose this Console-only field.
+
+This extension adds one scalar to the existing Console bootstrap request with no
+extra I/O, credentials, or state changes. SSR timing, caching ownership, and feature
+query failure behavior stay unchanged. A missing field or failed request must not
+be interpreted as confirmed same-origin configuration. WebApp availability is
+independent of whether Account login is enabled; this URL grants no access.
+
+### Console login return targets
+
+`GET /console/api/login` and `GET /console/api/oauth/login/{provider}` accept
+root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
+`is_end_user` is a frontend navigation hint; clients select the existing
+`mode=end_user` API contract to request End User login.
+
+Issuing a PKCE grant for an App or the personal portal records the earliest known End User event in
+`accounts.be_end_user_at`; redeeming the grant does not. Issuing a legacy direct portal session records
+that same event. This includes handoffs that reuse an existing Account session.
+An unauthenticated probe, ordinary Console sign-in, and App execution do not record onboarding.
+Previously recorded first App use is retained as a historical baseline; `NULL` means no event is known.
+
+Both relative paths and absolute URLs are untrusted input. Absolute targets must
+match the configured origin exactly: same scheme, host, and effective port. The
+resolver rejects credentials in the authority, protocol-relative references,
+backslashes, control characters, and dot segments (including percent-encoded
+ones), and it rebuilds the response URL from the configured origin instead of
+echoing the supplied host. Route restrictions then apply to the resolved path.
+
+Console OAuth resolves relative returns against `CONSOLE_WEB_URL`. End User
+portal and App returns use `APP_WEB_URL`, falling back to `CONSOLE_WEB_URL` when
+unset. OAuth resume URLs for `/signin` still use the Console base so clients can
+finish the handoff after sign-in. These bases come from deployment configuration,
+not the API request host. Relative targets can omit the deployment prefix or
+include it once, and query strings and fragments are preserved.
+
+End User admission and route restrictions still apply. App returns require a
+PKCE-bound handoff. Previously allowed absolute portal URLs on Console continue
+to work for legacy cookie-sharing deployments.
+
+#### Personal portal login across sites
+
+1. On the WebApp origin, keep a fresh PKCE verifier in the initiating tab and
+   send only its S256 `code_challenge` and the personal `redirect_url` to Console
+   sign-in. Do not send an `app_code`. OAuth may resume the same Console `/signin`
+   URL as a published App, or take a portal return and challenge directly.
+2. On Console, call `GET /console/api/login?mode=end_user` with the return URL
+   and challenge. With no Account session it returns `logged_in: false`. After
+   sign-in (including OAuth or silent refresh), it returns `logged_in: true`,
+   the validated WebApp portal `redirect_url`, and an opaque `login_code`.
+   Return the code to that destination, never a Console token or the verifier.
+3. From the WebApp page, match the return to the tab's pending login and POST
+   `{login_code, code_verifier}` to `/api/account/session` on the Web API. The
+   endpoint requires the WebApp Origin and returns only `{"result":"success"}`.
+   Its HttpOnly cookie authenticates `GET /api/account/profile` without App or
+   workspace scope. Discard the transaction and remove the code from the address bar.
+
+Portal and App codes are not interchangeable. Each can be redeemed once and
+expires within 60 seconds or at the Console login expiry, whichever comes first.
+A wrong verifier does not consume a valid code. Neither a broader cookie domain
+nor third-party cookies are required. If the Web API host is outside the configured
+Console `COOKIE_DOMAIN`, the Web cookie is host-only. Requests without a challenge
+retain the legacy direct-cookie behavior; do not use that flow across unrelated sites.
 
 ### Agent tracing deployment discovery exception
 

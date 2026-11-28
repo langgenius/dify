@@ -20,6 +20,8 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     DraftNotFound,
+    EndUserAuthInTriggerWorkflow,
+    EndUserAuthInWorkflowTool,
     EnvVariableNotFound,
     NodeNotFound,
     RunNotFound,
@@ -79,6 +81,10 @@ from services.errors.evaluation import (
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
+from services.workflow.tool_credentials import (
+    WorkflowToolEndUserAuthError,
+    WorkflowTriggerEndUserAuthError,
+)
 from services.workflow_run_service import WorkflowRunListArgs
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -209,6 +215,10 @@ class AppPublishApi(Resource):
                 marked_name=body.marked_name,
                 marked_comment=body.marked_comment,
             )
+        except WorkflowToolEndUserAuthError as exc:
+            raise EndUserAuthInWorkflowTool(str(exc)) from exc
+        except WorkflowTriggerEndUserAuthError as exc:
+            raise EndUserAuthInTriggerWorkflow(str(exc)) from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
         except EvaluationDisabledError as exc:

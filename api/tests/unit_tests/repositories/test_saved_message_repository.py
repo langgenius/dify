@@ -12,7 +12,7 @@ from models.enums import (
     FeedbackFromSource,
     FeedbackRating,
 )
-from models.model import App, AppMode, Message, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageFeedback
 from models.web import SavedMessage
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError
@@ -53,10 +53,21 @@ def _persist_message(
     created_at: datetime,
     feedback: FeedbackRating | None = None,
 ) -> Message:
+    conversation = Conversation(
+        app_id=app_id,
+        mode=AppMode.COMPLETION,
+        name="Saved message conversation",
+        _inputs={},
+        from_source=ConversationFromSource.CONSOLE if actor.role == "account" else ConversationFromSource.API,
+        from_end_user_id=actor.id if actor.role == "end_user" else None,
+        from_account_id=actor.id if actor.role == "account" else None,
+    )
+    session.add(conversation)
+    session.flush()
     message = Message(
         id=str(uuid4()),
         app_id=app_id,
-        conversation_id=str(uuid4()),
+        conversation_id=conversation.id,
         query="hello",
         message={"role": "user", "content": "hello"},
         answer="world",

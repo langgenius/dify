@@ -23,6 +23,7 @@ from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message, load_annotation_reply_config
+from repositories.conversation_access import message_actor_scope
 from services import audio_provider_gateway
 from services.agent.roster_service import AgentRosterService
 from services.app_ref_service import MessageRef
@@ -77,14 +78,22 @@ def _audio_ref(app: App) -> AudioAppRef:
 class AudioService:
     @staticmethod
     def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
+        """Return admitted message text only; Web history also requires the live conversation owner."""
         stmt = select(Message).where(
             Message.id == message_ref.message_id,
             Message.app_id == message_ref.app.app_id,
         )
-        if message_ref.end_user_id is not None:
-            stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
-        if message_ref.account_id is not None:
-            stmt = stmt.where(Message.from_account_id == message_ref.account_id)
+        if message_ref.is_web_app:
+            stmt = stmt.where(
+                message_actor_scope(
+                    message_ref.app.app_id, end_user_id=message_ref.end_user_id, account_id=message_ref.account_id
+                )
+            )
+        else:
+            if message_ref.end_user_id is not None:
+                stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
+            if message_ref.account_id is not None:
+                stmt = stmt.where(Message.from_account_id == message_ref.account_id)
         return session.scalar(stmt.limit(1))
 
     @classmethod

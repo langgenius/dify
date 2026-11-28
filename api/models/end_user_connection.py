@@ -1,0 +1,255 @@
+"""Personal credentials and saved selections, separate from workspace credentials.
+
+Account, EndUser, App, Workflow, business Session, and Run references are logical pointers.
+Callers must validate their complete ownership chain before writing selections;
+the foreign keys here only enforce the credential namespace and Provider.
+"""
+
+from datetime import datetime
+
+import sqlalchemy as sa
+from sqlalchemy.orm import Mapped, mapped_column
+
+from constants.end_user_connections import (
+    ConnectionCredentialStatus,
+    ConnectionCredentialType,
+    ConnectionRevisionAcceptanceReason,
+    OAuthClientSource,
+)
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+
+from .base import DefaultFieldsDCMixin, TypeBase
+from .types import EnumText, LongText, StringUUID
+
+
+class EndUserConnectionRevision(TypeBase):
+    """Immutable authorization snapshots deduplicated within one Web App.
+
+    Keep old snapshots for consent validation after upgrades and for revocation
+    references after uninstall. They contain no personal credentials or Client secrets.
+    """
+
+    __tablename__ = "end_user_connection_revisions"
+
+    __table_args__ = (
+        sa.UniqueConstraint("tenant_id", "app_id", "fingerprint", name="end_user_connection_revision_content_key"),
+        sa.UniqueConstraint("id", "tenant_id", "app_id", name="end_user_connection_revision_scope_key"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
+    fingerprint: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    snapshot: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=sa.func.current_timestamp(),
+    )
+
+
+class EndUserConnectionRevisionAcceptance(TypeBase):
+    """First acceptance of an authorization contract by one App-scoped EndUser.
+
+    Preserve the original reason when a later request resubmits an inherited ID.
+    """
+
+    __tablename__ = "end_user_connection_revision_acceptances"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "(reason = 'approved' AND source_revision_id IS NULL) OR "
+            "(reason = 'inherited' AND source_revision_id IS NOT NULL AND source_revision_id <> revision_id)",
+            name=sa.schema.conv("end_user_revision_acceptance_reason_check"),
+        ),
+        sa.UniqueConstraint(
+            "tenant_id", "app_id", "end_user_id", "revision_id", name="end_user_revision_acceptance_end_user_key"
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id", "tenant_id", "app_id"],
+            [
+                "end_user_connection_revisions.id",
+                "end_user_connection_revisions.tenant_id",
+                "end_user_connection_revisions.app_id",
+            ],
+            name="end_user_revision_acceptance_scope_fkey",
+        ),
+        sa.ForeignKeyConstraint(
+            ["source_revision_id", "tenant_id", "app_id"],
+            [
+                "end_user_connection_revisions.id",
+                "end_user_connection_revisions.tenant_id",
+                "end_user_connection_revisions.app_id",
+            ],
+            name="end_user_revision_acceptance_source_scope_fkey",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    revision_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    reason: Mapped[ConnectionRevisionAcceptanceReason] = mapped_column(
+        EnumText(ConnectionRevisionAcceptanceReason), nullable=False
+    )
+    source_revision_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, default_factory=naive_utc_now, server_default=sa.func.current_timestamp()
+    )
+
+
+class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
+    """An Account owns credentials across Apps within their tenant namespace.
+
+    Guest and service identities own credentials through their App-scoped EndUser.
+    last_active_at records creation, explicit authorization and edits, and actual
+    Guest tool invocation. Reads, checks, and automatic token refresh do not extend it.
+    Credential mutations must condition writes on owner and revision after external I/O.
+    """
+
+    __tablename__ = "end_user_connections"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "(account_id IS NOT NULL AND end_user_id IS NULL) OR (account_id IS NULL AND end_user_id IS NOT NULL)",
+            name=sa.schema.conv("end_user_connection_owner_check"),
+        ),
+        sa.CheckConstraint(
+            "credential_type IN ('api-key', 'oauth2')", name=sa.schema.conv("end_user_connection_credential_type_check")
+        ),
+        sa.CheckConstraint(
+            "status IN ('connected', 'reconnect_required', 'invalid')",
+            name=sa.schema.conv("end_user_connection_status_check"),
+        ),
+        sa.CheckConstraint(
+            "credential_type = 'oauth2' OR account_label IS NULL",
+            name=sa.schema.conv("end_user_connection_account_label_check"),
+        ),
+        sa.CheckConstraint("revision > 0", name=sa.schema.conv("end_user_connection_revision_check")),
+        sa.CheckConstraint(
+            sa.func.char_length(sa.column("name")).between(1, 100),
+            name=sa.schema.conv("end_user_connection_name_check"),
+        ),
+        sa.CheckConstraint(
+            "(credential_type = 'api-key' AND oauth_client_source IS NULL "
+            "AND oauth_client_configuration_id IS NULL AND oauth_client_id IS NULL AND expires_at IS NULL) OR "
+            "(credential_type = 'oauth2' AND oauth_client_source IS NOT NULL "
+            "AND oauth_client_source IN ('workspace', 'platform'))",
+            name=sa.schema.conv("end_user_connection_oauth_check"),
+        ),
+        # Selection FKs prevent a valid ID from being paired with another tenant or Provider.
+        sa.UniqueConstraint("id", "tenant_id", "provider", name="end_user_connection_scope_key"),
+        sa.Index("end_user_connection_account_idx", "tenant_id", "account_id", "id"),
+        sa.Index("end_user_connection_consumer_idx", "account_id", "provider", "credential_type", "id"),
+        sa.Index("end_user_connection_end_user_idx", "tenant_id", "end_user_id", "id"),
+        sa.Index("end_user_connection_activity_idx", "last_active_at", "id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # Exactly one owner reference is populated; EndUser carries its own identity type.
+    account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    credential_type: Mapped[ConnectionCredentialType] = mapped_column(
+        EnumText(ConnectionCredentialType), nullable=False
+    )
+    name: Mapped[str] = mapped_column(sa.String(100), nullable=False)
+    encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)
+    status: Mapped[ConnectionCredentialStatus] = mapped_column(EnumText(ConnectionCredentialStatus), nullable=False)
+    # All client fields are absent for API keys. OAuth requires only a source.
+    oauth_client_source: Mapped[OAuthClientSource | None] = mapped_column(EnumText(OAuthClientSource), nullable=True)
+    # None means the client has no independent configuration record or no available public ID.
+    oauth_client_configuration_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    oauth_client_id: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    # None means unknown expiration, or not applicable for API keys.
+    expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
+    # Original OAuth account identity, independent of the editable name; masked in API responses.
+    # None means unavailable identity metadata or an API-key connection.
+    account_label: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    oauth_plugin_unique_identifier: Mapped[str | None] = mapped_column(sa.String(512), nullable=True, default=None)
+    # Legacy grants without provenance must be reauthorized before use.
+    oauth_client_fingerprint: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None, repr=False)
+    revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=1, server_default=sa.text("1"))
+    last_active_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=sa.func.current_timestamp(),
+    )
+
+
+class AppConnection(DefaultFieldsDCMixin, TypeBase):
+    """One explicitly saved Tool node choice for an App-scoped EndUser.
+
+    Replace the whole set under a stable owner lock, including for an empty set.
+    Authorization is recorded separately for the App-scoped EndUser, shared by all
+    Conversations. Execution never updates defaults; saved choices do not reference Runs.
+    workflow_id and node_id identify the published graph version where this choice
+    was saved. Changed authorization requirements require reconfirmation; republishing the
+    same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
+    before replacing the saved version and choice; these rows are not version history.
+    """
+
+    __tablename__ = "app_connections"
+    __table_args__ = (
+        sa.UniqueConstraint("app_id", "end_user_id", "node_id", name="app_connection_selection_key"),
+        sa.ForeignKeyConstraint(
+            ["connection_id", "tenant_id", "provider"],
+            ["end_user_connections.id", "end_user_connections.tenant_id", "end_user_connections.provider"],
+            name="app_connection_scope_fkey",
+            ondelete="CASCADE",
+        ),
+        sa.Index("app_connection_connection_idx", "connection_id"),
+        sa.CheckConstraint(
+            sa.func.char_length(sa.column("node_id")).between(1, 255),
+            name=sa.schema.conv("app_connection_node_id_check"),
+        ),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    connection_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+
+class SessionConnection(DefaultFieldsDCMixin, TypeBase):
+    """A business Session's saved choice, independent of App defaults and Run inputs.
+
+    session_id refers to a Conversation for Chatflow. Plain Workflow's authoritative
+    Session mapping is owned by the Run integration. It must never refer to
+    EndUser.session_id, an OAuth context, or a Portal token. Ownership is resolved
+    through the business Session, even when no selection rows exist. Retained
+    references after identity migration do not transfer credential ownership. Like
+    App defaults, workflow_id records the published graph version of the saved choice.
+    These rows only store choices. Authorization is shared by the App-scoped EndUser;
+    confirming a changed contract in one Conversation authorizes the other Conversations.
+    An empty set remains empty instead of inheriting App defaults.
+    """
+
+    __tablename__ = "session_connections"
+    __table_args__ = (
+        sa.UniqueConstraint("app_id", "session_id", "node_id", name="session_connection_selection_key"),
+        sa.ForeignKeyConstraint(
+            ["connection_id", "tenant_id", "provider"],
+            ["end_user_connections.id", "end_user_connections.tenant_id", "end_user_connections.provider"],
+            name="session_connection_scope_fkey",
+            ondelete="CASCADE",
+        ),
+        sa.Index("session_connection_connection_idx", "connection_id"),
+        sa.CheckConstraint(
+            sa.func.char_length(sa.column("node_id")).between(1, 255),
+            name=sa.schema.conv("session_connection_node_id_check"),
+        ),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    connection_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

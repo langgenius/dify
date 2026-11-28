@@ -1,11 +1,11 @@
 """Controller-boundary tests for Web login endpoints."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from inspect import unwrap
 from typing import override
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from flask_restx import Api
 from pytest_mock import MockerFixture
 from sqlalchemy import func, select, text
@@ -26,21 +26,22 @@ from controllers.web.login import (
     LoginStatusQuery,
     LogoutApi,
 )
+from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
+from libs.passport import PassportService
 from machinery.context import RequestContext
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppModelConfig, EndUser, Site
+from services.entities.account_login_entities import LoginMode
 from services.entities.authentication_entities import WebLoginStatus
 from services.web_authentication_service import (
     WebAccountBannedError,
     WebAuthenticationFailedError,
     WebInvalidCodeError,
 )
-from services.webapp_access_query_service import (
-    WebAppAccessAppNotFoundError,
-    WebAppAccessUnavailableError,
-)
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
 
 
 @pytest.fixture
@@ -126,7 +127,8 @@ class LoginStatusStub:
 def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = LoginStatusStub()
     bind_service(monkeypatch, service)
-    monkeypatch.setattr(login, "extract_webapp_access_token", lambda _request: "account-token")
+    monkeypatch.setattr(login, "extract_webapp_access_token", lambda _request: "web-token")
+    monkeypatch.setattr(login, "extract_webapp_cookie_token", lambda _request: "account-token")
     monkeypatch.setattr(login, "extract_webapp_passport", lambda app_code, _request: f"passport:{app_code}")
 
     with app.test_request_context("/login/status?app_code=site-code"):
@@ -138,9 +140,11 @@ def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.Mon
 
     assert result == {"logged_in": True, "app_logged_in": False}
     assert service.call == {
+        "mode": LoginMode.CONSOLE,
         "app_code": "site-code",
         "user_id": "session-1",
-        "access_token": "account-token",
+        "access_token": "web-token",
+        "account_login_token": "account-token",
         "app_session_token": "passport:site-code",
     }
 
@@ -337,19 +341,42 @@ def test_email_login_translates_invalid_code(monkeypatch: pytest.MonkeyPatch, co
         )
 
 
-def test_logout_only_serializes_response_and_clears_cookie(
-    monkeypatch: pytest.MonkeyPatch,
-    app: Flask,
-    context: RequestContext,
-) -> None:
-    cleared: list[tuple[str | None, str]] = []
-
-    def clear_cookie(response: Response, *, samesite: str) -> None:
-        cleared.append((response.get_json()["result"], samesite))
-
-    monkeypatch.setattr(login, "clear_webapp_access_token_from_cookie", clear_cookie)
+def test_logout_expires_the_webapp_cookie_with_legacy_sso_same_site(app: Flask, context: RequestContext) -> None:
     with app.test_request_context("/logout", method="POST"):
         response = unwrap(LogoutApi.post)(LogoutApi(), context)
 
     assert response.get_json() == {"result": "success"}
-    assert cleared == [("success", "None")]
+    (cookie,) = response.headers.getlist("Set-Cookie")
+    assert "webapp_access_token=;" in cookie
+    assert "SameSite=None" in cookie
+
+
+@pytest.mark.parametrize("valid_login", [True, False])
+def test_webapp_logout_never_revokes_account_or_clears_its_cookies(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    context: RequestContext,
+    valid_login: bool,
+    application_service_graph: ApplicationServices,
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        SECRET_KEY="test-cloud-logout-signing-key-at-least-32-bytes",
+    )
+    services = replace(application_service_graph, web_identity=web_identities())
+    monkeypatch.setitem(app.extensions, "application_services", services)
+
+    def unexpected_logout(**_kwargs: object) -> None:
+        pytest.fail("WebApp logout must not revoke the Console account session.")
+
+    monkeypatch.setattr(services.accounts.authentication, "logout", unexpected_logout)
+    token = PassportService().issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
+    cookie = token if valid_login else "invalid-token"
+    with app.test_request_context("/logout", method="POST", headers={"Cookie": f"access_token={cookie}"}):
+        response = unwrap(LogoutApi.post)(LogoutApi(), context)
+    cookies = response.headers.getlist("Set-Cookie")
+    assert len(cookies) == 1
+    assert "webapp_access_token=" in cookies[0]
+    assert "refresh_token=" not in cookies[0]
+    assert "csrf_token=" not in cookies[0]

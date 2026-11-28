@@ -32,7 +32,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -452,7 +452,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         provider: str,
         subscription_builder_id: str,
     ) -> dict[str, Any]:
-        """Build a subscription instance for a trigger provider"""
+        """Build the admitted workspace draft; keep provider rejection details out of the response."""
         try:
             # Use atomic update_and_build to prevent race conditions
             application_services().triggers.builders.update_and_build_builder(
@@ -469,6 +469,9 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except TriggerSubscriptionError as error:
             _raise_subscription_error(error)
+        except PluginDaemonInnerError as error:
+            logger.warning("Trigger subscription build failed with plugin code %s", error.code)
+            raise ValueError("Trigger provider could not build the subscription.") from error
         except Exception as e:
             logger.exception("Error building provider credential", exc_info=e)
             raise ValueError(str(e)) from e

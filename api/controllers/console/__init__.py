@@ -241,6 +241,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         saved_message,
         trial,
     )
+    from .explore import connections as installed_app_connections
     from .human_input_v2 import channel as human_input_channel
     from .human_input_v2 import contact as human_input_contact
     from .human_input_v2 import form as human_input_v2_form
@@ -348,6 +349,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         rag_pipeline_import,
         rag_pipeline_workflow,
         banner,
+        installed_app_connections,
         installed_app,
         parameter,
         recommended_app,
@@ -455,6 +457,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     rag_pipeline_import,
     rag_pipeline_workflow,
     banner,
+    installed_app_connections,
     installed_app,
     parameter,
     recommended_app,
@@ -538,6 +541,7 @@ __all__ = [
     "human_input_v2_form",
     "init_validate",
     "installed_app",
+    "installed_app_connections",
     "knowledge_fs_features",
     "knowledge_fs_resources",
     "load_balancing_config",

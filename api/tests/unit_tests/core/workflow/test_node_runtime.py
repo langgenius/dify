@@ -1027,7 +1027,7 @@ class TestToolNodeInvocationBehaviorCases:
                     assert item.node_run_result.outputs.get("text") is not None
 
 
-def _build_tool_node_data() -> ToolNodeData:
+def _build_tool_node_data(*, credential_source: str = "workspace") -> ToolNodeData:
     return ToolNodeData.model_validate(
         {
             "type": "tool",
@@ -1037,6 +1037,7 @@ def _build_tool_node_data() -> ToolNodeData:
             "provider_name": "provider",
             "tool_name": "lookup",
             "tool_label": "Lookup",
+            "credential_source": credential_source,
             "tool_configurations": {},
             "tool_parameters": {},
         }
@@ -1059,6 +1060,90 @@ class TestToolNodeRuntimeCases:
         )
         session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
         return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
+
+    @staticmethod
+    @pytest.mark.parametrize("failure", [ToolRuntimeResolutionError("unavailable"), ValueError("invalid provider")])
+    def test_workspace_runtime_preserves_domain_errors_and_translates_other_failures(
+        runtime: DifyToolNodeRuntime, failure: Exception
+    ) -> None:
+        with patch.object(ToolManager, "get_workflow_tool_runtime", side_effect=failure):
+            with pytest.raises(ToolRuntimeResolutionError) as caught:
+                runtime.get_runtime(node_id="node-id", node_data=_build_tool_node_data(), variable_pool=None)
+
+        if isinstance(failure, ToolRuntimeResolutionError):
+            assert caught.value is failure
+        else:
+            assert caught.value.__cause__ is failure
+            assert str(caught.value) == str(failure)
+
+    @staticmethod
+    @pytest.mark.parametrize("source", ["end_user", "reuse_node"])
+    def test_non_workspace_runtime_uses_the_bound_graph_and_does_not_fall_back(source: str) -> None:
+        from core.tools.__base.tool_runtime import ToolRuntime
+        from core.tools.builtin_tool.providers.time.tools.current_time import CurrentTimeTool
+        from core.tools.entities.common_entities import I18nObject
+        from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
+        from extensions.application_services import end_user_connections
+
+        run_context = resolve_dify_run_context(_build_run_context(invoke_from=InvokeFrom.WEB_APP))
+        node_data = _build_tool_node_data(credential_source=source)
+        graph = {"nodes": [{"id": "tool-node", "data": node_data.model_dump()}], "edges": []}
+        runtime = DifyToolNodeRuntime(run_context, graph=graph, workflow_id="workflow-id")
+        tool = CurrentTimeTool(
+            provider=node_data.provider_id,
+            entity=ToolEntity(
+                identity=ToolIdentity(
+                    author="test",
+                    name=node_data.tool_name,
+                    label=I18nObject(en_US="Lookup"),
+                    provider=node_data.provider_id,
+                ),
+                parameters=[],
+                description=None,
+                has_runtime_parameters=False,
+            ),
+            runtime=ToolRuntime(tenant_id=run_context.tenant_id, invoke_from=run_context.invoke_from),
+        )
+
+        with (
+            patch.object(end_user_connections, "get_tool_runtime", return_value=tool) as resolve,
+            patch.object(ToolManager, "get_workflow_tool_runtime") as resolve_workspace,
+        ):
+            handle = runtime.get_runtime(node_id="tool-node", node_data=node_data, variable_pool=None)
+
+        resolve.assert_called_once()
+        supplied = resolve.call_args.kwargs
+        assert supplied["workflow_id"] == "workflow-id"
+        assert supplied["node_id"] == "tool-node"
+        assert supplied["run_context"] is run_context
+        assert supplied["graph"] == graph
+        assert supplied["spec"].provider_id == node_data.provider_id
+        assert supplied["spec"].tool_name == node_data.tool_name
+        assert handle.raw.tool is tool
+        assert tool.runtime.dify_run_context is run_context
+        resolve_workspace.assert_not_called()
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("source", "graph", "workflow_id"),
+        [("end_user", None, "workflow-id"), ("reuse_node", {"nodes": []}, None), ("invalid", {}, "workflow-id")],
+    )
+    def test_non_workspace_runtime_rejects_missing_graph_or_invalid_source(
+        source: str, graph: dict[str, object] | None, workflow_id: str | None
+    ) -> None:
+        from extensions.application_services import end_user_connections
+
+        runtime = DifyToolNodeRuntime(_build_run_context(), graph=graph, workflow_id=workflow_id)
+        with (
+            patch.object(end_user_connections, "get_tool_runtime") as resolve,
+            patch.object(ToolManager, "get_workflow_tool_runtime") as resolve_workspace,
+            pytest.raises(ToolRuntimeResolutionError, match="requires its execution graph"),
+        ):
+            runtime.get_runtime(
+                node_id="tool-node", node_data=_build_tool_node_data(credential_source=source), variable_pool=None
+            )
+        resolve.assert_not_called()
+        resolve_workspace.assert_not_called()
 
     @staticmethod
     def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRuntime) -> None:

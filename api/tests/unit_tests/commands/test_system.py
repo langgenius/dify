@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from click.testing import CliRunner
 from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -340,6 +341,14 @@ def _invoke_upgrade_db() -> int:
     except SystemExit as e:
         return int(e.code or 0)
     return 0
+
+
+def test_builder_origin_cutover_requires_explicit_confirmation() -> None:
+    """Reject accidental use without entering the database migration lock."""
+    result = CliRunner().invoke(commands.finalize_builder_origin_backfill)
+    assert result.exit_code == 2
+    assert "--confirm-before-cutover" in result.output
+    _redis_client_mock().lock.assert_not_called()
 
 
 def test_upgrade_db_skips_when_lock_not_acquired(

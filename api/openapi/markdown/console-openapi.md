@@ -212,6 +212,11 @@ Get account avatar url
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/password
+**Change admitted Account credentials only while password login is enabled**
+
+Existing passwords require verification. Disabled policy rejects before
+payload validation or credential writes; failures leave credentials unchanged.
+
 #### Request Body
 
 | Required | Schema |
@@ -345,11 +350,15 @@ Get account avatar url
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/profile
+**Return the profile for an admitted Console workspace without provisioning one**
+
+Get the Console Account profile. A session without an active workspace returns 401.
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| 200 | Success | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2392,6 +2401,7 @@ Run draft workflow iteration node for advanced chat
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2419,6 +2429,7 @@ Run draft workflow loop node for advanced chat
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2445,7 +2456,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -5161,6 +5172,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5186,6 +5198,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5394,6 +5407,7 @@ Get last run result for draft workflow node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5475,6 +5489,7 @@ Get variables for a specific node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -5570,6 +5585,22 @@ Get system variables for workflow
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/draft/test-credentials/preflight
+Check all EndUser test credentials in the current saved draft. No request body or draft hash is required. Returns readiness without creating a Run or executing tools; existing workspace OAuth credentials may be refreshed. Actual test execution checks credentials again.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Full draft test credential readiness | **application/json**: [TestCredentialPreflightResponse](#testcredentialpreflightresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
@@ -8151,15 +8182,20 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features
-**Get current workspace features**
+**Get workspace features and Console EndUser auth configuration availability**
 
 Get feature availability and limits for the current workspace
+Preconditions: an admitted Console account has an active workspace; the
+Console feature flag comes only from trusted deployment configuration.
+Postconditions: preserve workspace features and report the Console-only
+configuration gate without changing WebApp login, Guest personal-Connection
+policies, runtime authorization, or state. Feature-query failures propagate unchanged.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [FeatureModel](#featuremodel)<br> |
+| 200 | Success | **application/json**: [ConsoleFeatureResponse](#consolefeatureresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features/vector-space
@@ -8459,6 +8495,12 @@ Request body:
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps
+**Return published, authorized installations matching the validated query**
+
+Require an admitted workspace account; preserve the cursor response shape
+and translate invalid cursors or unavailable access checks into API errors.
+No installation state changes on success or failure.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8466,7 +8508,9 @@ Request body:
 | app_id | query | App ID to filter by | No | string |
 | cursor | query | Opaque cursor returned by the previous page | No | string |
 | limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter, using the same values as Studio | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | App name to search for | No | string |
+| sort_by | query | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" |
 
 #### Responses
 
@@ -8561,11 +8605,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
@@ -8628,6 +8673,106 @@ Request body:
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/connections
+List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | query |  | No | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Visible Workspace Connections | **application/json**: [EndUserConnectionListResponse](#enduserconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/connections/configuration
+Read this Tenant Member's saved App defaults, or an owned Chatflow conversation's choices, without credential checks. Missing conversation choices do not inherit current App defaults.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | query |  | No | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved member choices | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /installed-apps/{installed_app_id}/connections/configuration
+Replace member App defaults or owned conversation choices and confirm the current authorization requirements. An empty map clears choices; this does not modify Workspace credentials.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledConnectionConfigurationPayload](#installedconnectionconfigurationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Member choices saved | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /installed-apps/{installed_app_id}/connections/preflight
+Check explicit Workspace credential choices without saving them or starting a Run. Workspace OAuth credentials may be refreshed. Run entry and node execution recheck access independently.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledConnectionPreflightPayload](#installedconnectionpreflightpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection readiness | **application/json**: [InstalledConnectionPreflightResponse](#installedconnectionpreflightresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/conversations
@@ -8851,7 +8996,7 @@ Request body:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 200 | Success | **application/json**: [InstalledAppParametersResponse](#installedappparametersresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -8958,18 +9103,19 @@ Request body:
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+|  Yes | **application/json**: [InstalledAppWorkflowRunPayload](#installedappworkflowrunpayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
@@ -12115,6 +12261,28 @@ Unknown query parameters and malformed cursors are answered 400.
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /login
+**Resolve a trusted return target and reuse a Console account without workspace admission**
+
+Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. A personal portal PKCE request returns a one-use login code for /api/account/session and a validated Webapp redirect_url. Legacy personal portal requests set an HttpOnly Webapp cookie on the Console API origin; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_code | query |  | No | string |
+| code_challenge | query | S256 PKCE challenge for a published App or Webapp personal portal handoff | No | string |
+| mode | query |  | No | string, <br>**Default:** end_user |
+| redirect_url | query | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Existing Account session | **application/json**: [WebAppAccountSessionResponse](#webappaccountsessionresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /login
 **Authenticate user and login**
 
@@ -12129,7 +12297,7 @@ Unknown query parameters and malformed cursors are answered 400.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -12316,6 +12484,8 @@ Sync data from OAuth data source
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/login/{provider}
+**Start provider login with a browser-bound return target; reject ambiguous PKCE context**
+
 Initiate OAuth login process
 
 #### Parameters
@@ -12323,9 +12493,11 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | OAuth provider name (github/google) | Yes | string |
+| code_challenge | query | Web-origin S256 challenge for an End User personal portal return; omit for /signin resume URLs. | No | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
-| redirect_url | query | Relative page to resume after login | No | string |
+| mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
+| redirect_url | query | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete a PKCE handoff | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -12386,6 +12558,13 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
+**Complete an authorized OAuth attempt and redirect with its Connection ID**
+
+Requires valid provider state and the initiating browser's proxy context.
+Personal attempts retain their own callback flow; Workspace attempts expose
+only the persisted credential ID after creation. Invalid attempts raise
+without a success redirect or exposing provider credentials.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -12397,6 +12576,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 400 | Bad Request | **application/json**: [ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
@@ -13462,6 +13642,12 @@ Update account-level Step-by-step Tour state
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /refresh-token
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **application/json**: [RefreshTokenPayload](#refreshtokenpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -14419,11 +14605,18 @@ Get the non-sensitive bootstrap snapshot exposed before Console or Web authentic
 Authentication configuration must be available before the authentication flow can be selected.
 Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
+Preconditions: no Account, workspace, or app identity is required. URL
+settings are trusted deployment configuration, never request headers.
+Postconditions: return the WebApp frontend base URL with its base path
+intact, using the Console URL when APP_WEB_URL is unset. An empty URL
+means the same-origin root. Issue no credentials and change no state;
+feature-query failures propagate unchanged.
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+| 200 | Success | **application/json**: [ConsoleSystemFeatureResponse](#consolesystemfeatureresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features/license
@@ -15286,6 +15479,21 @@ Returns information about why and where the workflow is paused.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/activate
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceActivationPayload](#workspaceactivationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace ready | **application/json**: [WorkspaceActivationResponse](#workspaceactivationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[LimitExceededError](#limitexceedederror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/agent-provider/{provider_name}
@@ -19067,6 +19275,12 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
+**Create a credential for the admitted member and return its persisted ID**
+
+Requires validated credentials and Workspace creation permission. Success
+preserves the result field and exposes the created credential as a Connection;
+creation failures propagate without returning an ID or credential secrets.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -19083,7 +19297,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Builtin provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Builtin provider added successfully | **application/json**: [BuiltinToolProviderCreateResponse](#builtintoolprovidercreateresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
@@ -19584,7 +19798,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
-**Build a subscription instance for a trigger provider**
+**Build the admitted workspace draft; keep provider rejection details out of the response**
 
 #### Parameters
 
@@ -20477,6 +20691,26 @@ Account not link tenant.
 | name | string |  | No |
 | timezone | string |  | No |
 
+#### AccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
+| timezone | string |  | No |
+
 #### AccountResponse
 
 | Name | Type | Description | Required |
@@ -20485,6 +20719,7 @@ Account not link tenant.
 | avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
 | id | string |  | Yes |
 | interface_language | string |  | No |
 | interface_theme | string |  | No |
@@ -20541,6 +20776,7 @@ Account not link tenant.
 | ---- | ---- | ----------- | -------- |
 | account_status | string |  | No |
 | email | string |  | Yes |
+| is_current_account | boolean |  | No |
 | requires_setup | boolean |  | No |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
@@ -24323,6 +24559,12 @@ Audio size exceeded. {message}
 | ---- | ---- | ----------- | -------- |
 | text | string | Transcribed text from audio | Yes |
 
+#### AuthReasonCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthReasonCode | string |  |  |
+
 #### AuthenticationFailedError
 
 Invalid email or password.
@@ -24619,6 +24861,13 @@ Sandbox file download is unavailable.
 | ---- | ---- | ----------- | -------- |
 | credential_id | string |  | Yes |
 
+#### BuiltinToolProviderCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string | ID of the created Workspace credential, used as the Connection ID. | Yes |
+| result | string | Operation result. | Yes |
+
 #### BuiltinToolUpdatePayload
 
 | Name | Type | Description | Required |
@@ -24766,6 +25015,8 @@ HTTP failure with only provider-supplied diagnostic identifiers.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
 | conversation_id | string |  | No |
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
@@ -25158,6 +25409,109 @@ Enum class for configurate method of provider model.
 | ---- | ---- | ----------- | -------- |
 | ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
 
+#### ConnectionConfigurationInvalidError
+
+The connection is not compatible with this tool configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConfigurationInvalidError |  | The connection is not compatible with this tool configuration. |  |
+
+#### ConnectionConfigurationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
+| reauthorization_required | boolean | Whether this App user must renew authorization for the current requirements; not credential readiness. | Yes |
+
+#### ConnectionConflictError
+
+Connection changed during the operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialStatus
+
+Last known credential lifecycle state, not readiness for a particular node.
+
+Keep the existing storage values. App-specific Client mismatches and unbinding
+must never be written back as a global credential state change.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialStatus | string | Last known credential lifecycle state, not readiness for a particular node.  Keep the existing storage values. App-specific Client mismatches and unbinding must never be written back as a global credential state change. |  |
+
+#### ConnectionCredentialType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialType | string |  |  |
+
+#### ConnectionCredentialsInvalidError
+
+Invalid credentials for this provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsInvalidError |  | Invalid credentials for this provider. |  |
+
+#### ConnectionNotFoundError
+
+Connection not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionNotFoundError |  | Connection not found. |  |
+
+#### ConnectionOauthFailedError
+
+OAuth authorization could not be completed. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
+
+#### ConnectionPreflightStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
+| connection_id | string |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
+
+#### ConnectionReauthorizationRequiredError
+
+The OAuth client changed or is unavailable. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionReauthorizationRequiredError |  | The OAuth client changed or is unavailable. Start authorization again. |  |
+
+#### ConnectionRequiredError
+
+Select a connection for every required tool before running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRequiredError |  | Select a connection for every required tool before running. |  |
+
+#### ConnectionRevisionChangeDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string |  | Yes |
+
+#### ConnectionRevisionChangedError
+
+The connection requirements changed. Refresh and confirm again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
+
 #### ConsoleDatasetListQuery
 
 | Name | Type | Description | Required |
@@ -25169,6 +25523,38 @@ Enum class for configurate method of provider model.
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
+
+#### ConsoleFeatureResponse
+
+Expose Console feature entry points only after account admission.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
+| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
+| api_rate_limit | [Quota](#quota) |  | Yes |
+| apps | [LimitationModel](#limitationmodel) |  | Yes |
+| billing | [BillingModel](#billingmodel) |  | Yes |
+| can_replace_logo | boolean |  | Yes |
+| documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
+| education | [EducationModel](#educationmodel) |  | Yes |
+| enable_file_scan | boolean |  | Yes |
+| enable_knowledge_fs | boolean |  | Yes |
+| enable_skill | boolean, <br>**Default:** true |  | Yes |
+| end_user_auth_enabled | boolean | Whether Console exposes EndUser authentication configuration for workflow tool nodes. Does not control WebApp login, Guest personal Connections, or runtime authorization. | Yes |
+| evaluation_enabled | boolean |  | Yes |
+| evaluation_upgrade_available | boolean |  | Yes |
+| human_input_email_delivery_enabled | boolean |  | Yes |
+| im_centrally_managed | boolean |  | Yes |
+| is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
+| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
+| members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_load_balancing_enabled | boolean |  | Yes |
+| trigger_event | [Quota](#quota) |  | Yes |
+| webapp_copyright_enabled | boolean |  | Yes |
+| workflow_collaboration_enabled | boolean |  | Yes |
+| workflow_collaboration_upgrade_available | boolean |  | Yes |
+| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### ConsoleHumanInputFormDefinitionResponse
 
@@ -25212,6 +25598,35 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 | total_pages | integer |  | Yes |
+
+#### ConsoleSystemFeatureResponse
+
+Extend public bootstrap with the Console-only WebApp frontend address.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
+| webapp_url | string | WebApp frontend base URL, preserving its deployment base path. Falls back to the Console frontend URL; an empty string means the same-origin root. | Yes |
 
 #### Contact
 
@@ -25589,6 +26004,31 @@ Payload for creating a new snippet.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CreatorUserRole | string |  |  |
+
+#### CredentialCheckResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checked_at | integer |  | Yes |
+| reason_code | [AuthReasonCode](#authreasoncode) |  | Yes |
+| retryable | boolean |  | Yes |
+| status | [CredentialCheckStatus](#credentialcheckstatus) |  | Yes |
+
+#### CredentialCheckStatus
+
+Outcome of a single provider check, separate from stored credential state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckStatus | string | Outcome of a single provider check, separate from stored credential state. |  |
+
+#### CredentialCheckUnavailableError
+
+Credential validation is temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckUnavailableError |  | Credential validation is temporarily unavailable. |  |
 
 #### CredentialConfiguration
 
@@ -27205,6 +27645,7 @@ Too many incorrect password attempts. Please try again later.
 | email | string |  | Yes |
 | invite_token | string | Invitation link token being accepted. | No |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
 | turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
@@ -27231,6 +27672,7 @@ Email code verification is temporarily unavailable. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
 #### EmailDeliveryConfig
@@ -27370,6 +27812,30 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmptyObjectResponse | object |  |  |
+
+#### EndUserConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EndUserConnectionResponse](#enduserconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### EndUserConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| created_at | integer |  | Yes |
+| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
+| credential_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| expires_at | integer |  | Yes |
+| id | string |  | Yes |
+| last_active_at | integer |  | Yes |
+| manual_revocation_required_on_expiry | boolean | For Guest API-key Connections: inactivity cleanup only removes the local key. To invalidate it, revoke it directly at the Provider. | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### Endpoint
 
@@ -28091,37 +28557,6 @@ Apply the deployment's description limit at the HTTP boundary.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | type | string, <br>**Default:** external |  | No |
-
-#### FeatureModel
-
-Effective feature availability and limits for the current workspace.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_preview_enabled | boolean |  | Yes |
-| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
-| api_rate_limit | [Quota](#quota) |  | Yes |
-| apps | [LimitationModel](#limitationmodel) |  | Yes |
-| billing | [BillingModel](#billingmodel) |  | Yes |
-| can_replace_logo | boolean |  | Yes |
-| documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
-| education | [EducationModel](#educationmodel) |  | Yes |
-| enable_file_scan | boolean |  | Yes |
-| enable_knowledge_fs | boolean |  | Yes |
-| enable_skill | boolean, <br>**Default:** true |  | Yes |
-| evaluation_enabled | boolean |  | Yes |
-| evaluation_upgrade_available | boolean |  | Yes |
-| human_input_email_delivery_enabled | boolean |  | Yes |
-| im_centrally_managed | boolean |  | Yes |
-| is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
-| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
-| members | [LimitationModel](#limitationmodel) |  | Yes |
-| model_load_balancing_enabled | boolean |  | Yes |
-| trigger_event | [Quota](#quota) |  | Yes |
-| webapp_copyright_enabled | boolean |  | Yes |
-| workflow_collaboration_enabled | boolean |  | Yes |
-| workflow_collaboration_upgrade_available | boolean |  | Yes |
-| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
 
@@ -29169,6 +29604,12 @@ Sandbox inspector is unavailable.
 | name | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
+#### InstalledAppListMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InstalledAppListMode | string |  |  |
+
 #### InstalledAppListResponse
 
 | Name | Type | Description | Required |
@@ -29184,6 +29625,27 @@ The app was not found in this workspace.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InstalledAppNotFoundError |  | The app was not found in this workspace. |  |
+
+#### InstalledAppParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Web App-compatible tool requirements. Installed App choices reference visible Workspace credentials. | Yes |
+| connection_revision | string | Opaque published authorization contract, as in Web App parameters. | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
+| opening_statement | string |  | No |
+| requires_end_user_connections | boolean | Whether the published App requires explicit member Connection choices. | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
 
 #### InstalledAppResponse
 
@@ -29210,6 +29672,15 @@ The app is not available in this app library.
 | ---- | ---- | ----------- | -------- |
 | is_pinned | boolean |  | No |
 
+#### InstalledAppWorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
+
 #### InstalledAppsListQuery
 
 | Name | Type | Description | Required |
@@ -29217,7 +29688,33 @@ The app is not available in this app library.
 | app_id | string | App ID to filter by | No |
 | cursor | string | Opaque cursor returned by the previous page | No |
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
+| mode | [InstalledAppListMode](#installedapplistmode) | App mode filter, using the same values as Studio | No |
 | name | string | App name to search for | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No |
+
+#### InstalledConnectionConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Complete choices keyed by independent authorization node ID. Missing/null nodes are unselected; an empty map clears the configuration. Saving explicitly approves the submitted authorization contract. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### InstalledConnectionPreflightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### InstalledConnectionPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Connection contract revision evaluated by this preflight. | Yes |
+| connections | [ [ConnectionPreflightStatus](#connectionpreflightstatus) ] |  | Yes |
+| ready | boolean |  | Yes |
 
 #### InstantMessageChannelRecipient
 
@@ -32945,12 +33442,19 @@ Paginated response body for organization candidate search.
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
 
+#### LoginMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LoginMode | string |  |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | invite_token | string | Invitation token | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | password | string |  | Yes |
 | remember_me | boolean | Remember me flag | No |
 
@@ -33832,6 +34336,14 @@ Please upload your file.
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
 
+#### NodeConnectionStatus
+
+The current selection's effective status for one published Tool node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeConnectionStatus | string | The current selection's effective status for one published Tool node. |  |
+
 #### NodeDataMigrationBlocker
 
 Stable node-scoped reason why the backend cannot produce lossless v2 data.
@@ -34185,9 +34697,11 @@ Only support workflow app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| code_challenge | string | Web-origin S256 challenge for an End User personal portal return; omit for /signin resume URLs. | No |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
-| redirect_url | string | Relative page to resume after login | No |
+| mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
+| redirect_url | string | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete a PKCE handoff | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -36242,6 +36756,12 @@ A configured credential whose stored value is omitted.
 | ---- | ---- | ----------- | -------- |
 | redirect_url | string |  | Yes |
 
+#### RefreshTokenPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | [LoginMode](#loginmode) | Console mode requires an active workspace; End User mode refreshes only the Account session. | No |
+
 #### RelatedAppListResponse
 
 | Name | Type | Description | Required |
@@ -37989,34 +38509,6 @@ Model class for provider system configuration response.
 | enabled | boolean |  | Yes |
 | quota_configurations | [ [QuotaConfiguration](#quotaconfiguration) ], <br>**Default:**  |  | No |
 
-#### SystemFeatureModel
-
-Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
-| branding | [BrandingModel](#brandingmodel) |  | Yes |
-| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
-| enable_app_deploy | boolean |  | Yes |
-| enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_creators_platform | boolean |  | Yes |
-| enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
-| enable_explore_banner | boolean |  | Yes |
-| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
-| enable_marketplace | boolean |  | Yes |
-| enable_social_oauth_login | boolean |  | Yes |
-| enable_step_by_step_tour | boolean |  | Yes |
-| is_allow_register | boolean |  | Yes |
-| is_email_setup | boolean |  | Yes |
-| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| rbac_enabled | boolean |  | Yes |
-| sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
-
 #### SystemParameters
 
 | Name | Type | Description | Required |
@@ -38165,6 +38657,52 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
+
+#### TestCredentialCheck
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason_code | string |  | Yes |
+| retryable | boolean |  | Yes |
+| status | [CredentialCheckStatus](#credentialcheckstatus) |  | Yes |
+
+#### TestCredentialPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### TestCredentialReadiness
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### TestCredentialState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [TestCredentialCheck](#testcredentialcheck) |  | Yes |
+| credential_id | string |  | Yes |
+| node_id | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+| status | [TestCredentialStatus](#testcredentialstatus) |  | Yes |
+
+#### TestCredentialStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TestCredentialStatus | string |  |  |
+
+#### TestCredentialsNotReadyError
+
+Required test credentials are not ready.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TestCredentialsNotReadyError |  | Required test credentials are not ready. |  |
 
 #### TextContentResponse
 
@@ -39445,6 +39983,23 @@ The app access service is unavailable. Try again later.
 | ---- | ---- | ----------- | -------- |
 | WebAppAccessUnavailableError |  | The app access service is unavailable. Try again later. |  |
 
+#### WebAppAccountSessionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | No |
+| code_challenge | string | S256 PKCE challenge for a published App or Webapp personal portal handoff | No |
+| mode | string, <br>**Default:** end_user |  | No |
+| redirect_url | string | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No |
+
+#### WebAppAccountSessionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| logged_in | boolean |  | Yes |
+| login_code | string | One-use portal code to exchange on the Webapp API using the matching PKCE verifier. | No |
+| redirect_url | string |  | Yes |
+
 #### WebAppAuthModel
 
 | Name | Type | Description | Required |
@@ -39461,6 +40016,30 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebAppConnectionRequirement
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| icon | string | Plugin icon URL, using the Integrations asset endpoint. | Yes |
+| icon_dark | string | Dark plugin icon URL; null when the plugin has no dark icon. | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
+| provider | string |  | Yes |
+| provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
+| purpose | string |  | Yes |
+| title | string |  | Yes |
+| verified | boolean | Whether Dify verified this exact plugin artifact. | Yes |
+
+#### WebLoginUnavailableError
+
+Web App login is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebLoginUnavailableError |  | Web App login is temporarily unavailable. Please retry. |  |
 
 #### WebhookTriggerNotFoundError
 
@@ -40596,13 +41175,6 @@ Workflow run not found.
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 
-#### WorkflowRunPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
-| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-
 #### WorkflowRunRequest
 
 | Name | Type | Description | Required |
@@ -40798,6 +41370,19 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### WorkspaceActivationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+
+#### WorkspaceActivationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_workspace_created_at | integer |  | Yes |
+| workspace_id | string |  | Yes |
 
 #### WorkspaceCustomConfigPayload
 

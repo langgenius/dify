@@ -33,11 +33,18 @@ export const license = {
  * Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
  * Authentication configuration must be available before the authentication flow can be selected.
  * Authenticated license detail is served separately by SystemFeatureLicenseApi.
+ *
+ * Preconditions: no Account, workspace, or app identity is required. URL
+ * settings are trusted deployment configuration, never request headers.
+ * Postconditions: return the WebApp frontend base URL with its base path
+ * intact, using the Console URL when APP_WEB_URL is unset. An empty URL
+ * means the same-origin root. Issue no credentials and change no state;
+ * feature-query failures propagate unchanged.
  */
 export const get2 = oc
   .route({
     description:
-      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nAuthentication configuration must be available before the authentication flow can be selected.\nAuthenticated license detail is served separately by SystemFeatureLicenseApi.',
+      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nAuthentication configuration must be available before the authentication flow can be selected.\nAuthenticated license detail is served separately by SystemFeatureLicenseApi.\n\nPreconditions: no Account, workspace, or app identity is required. URL\nsettings are trusted deployment configuration, never request headers.\nPostconditions: return the WebApp frontend base URL with its base path\nintact, using the Console URL when APP_WEB_URL is unset. An empty URL\nmeans the same-origin root. Issue no credentials and change no state;\nfeature-query failures propagate unchanged.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',

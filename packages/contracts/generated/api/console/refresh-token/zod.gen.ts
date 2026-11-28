@@ -34,6 +34,20 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * LoginMode
+ */
+export const zLoginMode = z.enum(['console', 'end_user'])
+
+/**
+ * RefreshTokenPayload
+ */
+export const zRefreshTokenPayload = z.object({
+  mode: zLoginMode.optional().default('console'),
+})
+
+export const zPostRefreshTokenBody = zRefreshTokenPayload
+
+/**
  * Success
  */
 export const zPostRefreshTokenResponse = zSimpleResultResponse

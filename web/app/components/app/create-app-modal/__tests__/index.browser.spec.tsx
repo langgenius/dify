@@ -1,5 +1,4 @@
 import type { TestNavigation } from '@/test/next-navigation'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -7,6 +6,7 @@ import { render } from 'vitest-browser-react'
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, route, setupFakeApi } from '@/test/fake-api'
@@ -52,7 +52,7 @@ const fake = setupFakeApi(() => ({
     route('GET', 'origin', `${emojiCatalog}/messages.json`, () => emojiMessages),
   ],
   console: {
-    features: { get: () => zGetFeaturesResponse.parse({}) },
+    features: { get: () => createFeaturesFixture() },
     apps: {
       post: () =>
         createAppDetailFixture({
@@ -65,7 +65,7 @@ const fake = setupFakeApi(() => ({
 }))
 
 async function renderModal({ quota = { size: 0, limit: 1 }, show = true } = {}) {
-  fake.console.features.get.mockReturnValue(zGetFeaturesResponse.parse({ apps: quota }))
+  fake.console.features.get.mockReturnValue(createFeaturesFixture({ apps: quota }))
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { apps: quota },

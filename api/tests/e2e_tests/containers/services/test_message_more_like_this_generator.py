@@ -196,7 +196,7 @@ def scenario(
         headers = {
             HEADER_NAME_APP_CODE: site.code,
             HEADER_NAME_PASSPORT: PassportService().issue(
-                {"app_code": site.code, "app_id": app.id, "end_user_id": end_user.id}
+                {"sub": "Web API Passport", "app_code": site.code, "app_id": app.id, "end_user_id": end_user.id}
             ),
         }
         url = f"/api/messages/{message.id}/more-like-this"
@@ -441,9 +441,14 @@ def test_real_provider_failure_persists_worker_error_and_preserves_http_or_sse_c
 ) -> None:
     if failure == "invalid_transport":
         monkeypatch.setattr(plugin_base, "plugin_daemon_inner_api_baseurl", URL("unsupported://plugin-daemon"))
-    # PluginModelClient converts both missing-plugin (-404) and transport (-500)
-    # PluginDaemonInnerError failures to ValueError, yielding invalid_param.
-    expected_error = "-404" if failure == "missing_plugin" else "Request to Plugin Daemon Service failed-500"
+    # A daemon HTTP rejection is an invocation error; the transport exception
+    # still reaches the legacy invalid-parameter path through PluginModelClient.
+    expected_code = "completion_request_error" if failure == "missing_plugin" else "invalid_param"
+    expected_error = (
+        "Plugin daemon returned HTTP 404"
+        if failure == "missing_plugin"
+        else "Request to Plugin Daemon Service failed-500"
+    )
     with Session(db.engine) as session:
         config = session.get(AppModelConfig, scenario.historical_config_id)
         assert config is not None
@@ -481,14 +486,14 @@ def test_real_provider_failure_persists_worker_error_and_preserves_http_or_sse_c
             ]
             errors = [item for item in events if item["event"] == "error"]
             assert len(errors) == 1
-            assert errors[0]["code"] == "invalid_param"
+            assert errors[0]["code"] == expected_code
             assert expected_error in errors[0]["message"]
             assert errors[0]["status"] == HTTPStatus.BAD_REQUEST
         else:
             assert response.status_code == HTTPStatus.BAD_REQUEST
             payload = response.get_json()
             assert isinstance(payload, dict)
-            assert payload["code"] == "invalid_param"
+            assert payload["code"] == expected_code
             assert expected_error in payload["message"]
         response.close()
     finally:

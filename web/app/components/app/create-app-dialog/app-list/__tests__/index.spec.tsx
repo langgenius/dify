@@ -7,9 +7,9 @@ import type {
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import {
   createConsoleQueryClient,
-  createFeaturesFixture,
   renderWithConsoleQuery as render,
 } from '@/test/console/query-data'
 import Apps from '../index'

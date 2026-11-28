@@ -42,7 +42,12 @@ from core.plugin.entities.plugin import (
     PluginEntity,
     PluginInstallationSource,
 )
-from core.plugin.entities.plugin_daemon import PluginDecodeResponse, PluginInstallTask, PluginInstallTaskStartResponse
+from core.plugin.entities.plugin_daemon import (
+    PluginDaemonInnerError,
+    PluginDecodeResponse,
+    PluginInstallTask,
+    PluginInstallTaskStartResponse,
+)
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -1188,6 +1193,10 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
+        except PluginDaemonInnerError as error:
+            if error.code == -500:
+                raise
+            raise PluginOperationError(f"plugin daemon: {error.message}, code: {error.code}") from error
 
         return jsonable_encoder({"options": options})
 
@@ -1218,6 +1227,10 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
+        except PluginDaemonInnerError as error:
+            if error.code == -500:
+                raise
+            raise PluginOperationError(f"plugin daemon: {error.message}, code: {error.code}") from error
 
         return jsonable_encoder({"options": options})
 

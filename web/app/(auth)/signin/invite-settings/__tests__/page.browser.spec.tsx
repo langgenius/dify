@@ -9,7 +9,6 @@ import login from '@/i18n/locales/zh-Hans/login.json'
 import { getInitOptions } from '@/i18n/settings'
 import { consoleQuery } from '@/service/console'
 import { emulateTimezone } from '@/test/browser-media-emulation'
-import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
@@ -33,6 +32,7 @@ async function renderInvitation() {
     resources: { 'zh-Hans': { accountSettings, common, login } },
   })
   const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: null,
     systemFeatures: { branding: { enabled: false }, deployment_edition: 'CLOUD' },
   })
   queryClient.setQueryData(
@@ -44,13 +44,12 @@ async function renderInvitation() {
         workspace_id: 'workspace-id',
         workspace_name: workspaceName,
         requires_setup: true,
+        is_current_account: true,
       },
     },
   )
-  const { profile } = seedAccountProfileQuery(queryClient, { email: 'invitee@example.com' })
   const fake = installFakeApi({
     console: {
-      account: { profile: { get: () => profile } },
       activate: { post: () => ({ result: 'success' }) },
     },
   })

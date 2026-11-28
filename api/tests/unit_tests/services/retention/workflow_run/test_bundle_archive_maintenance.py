@@ -1,6 +1,7 @@
 import datetime
 import json
-from collections.abc import Sequence
+import time
+from collections.abc import Iterator, Sequence
 from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 
@@ -13,6 +14,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from libs.archive_storage import ArchiveStorage, ArchiveStorageError
 from models.workflow import WorkflowRunArchiveBundle
+from services.retention.workflow_run import bundle_archive_maintenance
 from services.retention.workflow_run.bundle_archive_maintenance import (
     ARCHIVED_TABLES,
     ArchiveBundleCatalogEntry,
@@ -886,6 +888,14 @@ def test_mark_restored_clears_stale_delete_marker_before_releasing_restore_fence
     ]
 
 
+@pytest.fixture
+def marker_retry_sleep() -> Iterator[MagicMock]:
+    """Record retry delays without replacing the process-wide sleep used by other threads."""
+    with patch.object(bundle_archive_maintenance, "time", wraps=time) as clock:
+        clock.sleep.return_value = None
+        yield clock.sleep
+
+
 @pytest.mark.parametrize(
     "delete_cause",
     [
@@ -896,21 +906,20 @@ def test_mark_restored_clears_stale_delete_marker_before_releasing_restore_fence
     ids=["read-timeout", "slow-down", "http-503"],
 )
 def test_delete_marker_accepts_retryable_delete_error_when_head_confirms_absent(
-    delete_cause: BaseException,
+    delete_cause: BaseException, marker_retry_sleep: MagicMock
 ) -> None:
     storage = MagicMock()
     storage.delete_object.side_effect = _archive_storage_error(delete_cause)
     storage.object_exists.return_value = False
 
-    with patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep:
-        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+    WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
 
     storage.delete_object.assert_called_once_with("bundle-prefix/_MARKER")
     storage.object_exists.assert_called_once_with("bundle-prefix/_MARKER")
-    sleep.assert_not_called()
+    marker_retry_sleep.assert_not_called()
 
 
-def test_delete_marker_retries_when_marker_remains_then_succeeds() -> None:
+def test_delete_marker_retries_when_marker_remains_then_succeeds(marker_retry_sleep: MagicMock) -> None:
     storage = MagicMock()
     storage.delete_object.side_effect = [
         _archive_storage_error(ReadTimeoutError(endpoint_url="https://storage.example.com")),
@@ -918,42 +927,35 @@ def test_delete_marker_retries_when_marker_remains_then_succeeds() -> None:
     ]
     storage.object_exists.side_effect = [True, False]
 
-    with patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep:
-        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
+    WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
 
     assert storage.delete_object.call_count == 2
     assert storage.object_exists.call_count == 2
-    sleep.assert_called_once_with(0.5)
+    marker_retry_sleep.assert_called_once_with(0.5)
 
 
-def test_delete_marker_fails_closed_when_marker_persists() -> None:
+def test_delete_marker_fails_closed_when_marker_persists(marker_retry_sleep: MagicMock) -> None:
     storage = MagicMock()
     storage.object_exists.return_value = True
 
-    with (
-        patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep,
-        pytest.raises(ArchiveStorageError, match="still exists after 3 delete attempts"),
-    ):
+    with pytest.raises(ArchiveStorageError, match="still exists after 3 delete attempts"):
         WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
 
     assert storage.delete_object.call_count == 3
     assert storage.object_exists.call_count == 3
-    assert sleep.call_args_list == [call(0.5), call(1.0)]
+    assert marker_retry_sleep.call_args_list == [call(0.5), call(1.0)]
 
 
-def test_delete_marker_fails_closed_when_head_fails() -> None:
+def test_delete_marker_fails_closed_when_head_fails(marker_retry_sleep: MagicMock) -> None:
     storage = MagicMock()
     storage.object_exists.side_effect = ArchiveStorageError("marker HEAD failed")
 
-    with (
-        patch("services.retention.workflow_run.bundle_archive_maintenance.time.sleep") as sleep,
-        pytest.raises(ArchiveStorageError, match="marker HEAD failed"),
-    ):
+    with pytest.raises(ArchiveStorageError, match="marker HEAD failed"):
         WorkflowRunBundleArchiveMaintenance._delete_marker(storage, "bundle-prefix", "_MARKER")
 
     storage.delete_object.assert_called_once_with("bundle-prefix/_MARKER")
     storage.object_exists.assert_called_once_with("bundle-prefix/_MARKER")
-    sleep.assert_not_called()
+    marker_retry_sleep.assert_not_called()
 
 
 def test_delete_marker_does_not_retry_non_retryable_delete_error() -> None:

@@ -512,10 +512,48 @@ def test_system_features_specs_exclude_backend_only_fields(generated_specs: list
         spec_path = next(path for path in generated_specs if path.name == spec_name)
         payload = json.loads(spec_path.read_text(encoding="utf-8"))
         schemas = payload["components"]["schemas"]
-        system_features_schema = schemas["SystemFeatureModel"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
 
         assert excluded_fields.isdisjoint(system_features_schema["properties"])
         assert "PluginManagerModel" not in schemas
+
+
+def test_console_web_url_is_web_bootstrap_only(generated_specs: list[Path]):
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
+
+        if spec_name == "web-openapi.json":
+            assert "account_login_url" not in system_features_schema["properties"]
+            assert "console_web_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["console_web_url"]["type"] == "string"
+            for field_name in ("account_login_url", "console_web_url"):
+                assert field_name not in schemas["WebAccountProfileResponse"]["properties"]
+            assert "account_login_url" not in schemas["WebAppParametersResponse"]["properties"]
+            assert schemas["WebAppParametersResponse"]["properties"]["console_web_url"]["type"] == "string"
+        else:
+            for field_name in ("account_login_url", "console_web_url"):
+                assert field_name not in system_features_schema["properties"]
+
+
+def test_webapp_url_discovery_is_console_bootstrap_only(generated_specs: list[Path]):
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
+
+        if spec_name == "console-openapi.json":
+            assert "webapp_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["webapp_url"]["type"] == "string"
+            assert "default" not in system_features_schema["properties"]["webapp_url"]
+        else:
+            assert "webapp_url" not in system_features_schema["properties"]
 
 
 def test_generate_specs_writes_get_operations_without_request_bodies(generated_specs: list[Path]):

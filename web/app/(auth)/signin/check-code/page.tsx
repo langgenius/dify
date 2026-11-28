@@ -85,6 +85,7 @@ export default function CheckCode() {
         })
 
         if (invite_token) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
           await queryClient.query(userProfileQueryOptions())

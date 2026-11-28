@@ -33,7 +33,7 @@ vi.mock('@/utils/create-app-tracking', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
+  const { createFeaturesFixture } = await import('@/test/console/features-fixture')
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
   return {
@@ -42,8 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.imports.post': ({ body }) => mockImportDSL(body),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': () =>
-        zGetFeaturesResponse.parse({ apps: { size: appCount, limit: appLimit } }),
+      'features.get': () => createFeaturesFixture({ apps: { size: appCount, limit: appLimit } }),
       'apps.imports.post': ({ body }) => mockImportDSL(body),
       'apps.imports.byImportId.confirm.post': ({ params }) => mockImportDSLConfirm(params),
     }),

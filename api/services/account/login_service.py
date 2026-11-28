@@ -1,13 +1,14 @@
-"""Framework-neutral application service for Console authentication use cases."""
+"""Account authentication with optional Console workspace admission."""
 
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from datetime import datetime
 from typing import Never, Protocol
 
 from constants.languages import get_valid_language, language_timezone_mapping
 from services import account_errors
 from services.account_ports import AccountPasswordHasher
-from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     EmailCodeChallengeStatus,
@@ -15,12 +16,20 @@ from services.entities.account_login_entities import (
     EmailCodeSendCommand,
     LoginAccountSnapshot,
     LoginInvitation,
+    LoginMode,
     PasswordLoginCommand,
     PasswordLoginCompletion,
     PasswordLoginResult,
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspaceNotFoundError,
+    WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
+)
+from services.workspace.contracts import WorkspaceActivation
 
 _BANNED_ACCOUNT_STATUS = "banned"
 _EMAIL_DOMAIN_SUSPENDED = "email_domain_suspended"
@@ -71,7 +80,7 @@ class HumanVerificationGateway(Protocol):
 class AccountSessionGateway(Protocol):
     def issue(self, account_id: str) -> AccountSessionTokens: ...
 
-    def revoke(self, account_id: str) -> None: ...
+    def revoke(self, refresh_token: str) -> None: ...
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None: ...
 
@@ -79,7 +88,7 @@ class AccountSessionGateway(Protocol):
 
 
 class AccountRefreshPreparationGateway(Protocol):
-    def prepare(self, account_id: str) -> RefreshAccountStatus: ...
+    def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus: ...
 
 
 class AccountProvisioningGateway(Protocol):
@@ -94,8 +103,25 @@ class AccountProvisioningGateway(Protocol):
     ) -> str: ...
 
 
+class AccountOnlyRegistrationGateway(Protocol):
+    def create_account(
+        self,
+        *,
+        email: str,
+        name: str,
+        interface_language: str,
+        timezone: str,
+        ip_address: str,
+        check_normalized_email: bool,
+        status: str,
+        initialized: bool,
+    ) -> AccountSnapshot: ...
+
+
 class WorkspaceProvisioningGateway(Protocol):
     def ensure_owner_workspace(self, account_id: str) -> None: ...
+
+    def activate(self, account_id: str) -> WorkspaceActivation: ...
 
 
 class EmailCodeGateway(Protocol):
@@ -147,6 +173,7 @@ class ConsoleAuthenticationService:
         sessions: AccountSessionGateway,
         refresh_preparation: AccountRefreshPreparationGateway,
         account_provisioning: AccountProvisioningGateway,
+        account_registration: AccountOnlyRegistrationGateway,
         workspace_provisioning: WorkspaceProvisioningGateway,
         email_codes: EmailCodeGateway,
         reset_password_emails: ResetPasswordEmailGateway,
@@ -154,6 +181,7 @@ class ConsoleAuthenticationService:
         now: Callable[[], datetime],
         turnstile_enabled: bool,
         turnstile_verify_required: bool,
+        defer_workspace_creation: bool = False,
     ) -> None:
         self._accounts = accounts
         self._workspaces = workspaces
@@ -165,6 +193,7 @@ class ConsoleAuthenticationService:
         self._sessions = sessions
         self._refresh_preparation = refresh_preparation
         self._account_provisioning = account_provisioning
+        self._account_registration = account_registration
         self._workspace_provisioning = workspace_provisioning
         self._email_codes = email_codes
         self._reset_password_emails = reset_password_emails
@@ -172,14 +201,16 @@ class ConsoleAuthenticationService:
         self._now = now
         self._turnstile_enabled = turnstile_enabled
         self._turnstile_verify_required = turnstile_verify_required
+        self._defer_workspace_creation = defer_workspace_creation
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
-        """Sign in with a password.
+        """Verify credentials and prepare a workspace only for ordinary Console sign-in.
 
-        With a live invitation for the email in ``command.invite_token``, the session is issued
-        whether or not the account has a workspace; joining happens only when the invitation is
-        accepted. Without one, an account without a workspace gets no session.
+        An explicit invitation must be live and match the email before issuing a session.
+        Invitation sign-in neither creates a personal workspace nor joins the invited workspace.
         """
+        if command.mode == LoginMode.END_USER and command.invite_token is not None:
+            raise ValueError("End User login cannot accept a workspace invitation.")
         normalized_email = command.email.lower()
         self._ensure_email_eligible(normalized_email, command.ip_address)
         if self._security.is_login_limited(normalized_email):
@@ -205,10 +236,23 @@ class ConsoleAuthenticationService:
         if account is None:
             self._invalid_credentials(normalized_email, command.ip_address)
 
-        if invitation_token is None and not self._workspaces.has_active_for_account(account.id):
-            if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                raise account_errors.LoginWorkspaceLimitError
-            return PasswordLoginResult(tokens=None, workspace_found=False)
+        workspace_found = None
+        if command.mode == LoginMode.CONSOLE:
+            if invitation_token is not None:
+                self._provision_invitation_workspace_if_allowed(account.id)
+            else:
+                workspace_found = self._workspaces.has_active_for_account(account.id)
+                if not workspace_found:
+                    if self._defer_workspace_creation:
+                        self._activate_console_workspace(account.id)
+                        workspace_found = True
+                    else:
+                        if (
+                            self._policies.is_workspace_creation_allowed()
+                            and not self._policies.has_workspace_capacity()
+                        ):
+                            raise account_errors.LoginWorkspaceLimitError
+                        return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -216,10 +260,10 @@ class ConsoleAuthenticationService:
             activate_pending_account=False,
         )
         self._security.reset_login_failures(normalized_email)
-        return PasswordLoginResult(tokens=tokens, workspace_found=True)
+        return PasswordLoginResult(tokens=tokens, workspace_found=workspace_found)
 
-    def logout(self, account_id: str) -> None:
-        self._sessions.revoke(account_id)
+    def logout(self, *, refresh_token: str) -> None:
+        self._sessions.revoke(refresh_token)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         normalized_email = email.lower()
@@ -256,17 +300,15 @@ class ConsoleAuthenticationService:
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
-        """Sign in with an email code, accepting the invitation in ``command.invite_token`` when given.
+        """Verify the challenge and prepare a personal workspace for Console sign-in.
 
-        With a live invitation for an existing account's email, the session is issued without
-        joining or provisioning any workspace; joining happens only when the invitation is
-        accepted. Without one, an account without a workspace gets an owner workspace, or the
-        sign-in is refused where creation is not allowed.
-
-        Raises:
-            InvalidLoginInvitationEmailError: The invitation belongs to another email.
-            LoginWorkspaceLimitError, LoginWorkspaceCreationNotAllowedError: No workspace can be provided.
+        A live matching invitation never joins the invited workspace here; it provisions a
+        personal workspace only when policy and capacity allow and still issues a session
+        otherwise. An invalid challenge, invitation, or ordinary Console admission never
+        issues a session.
         """
+        if command.mode == LoginMode.END_USER and command.invite_token is not None:
+            raise ValueError("End User login cannot accept a workspace invitation.")
         normalized_email = command.email.lower()
         if not self._is_valid_email_code(command.code):
             self._fail(
@@ -289,9 +331,16 @@ class ConsoleAuthenticationService:
         self._ensure_email_eligible(normalized_email, command.ip_address)
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
+        invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
+        if invitation_token is not None and account is None:
+            raise account_errors.InvalidInvitationError
         if account is not None:
-            invitation_token = self._resolve_invitation_token(command.email, command.invite_token, command.ip_address)
-            if invitation_token is None and not self._workspaces.has_active_for_account(account.id):
+            if (
+                command.mode == LoginMode.CONSOLE
+                and invitation_token is None
+                and not self._defer_workspace_creation
+                and not self._workspaces.has_active_for_account(account.id)
+            ):
                 if not self._policies.has_workspace_capacity():
                     raise account_errors.LoginWorkspaceLimitError
                 if not self._policies.is_workspace_creation_allowed():
@@ -303,18 +352,41 @@ class ConsoleAuthenticationService:
                 raise account_errors.AccountNotFoundError
             if not self._policies.has_account_capacity():
                 raise account_errors.LoginSeatLimitError
-            if not self._policies.is_workspace_creation_allowed():
-                raise account_errors.LoginWorkspaceCreationNotAllowedError
-            if not self._policies.has_workspace_capacity():
-                raise account_errors.LoginWorkspaceLimitError
             interface_language = get_valid_language(command.language)
-            account_id = self._account_provisioning.create_with_owner_workspace(
-                email=normalized_email,
-                name=normalized_email,
-                interface_language=interface_language,
-                timezone=command.timezone or language_timezone_mapping.get(interface_language, "UTC"),
-                ip_address=command.ip_address,
-            )
+            timezone = command.timezone or language_timezone_mapping.get(interface_language, "UTC")
+            if command.mode == LoginMode.END_USER or self._defer_workspace_creation:
+                try:
+                    created = self._account_registration.create_account(
+                        email=normalized_email,
+                        name=normalized_email,
+                        interface_language=interface_language,
+                        timezone=timezone,
+                        ip_address=command.ip_address,
+                        check_normalized_email=True,
+                        status="uninitialized",
+                        initialized=False,
+                    )
+                except account_errors.SeatsLimitExceededError as exc:
+                    raise account_errors.LoginSeatLimitError from exc
+                account_id = created.id
+            else:
+                if not self._policies.is_workspace_creation_allowed():
+                    raise account_errors.LoginWorkspaceCreationNotAllowedError
+                if not self._policies.has_workspace_capacity():
+                    raise account_errors.LoginWorkspaceLimitError
+                account_id = self._account_provisioning.create_with_owner_workspace(
+                    email=normalized_email,
+                    name=normalized_email,
+                    interface_language=interface_language,
+                    timezone=timezone,
+                    ip_address=command.ip_address,
+                )
+
+        if command.mode == LoginMode.CONSOLE:
+            if invitation_token is not None:
+                self._provision_invitation_workspace_if_allowed(account_id)
+            elif self._defer_workspace_creation and not self._workspaces.has_active_for_account(account_id):
+                self._activate_console_workspace(account_id)
 
         tokens = self._issue_session(
             account_id=account_id,
@@ -324,11 +396,11 @@ class ConsoleAuthenticationService:
         self._security.reset_login_failures(normalized_email)
         return tokens
 
-    def refresh(self, refresh_token: str) -> AccountSessionTokens:
+    def refresh(self, refresh_token: str, *, mode: LoginMode = LoginMode.CONSOLE) -> AccountSessionTokens:
         account_id = self._sessions.resolve_refresh_token(refresh_token)
         if account_id is None:
             raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
-        refresh_status = self._refresh_preparation.prepare(account_id)
+        refresh_status = self._refresh_preparation.prepare(account_id, mode=mode)
         if refresh_status == RefreshAccountStatus.BANNED:
             raise account_errors.InvalidRefreshTokenError("Account is banned.")
         if refresh_status == RefreshAccountStatus.NOT_FOUND:
@@ -373,6 +445,36 @@ class ConsoleAuthenticationService:
     def _preferred_account(self, email: str) -> LoginAccountSnapshot | None:
         return next(iter(self._accounts.list_for_login(email)), None)
 
+    def _provision_invitation_workspace_if_allowed(self, account_id: str) -> None:
+        """Best-effort personal workspace provisioning during invitation sign-in.
+
+        Carries over legacy invite-time personal workspace creation to sign-in:
+        creates a default workspace when policy and capacity allow and the account
+        has no active workspace, and silently skips when creation is disallowed or
+        at capacity so invitation acceptance is never blocked.
+        """
+        if self._workspaces.has_active_for_account(account_id):
+            return
+        if not self._policies.is_workspace_creation_allowed() or not self._policies.has_workspace_capacity():
+            return
+        with suppress(WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError):
+            self._workspace_provisioning.activate(account_id)
+
+    def _activate_console_workspace(self, account_id: str) -> None:
+        """Prepare a workspace for a verified Console account before issuing credentials.
+
+        Concurrent attempts reuse the committed membership. A denied or unavailable
+        workspace raises the existing login error without issuing a session.
+        """
+        try:
+            self._workspace_provisioning.activate(account_id)
+        except WorkSpaceNotAllowedCreateError as error:
+            raise account_errors.LoginWorkspaceCreationNotAllowedError from error
+        except WorkspacesLimitExceededError as error:
+            raise account_errors.LoginWorkspaceLimitError from error
+        except (WorkspaceOwnerNotFoundError, WorkspaceNotFoundError) as error:
+            raise account_errors.AccountNotFoundError from error
+
     def _issue_session(
         self,
         *,
@@ -393,16 +495,17 @@ class ConsoleAuthenticationService:
         return self._sessions.issue(account_id)
 
     def _resolve_invitation_token(self, email: str, invite_token: str | None, ip_address: str) -> str | None:
-        """Return the invitation token when it is live for ``email``; ``None`` when absent or stale.
+        """Return a live token for the given email, or ``None`` only when not supplied.
 
         Raises:
+            InvalidInvitationError: The supplied token is stale, revoked, or unknown.
             InvalidLoginInvitationEmailError: The live invitation belongs to another email.
         """
         if invite_token is None:
             return None
         invitation = self._invitations.resolve(email=email, token=invite_token)
         if invitation is None:
-            return None
+            raise account_errors.InvalidInvitationError
         normalized_email = email.lower()
         if invitation.email.lower() != normalized_email:
             self._fail(

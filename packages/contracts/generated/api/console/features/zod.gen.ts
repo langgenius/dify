@@ -99,11 +99,11 @@ export const zBillingModel = z.object({
 })
 
 /**
- * FeatureModel
+ * ConsoleFeatureResponse
  *
- * Effective feature availability and limits for the current workspace.
+ * Expose Console feature entry points only after account admission.
  */
-export const zFeatureModel = z.object({
+export const zConsoleFeatureResponse = z.object({
   agent_preview_enabled: z.boolean().default(false),
   annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
   api_rate_limit: zQuota.default({
@@ -119,6 +119,7 @@ export const zFeatureModel = z.object({
   enable_file_scan: z.boolean().default(false),
   enable_knowledge_fs: z.boolean().default(false),
   enable_skill: z.boolean().default(true),
+  end_user_auth_enabled: z.boolean(),
   evaluation_enabled: z.boolean().default(false),
   evaluation_upgrade_available: z.boolean().default(false),
   human_input_email_delivery_enabled: z.boolean().default(false),
@@ -145,7 +146,7 @@ export const zFeatureModel = z.object({
 /**
  * Success
  */
-export const zGetFeaturesResponse = zFeatureModel
+export const zGetFeaturesResponse = zConsoleFeatureResponse
 
 /**
  * Success

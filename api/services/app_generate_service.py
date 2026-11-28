@@ -22,8 +22,15 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
+from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.app_definition_query_service import require_service_api_end_user_workflow_access
+from services.consumer_service import CONSUMER_APP_MODES
+from services.end_user_connection_execution_adapters import (
+    prepare_installed_connection_execution,
+    prepare_web_connection_execution,
+)
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -35,6 +42,7 @@ from services.quota_service import QuotaService, unlimited
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
+from services.workflow_test_execution import require_workflow_test_credentials
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
 logger = logging.getLogger(__name__)
@@ -132,6 +140,9 @@ class AppGenerateService:
     ):
         """
         App Content Generate
+        Record personal use only after an Account-linked Browser WebApp request
+        is accepted. Rejected requests and other invocation sources do not record
+        use; preference failures do not change the accepted execution result.
         :param app_model: app model
         :param user: user
         :param args: args
@@ -139,7 +150,8 @@ class AppGenerateService:
         :param streaming: streaming
         :return:
         """
-        return cls._run_with_guardrails(
+        used_at = naive_utc_now()
+        result = cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
             action=lambda rate_limit, request_id: cls._dispatch_generate(
@@ -154,6 +166,27 @@ class AppGenerateService:
                 request_id=request_id,
             ),
         )
+        if (
+            invoke_from == InvokeFrom.WEB_APP
+            and isinstance(user, EndUser)
+            and user.account_id is not None
+            and app_model.mode in CONSUMER_APP_MODES
+        ):
+            from extensions.ext_application_services import application_services
+            from services.consumer_service import ConsumerIdentity
+
+            try:
+                application_services().consumer.record_usage(
+                    ConsumerIdentity(user.account_id),
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    end_user_id=user.id,
+                    used_at=used_at,
+                )
+            except Exception:
+                # A preference write must not fail an already accepted execution.
+                logger.warning("Failed to record personal WebApp usage for App %s", app_model.id)
+        return result
 
     @classmethod
     def _run_with_guardrails(
@@ -266,20 +299,53 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.ADVANCED_CHAT:
-                workflow_id = args.get("workflow_id")
+                workflow_id = (
+                    None if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE} else args.get("workflow_id")
+                )
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if invoke_from == InvokeFrom.DEBUGGER:
+                    if not isinstance(user, Account):
+                        raise ValueError("Builder tests require an Account.")
+                    require_workflow_test_credentials(
+                        app=app_model,
+                        user=user,
+                        workflow=workflow,
+                        node_id=None,
+                    )
+                workflow_run_id = str(uuid.uuid4())
+                connection_context = (
+                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.WEB_APP
+                    else prepare_installed_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.EXPLORE
+                    else None
+                )
+                if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE}:
+                    args = {
+                        key: value
+                        for key, value in args.items()
+                        if key
+                        not in {
+                            "workflow_id",
+                            "connection_revision",
+                            "connections",
+                            "_installed_app_id",
+                            "_installed_workspace_id",
+                        }
+                    }
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
                     payload = AppExecutionParams.new(
                         app_model=app_model,
                         workflow=workflow,
+                        connection_context=connection_context,
                         user=user,
                         args=args,
                         invoke_from=invoke_from,
                         streaming=True,
                         call_depth=0,
-                        workflow_run_id=str(uuid.uuid4()),
+                        workflow_run_id=workflow_run_id,
                     )
                     payload_json = payload.model_dump_json()
 
@@ -310,10 +376,11 @@ class AppGenerateService:
                         advanced_generator.generate(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                             streaming=False,
                             pause_state_config=pause_config,
                             session=session,
@@ -322,20 +389,53 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.WORKFLOW:
-                workflow_id = args.get("workflow_id")
+                workflow_id = (
+                    None if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE} else args.get("workflow_id")
+                )
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if invoke_from == InvokeFrom.DEBUGGER:
+                    if not isinstance(user, Account):
+                        raise ValueError("Builder tests require an Account.")
+                    require_workflow_test_credentials(
+                        app=app_model,
+                        user=user,
+                        workflow=workflow,
+                        node_id=None,
+                    )
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
+                workflow_run_id = str(uuid.uuid4())
+                connection_context = (
+                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.WEB_APP
+                    else prepare_installed_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.EXPLORE
+                    else None
+                )
+                if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE}:
+                    args = {
+                        key: value
+                        for key, value in args.items()
+                        if key
+                        not in {
+                            "workflow_id",
+                            "connection_revision",
+                            "connections",
+                            "_installed_app_id",
+                            "_installed_workspace_id",
+                        }
+                    }
                 if streaming:
                     payload = AppExecutionParams.new(
                         app_model=app_model,
                         workflow=workflow,
+                        connection_context=connection_context,
                         user=user,
                         args=args,
                         invoke_from=invoke_from,
                         streaming=True,
                         call_depth=0,
                         root_node_id=root_node_id,
-                        workflow_run_id=str(uuid.uuid4()),
+                        workflow_run_id=workflow_run_id,
                     )
                     payload_json = payload.model_dump_json()
 
@@ -365,12 +465,14 @@ class AppGenerateService:
                         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             execution_identity=build_workflow_execution_identity(user),
                             args=args,
                             invoke_from=invoke_from,
                             streaming=False,
                             root_node_id=root_node_id,
+                            workflow_run_id=workflow_run_id,
                             call_depth=0,
                             pause_state_config=pause_config,
                         ),
@@ -434,6 +536,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -447,6 +555,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -480,6 +594,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
@@ -493,6 +613,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                require_workflow_test_credentials(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
@@ -519,12 +645,13 @@ class AppGenerateService:
         *,
         session: Session,
     ) -> Workflow:
-        """
-        Get workflow
-        :param app_model: app model
-        :param invoke_from: invoke from
-        :param workflow_id: optional workflow id to specify a specific version
-        :return:
+        """Select an owned workflow and validate its Service API execution policy.
+
+        Use the caller's session and the requested published version, or the
+        app's draft for Debugger and current publication otherwise. Return the
+        selected workflow unchanged. Invalid/missing versions retain their
+        existing errors; Service API personal-auth graphs are rejected before
+        any graph execution or streaming task is scheduled.
         """
         workflow_service = WorkflowService()
 
@@ -539,9 +666,7 @@ class AppGenerateService:
             )
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
-            return workflow
-
-        if invoke_from == InvokeFrom.DEBUGGER:
+        elif invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
             workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
 
@@ -553,5 +678,8 @@ class AppGenerateService:
 
             if not workflow:
                 raise ValueError("Workflow not published")
+
+        if invoke_from == InvokeFrom.SERVICE_API:
+            require_service_api_end_user_workflow_access(workflow.graph_dict)
 
         return workflow

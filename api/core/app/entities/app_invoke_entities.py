@@ -6,6 +6,7 @@ from dify_trace_sdk.emitter import TraceScope
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
+from context.connection_execution import ConnectionExecutionContext
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.credit_usage import (
     CreditUsageAppType,
@@ -94,6 +95,7 @@ def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCr
 
 
 class DifyRunContext(BaseModel):
+    connection_context: ConnectionExecutionContext | None = None
     tenant_id: str
     app_id: str
     user_id: str
@@ -132,6 +134,7 @@ def build_dify_run_context(
     trace_session_id: str | None = None,
     capture_agent_evaluation_trace: bool = False,
     extra_context: Mapping[str, Any] | None = None,
+    connection_context: ConnectionExecutionContext | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -141,6 +144,7 @@ def build_dify_run_context(
     """
     run_context = dict(extra_context) if extra_context else {}
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
+        connection_context=connection_context,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -304,6 +308,8 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     Advanced Chat Application Generate Entity.
     """
 
+    connection_context: ConnectionExecutionContext | None = None
+
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
@@ -338,6 +344,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
     Workflow Application Generate Entity.
     """
+
+    connection_context: ConnectionExecutionContext | None = None
 
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore

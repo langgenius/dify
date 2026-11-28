@@ -1,9 +1,10 @@
-"""Framework-neutral values shared by Console authentication use cases."""
+"""Framework-neutral values shared by Account authentication use cases."""
 
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from constants.account_auth import LoginMode
 from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens
 
 
@@ -60,6 +61,7 @@ class PasswordLoginCommand:
     password: str
     invite_token: str | None
     ip_address: str
+    mode: LoginMode = LoginMode.CONSOLE
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +70,7 @@ class EmailCodeSendCommand:
     language: str | None
     turnstile_token: str | None
     ip_address: str
+    mode: LoginMode = LoginMode.CONSOLE
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,10 +84,12 @@ class EmailCodeLoginCommand:
     language: str | None
     timezone: str | None
     ip_address: str
-    invite_token: str | None
+    mode: LoginMode = LoginMode.CONSOLE
+    invite_token: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordLoginResult:
     tokens: AccountSessionTokens | None
-    workspace_found: bool
+    # None when End User or invitation sign-in does not query workspace membership.
+    workspace_found: bool | None

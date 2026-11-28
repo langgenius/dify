@@ -10,6 +10,14 @@ const zErrorResponse = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zWebLoginUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('web_login_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
 const zAccountBannedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -58,10 +66,26 @@ const zInvalidEmailError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zInvalidOrExpiredTokenError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('invalid_or_expired_token'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zLimitExceededError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('limit_exceeded'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zNotAllowedCreateWorkspaceError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('not_allowed_create_workspace'),
       status: z.literal(400),
     }),
   ))()
@@ -82,6 +106,8 @@ const zEmailCodeLoginLimitError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+export const getErrors = { web_login_unavailable: { status: 503, data: zWebLoginUnavailableError } }
+
 export const postErrors = {
   account_banned: { status: 400, data: zAccountBannedError },
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
@@ -91,5 +117,7 @@ export const postErrors = {
   email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
   invalid_email: { status: 400, data: zInvalidEmailError },
+  invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
   limit_exceeded: { status: 400, data: zLimitExceededError },
+  not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
 }

@@ -7,7 +7,7 @@ import pytest
 from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import UnprocessableEntity
+from werkzeug.exceptions import Unauthorized, UnprocessableEntity
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
@@ -81,8 +81,11 @@ class TestActivateCheckApi:
                 email="invitee@example.com",
                 account_status="pending",
                 requires_setup=True,
+                is_current_account=True,
             ),
         )
+        account = Account(name="User", email="invitee@example.com")
+        account.id = "account-123"
         with (
             app.test_request_context(
                 "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid-token"
@@ -91,10 +94,16 @@ class TestActivateCheckApi:
                 "controllers.console.auth.activate.application_services",
                 return_value=_services(activation_service),
             ),
+            patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
+            patch(
+                "controllers.console.auth.activate.current_account_with_tenant_optional",
+                return_value=(account, None),
+            ),
         ):
             response = ActivateCheckApi().get()
 
-        assert response == {
+        assert response.headers["Cache-Control"] == "no-store"
+        assert response.get_json() == {
             "is_valid": True,
             "data": {
                 "workspace_name": "Test Workspace",
@@ -102,6 +111,7 @@ class TestActivateCheckApi:
                 "email": "invitee@example.com",
                 "account_status": "pending",
                 "requires_setup": True,
+                "is_current_account": True,
             },
         }
         activation_service.check.assert_called_once_with(
@@ -110,6 +120,56 @@ class TestActivateCheckApi:
                 email="invitee@example.com",
                 token="valid-token",
             ),
+            authenticated_account_id="account-123",
+        )
+
+    def test_treats_unauthorized_session_as_unauthenticated_during_check(
+        self,
+        app: Flask,
+        activation_service: AccountActivationService,
+    ) -> None:
+        check_mock = activation_service.check
+        assert isinstance(check_mock, MagicMock)
+        check_mock.return_value = ActivationCheckResult(
+            is_valid=True,
+            data=ActivationCheckData(
+                workspace_name="Test Workspace",
+                workspace_id="workspace-123",
+                email="invitee@example.com",
+                account_status="active",
+                requires_setup=False,
+                is_current_account=False,
+            ),
+        )
+        with (
+            app.test_request_context("/activate/check?token=valid-token"),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
+            ),
+            patch("controllers.console.auth.activate.extract_access_token", return_value="banned-token"),
+            patch(
+                "controllers.console.auth.activate.current_account_with_tenant_optional",
+                side_effect=Unauthorized("Account is banned."),
+            ),
+        ):
+            response = ActivateCheckApi().get()
+
+        assert response.headers["Cache-Control"] == "no-store"
+        assert response.get_json() == {
+            "is_valid": True,
+            "data": {
+                "workspace_name": "Test Workspace",
+                "workspace_id": "workspace-123",
+                "email": "invitee@example.com",
+                "account_status": "active",
+                "requires_setup": False,
+                "is_current_account": False,
+            },
+        }
+        check_mock.assert_called_once_with(
+            InvitationLookup(workspace_id=None, email=None, token="valid-token"),
+            authenticated_account_id=None,
         )
 
     def test_omits_data_for_invalid_invitation(self, app: Flask, activation_service: AccountActivationService) -> None:
@@ -121,10 +181,12 @@ class TestActivateCheckApi:
                 "controllers.console.auth.activate.application_services",
                 return_value=_services(activation_service),
             ),
+            patch("controllers.console.auth.activate.extract_access_token", return_value=None),
         ):
             response = ActivateCheckApi().get()
 
-        assert response == {"is_valid": False}
+        assert response.headers["Cache-Control"] == "no-store"
+        assert response.get_json() == {"is_valid": False}
 
     def test_rejects_request_without_token(self, app: Flask, activation_service: AccountActivationService) -> None:
         """`token` is required, so a tokenless query must not reach the application service."""

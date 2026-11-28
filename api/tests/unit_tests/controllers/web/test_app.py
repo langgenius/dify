@@ -2,14 +2,29 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from dataclasses import replace
 from importlib import import_module
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
+import sqlalchemy as sa
 from flask import Flask
+from flask.testing import FlaskClient
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Unauthorized
 
 from controllers.common.errors import InvalidArgumentError
-from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
+from controllers.web import app as app_controller
+from controllers.web import bp, wraps
+from controllers.web.app import (
+    AppAccessMode,
+    AppMeta,
+    AppParameterApi,
+    AppWebAuthPermission,
+    WebAppParametersResponse,
+)
 from controllers.web.error import (
     AgentNotPublishedError,
     AppUnavailableError,
@@ -17,19 +32,28 @@ from controllers.web.error import (
     WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
-from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.plugin.impl.exc import PluginDaemonBadRequestError
 from enums import WebAppAccessMode
 from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
 from libs.passport import PassportService
 from models.enums import EndUserType
-from models.model import App, AppMode, EndUser
-from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from models.model import App, AppMode, AppModelConfig, EndUser
+from models.workflow import Workflow
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from services.app_definition_query_service import (
+    AppDefinitionNotPublishedError,
+    AppDefinitionQueryService,
+    AppDefinitionUnavailableError,
+)
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
+from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 from tests.helpers.unit.config_override import config_overrides_context
 
 PASSPORT_SECRET = "test-secret-that-is-at-least-32-bytes"
@@ -72,25 +96,37 @@ def real_application_services(
 # AppParameterApi
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
+    @pytest.mark.parametrize("allow_anonymous", [True, False])
+    @pytest.mark.parametrize("login_enabled", [True, False])
     def test_get_returns_public_parameters(
         self,
         real_application_services: ApplicationServices,
         monkeypatch: pytest.MonkeyPatch,
         app: Flask,
+        config_overrides: Callable[..., None],
+        allow_anonymous: bool,
+        login_enabled: bool,
     ) -> None:
-        calls: list[str] = []
+        config_overrides(
+            END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous,
+            WEBAPP_ACCOUNT_PASSPORT_ENABLED=login_enabled,
+            CONSOLE_WEB_URL="https://console.example.com/base///",
+        )
+        calls: list[tuple[str, str]] = []
 
-        def get_public_parameters(app_id: str) -> AppParametersDict:
-            calls.append(app_id)
-            return get_parameters_from_feature_dict(
-                features_dict={"opening_statement": "Hello"},
-                user_input_form=[],
-            )
+        def get_web_parameters(app_id: str, tenant_id: str) -> dict[str, object]:
+            calls.append((app_id, tenant_id))
+            return {
+                **get_parameters_from_feature_dict(features_dict={"opening_statement": "Hello"}, user_input_form=[]),
+                "connection_revision": None,
+                "requires_end_user_connections": False,
+                "connection_requirements": [],
+            }
 
         monkeypatch.setattr(
             real_application_services.app_definitions,
-            "get_public_parameters",
-            get_public_parameters,
+            "get_web_parameters",
+            get_web_parameters,
         )
         app_model = _make_app()
 
@@ -98,7 +134,17 @@ class TestAppParameterApi:
             result = AppParameterApi().get(app_model, _make_end_user())
 
         assert result["opening_statement"] == "Hello"
-        assert calls == ["app-1"]
+        assert calls == [("app-1", "tenant-1")]
+        assert result["connection_revision"] is None
+        assert result["requires_end_user_connections"] is False
+        assert result["connection_requirements"] == []
+        assert result["allow_anonymous_end_user_auth"] is allow_anonymous
+        assert result["account_login_enabled"] is login_enabled
+        assert "account_login_url" not in result
+        assert result["console_web_url"] == "https://console.example.com/base"
+        schema = WebAppParametersResponse.model_json_schema(mode="serialization")
+        assert "account_login_url" not in schema["properties"]
+        assert "console_web_url" in schema["required"]
 
     @pytest.mark.parametrize(
         ("service_error", "http_error"),
@@ -115,19 +161,63 @@ class TestAppParameterApi:
         http_error: type[Exception],
         app: Flask,
     ) -> None:
-        def get_public_parameters(app_id: str) -> None:
-            _ = app_id
+        def get_web_parameters(app_id: str, tenant_id: str) -> None:
+            _ = app_id, tenant_id
             raise service_error
 
         monkeypatch.setattr(
             real_application_services.app_definitions,
-            "get_public_parameters",
-            get_public_parameters,
+            "get_web_parameters",
+            get_web_parameters,
         )
 
         with app.test_request_context("/parameters"):
             with pytest.raises(http_error):
                 AppParameterApi().get(_make_app(), _make_end_user())
+
+    def test_parameters_route_returns_console_web_url(
+        self,
+        account_application_services: ApplicationServices,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(
+            END_USER_AUTH_ALLOW_ANONYMOUS=False,
+            WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+            CONSOLE_WEB_URL="https://console.example.com/base///",
+        )
+        with sqlite_session_factory.begin() as session:
+            app_model = _make_app()
+            session.add_all([app_model, _make_end_user()])
+            session.flush()
+            config = AppModelConfig(app_id=app_model.id, opening_statement="Hello", user_input_form="[]")
+            session.add(config)
+            session.flush()
+            app_model.app_model_config_id = config.id
+
+        def identity() -> tuple[App, EndUser]:
+            with sqlite_session_factory() as session:
+                app_model = session.get(App, "app-1")
+                end_user = session.get(EndUser, "end-user-1")
+                assert app_model is not None
+                assert end_user is not None
+                return app_model, end_user
+
+        monkeypatch.setattr(wraps, "decode_jwt_token", identity)
+        monkeypatch.setattr(app_controller, "application_services", lambda: account_application_services)
+        flask_app = Flask(__name__)
+        flask_app.config["TESTING"] = True
+        flask_app.register_blueprint(bp)
+
+        response = flask_app.test_client().get("/api/parameters")
+
+        assert response.status_code == 200
+        payload = response.get_json()
+        assert "account_login_url" not in payload
+        assert payload["console_web_url"] == "https://console.example.com/base"
+        assert payload["account_login_enabled"] is True
+        assert payload["allow_anonymous_end_user_auth"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -525,3 +615,173 @@ class TestAppWebAuthPermission:
         with app.test_request_context(path, headers=headers):
             with pytest.raises(ValueError, match="appId"):
                 AppWebAuthPermission().get()
+
+
+@pytest.fixture
+def asset_harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
+    return make_oauth_harness(sqlite_session_factory, monkeypatch)
+
+
+@pytest.fixture
+def asset_reader() -> Iterator[MagicMock]:
+    from core.plugin.plugin_service import PluginService
+
+    with patch.object(PluginService, "extract_asset", return_value=b"\x89PNG\r\n\x1a\n\x00\xff") as read:
+        yield read
+
+
+@pytest.fixture
+def asset_client(
+    asset_harness: OAuthHarness,
+    asset_reader: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
+) -> Iterator[FlaskClient]:
+    def identity() -> tuple[App, EndUser]:
+        with asset_harness.base.sessions() as session:
+            app = session.get(App, asset_harness.base.context.app_id)
+            user = session.get(EndUser, asset_harness.base.context.end_user_id)
+            assert app is not None
+            assert user is not None
+            return app, user
+
+    definitions = AppDefinitionQueryService(
+        definitions=AppDefinitionQueryRepository(session_factory=asset_harness.base.sessions),
+        plugin_verified=lambda *_args: False,
+        plugin_readme=lambda *_args: "",
+        plugin_asset=asset_reader,
+        builtin_icon_url_prefix="",
+        connection_revisions=PluginConnectionRevisions(
+            providers=asset_harness.providers, snapshots=asset_harness.base.repository
+        ),
+    )
+    monkeypatch.setattr(wraps, "decode_jwt_token", identity)
+    app = Flask(__name__)
+    app.extensions["application_services"] = replace(application_service_graph, app_definitions=definitions)
+    app.config["TESTING"] = True
+    app.register_blueprint(bp)
+    with app.test_client() as asset_client:
+        yield asset_client
+
+
+def test_asset_returns_package_bytes(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock
+) -> None:
+    identifier = asset_harness.providers.controller.plugin_unique_identifier
+    response = asset_client.get(
+        "/api/connections/asset", query_string={"plugin_unique_identifier": identifier, "file_name": "images/setup.png"}
+    )
+    assert response.status_code == 200
+    assert response.data == asset_reader.return_value
+    assert response.mimetype == "application/octet-stream"
+    assert response.headers["Cache-Control"] == "no-store"
+    asset_reader.assert_called_once_with(asset_harness.base.context.tenant_id, identifier, "images/setup.png")
+    assert asset_harness.base.auth.calls == []
+
+
+@pytest.mark.parametrize("identifier", ["vendor/other:1.0.0@" + "a" * 64, "vendor/calendar:0.0.1@" + "b" * 64])
+def test_asset_rejects_plugins_outside_current_requirements(
+    asset_client: FlaskClient, asset_reader: MagicMock, identifier: str
+) -> None:
+    response = asset_client.get(
+        "/api/connections/asset", query_string={"plugin_unique_identifier": identifier, "file_name": "setup.png"}
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+    asset_reader.assert_not_called()
+
+
+def test_asset_rejects_removed_requirements(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock
+) -> None:
+    with asset_harness.base.sessions.begin() as session:
+        workflow = session.get(Workflow, asset_harness.base.workflow_id)
+        assert workflow is not None
+        workflow.graph = '{"nodes":[]}'
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": "x",
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+    asset_reader.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "file_name", ["", "../secret", "images/../../secret", "/secret", "./setup.png", "a//b", "a/", "a\\b", "a\x00b"]
+)
+def test_asset_rejects_invalid_paths(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock, file_name: str
+) -> None:
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": file_name,
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+    asset_reader.assert_not_called()
+
+
+@pytest.mark.parametrize("query", [{}, {"plugin_unique_identifier": "plugin"}, {"file_name": "setup.png"}])
+def test_asset_requires_identifier_and_filename(
+    asset_client: FlaskClient, asset_reader: MagicMock, query: dict[str, str]
+) -> None:
+    response = asset_client.get("/api/connections/asset", query_string=query)
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+    asset_reader.assert_not_called()
+
+
+@pytest.mark.parametrize("error", [ValueError("asset missing"), PluginDaemonBadRequestError("asset missing")])
+def test_asset_maps_package_lookup_failure(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock, error: Exception
+) -> None:
+    asset_reader.side_effect = error
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": "x",
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+    assert "asset missing" not in response.get_data(as_text=True)
+
+
+def test_guest_can_read_assets_when_personal_connection_creation_requires_login(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    with asset_harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUser).where(EndUser.id == asset_harness.base.context.end_user_id).values(account_id=None)
+        )
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": "x",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_asset_requires_web_passport(
+    asset_client: FlaskClient, asset_reader: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def reject_identity() -> tuple[App, EndUser]:
+        raise Unauthorized()
+
+    monkeypatch.setattr(wraps, "decode_jwt_token", reject_identity)
+    response = asset_client.get(
+        "/api/connections/asset", query_string={"plugin_unique_identifier": "plugin", "file_name": "x"}
+    )
+    assert response.status_code == 401
+    asset_reader.assert_not_called()

@@ -8,6 +8,7 @@ from .account import (
     TenantAccountRole,
     TenantStatus,
 )
+from .account_webapp import AccountWebApp
 from .agent import (
     Agent,
     AgentConfigDraft,
@@ -57,6 +58,7 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
+from .end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -103,6 +105,7 @@ from .human_input_v2 import (
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
 )
+from .installed_app_connection import InstalledAppConnectionConfiguration
 from .knowledge_agent import (
     KnowledgeAgentClient,
     KnowledgeAgentGrant,
@@ -260,6 +263,7 @@ __all__ = [
     "AccountStatus",
     "AccountStepByStepTourState",
     "AccountTrialAppRecord",
+    "AccountWebApp",
     "Agent",
     "AgentConfigDraft",
     "AgentConfigDraftType",
@@ -287,6 +291,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppConnection",
     "AppDatasetJoin",
     "AppKnowledgeFSSpaceJoin",
     "AppMCPServer",
@@ -327,6 +332,7 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EndUserConnection",
     "EvaluationConfiguration",
     "EvaluationRun",
     "EvaluationRunItem",
@@ -366,6 +372,7 @@ __all__ = [
     "IMSyncIdentitySnapshot",
     "IconType",
     "InstalledApp",
+    "InstalledAppConnectionConfiguration",
     "InvitationCode",
     "KnowledgeAgentClient",
     "KnowledgeAgentGrant",
@@ -438,6 +445,7 @@ __all__ = [
     "ResourceAccessTokenRelation",
     "ResourceAccessTokenResourceType",
     "SavedMessage",
+    "SessionConnection",
     "Site",
     "Skill",
     "SkillDraftFile",

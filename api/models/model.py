@@ -1480,6 +1480,7 @@ class Message(TypeBase):
         Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
+        Index("message_app_workflow_run_idx", "app_id", "workflow_run_id", "conversation_id"),
         Index("message_app_mode_idx", "app_mode"),
         Index("message_created_at_id_idx", "created_at", "id"),
     )
@@ -2041,6 +2042,8 @@ class EndUser(UserMixin, TypeBase):
         sa.PrimaryKeyConstraint("id", name="end_user_pkey"),
         sa.Index("end_user_session_id_idx", "session_id", "type"),
         sa.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
+        sa.UniqueConstraint("tenant_id", "app_id", "type", "account_id", name="end_user_app_account_key"),
+        sa.Index("end_user_account_apps_idx", "account_id", "type", "tenant_id", "app_id", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
@@ -2057,6 +2060,8 @@ class EndUser(UserMixin, TypeBase):
     _is_anonymous: Mapped[bool] = mapped_column(
         "is_anonymous", sa.Boolean, nullable=False, server_default=sa.true(), default=True
     )
+    # Internal identity link; never include it in public DTOs or Passport claims.
+    account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     @property
     @override
@@ -2304,7 +2309,7 @@ class UploadFile(TypeBase):
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
-        sa.Index("upload_file_tenant_idx", "tenant_id"),
+        sa.Index("upload_file_owner_idx", "tenant_id", "created_by_role", "created_by"),
     )
 
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips
@@ -2321,7 +2326,7 @@ class UploadFile(TypeBase):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
-    # The `created_by` field stores the ID of the entity that created this upload file.
+    # The `created_by` field stores the current owner; Guest migration can update this ID.
     #
     # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
     # `END_USER` corresponds to `EndUser.id`; `DATASET_API_KEY` corresponds to `ApiToken.id`.

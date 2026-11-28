@@ -4,11 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
 import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
-import {
-  createConsoleQueryClient,
-  createFeaturesFixture,
-  renderWithConsoleQuery,
-} from '@/test/console/query-data'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createAppInfoDialogHandles } from '../app-info-dialog-handles'

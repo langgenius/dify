@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Self, override
 
 from pydantic import model_validator
 from pydantic.fields import FieldInfo
@@ -91,6 +91,17 @@ class DifyConfig(
     # please consider to arrange it in the proper config group of existed or added
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
+
+    @model_validator(mode="after")
+    def resolve_edition_defaults(self) -> Self:
+        """Fill omitted settings after validation; explicit overrides survive revalidation."""
+        defaults = self._end_user_auth_defaults
+        # Preserve fields_set so revalidation can still distinguish overrides from defaults.
+        if "END_USER_AUTH_ALLOW_ANONYMOUS" not in self.model_fields_set:
+            object.__setattr__(self, "END_USER_AUTH_ALLOW_ANONYMOUS", defaults.allow_anonymous)
+        if "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in self.model_fields_set:
+            object.__setattr__(self, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", defaults.account_passport_enabled)
+        return self
 
     @model_validator(mode="after")
     def validate_knowledge_fs_production_origin(self) -> "DifyConfig":

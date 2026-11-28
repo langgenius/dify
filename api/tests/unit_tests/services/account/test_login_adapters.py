@@ -41,6 +41,7 @@ from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeChallengeStatus,
     EmailCodeLoginCommand,
+    LoginMode,
     PasswordLoginCommand,
     RefreshAccountStatus,
 )
@@ -107,11 +108,12 @@ def _invited_world(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     *,
     password: bool,
+    status: AccountStatus = AccountStatus.PENDING,
 ) -> tuple[Dependencies, AccountActivationService, str]:
     redis, commands = redis_transport
     commands.side_effect = RedisCommandEmulator()
     with sqlite_session_factory.begin() as session:
-        account = Account(name="invitee", email="invitee@example.com", status=AccountStatus.PENDING)
+        account = Account(name="invitee", email="invitee@example.com", status=status)
         account.id = "account-1"
         if password:
             account.password = "hash"
@@ -126,7 +128,7 @@ def _invited_world(
             email="invitee@example.com",
             workspace_id="workspace-1",
             role="editor",
-            requires_setup=True,
+            requires_setup=status == AccountStatus.PENDING,
         )
     )
     activation_accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
@@ -168,18 +170,18 @@ def test_invitation_gateway_resolves_the_invited_email(
 
 
 @pytest.mark.parametrize("method", ["password", "email-code"])
-@pytest.mark.parametrize("workspace_creation_allowed", [False, True], ids=["no-self-serve", "cloud"])
+@pytest.mark.parametrize("status", [AccountStatus.PENDING, AccountStatus.UNINITIALIZED])
 def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     method: str,
-    workspace_creation_allowed: bool,
+    status: AccountStatus,
 ) -> None:
     dependencies, activation, token = _invited_world(
-        sqlite_session_factory, redis_transport, password=method == "password"
+        sqlite_session_factory, redis_transport, password=method == "password", status=status
     )
-    dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
-    service = dependencies.service()
+    dependencies.policies.workspace_creation_allowed = False
+    service = dependencies.service(defer_workspace_creation=True)
 
     if method == "password":
         result = service.login_with_password(
@@ -187,7 +189,7 @@ def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
                 email="invitee@example.com", password="password", invite_token=token, ip_address="127.0.0.1"
             )
         )
-        assert result.workspace_found is True
+        assert result.workspace_found is None
         assert result.tokens is not None
     else:
         service.login_with_email_code(
@@ -210,14 +212,21 @@ def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
     activation.activate(
         ActivationCommand(
             invitation=InvitationLookup(workspace_id=None, email=None, token=token),
-            name="Invitee",
-            interface_language="en-US",
-            timezone="UTC",
+            name="Invitee" if status == AccountStatus.PENDING else None,
+            interface_language="en-US" if status == AccountStatus.PENDING else None,
+            timezone="UTC" if status == AccountStatus.PENDING else None,
         ),
         authenticated_account_id="account-1",
     )
 
     assert _memberships(sqlite_session_factory) == [("workspace-1", TenantAccountRole.EDITOR, True)]
+    with sqlite_session_factory() as session:
+        account = session.get(Account, "account-1")
+        assert account is not None
+        assert account.status == AccountStatus.ACTIVE
+        assert account.initialized_at is not None
+        assert account.first_workspace_created_at is None
+        assert account.name == ("Invitee" if status == AccountStatus.PENDING else "invitee")
 
 
 def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
@@ -289,7 +298,7 @@ def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
     redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis, commands = redis_transport
-    commands.side_effect = [b"account-1", 1, 1, b"stored-refresh", 1, 1]
+    commands.side_effect = [b"account-1", 1, 1, b"account-1", 1, 1]
     gateway = adapters.RedisAccountSessionGateway(redis=redis)
     monkeypatch.setattr(
         gateway,
@@ -301,14 +310,16 @@ def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
 
     assert gateway.resolve_refresh_token("refresh") == "account-1"
     assert gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
-    gateway.revoke("account-1")
+    gateway.revoke("stored-refresh")
 
     deleted_keys = [call.args[1] for call in commands.call_args_list if call.args[0] == "DEL"]
     assert deleted_keys == [
         "refresh_token:refresh",
-        "account_refresh_token:account-1",
         "refresh_token:stored-refresh",
-        "account_refresh_token:account-1",
+    ]
+    assert [call.args[3:] for call in commands.call_args_list if call.args[0] == "EVAL"] == [
+        ("account_refresh_token:account-1", "refresh"),
+        ("account_refresh_token:account-1", "stored-refresh"),
     ]
     assert commands.call_count == 6
 
@@ -711,3 +722,52 @@ def test_reset_password_gateway_releases_reservation_after_failure(
 
     assert commands.call_args_list[0].args[0] == "EVALSHA"
     assert commands.call_args_list[-1].args[:2] == ("ZREM", "reset:user@example.com")
+
+
+@pytest.mark.parametrize("status", [AccountStatus.UNINITIALIZED, AccountStatus.ACTIVE, AccountStatus.BANNED])
+def test_end_user_refresh_does_not_require_or_create_workspace(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    status: AccountStatus,
+) -> None:
+    account = _persist_account(sqlite_session)
+    account.status = status
+    sqlite_session.commit()
+    gateway = adapters.SQLAlchemyAccountRefreshPreparationGateway(
+        accounts=SQLAlchemyAccountRepository(sqlite_session_factory)
+    )
+    expected = RefreshAccountStatus.BANNED if status == AccountStatus.BANNED else RefreshAccountStatus.READY
+    assert gateway.prepare(account.id, mode=LoginMode.END_USER) == expected
+    assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+
+
+def test_end_user_email_login_creates_account_without_builder_resources(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts = account_domain.repository  # type: ignore[assignment]
+    dependencies.workspaces = account_domain.workspaces  # type: ignore[assignment]
+    dependencies.accounts_provisioning = account_domain.accounts  # type: ignore[assignment]
+    dependencies.policies.workspace_creation_allowed = False
+    account_domain.policy.is_workspace_creation_allowed.return_value = False
+    tokens = dependencies.service().login_with_email_code(
+        EmailCodeLoginCommand(
+            email="visitor@example.com",
+            code="123456",
+            token="verified-challenge",
+            turnstile_token=None,
+            language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+            mode=LoginMode.END_USER,
+        )
+    )
+    assert tokens.access_token == "access"
+    account = sqlite_session.scalar(select(Account).where(Account.email == "visitor@example.com"))
+    assert account is not None
+    assert account.status == AccountStatus.UNINITIALIZED
+    assert account.initialized_at is None
+    assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+    assert sqlite_session.scalar(select(Tenant)) is None
+    account_domain.policy.try_join_default_workspace.assert_not_called()

@@ -24,7 +24,6 @@ import type {
   StreamSender,
 } from './event-stream'
 import type { OnUploadProgress } from './xhr-fetch'
-import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
@@ -360,7 +359,19 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
         : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
     return selectAppParameters(parameters)
   }
-  return webAppClient.parameters.get() as Promise<ChatConfig>
+  const parameters = await webAppClient.parameters.get()
+  return {
+    ...selectAppParameters(parameters),
+    account_login_enabled: parameters.account_login_enabled,
+    allow_anonymous_end_user_auth: parameters.allow_anonymous_end_user_auth,
+    connection_requirements: parameters.connection_requirements,
+    connection_revision: parameters.connection_revision,
+    console_web_url: parameters.console_web_url,
+    requires_end_user_connections: parameters.requires_end_user_connections,
+    show_thoughts: parameters.show_thoughts
+      ? { enabled: parameters.show_thoughts.enabled ?? false }
+      : undefined,
+  }
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {

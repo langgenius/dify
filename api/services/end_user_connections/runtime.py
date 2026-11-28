@@ -1,0 +1,126 @@
+"""Load current credentials for one fixed execution selection."""
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any, Protocol
+
+from constants.end_user_connections import ConnectionCredentialStatus, NodeConnectionStatus
+from services.end_user_connections.contracts import ConnectionCredentialChecks
+from services.end_user_connections.entities import (
+    ConnectionAccessRecord,
+    ConnectionCheckSnapshot,
+    ConnectionMutationGuard,
+    NodeConnectionSelection,
+    ToolConnectionTarget,
+    WebConnectionContext,
+)
+from services.end_user_connections.errors import (
+    ConnectionConflictError,
+    ConnectionIdentityError,
+    ConnectionInvalidCredentialsError,
+    ConnectionReauthorizationRequiredError,
+)
+from services.end_user_connections.management import ConnectionChanges, ConnectionCipher, ConnectionStore
+from services.end_user_connections.policy import (
+    connection_mutation_guard,
+    require_applicable_connection,
+    require_personal_connection_access,
+)
+from services.end_user_connections.status import resolve_node_connection_status
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedConnectionCredentials:
+    access: ConnectionAccessRecord
+    credentials: Mapping[str, Any] = field(repr=False)
+
+
+class ConnectionRuntimeStore(ConnectionStore, Protocol):
+    def record_guest_use(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
+        """Atomically verify current Guest owner/revision and advance activity, or reject use.
+
+        The write serializes with expiry and Claim. It neither mutates the grant
+        revision nor touches defaults, selections or the Run.
+        """
+        ...
+
+
+class ConnectionRuntimeService:
+    def __init__(
+        self, *, store: ConnectionRuntimeStore, checks: ConnectionCredentialChecks, cipher: ConnectionCipher
+    ) -> None:
+        self._store = store
+        self._checks = checks
+        self._cipher = cipher
+
+    def resolve(
+        self,
+        context: WebConnectionContext,
+        *,
+        connection: ConnectionAccessRecord,
+        target: ToolConnectionTarget,
+        connection_revision: str,
+    ) -> ResolvedConnectionCredentials:
+        """Resolve a fixed execution choice under its authenticated owner and authorization revision.
+
+        Recheck applicability and readiness before decryption. Return process-local
+        credentials only after the final owner/revision guard succeeds; propagate
+        invalidity, reauthorization and concurrent mutation without changing selections.
+        """
+        require_personal_connection_access(context)
+        connection_id = connection.id
+        access = require_applicable_connection(
+            context,
+            connection,
+            workflow_id=target.workflow_id,
+            node_id=target.node_id,
+            target=target,
+        )
+        if access.credential_status == ConnectionCredentialStatus.INVALID:
+            raise ConnectionInvalidCredentialsError()
+        if access.credential_status == ConnectionCredentialStatus.RECONNECT_REQUIRED:
+            raise ConnectionReauthorizationRequiredError()
+        outcome = self._checks.check_connection_result(context, connection_id, connection_revision=connection_revision)
+        current = self._store.find(context, connection_id)
+        latest = require_applicable_connection(
+            context,
+            current.access if current is not None else None,
+            workflow_id=target.workflow_id,
+            node_id=target.node_id,
+            target=target,
+        )
+        if latest.revision != outcome.revision:
+            raise ConnectionConflictError()
+        status = resolve_node_connection_status(
+            context,
+            selection=NodeConnectionSelection(target.workflow_id, target.node_id, connection_id),
+            target=target,
+            record=latest,
+            check=ConnectionCheckSnapshot(connection_id, outcome.revision, outcome.view.check),
+        )
+        if status == NodeConnectionStatus.INVALID:
+            raise ConnectionInvalidCredentialsError()
+        if status == NodeConnectionStatus.RECONNECT_REQUIRED:
+            raise ConnectionReauthorizationRequiredError()
+        if status != NodeConnectionStatus.CONNECTED:
+            raise ConnectionConflictError()
+        assert current is not None
+        credentials = self._cipher.decrypt(context.tenant_id, current.encrypted_credentials)
+        # A no-change CAS also detects deletion or replacement during decryption.
+        self._store.update(
+            context,
+            connection_mutation_guard(context, latest),
+            ConnectionChanges(name=None, encrypted_credentials=None, credential_status=None, touch_activity=False),
+        )
+        return ResolvedConnectionCredentials(access=latest, credentials=credentials)
+
+    def record_guest_use(self, context: WebConnectionContext, connection: ConnectionAccessRecord) -> None:
+        """Fence actual dispatch using an already resolved Guest grant, not a new selection.
+
+        If ownership, the credential revision, or the Connection changed since
+        resolution, reject dispatch. Parameter discovery and checks never call this.
+        """
+        if context.account_id is not None:
+            raise ConnectionIdentityError()
+        require_personal_connection_access(context)
+        self._store.record_guest_use(context, connection_mutation_guard(context, connection))

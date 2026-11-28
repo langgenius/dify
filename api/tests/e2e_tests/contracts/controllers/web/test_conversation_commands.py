@@ -18,6 +18,7 @@ from models.model import AppMode, Conversation, EndUser
 from models.web import PinnedConversation
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_command_service import ConversationCommandService
+from services.web_identity_service import WebIdentityService
 from tests.e2e_tests.contracts.controllers.web import test_conversation_rename as rename_tests
 from tests.e2e_tests.contracts.controllers.web.test_conversation_rename import _Harness as RenameHarness
 
@@ -31,6 +32,7 @@ def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_id
 @dataclass(frozen=True)
 class _Services:
     conversation_commands: ConversationCommandService
+    web_identity: WebIdentityService
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,8 @@ def harness(rename_harness: RenameHarness) -> _Harness:
             conversations=ConversationRepository(session_factory=rename_harness.repository_factory),
             enqueue_delete_cleanup=enqueue_cleanup,
             collect_agent_workspaces=_unexpected_agent_workspace_collection,
-        )
+        ),
+        web_identity=rename_harness.web_identity,
     )
     rename_harness.api.add_resource(ConversationApi, "/conversations/<uuid:c_id>")
     rename_harness.api.add_resource(ConversationPinApi, "/conversations/<uuid:c_id>/pin")

@@ -194,6 +194,26 @@ def test_deployment_edition_accepts_every_supported_value(edition: DeploymentEdi
     assert config.DEPLOYMENT_EDITION is edition
 
 
+@pytest.mark.parametrize(
+    ("edition", "allow_anonymous", "passport_enabled"),
+    [("COMMUNITY", True, False), ("ENTERPRISE", False, False), ("CLOUD", False, True)],
+)
+def test_end_user_auth_defaults_and_explicit_overrides(
+    edition: str, allow_anonymous: bool, passport_enabled: bool
+) -> None:
+    defaults = _make_config(DEPLOYMENT_EDITION=edition)
+    assert defaults.END_USER_AUTH_ALLOW_ANONYMOUS is allow_anonymous
+    assert defaults.WEBAPP_ACCOUNT_PASSPORT_ENABLED is passport_enabled
+
+    overrides = _make_config(
+        DEPLOYMENT_EDITION=edition,
+        END_USER_AUTH_ALLOW_ANONYMOUS=not allow_anonymous,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=not passport_enabled,
+    )
+    assert overrides.END_USER_AUTH_ALLOW_ANONYMOUS is not allow_anonymous
+    assert overrides.WEBAPP_ACCOUNT_PASSPORT_ENABLED is not passport_enabled
+
+
 def test_new_user_default_plugin_ids_are_parsed() -> None:
     config = _make_config(
         NEW_USER_DEFAULT_PLUGIN_IDS="langgenius/openai, langgenius/gemini",
@@ -456,3 +476,96 @@ def test_celery_broker_url_with_special_chars_password(
     assert redis_config["userid"] == expected_username  # kombu uses 'userid' not 'username'
     assert redis_config["password"] == expected_password
     assert redis_config["virtual_host"] == expected_db  # kombu uses 'virtual_host' not 'db'
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("account_login_enabled", [False, True])
+@pytest.mark.parametrize("allow_anonymous", [False, True])
+def test_console_end_user_auth_defaults_to_disabled_independent_of_webapp_policies(
+    edition: DeploymentEdition,
+    account_login_enabled: bool,
+    allow_anonymous: bool,
+) -> None:
+    config = _make_config(
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=account_login_enabled,
+        END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous,
+    )
+
+    assert config.CONSOLE_END_USER_AUTH_ENABLED is False
+    assert "CONSOLE_END_USER_AUTH_ENABLED" not in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [False, True])
+def test_explicit_console_end_user_auth_setting_is_independent_of_webapp_policies(
+    edition: DeploymentEdition, enabled: bool
+) -> None:
+    config = _make_config(
+        DEPLOYMENT_EDITION=edition,
+        CONSOLE_END_USER_AUTH_ENABLED=enabled,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=not enabled,
+        END_USER_AUTH_ALLOW_ANONYMOUS=not enabled,
+    )
+
+    assert config.CONSOLE_END_USER_AUTH_ENABLED is enabled
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is not enabled
+    assert config.END_USER_AUTH_ALLOW_ANONYMOUS is not enabled
+
+
+@pytest.mark.parametrize(("value", "expected"), [("true", True), ("false", False)])
+def test_console_end_user_auth_loads_environment_setting(
+    monkeypatch: pytest.MonkeyPatch, value: str, expected: bool
+) -> None:
+    monkeypatch.setenv("CONSOLE_END_USER_AUTH_ENABLED", value)
+
+    assert DifyConfig(_env_file=None).CONSOLE_END_USER_AUTH_ENABLED is expected
+
+
+def test_console_end_user_auth_rejects_invalid_setting() -> None:
+    with pytest.raises(ValidationError, match="CONSOLE_END_USER_AUTH_ENABLED"):
+        _make_config(CONSOLE_END_USER_AUTH_ENABLED="invalid")
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_account_passport_default_depends_on_edition_only_when_unset(edition: DeploymentEdition) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition)
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is (edition == DeploymentEdition.CLOUD)
+    assert "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [None, True, False])
+def test_anonymous_end_user_auth_edition_defaults_and_overrides(
+    edition: DeploymentEdition, enabled: bool | None
+) -> None:
+    values = {} if enabled is None else {"END_USER_AUTH_ALLOW_ANONYMOUS": enabled}
+    config = _make_config(DEPLOYMENT_EDITION=edition, **values)
+    assert config.END_USER_AUTH_ALLOW_ANONYMOUS is (
+        edition == DeploymentEdition.COMMUNITY if enabled is None else enabled
+    )
+    assert ("END_USER_AUTH_ALLOW_ANONYMOUS" in config.model_fields_set) is (enabled is not None)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_explicit_account_passport_setting_overrides_every_edition(edition: DeploymentEdition, enabled: bool) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition, WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is enabled
+    assert "WEBAPP_ACCOUNT_PASSPORT_ENABLED" in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("value", [None, "true", "false"])
+def test_account_passport_environment_setting_overrides_edition(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    value: str | None,
+) -> None:
+    monkeypatch.setenv("DEPLOYMENT_EDITION", edition.value)
+    monkeypatch.delenv("WEBAPP_ACCOUNT_PASSPORT_ENABLED", raising=False)
+    if value is not None:
+        monkeypatch.setenv("WEBAPP_ACCOUNT_PASSPORT_ENABLED", value)
+    config = DifyConfig(_env_file=None)
+    expected = edition == DeploymentEdition.CLOUD if value is None else value == "true"
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is expected

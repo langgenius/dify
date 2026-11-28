@@ -150,7 +150,9 @@ def harness(
 
     event.listen(admission_factory, "after_begin", track)
     event.listen(query_factory, "after_begin", track_query)
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)

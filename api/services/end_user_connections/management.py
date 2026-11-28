@@ -1,0 +1,358 @@
+"""Personal Connection management with owner-scoped persistence and bounded writes."""
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any, Protocol
+from uuid import UUID
+
+from clients.plugin.auth_entities import CredentialCheckResult
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
+from core.entities.provider_entities import ProviderConfig
+from services.end_user_connections.contracts import (
+    ConnectionCheckOutcome,
+    ConnectionCheckView,
+    ConnectionPage,
+    ConnectionRevisionView,
+    ConnectionSummary,
+    ConnectionTargetInput,
+    ConnectionTargetResolver,
+    CreateApiKeyConnectionInput,
+    ListConnectionsInput,
+    UpdateConnectionInput,
+)
+from services.end_user_connections.entities import (
+    ConnectionAccessRecord,
+    ConnectionManagementContext,
+    ConnectionMutationGuard,
+    WebConnectionContext,
+)
+from services.end_user_connections.errors import (
+    ConnectionCheckUnavailableError,
+    ConnectionConfigurationError,
+    ConnectionInvalidCredentialsError,
+    ConnectionNotFoundError,
+)
+from services.end_user_connections.policy import (
+    connection_mutation_guard,
+    require_creation_target,
+    require_owned_connection,
+    require_personal_connection_access,
+)
+from services.end_user_connections.revision import ConnectionProviderRevisions, ConnectionRevisionAcceptance
+
+
+@dataclass(frozen=True, slots=True)
+class StoredConnection:
+    access: ConnectionAccessRecord
+    summary: ConnectionSummary
+    encrypted_credentials: str = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionChanges:
+    # None preserves each stored field; an API key cannot be replaced with null.
+    name: str | None
+    encrypted_credentials: str | None = field(repr=False)
+    credential_status: ConnectionCredentialStatus | None
+    touch_activity: bool
+    revision_acceptance: ConnectionRevisionAcceptance | None = None
+
+
+class ConnectionStore(Protocol):
+    def list(
+        self, context: WebConnectionContext, query: ListConnectionsInput, after_id: str | None
+    ) -> ConnectionPage: ...
+
+    def find(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection | None: ...
+
+    def create_api_key(
+        self,
+        context: WebConnectionContext,
+        *,
+        workflow_id: str,
+        provider: str,
+        name: str | None,
+        encrypted_credentials: str,
+        revision_acceptance: ConnectionRevisionAcceptance,
+    ) -> ConnectionSummary:
+        """Generate an omitted or empty name within the locked owner/Provider scope."""
+        ...
+
+    def update(
+        self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
+    ) -> StoredConnection:
+        """Revalidate identity and CAS; a no-change check still verifies the guard."""
+        ...
+
+    def delete(self, context: ConnectionManagementContext, guard: ConnectionMutationGuard) -> None: ...
+
+
+class ConnectionCipher(Protocol):
+    def encrypt(self, tenant_id: str, credentials: Mapping[str, Any]) -> str: ...
+
+    def decrypt(self, tenant_id: str, ciphertext: str) -> dict[str, Any]: ...
+
+
+class ApiKeyCredentialGateway(Protocol):
+    def get_schema(
+        self, tenant_id: str, provider: str, *, plugin_unique_identifier: str
+    ) -> tuple[ProviderConfig, ...]: ...
+
+    def validate_format(
+        self,
+        tenant_id: str,
+        provider: str,
+        credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> dict[str, Any]: ...
+
+    def check(
+        self,
+        context: WebConnectionContext,
+        provider: str,
+        credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> CredentialCheckResult: ...
+
+
+class OAuthConnectionLifecycle(Protocol):
+    def check(
+        self, context: WebConnectionContext, record: StoredConnection, *, plugin_unique_identifier: str
+    ) -> ConnectionCheckOutcome: ...
+
+    def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
+        """Best effort after a successful conditional delete; never restore the record."""
+        ...
+
+
+class ConnectionService:
+    """Manage owned credentials without requiring workspace membership or saved selections.
+
+    Missing and foreign IDs are indistinguishable. Validate external results before
+    encryption and apply writes with owner/revision guards; failed checks preserve
+    stored credentials. Management never chooses a Connection for an App or Session.
+    """
+
+    def __init__(
+        self,
+        *,
+        store: ConnectionStore,
+        targets: ConnectionTargetResolver,
+        credentials: ApiKeyCredentialGateway,
+        cipher: ConnectionCipher,
+        oauth: OAuthConnectionLifecycle,
+        revisions: ConnectionProviderRevisions,
+    ) -> None:
+        self._store = store
+        self._targets = targets
+        self._credentials = credentials
+        self._cipher = cipher
+        self._oauth = oauth
+        self._revisions = revisions
+
+    def list_connections(self, context: WebConnectionContext, query: ListConnectionsInput) -> ConnectionPage:
+        require_personal_connection_access(context)
+        try:
+            after_id = str(UUID(query.cursor)) if query.cursor is not None else None
+        except ValueError:
+            raise ValueError("Invalid connection cursor.") from None
+        return self._store.list(context, query, after_id)
+
+    def get_connection(self, context: ConnectionManagementContext, connection_id: str) -> ConnectionSummary:
+        return self._load(context, connection_id).summary
+
+    def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView:
+        record = self._load(context, connection_id)
+        source = record.access.oauth_client.source if record.access.oauth_client is not None else None
+        return ConnectionRevisionView(
+            connection_revision=self._revisions.resolve(
+                context,
+                record.access.provider,
+                oauth_client_source=source,
+            )
+        )
+
+    def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
+        require_personal_connection_access(context)
+        target = self._targets.resolve(context, command)
+        require_creation_target(
+            context,
+            workflow_id=target.workflow_id,
+            node_id=command.node_id,
+            credential_type=ConnectionCredentialType.API_KEY,
+            target=target,
+        )
+        admitted = self._revisions.require(context, target.provider, command.connection_revision)
+        credentials = self._credentials.validate_format(
+            context.tenant_id,
+            target.provider,
+            command.credentials,
+            plugin_unique_identifier=admitted.plugin_unique_identifier,
+        )
+        self._require_accepted(
+            self._credentials.check(
+                context, target.provider, credentials, plugin_unique_identifier=admitted.plugin_unique_identifier
+            )
+        )
+        target = self._targets.resolve(context, command)
+        admitted = self._revisions.require(context, target.provider, command.connection_revision)
+        ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
+        return self._store.create_api_key(
+            context,
+            workflow_id=target.workflow_id,
+            provider=target.provider,
+            name=command.name,
+            encrypted_credentials=ciphertext,
+            revision_acceptance=self._revisions.acceptance(
+                context, target.provider, command.connection_revision, admitted
+            ),
+        )
+
+    def get_api_key_schema(
+        self, context: WebConnectionContext, reference: ConnectionTargetInput
+    ) -> tuple[ProviderConfig, ...]:
+        require_personal_connection_access(context)
+        target = self._targets.resolve(context, reference)
+        require_creation_target(
+            context,
+            workflow_id=target.workflow_id,
+            node_id=reference.node_id,
+            credential_type=ConnectionCredentialType.API_KEY,
+            target=target,
+        )
+        admitted = self._revisions.require(context, target.provider, reference.connection_revision)
+        return self._credentials.get_schema(
+            context.tenant_id, target.provider, plugin_unique_identifier=admitted.plugin_unique_identifier
+        )
+
+    def update_connection(
+        self, context: WebConnectionContext, connection_id: str, command: UpdateConnectionInput
+    ) -> ConnectionSummary:
+        """Apply an owned name or credential update and record successful activity.
+
+        Rejected updates do not advance activity. Credential checks outside a
+        user update use their own path and never count as activity.
+        """
+        record = self._load(context, connection_id)
+        guard = connection_mutation_guard(context, record.access)
+        ciphertext = None
+        status = None
+        acceptance = None
+        if command.credentials is not None:
+            self._require_api_key(record)
+            assert command.connection_revision is not None
+            admitted = self._revisions.require(context, record.access.provider, command.connection_revision)
+            credentials = self._credentials.validate_format(
+                context.tenant_id,
+                record.access.provider,
+                command.credentials,
+                plugin_unique_identifier=admitted.plugin_unique_identifier,
+            )
+            self._require_accepted(
+                self._credentials.check(
+                    context,
+                    record.access.provider,
+                    credentials,
+                    plugin_unique_identifier=admitted.plugin_unique_identifier,
+                )
+            )
+            admitted = self._revisions.require(context, record.access.provider, command.connection_revision)
+            acceptance = self._revisions.acceptance(
+                context, record.access.provider, command.connection_revision, admitted
+            )
+            ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
+            status = ConnectionCredentialStatus.CONNECTED
+        updated = self._store.update(
+            context,
+            guard,
+            ConnectionChanges(
+                name=command.name,
+                encrypted_credentials=ciphertext,
+                credential_status=status,
+                touch_activity=True,
+                revision_acceptance=acceptance,
+            ),
+        )
+        return updated.summary
+
+    def delete_connection(self, context: ConnectionManagementContext, connection_id: str) -> None:
+        record = self._load(context, connection_id)
+        self._store.delete(context, connection_mutation_guard(context, record.access))
+        if record.access.credential_type == ConnectionCredentialType.OAUTH2:
+            self._oauth.revoke_deleted(context, record)
+
+    def check_connection_result(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionCheckOutcome:
+        """Check an owned Connection against the submitted Provider authorization revision.
+
+        Refresh expired OAuth when supported, then return check evidence pinned to
+        the checked credential revision. Unsupported and transient checks preserve
+        stored validity; unrefreshable expiry is invalid. Revalidate after external
+        I/O and propagate stale-owner/revision failures without touching activity
+        or saved selections.
+        """
+        record = self._load(context, connection_id)
+        source = record.access.oauth_client.source if record.access.oauth_client is not None else None
+        admitted = self._revisions.require(
+            context,
+            record.access.provider,
+            connection_revision,
+            oauth_client_source=source,
+        )
+        if record.access.credential_type == ConnectionCredentialType.OAUTH2:
+            outcome = self._oauth.check(context, record, plugin_unique_identifier=admitted.plugin_unique_identifier)
+            self._revisions.require(
+                context,
+                record.access.provider,
+                connection_revision,
+                oauth_client_source=source,
+            )
+            return outcome
+        guard = connection_mutation_guard(context, record.access)
+        credentials = self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
+        result = self._credentials.check(
+            context, record.access.provider, credentials, plugin_unique_identifier=admitted.plugin_unique_identifier
+        )
+        self._revisions.require(context, record.access.provider, connection_revision)
+        status = None
+        if result.status == "valid":
+            status = ConnectionCredentialStatus.CONNECTED
+        elif result.status == "invalid":
+            status = ConnectionCredentialStatus.INVALID
+        if status == record.access.credential_status:
+            status = None
+        current = self._store.update(
+            context,
+            guard,
+            ConnectionChanges(name=None, encrypted_credentials=None, credential_status=status, touch_activity=False),
+        )
+        return ConnectionCheckOutcome(
+            view=ConnectionCheckView(
+                connection_id=current.access.id, check=result, credential_status=current.access.credential_status
+            ),
+            revision=current.access.revision,
+        )
+
+    def _load(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection:
+        require_personal_connection_access(context)
+        record = self._store.find(context, connection_id)
+        if record is None or record.access.id != connection_id:
+            raise ConnectionNotFoundError()
+        require_owned_connection(context, record.access)
+        return record
+
+    @staticmethod
+    def _require_api_key(record: StoredConnection) -> None:
+        # OAuth secrets can only change through authorization or refresh.
+        if record.access.credential_type != ConnectionCredentialType.API_KEY:
+            raise ConnectionConfigurationError()
+
+    @staticmethod
+    def _require_accepted(result: CredentialCheckResult) -> None:
+        if result.status == "invalid":
+            raise ConnectionInvalidCredentialsError()
+        if result.status == "temporarily_unavailable":
+            raise ConnectionCheckUnavailableError()

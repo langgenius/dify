@@ -23,6 +23,7 @@ from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import ConversationSort
 from services.message_query_adapters import MessageFileResolver
+from services.web_identity_service import WebIdentityService
 from tests.e2e_tests.contracts.controllers.web import test_conversation_rename as rename_tests
 from tests.e2e_tests.contracts.controllers.web.test_conversation_rename import _Harness as RenameHarness
 from tests.helpers.unit.model_factories import make_conversation
@@ -33,6 +34,7 @@ rename_harness = rename_tests.harness
 @dataclass(frozen=True)
 class _Services:
     conversation_queries: ConversationQueryService
+    web_identity: WebIdentityService
 
 
 @dataclass(frozen=True)
@@ -68,7 +70,8 @@ def harness(rename_harness: RenameHarness) -> _Harness:
             files=MessageFileResolver(),
             conversations=ConversationRepository(session_factory=rename_harness.repository_factory),
             restore_inputs=restore,
-        )
+        ),
+        web_identity=rename_harness.web_identity,
     )
     rename_harness.api.add_resource(ConversationListApi, "/conversations")
     return _Harness(rename_harness, restored_inputs)

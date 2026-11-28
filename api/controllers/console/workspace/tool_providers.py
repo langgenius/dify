@@ -16,9 +16,12 @@ from pydantic import (
     model_validator,
 )
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
+from constants.end_user_connections import END_USER_OAUTH_CONTEXT_PREFIX
+from controllers.common.end_user_connection_oauth import redirect_end_user_connection_oauth
+from controllers.common.end_user_connections import ConnectionOAuthHTTPError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
@@ -65,6 +68,7 @@ from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import alphanumeric, dump_response, uuid_value
 from libs.login import login_required
 from models import Account
@@ -80,6 +84,7 @@ from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.workflow.tool_credentials import WorkflowToolEndUserAuthError
 
 logger = logging.getLogger(__name__)
 
@@ -349,6 +354,10 @@ class ApiToolPreviewResponse(RootModel[ApiToolPreviewResult]):
     pass
 
 
+class BuiltinToolProviderCreateResponse(SimpleResultResponse):
+    id: str = Field(description="ID of the created Workspace credential, used as the Connection ID.")
+
+
 class BuiltinProviderOAuthClientSchemaResponse(ResponseModel):
     schema_: list[ProviderConfig] = Field(alias="schema")
     is_oauth_custom_client_enabled: bool
@@ -474,6 +483,7 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     SimpleResultResponse,
+    BuiltinToolProviderCreateResponse,
     ApiProviderDetailResponse,
     ApiSchemaParseResponse,
     ApiProviderRemoteSchemaResponse,
@@ -583,7 +593,7 @@ class ToolBuiltinProviderAddApi(Resource):
     @console_ns.response(
         200,
         "Builtin provider added successfully",
-        console_ns.models[SimpleResultResponse.__name__],
+        console_ns.models[BuiltinToolProviderCreateResponse.__name__],
     )
     @setup_required
     @login_required
@@ -594,8 +604,14 @@ class ToolBuiltinProviderAddApi(Resource):
     @with_current_tenant_id
     @model_validate(BuiltinToolAddPayload)
     def post(self, req_data: BuiltinToolAddPayload, tenant_id: str, user: Account, provider: str):
+        """Create a credential for the admitted member and return its persisted ID.
+
+        Requires validated credentials and Workspace creation permission. Success
+        preserves the result field and exposes the created credential as a Connection;
+        creation failures propagate without returning an ID or credential secrets.
+        """
         return dump_response(
-            SimpleResultResponse,
+            BuiltinToolProviderCreateResponse,
             BuiltinToolManageService.add_builtin_tool_provider(
                 user_id=user.id,
                 tenant_id=tenant_id,
@@ -911,9 +927,8 @@ class ToolWorkflowProviderCreateApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowToolCreatePayload)
     def post(self, req_data: WorkflowToolCreatePayload, tenant_id: str, user: Account):
-        return dump_response(
-            SimpleResultResponse,
-            WorkflowToolManageService.create_workflow_tool(
+        try:
+            result = WorkflowToolManageService.create_workflow_tool(
                 user_id=user.id,
                 tenant_id=tenant_id,
                 workflow_app_id=req_data.workflow_app_id,
@@ -924,7 +939,12 @@ class ToolWorkflowProviderCreateApi(Resource):
                 parameters=req_data.parameters,
                 privacy_policy=req_data.privacy_policy or "",
                 labels=req_data.labels or [],
-            ),
+            )
+        except WorkflowToolEndUserAuthError as exc:
+            raise BadRequest(str(exc)) from exc
+        return dump_response(
+            SimpleResultResponse,
+            result,
         )
 
 
@@ -941,9 +961,8 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowToolUpdatePayload)
     def post(self, req_data: WorkflowToolUpdatePayload, tenant_id: str, user: Account):
-        return dump_response(
-            SimpleResultResponse,
-            WorkflowToolManageService.update_workflow_tool(
+        try:
+            result = WorkflowToolManageService.update_workflow_tool(
                 user.id,
                 tenant_id,
                 req_data.workflow_tool_id,
@@ -954,8 +973,10 @@ class ToolWorkflowProviderUpdateApi(Resource):
                 req_data.parameters,
                 req_data.privacy_policy or "",
                 req_data.labels or [],
-            ),
-        )
+            )
+        except WorkflowToolEndUserAuthError as exc:
+            raise BadRequest(str(exc)) from exc
+        return dump_response(SimpleResultResponse, result)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/delete")
@@ -1182,11 +1203,25 @@ class ToolPluginOAuthApi(Resource):
 @console_ns.route("/oauth/plugin/<path:provider>/tool/callback")
 class ToolOAuthCallback(Resource):
     @console_ns.response(302, "Redirect to OAuth callback page")
+    @error_responses(ConnectionOAuthHTTPError)
     @setup_required
     def get(self, provider: str):
+        """Complete an authorized OAuth attempt and redirect with its Connection ID.
+
+        Requires valid provider state and the initiating browser's proxy context.
+        Personal attempts retain their own callback flow; Workspace attempts expose
+        only the persisted credential ID after creation. Invalid attempts raise
+        without a success redirect or exposing provider credentials.
+        """
+        if personal_callback := redirect_end_user_connection_oauth(provider):
+            # response-contract:ignore redirect to the originating Web API cookie boundary
+            return personal_callback
         context_id = request.cookies.get("context_id")
         if not context_id:
             raise Forbidden("context_id not found")
+
+        if context_id.startswith(END_USER_OAUTH_CONTEXT_PREFIX):
+            raise ConnectionOAuthHTTPError()
 
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:
@@ -1242,7 +1277,7 @@ class ToolOAuthCallback(Resource):
             visibility = PermissionEnum.ONLY_ME
         if visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
             visibility = PermissionEnum.ONLY_ME
-        BuiltinToolManageService.add_builtin_tool_provider(
+        connection = BuiltinToolManageService.add_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
             provider=provider,
@@ -1252,7 +1287,7 @@ class ToolOAuthCallback(Resource):
             visibility=visibility.value,
         )
         # response-contract:ignore redirect response
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback?connection_id={connection['id']}")
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")

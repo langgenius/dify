@@ -145,6 +145,12 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
+    # Personal credential resolution is wired through the application composition root.
+    core.workflow.node_runtime -> extensions.application_services.end_user_connections
+    # Initial selections share the new Conversation transaction through the composition root.
+    core.app.apps.message_based_app_generator -> extensions.application_services.end_user_connections
+    # Web workflow admission delegates to application-owned hooks.
+    core.app.apps.base_app_generator -> extensions.application_services.web_execution
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
     # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
@@ -203,6 +209,80 @@ forbidden_modules =
     libs.rsa
 allow_indirect_imports = True
 
+[importlinter:contract:end-user-connection-policy-boundary]
+name = EndUser Connection contracts and policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.end_user_connections
+    services.workflow.tool_credentials
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    flask
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:guest-connection-expiry-boundary]
+name = Guest Connection expiry orchestration uses only its application ports
+type = forbidden
+source_modules =
+    services.end_user_connections.guest_expiry
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    celery
+    sqlalchemy
+    repositories
+    models
+    tasks
+allow_indirect_imports = True
+
+[importlinter:contract:guest-connection-cleanup-task-boundary]
+name = Guest Connection cleanup task uses the composition root rather than persistence
+type = forbidden
+source_modules =
+    tasks.guest_connection_cleanup_task
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:consumer-service-boundary]
+name = Account consumer use cases are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.consumer_service
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    configs
+    tasks
+    flask
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:consumer-transport-boundary]
+name = Account consumer transport uses application services
+type = forbidden
+source_modules =
+    controllers.web.me
+    controllers.web.account
+    controllers.web.account_email
+    controllers.web.account_admission
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:machinery-framework-boundary]
 name = API machinery is framework neutral
 type = forbidden
@@ -235,6 +315,18 @@ forbidden_modules =
     services.workspace.gateways
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-workspace-controller-boundary]
+name = Console workspace operations reach persistence through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.workspace
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:network-access-group-service-boundary]
 name = Network access group application service is framework and persistence neutral
@@ -1410,6 +1502,34 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:workflow-test-credential-service]
+name = Builder test credential use cases are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.workflow_test_credentials
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    core
+    configs
+    tasks
+    flask
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:workflow-test-credential-controller]
+name = Builder test credential transport uses the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.test_credentials
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:annotation-application-boundary]
 name = Annotation application services and contracts are framework and persistence neutral

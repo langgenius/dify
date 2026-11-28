@@ -58,6 +58,7 @@ import {
   zRosterAgentPackageResourceUnavailableError,
   zRosterAgentPackageTooLargeError,
   zSpeechToTextDisabledError,
+  zTestCredentialsNotReadyError,
   zTooManyFilesError,
   zTraceConfigAlreadyExistsError,
   zTraceConfigNotFoundError,
@@ -528,6 +529,8 @@ import {
   zPostAppsByAppIdWorkflowsDraftRunBody,
   zPostAppsByAppIdWorkflowsDraftRunPath,
   zPostAppsByAppIdWorkflowsDraftRunResponse,
+  zPostAppsByAppIdWorkflowsDraftTestCredentialsPreflightPath,
+  zPostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponse,
   zPostAppsByAppIdWorkflowsDraftTriggerRunAllBody,
   zPostAppsByAppIdWorkflowsDraftTriggerRunAllPath,
   zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse,
@@ -914,7 +917,10 @@ export const post8 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+  })
 
 export const run2 = {
   post: post8,
@@ -954,7 +960,10 @@ export const post9 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+  })
 
 export const run3 = {
   post: post9,
@@ -997,6 +1006,7 @@ export const post10 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     rate_limit_error: { status: 429, data: zRateLimitError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
   })
 
 export const run4 = {
@@ -4275,7 +4285,10 @@ export const post55 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+  })
 
 export const run6 = {
   post: post55,
@@ -4315,7 +4328,10 @@ export const post56 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+  })
 
 export const run7 = {
   post: post56,
@@ -4580,7 +4596,10 @@ export const post61 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
+  })
 
 export const run8 = {
   post: post61,
@@ -4688,6 +4707,7 @@ export const post63 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     rate_limit_error: { status: 429, data: zRateLimitError },
+    test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
   })
 
 export const run10 = {
@@ -4829,11 +4849,35 @@ export const systemVariables = {
 }
 
 /**
+ * Check all EndUser test credentials in the current saved draft. No request body or draft hash is required. Returns readiness without creating a Run or executing tools; existing workspace OAuth credentials may be refreshed. Actual test execution checks credentials again.
+ */
+export const post64 = oc
+  .route({
+    description:
+      'Check all EndUser test credentials in the current saved draft. No request body or draft hash is required. Returns readiness without creating a Run or executing tools; existing workspace OAuth credentials may be refreshed. Actual test execution checks credentials again.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowsDraftTestCredentialsPreflight',
+    path: '/apps/{app_id}/workflows/draft/test-credentials/preflight',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdWorkflowsDraftTestCredentialsPreflightPath }))
+  .output(zPostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponse)
+
+export const preflight = {
+  post: post64,
+}
+
+export const testCredentials = {
+  preflight,
+}
+
+/**
  * Poll for trigger events and execute full workflow when event arrives
  *
  * Poll for trigger events and execute full workflow when event arrives
  */
-export const post64 = oc
+export const post65 = oc
   .route({
     description: 'Poll for trigger events and execute full workflow when event arrives',
     inputStructure: 'detailed',
@@ -4856,7 +4900,7 @@ export const post64 = oc
   })
 
 export const run11 = {
-  post: post64,
+  post: post65,
 }
 
 /**
@@ -4864,7 +4908,7 @@ export const run11 = {
  *
  * Full workflow debug when the start node is a trigger
  */
-export const post65 = oc
+export const post66 = oc
   .route({
     description: 'Full workflow debug when the start node is a trigger',
     inputStructure: 'detailed',
@@ -4887,7 +4931,7 @@ export const post65 = oc
   })
 
 export const runAll = {
-  post: post65,
+  post: post66,
 }
 
 export const trigger2 = {
@@ -5053,7 +5097,7 @@ export const get80 = oc
  *
  * Sync draft workflow configuration
  */
-export const post66 = oc
+export const post67 = oc
   .route({
     description: 'Sync draft workflow configuration',
     inputStructure: 'detailed',
@@ -5077,7 +5121,7 @@ export const post66 = oc
 
 export const draft2 = {
   get: get80,
-  post: post66,
+  post: post67,
   conversationVariables: conversationVariables2,
   environmentVariables,
   features,
@@ -5088,6 +5132,7 @@ export const draft2 = {
   run: run10,
   runs,
   systemVariables,
+  testCredentials,
   trigger: trigger2,
   variables: variables2,
 }
@@ -5095,7 +5140,7 @@ export const draft2 = {
 /**
  * Publish the draft as a reusable evaluation workflow
  */
-export const post67 = oc
+export const post68 = oc
   .route({
     description: 'Publish the draft as a reusable evaluation workflow',
     inputStructure: 'detailed',
@@ -5117,7 +5162,7 @@ export const post67 = oc
   })
 
 export const evaluation = {
-  post: post67,
+  post: post68,
 }
 
 /**
@@ -5142,7 +5187,7 @@ export const get81 = oc
 /**
  * Publish workflow
  */
-export const post68 = oc
+export const post69 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -5166,7 +5211,7 @@ export const post68 = oc
 
 export const publish = {
   get: get81,
-  post: post68,
+  post: post69,
   evaluation,
 }
 
@@ -5327,7 +5372,7 @@ export const triggers2 = {
 /**
  * Restore a published workflow version into the draft workflow
  */
-export const post69 = oc
+export const post70 = oc
   .route({
     description: 'Restore a published workflow version into the draft workflow',
     inputStructure: 'detailed',
@@ -5341,7 +5386,7 @@ export const post69 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const restore = {
-  post: post69,
+  post: post70,
 }
 
 /**
@@ -5555,7 +5600,7 @@ export const get89 = oc
 /**
  * Create a new API key for an app
  */
-export const post70 = oc
+export const post71 = oc
   .route({
     description: 'Create a new API key for an app',
     inputStructure: 'detailed',
@@ -5574,7 +5619,7 @@ export const post70 = oc
 
 export const apiKeys = {
   get: get89,
-  post: post70,
+  post: post71,
   byApiKeyId,
 }
 
@@ -5600,7 +5645,7 @@ export const get90 = oc
 /**
  * Create a new application
  */
-export const post71 = oc
+export const post72 = oc
   .route({
     description: 'Create a new application',
     inputStructure: 'detailed',
@@ -5615,7 +5660,7 @@ export const post71 = oc
 
 export const apps = {
   get: get90,
-  post: post71,
+  post: post72,
   imports,
   recent,
   starred,

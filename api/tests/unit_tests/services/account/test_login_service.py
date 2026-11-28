@@ -7,7 +7,7 @@ import pytest
 
 from services import account_errors
 from services.account.login_service import ConsoleAuthenticationService
-from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens
+from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens, AccountSnapshot
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     EmailCodeChallengeStatus,
@@ -15,11 +15,14 @@ from services.entities.account_login_entities import (
     EmailCodeSendCommand,
     LoginAccountSnapshot,
     LoginInvitation,
+    LoginMode,
     PasswordLoginCommand,
     PasswordLoginCompletion,
     RefreshAccountStatus,
 )
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.workspace.contracts import WorkspaceActivation
 
 TOKENS = AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
 LOGIN_TIME = datetime(2026, 8, 24, 12, 0, 0)
@@ -151,8 +154,8 @@ class FakeSessions:
         self.issued.append(account_id)
         return TOKENS
 
-    def revoke(self, account_id: str) -> None:
-        self.revoked.append(account_id)
+    def revoke(self, refresh_token: str) -> None:
+        self.revoked.append(refresh_token)
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
         assert refresh_token == "old-refresh"
@@ -168,7 +171,8 @@ class FakeRefreshPreparation:
     status: RefreshAccountStatus = RefreshAccountStatus.READY
     account_ids: list[str] = field(default_factory=list)
 
-    def prepare(self, account_id: str) -> RefreshAccountStatus:
+    def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus:
+        del mode
         self.account_ids.append(account_id)
         return self.status
 
@@ -176,6 +180,37 @@ class FakeRefreshPreparation:
 @dataclass
 class FakeAccountProvisioning:
     calls: list[dict[str, str]] = field(default_factory=list)
+    account_only_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def create_account(
+        self,
+        *,
+        email: str,
+        name: str,
+        interface_language: str,
+        timezone: str,
+        ip_address: str,
+        check_normalized_email: bool,
+        status: str,
+        initialized: bool,
+    ) -> AccountSnapshot:
+        assert check_normalized_email
+        self.account_only_calls.append({"email": email, "status": status, "initialized": initialized})
+        return AccountSnapshot(
+            id="end-user-account",
+            name=name,
+            email=email,
+            avatar=None,
+            is_password_set=False,
+            interface_language=interface_language,
+            interface_theme="light",
+            timezone=timezone,
+            last_login_at=None,
+            last_login_ip=ip_address,
+            status=status,
+            initialized_at=None,
+            created_at=LOGIN_TIME,
+        )
 
     def create_with_owner_workspace(
         self,
@@ -201,9 +236,16 @@ class FakeAccountProvisioning:
 @dataclass
 class FakeWorkspaceProvisioning:
     account_ids: list[str] = field(default_factory=list)
+    activation_error: Exception | None = None
 
     def ensure_owner_workspace(self, account_id: str) -> None:
         self.account_ids.append(account_id)
+
+    def activate(self, account_id: str) -> WorkspaceActivation:
+        if self.activation_error is not None:
+            raise self.activation_error
+        self.account_ids.append(account_id)
+        return WorkspaceActivation("workspace-1", LOGIN_TIME)
 
 
 @dataclass
@@ -274,6 +316,7 @@ class Dependencies:
         *,
         turnstile_enabled: bool = False,
         turnstile_verify_required: bool = False,
+        defer_workspace_creation: bool = False,
     ) -> ConsoleAuthenticationService:
         return ConsoleAuthenticationService(
             accounts=self.accounts,
@@ -286,6 +329,7 @@ class Dependencies:
             sessions=self.sessions,
             refresh_preparation=self.refresh_preparation,
             account_provisioning=self.accounts_provisioning,
+            account_registration=self.accounts_provisioning,
             workspace_provisioning=self.workspaces_provisioning,
             email_codes=self.email_codes,
             reset_password_emails=self.reset_emails,
@@ -293,6 +337,7 @@ class Dependencies:
             now=lambda: LOGIN_TIME,
             turnstile_enabled=turnstile_enabled,
             turnstile_verify_required=turnstile_verify_required,
+            defer_workspace_creation=defer_workspace_creation,
         )
 
 
@@ -337,6 +382,32 @@ def _email_code_command(**changes: str | None) -> EmailCodeLoginCommand:
     }
     values.update(changes)
     return EmailCodeLoginCommand(**values)  # type: ignore[arg-type]
+
+
+def test_cloud_password_login_does_not_issue_a_session_if_workspace_activation_is_denied() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account(status="uninitialized")]
+    dependencies.workspaces_provisioning.activation_error = WorkSpaceNotAllowedCreateError()
+
+    with pytest.raises(account_errors.LoginWorkspaceCreationNotAllowedError):
+        dependencies.service(defer_workspace_creation=True).login_with_password(_password_command())
+
+    assert dependencies.sessions.issued == []
+
+
+@pytest.mark.parametrize("existing_account", [False, True])
+def test_cloud_email_login_prepares_a_workspace_for_the_console_session(existing_account: bool) -> None:
+    dependencies = Dependencies()
+    if existing_account:
+        dependencies.accounts.candidates = [_account(status="uninitialized")]
+
+    result = dependencies.service(defer_workspace_creation=True).login_with_email_code(_email_code_command())
+
+    assert result == TOKENS
+    assert dependencies.workspaces_provisioning.account_ids == ["account-1" if existing_account else "end-user-account"]
+    assert dependencies.accounts_provisioning.calls == []
+    if not existing_account:
+        assert dependencies.accounts_provisioning.account_only_calls[0]["status"] == "uninitialized"
 
 
 def test_password_login_issues_session_and_resets_failures() -> None:
@@ -418,7 +489,7 @@ def test_invitation_login_does_not_initialize_password_when_token_is_unknown() -
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(password=False, status="pending")]
 
-    with pytest.raises(account_errors.InvalidLoginCredentialsError):
+    with pytest.raises(account_errors.InvalidInvitationError):
         dependencies.service().login_with_password(_password_command(invite_token="unknown-invite"))
 
     assert dependencies.passwords.hashed_passwords == []
@@ -548,17 +619,34 @@ def test_password_login_returns_no_workspace_without_creating_one() -> None:
     assert dependencies.workspaces_provisioning.account_ids == []
 
 
-def test_password_login_with_invitation_issues_a_session_without_a_workspace() -> None:
+@pytest.mark.parametrize("cloud_console", [False, True])
+@pytest.mark.parametrize(
+    ("workspace_creation_allowed", "workspace_capacity", "expected_provisioned"),
+    [
+        (True, True, ["account-1"]),
+        (False, True, []),
+        (True, False, []),
+    ],
+    ids=["allowed", "creation-disabled", "workspace-limit-reached"],
+)
+def test_password_login_with_invitation_provisions_workspace_only_when_allowed(
+    cloud_console: bool,
+    workspace_creation_allowed: bool,
+    workspace_capacity: bool,
+    expected_provisioned: list[str],
+) -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
     dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
-    dependencies.policies.workspace_capacity = False
+    dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
+    dependencies.policies.workspace_capacity = workspace_capacity
 
-    result = dependencies.service().login_with_password(_password_command(invite_token="invite"))
+    result = dependencies.service(defer_workspace_creation=cloud_console).login_with_password(
+        _password_command(invite_token="invite")
+    )
 
-    assert dependencies.workspaces.active is False
-    assert dependencies.workspaces_provisioning.account_ids == []
-    assert result.workspace_found
+    assert dependencies.workspaces_provisioning.account_ids == expected_provisioned
+    assert result.workspace_found is None
     assert result.tokens == TOKENS
     assert dependencies.sessions.issued == ["account-1"]
     assert dependencies.security.resets == ["user@example.com"]
@@ -574,9 +662,10 @@ def test_password_login_does_not_restore_membership_for_an_existing_workspace(in
 
     result = dependencies.service().login_with_password(_password_command(invite_token=invite_token))
 
-    assert result.workspace_found
+    assert result.workspace_found is (None if invite_token else True)
     assert result.tokens == TOKENS
-    assert dependencies.workspaces.checks == ([] if invite_token else ["account-1"])
+    assert dependencies.workspaces.checks == ["account-1"]
+    assert dependencies.workspaces_provisioning.account_ids == []
 
 
 def test_password_login_enforces_workspace_capacity() -> None:
@@ -846,12 +935,18 @@ def test_email_code_login_creates_workspace_for_existing_account() -> None:
 
 
 @pytest.mark.parametrize(
-    ("workspace_creation_allowed", "workspace_capacity"),
-    [(False, True), (True, True), (True, False)],
+    ("workspace_creation_allowed", "workspace_capacity", "expected_provisioned"),
+    [
+        (False, True, []),
+        (True, True, ["account-1"]),
+        (True, False, []),
+    ],
     ids=["no-self-serve", "self-serve", "workspace-limit-reached"],
 )
-def test_email_code_login_with_invitation_issues_a_session_without_provisioning(
-    workspace_creation_allowed: bool, workspace_capacity: bool
+def test_email_code_login_with_invitation_provisions_workspace_only_when_allowed(
+    workspace_creation_allowed: bool,
+    workspace_capacity: bool,
+    expected_provisioned: list[str],
 ) -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(status="pending", password=False)]
@@ -862,8 +957,7 @@ def test_email_code_login_with_invitation_issues_a_session_without_provisioning(
     result = dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
 
     assert result == TOKENS
-    assert dependencies.workspaces.active is False
-    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.workspaces_provisioning.account_ids == expected_provisioned
     assert dependencies.sessions.issued == ["account-1"]
 
 
@@ -878,13 +972,17 @@ def test_email_code_login_ignores_invitation_when_account_already_has_a_workspac
     assert dependencies.workspaces_provisioning.account_ids == []
 
 
-def test_email_code_login_falls_back_to_provisioning_when_invitation_is_stale() -> None:
+def test_email_code_login_does_not_provision_when_invitation_is_stale() -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(status="pending", password=False)]
 
-    dependencies.service().login_with_email_code(_email_code_command(invite_token="stale-token"))
+    with pytest.raises(account_errors.InvalidInvitationError):
+        dependencies.service(defer_workspace_creation=True).login_with_email_code(
+            _email_code_command(invite_token="stale-token")
+        )
 
-    assert dependencies.workspaces_provisioning.account_ids == ["account-1"]
+    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.sessions.issued == []
 
 
 def test_email_code_login_rejects_invitation_for_another_email() -> None:
@@ -934,9 +1032,9 @@ def test_logout_and_refresh_delegate_to_session_gateway() -> None:
     dependencies = Dependencies()
     service = dependencies.service()
 
-    service.logout("account-1")
+    service.logout(refresh_token="old-refresh")
 
-    assert dependencies.sessions.revoked == ["account-1"]
+    assert dependencies.sessions.revoked == ["old-refresh"]
     assert service.refresh("old-refresh") == TOKENS
     assert dependencies.refresh_preparation.account_ids == ["account-1"]
     assert dependencies.sessions.rotations == [("old-refresh", "account-1")]
@@ -963,3 +1061,47 @@ def test_refresh_rejects_invalid_account_state(
         dependencies.service().refresh("old-refresh")
 
     assert dependencies.sessions.rotations == []
+
+
+def test_end_user_password_login_needs_no_workspace() -> None:
+    deps = Dependencies()
+    deps.accounts.candidates = [_account(status="uninitialized")]
+    deps.policies.workspace_capacity = False
+    deps.policies.workspace_creation_allowed = False
+    result = deps.service().login_with_password(_password_command(mode=LoginMode.END_USER))
+    assert result.tokens == TOKENS
+    assert result.workspace_found is None
+    assert deps.workspaces.checks == []
+    assert deps.accounts.completions[0].activate_pending_account is False
+
+
+@pytest.mark.parametrize("existing", [True, False])
+def test_end_user_email_login_does_not_provision_workspace(existing: bool) -> None:
+    deps = Dependencies()
+    if existing:
+        deps.accounts.candidates = [_account(status="uninitialized")]
+    deps.policies.workspace_capacity = False
+    deps.policies.workspace_creation_allowed = False
+    result = deps.service().login_with_email_code(_email_code_command(mode=LoginMode.END_USER))
+    assert result == TOKENS
+    assert deps.workspaces.checks == []
+    assert deps.workspaces_provisioning.account_ids == []
+    assert deps.accounts_provisioning.calls == []
+    assert deps.accounts_provisioning.account_only_calls == (
+        [] if existing else [{"email": "user@example.com", "status": "uninitialized", "initialized": False}]
+    )
+
+
+def test_end_user_mode_rejects_invitation_before_authentication() -> None:
+    deps = Dependencies()
+    with pytest.raises(ValueError, match="workspace invitation"):
+        deps.service().login_with_password(_password_command(mode=LoginMode.END_USER, invite_token="invitation"))
+    assert deps.accounts.completions == []
+
+
+def test_end_user_registration_still_respects_registration_policy() -> None:
+    deps = Dependencies()
+    deps.policies.registration_allowed = False
+    with pytest.raises(account_errors.AccountNotFoundError):
+        deps.service().login_with_email_code(_email_code_command(mode=LoginMode.END_USER))
+    assert deps.accounts_provisioning.account_only_calls == []

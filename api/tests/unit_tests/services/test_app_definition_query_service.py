@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_definition_query_service as module
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.tools.entities.common_entities import I18nObject
 from models.account import Tenant
 from models.model import App, AppMode
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
@@ -18,6 +19,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
+from services.end_user_connections.revision import ConnectionProviderMetadata
 from services.errors.app import AppAbnormalStatusError
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
@@ -25,9 +27,15 @@ _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/curre
 
 def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     definitions: MagicMock = create_autospec(AppDefinitionQuery, instance=True, spec_set=True)
+    revisions = create_autospec(module.ConnectionRevisions, instance=True, spec_set=True)
+    revisions.resolve.return_value = ("connection-revision", ())
     return (
         AppDefinitionQueryService(
             definitions=definitions,
+            plugin_verified=lambda *_args: False,
+            plugin_readme=lambda *_args: "# Plugin documentation",
+            plugin_asset=lambda *_args: b"",
+            connection_revisions=revisions,
             builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
         ),
         definitions,
@@ -47,6 +55,10 @@ def persisted_app_service(sqlite_session_factory: sessionmaker[Session]) -> AppD
         )
     return AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
+        connection_revisions=create_autospec(module.ConnectionRevisions, instance=True, spec_set=True),
+        plugin_verified=lambda *_args: False,
+        plugin_readme=lambda *_args: "",
+        plugin_asset=lambda *_args: b"",
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
     )
 
@@ -74,6 +86,10 @@ def test_service_api_orphaned_key_does_not_require_database(
 ) -> None:
     service = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=unbound_session_factory),
+        connection_revisions=create_autospec(module.ConnectionRevisions, instance=True, spec_set=True),
+        plugin_verified=lambda *_args: False,
+        plugin_readme=lambda *_args: "",
+        plugin_asset=lambda *_args: b"",
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
     )
 
@@ -233,3 +249,121 @@ def test_get_site_configuration_rejects_missing_site() -> None:
 
     with pytest.raises(AppDefinitionUnavailableError, match="Site not found"):
         service.get_site_configuration("app-1")
+
+
+@pytest.mark.parametrize(
+    ("language", "expected_label"),
+    [
+        ("en-US", "Calendar"),
+        ("pt-BR", "Calendario"),
+        ("zh-Hans", "Calendar (Chinese)"),
+        ("ja-JP", "Calendar"),
+        ("fr-FR", "Calendar"),
+    ],
+)
+def test_web_parameters_include_version_and_requirements_without_changing_public_parameters(
+    language: str, expected_label: str
+) -> None:
+    service, definitions = _service()
+    parameters = AppParameterConfig(features_dict={"opening_statement": "Hello"}, user_input_form=[])
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=parameters,
+        default_language=language,
+        workflow_id="published-version",
+        requires_end_user_connections=True,
+        graph={
+            "nodes": [
+                {
+                    "id": "tool-1",
+                    "data": {
+                        "type": "tool",
+                        "credential_source": "end_user",
+                        "provider_id": "vendor/calendar/calendar",
+                        "tool_name": "read",
+                        "end_user_auth": {"allowed_credential_types": ["api-key"], "purpose": "Read events"},
+                    },
+                },
+                {
+                    "id": "tool-2",
+                    "data": {"type": "tool", "credential_source": "reuse_node", "reuse_node_id": "tool-1"},
+                },
+            ]
+        },
+    )
+    definitions.get_published_parameter_config.return_value = parameters
+    providers = (
+        ConnectionProviderMetadata(
+            provider="vendor/calendar/calendar",
+            provider_label=I18nObject(en_US="Calendar", pt_BR="Calendario", zh_Hans="Calendar (Chinese)"),
+            plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64,
+            icon="https://console.example/plugin/icon.svg",
+            icon_dark="https://console.example/plugin/icon-dark.svg",
+        ),
+    )
+    with patch.object(service._connection_revisions, "resolve", return_value=("connection-revision", providers)):
+        result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["connection_revision"] == "connection-revision"
+    assert "workflow_id" not in result
+    assert result["requires_end_user_connections"] is True
+    requirement = result["connection_requirements"][0]
+    assert requirement.node_id == "tool-1"
+    assert requirement.node_ids == ("tool-1", "tool-2")
+    assert requirement.provider == "vendor/calendar/calendar"
+    assert requirement.provider_label == expected_label
+    assert requirement.plugin_unique_identifier == providers[0].plugin_unique_identifier
+    assert requirement.verified is False
+    assert requirement.icon == providers[0].icon
+    assert requirement.icon_dark == providers[0].icon_dark
+    assert requirement.title == "tool-1"
+    assert requirement.purpose == "Read events"
+    assert result["opening_statement"] == "Hello"
+    definitions.get_web_parameter_config.assert_called_once_with("app-1", "tenant-1")
+    public = service.get_public_parameters("app-1")
+    assert "workflow_id" not in public
+    assert "requires_end_user_connections" not in public
+    assert "connection_requirements" not in public
+
+
+@pytest.mark.parametrize(
+    ("source_error", "expected_error"),
+    [
+        (AgentAppNotPublishedError("unpublished"), AppDefinitionNotPublishedError),
+        (AgentAppGeneratorError("missing"), AppDefinitionUnavailableError),
+    ],
+)
+def test_web_parameters_preserve_agent_publication_errors(
+    source_error: Exception, expected_error: type[Exception]
+) -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.side_effect = source_error
+    with pytest.raises(expected_error):
+        service.get_web_parameters("app-1", "tenant-1")
+
+
+@pytest.mark.parametrize("graph", [None, {"nodes": []}])
+def test_web_parameters_without_personal_tools_have_empty_requirements(graph: dict[str, object] | None) -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
+        default_language="en-US",
+        workflow_id="published-version" if graph is not None else None,
+        requires_end_user_connections=False,
+        graph=graph,
+    )
+
+    result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["connection_requirements"] == ()
+
+
+def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free() -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
+        default_language="en-US",
+        workflow_id="published-version",
+        requires_end_user_connections=True,
+        graph={"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "end_user"}}]},
+    )
+
+    with pytest.raises(AppDefinitionUnavailableError):
+        service.get_web_parameters("app-1", "tenant-1")

@@ -103,6 +103,43 @@ describe('mutation invalidation fallback', () => {
     expect(datasets).toHaveBeenCalledTimes(1)
   })
 
+  it('refreshes the account and workspace reads after first workspace activation', async () => {
+    const client = createClient()
+    const profile = await mountQuery(client, consoleQuery.account.profile.get.queryKey())
+    const workspaces = await mountQuery(client, consoleQuery.workspaces.get.queryKey())
+    const current = await mountQuery(client, consoleQuery.workspaces.current.summary.get.queryKey())
+    const features = await mountQuery(client, featuresKey())
+    const datasets = await mountQuery(client, datasetsListKey())
+    const { mutationKey, meta } = consoleQuery.workspaces.activate.post.mutationOptions()
+
+    await mutate(client, { mutationKey, meta })
+
+    await vi.waitFor(() => {
+      expect(profile).toHaveBeenCalledTimes(2)
+      expect(workspaces).toHaveBeenCalledTimes(2)
+      expect(current).toHaveBeenCalledTimes(2)
+      expect(features).toHaveBeenCalledTimes(2)
+    })
+    expect(datasets).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not delay or duplicate app refreshes while checking test credentials', async () => {
+    const client = createClient()
+    const app = await mountQuery(client, appDetailKey())
+    const preflight = createDeferred<string>()
+    const { mutationKey, meta } =
+      consoleQuery.apps.byAppId.workflows.draft.testCredentials.preflight.post.mutationOptions()
+    const check = mutate(client, { mutationKey, meta, mutationFn: () => preflight.promise })
+
+    await mutate(client, { mutationKey: renameApp() })
+    await vi.waitFor(() => expect(app).toHaveBeenCalledTimes(2))
+
+    preflight.resolve('ready')
+    await check
+    await settle()
+    expect(app).toHaveBeenCalledTimes(2)
+  })
+
   it('does not hold the mutation until the refresh lands', async () => {
     const client = createClient()
     const refetch = createDeferred<string>()

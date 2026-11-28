@@ -1,0 +1,450 @@
+from collections.abc import Callable, Iterator
+from dataclasses import replace
+from uuid import uuid4
+
+import pytest
+import sqlalchemy as sa
+from flask import Flask
+from flask.testing import FlaskClient
+from sqlalchemy.orm import Session, sessionmaker
+
+from clients.plugin.auth_entities import CredentialCheckResult
+from controllers.web import bp, connections, wraps
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.tools.entities.common_entities import I18nObject
+from extensions.ext_application_services import ApplicationServices
+from models.end_user_connection import EndUserConnection
+from models.model import App, EndUser
+from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness
+
+
+@pytest.fixture
+def harness(sqlite_session_factory: sessionmaker[Session]) -> ConnectionHarness:
+    return make_harness(sqlite_session_factory)
+
+
+@pytest.fixture
+def client(
+    harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> Iterator[FlaskClient]:
+    def identity() -> tuple[App, EndUser]:
+        with harness.sessions() as session:
+            app = session.get(App, harness.context.app_id)
+            user = session.get(EndUser, harness.context.end_user_id)
+            assert app is not None
+            assert user is not None
+            return app, user
+
+    monkeypatch.setattr(wraps, "decode_jwt_token", identity)
+    monkeypatch.setattr(
+        connections,
+        "application_services",
+        lambda: replace(application_service_graph, end_user_connections=harness.service),
+    )
+    app = Flask(__name__)
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
+    app.register_blueprint(bp)
+    with app.test_client() as client:
+        yield client
+
+
+@pytest.mark.parametrize("anonymous", [False, True])
+@pytest.mark.parametrize("name", [None, "", "Custom name"])
+@pytest.mark.parametrize("allow_anonymous", [False, True])
+def test_http_api_key_management_round_trip(
+    client: FlaskClient,
+    harness: ConnectionHarness,
+    config_overrides: Callable[..., None],
+    anonymous: bool,
+    allow_anonymous: bool,
+    name: str | None,
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous)
+    if anonymous:
+        with harness.sessions.begin() as session:
+            session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
+        harness.context = replace(harness.context, account_id=None)
+    payload = harness.command().model_dump(mode="json", exclude={"name"})
+    if name is not None:
+        payload["name"] = name
+    response = client.post("/api/connections", json=payload)
+    if anonymous and not allow_anonymous:
+        assert response.status_code == 401
+        assert response.get_json()["code"] == "end_user_login_required"
+        assert harness.auth.calls == []
+        return
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data["name"] == (name or "API KEY 1")
+    assert data["credential_status"] == "connected"
+    assert data["manual_revocation_required_on_expiry"] is anonymous
+    assert isinstance(data["created_at"], int)
+    assert "original-secret" not in response.get_data(as_text=True)
+    assert "encrypted_credentials" not in data
+    connection_id = data["id"]
+    assert client.get(f"/api/connections/{connection_id}").get_json() == data
+    page = client.get("/api/connections?limit=1").get_json()
+    assert page == {"data": [data], "has_more": False, "next_cursor": None}
+    changed = client.patch(
+        f"/api/connections/{connection_id}",
+        json={"credentials": {"api_key": "replacement-secret"}, "connection_revision": harness.connection_revision},
+    )
+    assert changed.status_code == 200
+    assert "replacement-secret" not in changed.get_data(as_text=True)
+    deleted = client.delete(f"/api/connections/{connection_id}")
+    assert deleted.status_code == 204
+    assert deleted.data == b""
+    assert client.get(f"/api/connections/{connection_id}").status_code == 404
+
+
+@pytest.mark.parametrize("field", ["tenant_id", "account_id", "end_user_id", "provider", "revision"])
+def test_request_authority_and_secret_values_never_echo_in_validation_errors(
+    client: FlaskClient, harness: ConnectionHarness, field: str
+) -> None:
+    payload = {**harness.command().model_dump(mode="json"), field: "injected-secret"}
+    response = client.post("/api/connections", json=payload)
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+    assert "injected-secret" not in response.get_data(as_text=True)
+    assert "original-secret" not in response.get_data(as_text=True)
+    assert harness.auth.calls == []
+
+
+@pytest.mark.parametrize(
+    ("status", "http_status", "code"),
+    [
+        ("invalid", 400, "connection_credentials_invalid"),
+        ("temporarily_unavailable", 503, "credential_check_unavailable"),
+    ],
+)
+def test_create_exposes_safe_business_errors(
+    client: FlaskClient, harness: ConnectionHarness, status: str, http_status: int, code: str
+) -> None:
+    harness.auth.result = CredentialCheckResult.model_validate(
+        {"status": status, "reason_code": None, "retryable": False, "checked_at": 1}
+    )
+    response = client.post("/api/connections", json=harness.command().model_dump(mode="json"))
+    assert response.status_code == http_status
+    assert response.get_json()["code"] == code
+
+
+def test_foreign_and_missing_ids_return_same_not_found(client: FlaskClient, harness: ConnectionHarness) -> None:
+    other = make_harness(harness.sessions)
+    foreign = other.service.create_api_key(other.context, other.command())
+    missing = client.get(f"/api/connections/{uuid4()}")
+    denied = client.get(f"/api/connections/{foreign.id}")
+    assert denied.status_code == missing.status_code == 404
+    assert denied.get_json() == missing.get_json()
+    missing_revision = client.get(f"/api/connections/{uuid4()}/revision")
+    foreign_revision = client.get(f"/api/connections/{foreign.id}/revision")
+    assert foreign_revision.status_code == missing_revision.status_code == 404
+    assert foreign_revision.get_json() == missing_revision.get_json()
+
+
+def test_disabling_anonymous_connections_blocks_existing_guest_management(
+    client: FlaskClient, harness: ConnectionHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    with harness.sessions.begin() as session:
+        session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
+    created = client.post("/api/connections", json=harness.command().model_dump(mode="json"))
+    assert created.status_code == 201
+    connection_id = created.get_json()["id"]
+    harness.auth.calls.clear()
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    for method, path, payload in [
+        ("GET", "/api/connections", None),
+        ("GET", f"/api/connections/{connection_id}", None),
+        (
+            "PATCH",
+            f"/api/connections/{connection_id}",
+            {"credentials": {"api_key": "replacement"}, "connection_revision": harness.connection_revision},
+        ),
+        ("DELETE", f"/api/connections/{connection_id}", None),
+    ]:
+        response = client.open(path, method=method, json=payload)
+        assert response.status_code == 401
+        assert response.get_json()["code"] == "end_user_login_required"
+    assert harness.auth.calls == []
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    assert client.get(f"/api/connections/{connection_id}").status_code == 200
+
+
+def test_stale_workflow_request_is_rejected_before_plugin_calls(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    payload = {
+        **harness.command().model_dump(mode="json"),
+        "connection_revision": "00000000-0000-7000-8000-000000000001",
+    }
+    response = client.post("/api/connections", json=payload)
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "connection_revision_changed"
+    assert harness.auth.calls == []
+
+
+def test_lost_update_race_returns_conflict(client: FlaskClient, harness: ConnectionHarness) -> None:
+    created = harness.service.create_api_key(harness.context, harness.command())
+
+    def change() -> None:
+        with harness.sessions.begin() as session:
+            session.execute(sa.update(EndUserConnection).where(EndUserConnection.id == created.id).values(revision=2))
+
+    harness.auth.on_check = change
+    response = client.patch(
+        f"/api/connections/{created.id}",
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": harness.connection_revision},
+    )
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "connection_conflict"
+
+
+@pytest.mark.parametrize("query", ["limit=0", "limit=101", "limit=invalid", "cursor=not-a-uuid"])
+def test_invalid_pagination_is_a_client_error(client: FlaskClient, query: str) -> None:
+    response = client.get(f"/api/connections?{query}")
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+
+
+@pytest.mark.parametrize("payload", [{}, {"name": None}, {"credentials": None}])
+def test_patch_rejects_empty_or_null_changes(
+    client: FlaskClient, harness: ConnectionHarness, payload: dict[str, object]
+) -> None:
+    created = harness.service.create_api_key(harness.context, harness.command())
+    response = client.patch(f"/api/connections/{created.id}", json=payload)
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+
+
+def test_public_schemas_match_patch_and_timestamp_semantics() -> None:
+    create = connections.EndUserConnectionCreatePayload.model_json_schema()
+    assert "name" not in create["required"]
+    assert create["properties"]["name"]["anyOf"] == [{"maxLength": 100, "type": "string"}, {"type": "null"}]
+    payload = connections.EndUserConnectionUpdatePayload.model_json_schema()
+    assert payload["minProperties"] == 1
+    assert payload["properties"]["name"]["type"] == "string"
+    assert payload["properties"]["credentials"]["type"] == "object"
+    assert "default" not in payload["properties"]["name"]
+    assert "default" not in payload["properties"]["credentials"]
+    response = connections.EndUserConnectionResponse.model_json_schema(mode="serialization")
+    assert response["properties"]["created_at"]["type"] == "integer"
+
+
+def test_standalone_check_route_is_removed(client: FlaskClient, harness: ConnectionHarness) -> None:
+    created = harness.service.create_api_key(harness.context, harness.command())
+    harness.auth.calls.clear()
+    assert client.post(f"/api/connections/{created.id}/check").status_code == 404
+    assert harness.auth.calls == []
+
+
+def test_connection_write_revision_is_independent_of_authorization_contract(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    path = f"/api/connections/{connection.id}"
+    app_revision = harness.connection_revision
+    contract_revision = client.get(path + "/revision").get_json()["connection_revision"]
+    before = harness.repository.find(harness.context, connection.id)
+    assert before is not None
+    assert before.access.revision == 1
+
+    assert client.patch(path, json={"name": "Renamed"}).status_code == 200
+    renamed = harness.repository.find(harness.context, connection.id)
+    assert renamed is not None
+    assert renamed.access.revision == 2
+    assert harness.connection_revision == app_revision
+    assert client.get(path + "/revision").get_json()["connection_revision"] == contract_revision
+
+    replaced = client.patch(
+        path,
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": contract_revision},
+    )
+    assert replaced.status_code == 200
+    current = harness.repository.find(harness.context, connection.id)
+    assert current is not None
+    assert current.access.revision == 3
+    assert harness.connection_revision == app_revision
+    assert client.get(path + "/revision").get_json()["connection_revision"] == contract_revision
+
+
+def test_provider_revision_is_available_after_the_authorization_node_is_removed(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    from models.workflow import Workflow
+
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    with harness.sessions.begin() as session:
+        workflow = session.get(Workflow, harness.workflow_id)
+        assert workflow is not None
+        workflow.graph = '{"nodes":[]}'
+    response = client.get(f"/api/connections/{connection.id}/revision")
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    snapshot = harness.repository.get_revision(
+        harness.context.tenant_id, harness.context.app_id, response.get_json()["connection_revision"]
+    )
+    assert snapshot is not None
+    assert snapshot.app_id == harness.context.app_id
+    assert snapshot.tenant_id == harness.context.tenant_id
+    assert snapshot.requirements == ()
+    assert snapshot.providers[0].provider == connection.provider
+    changed = client.patch(
+        f"/api/connections/{connection.id}",
+        json={
+            "credentials": {"api_key": "replacement"},
+            "connection_revision": response.get_json()["connection_revision"],
+        },
+    )
+    assert changed.status_code == 200
+
+
+@pytest.mark.parametrize("revision", [None, "stale", "forged"])
+def test_credential_patch_requires_confirmed_revision_before_sending_credentials(
+    client: FlaskClient, harness: ConnectionHarness, revision: str | None
+) -> None:
+    from tests.helpers.end_user_api_key import TestProviders
+
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    original = harness.repository.find(harness.context, connection.id)
+    assert original is not None
+    payload: dict[str, object] = {"credentials": {"api_key": "private-replacement"}}
+    if revision is not None:
+        payload["connection_revision"] = (
+            harness.connection_revision if revision == "stale" else "00000000-0000-7000-8000-000000000001"
+        )
+    assert isinstance(harness.service._credentials, TestProviders)
+    harness.service._credentials.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.auth.calls.clear()
+    response = client.patch(f"/api/connections/{connection.id}", json=payload)
+    assert response.status_code == (400 if revision is None else 409)
+    assert harness.auth.calls == []
+    latest = harness.repository.find(harness.context, connection.id)
+    assert latest is not None
+    assert latest.encrypted_credentials == original.encrypted_credentials
+    assert "private-replacement" not in response.get_data(as_text=True)
+
+
+def test_credential_patch_revalidates_after_the_plugin_check(client: FlaskClient, harness: ConnectionHarness) -> None:
+    from tests.helpers.end_user_api_key import TestProviders
+
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    original = harness.repository.find(harness.context, connection.id)
+    assert original is not None
+    revision = client.get(f"/api/connections/{connection.id}/revision").get_json()["connection_revision"]
+    assert isinstance(harness.service._credentials, TestProviders)
+    controller = harness.service._credentials.controller
+    harness.auth.on_check = lambda: setattr(controller, "plugin_unique_identifier", "vendor/calendar:2.0.0@" + "b" * 64)
+    response = client.patch(
+        f"/api/connections/{connection.id}",
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": revision},
+    )
+    assert response.status_code == 409
+    latest = harness.repository.find(harness.context, connection.id)
+    assert latest is not None
+    assert latest.encrypted_credentials == original.encrypted_credentials
+
+
+def test_name_only_patch_does_not_require_provider_access(
+    client: FlaskClient, harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+
+    def unavailable(_tenant_id: str, _provider: str) -> str:
+        pytest.fail("A local name change must not consult a plugin.")
+
+    monkeypatch.setattr(harness.service._credentials, "provider", unavailable)
+    response = client.patch(f"/api/connections/{connection.id}", json={"name": "Renamed"})
+    assert response.status_code == 200
+    assert response.get_json()["name"] == "Renamed"
+
+
+def test_credential_schema_preserves_provider_fields_and_drives_creation(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    assert isinstance(harness.service._credentials, TestProviders)
+    harness.service._credentials.controller.entity.credentials_schema = [
+        ProviderConfig(
+            name="access_tokens",
+            type=ProviderConfigType.SECRET_INPUT,
+            required=True,
+            label=I18nObject(en_US="Access token", zh_Hans="Token"),
+            default="must-not-be-exposed",
+            help=I18nObject(en_US="Create a personal token"),
+            url="https://provider.example/tokens",
+            placeholder=I18nObject(en_US="Enter a token"),
+        ),
+        ProviderConfig(name="endpoint", type=ProviderConfigType.TEXT_INPUT, default="https://provider.example"),
+        ProviderConfig(name="enabled", type=ProviderConfigType.BOOLEAN, default=False),
+        ProviderConfig(
+            name="region",
+            type=ProviderConfigType.SELECT,
+            default="us",
+            options=[ProviderConfig.Option(value="us", label=I18nObject(en_US="US"))],
+        ),
+    ]
+    revision = harness.connection_revision
+    response = client.get(
+        "/api/connections/credential-schema", query_string={"node_id": "tool-1", "connection_revision": revision}
+    )
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    fields = response.get_json()
+    assert [field["name"] for field in fields] == ["access_tokens", "endpoint", "enabled", "region"]
+    assert fields[0]["type"] == "secret-input"
+    assert fields[0]["required"] is True
+    assert fields[0]["default"] is None
+    assert fields[0]["label"]["en_US"] == "Access token"
+    assert fields[0]["help"]["en_US"] == "Create a personal token"
+    assert fields[0]["url"] == "https://provider.example/tokens"
+    assert fields[0]["placeholder"]["en_US"] == "Enter a token"
+    assert fields[1]["label"] is None
+    assert fields[2]["default"] is False
+    assert fields[3]["options"][0]["value"] == "us"
+    assert "must-not-be-exposed" not in response.get_data(as_text=True)
+    assert harness.auth.calls == []
+    assert harness.cipher.values == {}
+    payload = {
+        "node_id": "tool-1",
+        "connection_revision": revision,
+        "name": "Personal token",
+        "credentials": {fields[0]["name"]: "submitted-token"},
+    }
+    created = client.post("/api/connections", json=payload)
+    assert created.status_code == 201
+    assert harness.auth.calls[0][3]["access_tokens"] == "submitted-token"
+
+
+@pytest.mark.parametrize(
+    ("query", "status", "code"),
+    [
+        ({}, 400, "invalid_param"),
+        ({"provider": "foreign/provider"}, 400, "invalid_param"),
+        ({"node_id": "missing"}, 400, "connection_configuration_invalid"),
+        ({"connection_revision": "00000000-0000-7000-8000-000000000001"}, 409, "connection_revision_changed"),
+    ],
+)
+def test_credential_schema_rejects_invalid_targets(
+    client: FlaskClient, harness: ConnectionHarness, query: dict[str, str], status: int, code: str
+) -> None:
+    params: dict[str, str] = (
+        {"node_id": "tool-1", "connection_revision": harness.connection_revision, **query} if query else {}
+    )
+    response = client.get("/api/connections/credential-schema", query_string=params)
+    assert response.status_code == status
+    assert response.get_json()["code"] == code
+    assert harness.auth.calls == []
+    assert harness.cipher.values == {}
+
+
+def test_schema_queries_follow_anonymous_connection_policy(
+    client: FlaskClient, harness: ConnectionHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    with harness.sessions.begin() as session:
+        session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
+    query = {"connection_revision": harness.connection_revision, "node_id": "tool-1"}
+    response = client.get("/api/connections/credential-schema", query_string=query)
+    assert response.status_code == 401
+    assert response.get_json()["code"] == "end_user_login_required"
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    assert client.get("/api/connections/credential-schema", query_string=query).status_code == 200

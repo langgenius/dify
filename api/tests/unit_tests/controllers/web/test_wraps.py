@@ -15,6 +15,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import app as app_controller
 from controllers.web import bp, login, passport, site, wraps
 from core.logging.context import clear_request_context, get_identity_context
@@ -40,6 +41,7 @@ from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_passport_gateways import PassportTokenGateway
 from services.web_passport_service import WebPassportService
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.web_identity_fakes import web_identities
 
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
@@ -136,9 +138,16 @@ def _harness(
     mocker.patch.object(
         PassportService,
         "verify",
-        return_value={"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id},
+        return_value={
+            "sub": "Web API Passport",
+            "app_id": app.id,
+            "app_code": "fixture-code",
+            "end_user_id": old_user.id,
+        },
     )
-    app_sessions = PassportWebAppSessionGateway(sessions=access_repo, app_access=access)
+    app_sessions = PassportWebAppSessionGateway(
+        sessions=access_repo, app_access=access, identities=base_services.web_identity
+    )
     session_verify = mocker.spy(app_sessions, "verify")
     authentication = base_services.web_authentication
     monkeypatch.setattr(authentication, "_app_access", access)
@@ -156,8 +165,17 @@ def _harness(
             tokens=tokens,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
+            identities=base_services.web_identity,
+            account_passports_enabled=False,
         ),
-        app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
+        app_definitions=AppDefinitionQueryService(
+            definitions=definitions,
+            plugin_verified=base_services.app_definitions._plugin_verified,
+            plugin_readme=base_services.app_definitions._plugin_readme,
+            plugin_asset=base_services.app_definitions._plugin_asset,
+            builtin_icon_url_prefix="",
+            connection_revisions=base_services.app_definitions._connection_revisions,
+        ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,
             file_service=FileService(session_factory=factory),
@@ -287,7 +305,9 @@ class TestPublicAppAdmissionCases:
                 assert response.get_json() == {"accessMode": "public"}
             elif route.startswith("/login"):
                 assert response.get_json() == {"logged_in": True, "app_logged_in": True}
-                h.session_verify.assert_called_once_with(token="old-passport", app_code="fixture-code", user_id=None)
+                h.session_verify.assert_called_once_with(
+                    token="old-passport", app_code="fixture-code", user_id=None, account_id=None
+                )
                 h.login_verify.assert_not_called()
             elif route == "/site":
                 assert response.get_json()["site"]["title"] == "Must not leak"
@@ -425,7 +445,9 @@ class TestWrapsCases:
         assert calls == []
 
     @staticmethod
-    def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -> None:
+    def test_decode_jwt_token_uses_shared_session_factory(
+        sqlite_session: Session, application_service_graph: ApplicationServices
+    ) -> None:
         from controllers.web import wraps
         from models.enums import EndUserType
         from models.model import AppMode, CustomizeTokenStrategy, Site
@@ -462,6 +484,8 @@ class TestWrapsCases:
         sqlite_session.add_all((site, end_user))
         sqlite_session.commit()
 
+        app = Flask(__name__)
+        app.extensions["application_services"] = replace(application_service_graph, web_identity=web_identities())
         with (
             mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
             mock.patch.object(wraps, "PassportService") as mock_passport_service,
@@ -472,12 +496,13 @@ class TestWrapsCases:
             ),
         ):
             mock_passport_service.return_value.verify.return_value = {
+                "sub": "Web API Passport",
                 "app_code": "app-code",
                 "app_id": app_model.id,
                 "end_user_id": end_user.id,
             }
 
-            with Flask(__name__).test_request_context("/", headers={"X-App-Code": "app-code"}):
+            with app.test_request_context("/", headers={"X-App-Code": "app-code"}):
                 result_app, result_end_user = wraps.decode_jwt_token()
 
         assert result_app.id == app_model.id
@@ -486,7 +511,10 @@ class TestWrapsCases:
     @staticmethod
     @pytest.mark.parametrize("missing", ["app", "site", "code", "disabled", "unpublished", "end_user", "resource"])
     def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
-        sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, missing: str
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        missing: str,
+        application_service_graph: ApplicationServices,
     ) -> None:
         from controllers.common.app_access_error import register_app_access_error_metadata
         from controllers.web import wraps
@@ -548,12 +576,14 @@ class TestWrapsCases:
 
         api.add_resource(ProtectedResource, "/chat-messages")
         app.register_blueprint(bp)
+        app.extensions["application_services"] = replace(application_service_graph, web_identity=web_identities())
         with (
             mock.patch.object(wraps, "extract_webapp_passport", return_value="fixture-passport"),
             mock.patch.object(wraps, "PassportService") as passport,
             mock.patch.object(wraps.SystemFeatureService, "is_webapp_auth_enabled", return_value=False),
         ):
             passport.return_value.verify.return_value = {
+                "sub": "Web API Passport",
                 "app_code": None if missing == "code" else "fixture-code",
                 "app_id": app_id,
                 "end_user_id": end_user_id,
@@ -605,3 +635,30 @@ class TestWrapsCases:
         response = app.test_client().get("/protected", headers={"X-App-Code": "does-not-exist"})
         assert response.status_code == 404
         assert response.get_json()["code"] == "app_not_found"
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_webapp_cookie_never_selects_console_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from flask import request
+
+    from libs.token import extract_webapp_cookie_token
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+    )
+    with Flask(__name__).test_request_context(
+        "/login/status",
+        headers={
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=web-login",
+        },
+    ):
+        assert extract_webapp_cookie_token(request) == "web-login"

@@ -24,6 +24,7 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HumanInputV2NodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from services.workflow.tool_credentials import ToolNodeSpec
 
 # Only empty containers: values the editor reads without a guard and that mean "none yet".
 EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
@@ -88,6 +89,7 @@ class _HumanInputV2NodeSpec(HumanInputV2NodeData):
 _DIFY_NODE_DATA: Final[Mapping[tuple[str, str], type[BaseModel]]] = {
     (BuiltinNodeTypes.HUMAN_INPUT, "1"): HumanInputNodeSpec,
     (BuiltinNodeTypes.HUMAN_INPUT, HUMAN_INPUT_V2_VERSION): _HumanInputV2NodeSpec,
+    (BuiltinNodeTypes.TOOL, "1"): ToolNodeSpec,
 }
 
 

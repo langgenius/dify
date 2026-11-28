@@ -47,11 +47,6 @@
       "count": 5
     }
   },
-  "web/app/(auth)/signin/normal-form.tsx": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/plugins/page.tsx": {
     "no-restricted-globals": {
       "count": 1

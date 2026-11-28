@@ -1,4 +1,5 @@
-import type { Parameters as AppParameters } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { Parameters as AppParameters } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { WebAppParametersResponse } from '@dify/contracts/api/web/types.gen'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { createHttpError } from './http-error'
@@ -403,6 +404,13 @@ it.each([
     },
   ]
   const parameters: AppParameters = {
+    ...(source === AppSourceType.installedApp
+      ? {
+          connection_revision: null,
+          requires_end_user_connections: false,
+          connection_requirements: [],
+        }
+      : {}),
     opening_statement: null,
     suggested_questions: ['Next question'],
     suggested_questions_after_answer: { enabled: false },
@@ -543,11 +551,44 @@ describe('public app requests through the generated WebApp client', () => {
     expect(publicRequestCalls()).toEqual([['/saved-messages', 'GET']])
   })
 
-  it('reads app metadata from the current Web App address', async () => {
+  it('reads app metadata and adapts parameters from the current Web App address', async () => {
+    const parameters: WebAppParametersResponse = {
+      account_login_enabled: true,
+      allow_anonymous_end_user_auth: false,
+      annotation_reply: {},
+      connection_requirements: [],
+      connection_revision: null,
+      console_web_url: 'https://console.example.com',
+      file_upload: {},
+      more_like_this: {},
+      opening_statement: null,
+      requires_end_user_connections: false,
+      retriever_resource: {},
+      sensitive_word_avoidance: {},
+      show_thoughts: { enabled: true },
+      speech_to_text: {},
+      suggested_questions: [],
+      suggested_questions_after_answer: {},
+      system_parameters: {
+        audio_file_size_limit: 1,
+        file_size_limit: 2,
+        image_file_size_limit: 3,
+        video_file_size_limit: 4,
+        workflow_file_upload_limit: 5,
+      },
+      text_to_speech: {},
+      user_input_form: [],
+    }
     window.history.replaceState({}, '', '/environment/chat/environment-app')
-    request.mockImplementation(async () => Response.json({ tool_icons: {} }))
+    request
+      .mockResolvedValueOnce(Response.json({ tool_icons: {} }))
+      .mockResolvedValueOnce(Response.json(parameters))
     await fetchAppMeta(AppSourceType.webApp)
-    await fetchAppParams(AppSourceType.webApp)
+    await expect(fetchAppParams(AppSourceType.webApp)).resolves.toMatchObject({
+      account_login_enabled: true,
+      opening_statement: '',
+      show_thoughts: { enabled: true },
+    })
     expect(publicRequestCalls()).toEqual([
       ['/meta', 'GET'],
       ['/parameters', 'GET'],

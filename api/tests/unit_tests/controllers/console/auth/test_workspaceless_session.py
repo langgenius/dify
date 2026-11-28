@@ -21,6 +21,8 @@ from libs.passport import PassportService
 from libs.token import generate_csrf_token
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from services.account.adapters import RedisInvitationTokenStore
+from services.entities.account_activation_entities import InvitationToken
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 from tests.helpers.unit.redis_commands import RedisCommandEmulator
@@ -80,13 +82,37 @@ def browser(
         yield client
 
 
-def test_profile_admits_a_session_without_a_workspace_and_records_activity(
-    browser: FlaskClient, sqlite_session_factory: sessionmaker[Session], account_id: str
+def test_activation_check_resolves_a_session_without_a_workspace_and_records_activity(
+    browser: FlaskClient,
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    account_id: str,
 ) -> None:
-    response = browser.get("/console/api/account/profile")
+    with sqlite_session_factory.begin() as session:
+        tenant = Tenant(name="Workspace")
+        session.add(tenant)
+        session.flush()
+        tenant_id = tenant.id
+    token = RedisInvitationTokenStore(redis=redis_transport[0]).create(
+        InvitationToken(account_id, "invitee@example.com", tenant_id, "normal", False)
+    )
+
+    assert browser.get("/console/api/account/profile").status_code == 401
+    response = browser.get(f"/console/api/activate/check?token={token}")
 
     assert response.status_code == 200, response.get_json()
-    assert response.get_json()["email"] == "invitee@example.com"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.get_json() == {
+        "is_valid": True,
+        "data": {
+            "workspace_name": "Workspace",
+            "workspace_id": tenant_id,
+            "email": "invitee@example.com",
+            "account_status": "active",
+            "requires_setup": False,
+            "is_current_account": True,
+        },
+    }
     with sqlite_session_factory() as session:
         account = session.get(Account, account_id)
         assert account is not None
@@ -108,15 +134,28 @@ def test_profile_keeps_the_current_workspace_for_a_member(
     assert browser.get("/console/api/workspaces/current/members").status_code == 200
 
 
-def test_profile_refuses_a_banned_account(
-    browser: FlaskClient, sqlite_session_factory: sessionmaker[Session], account_id: str
+def test_banned_account_is_not_matched_for_invitation_and_refused_on_activation(
+    browser: FlaskClient,
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    account_id: str,
 ) -> None:
     with sqlite_session_factory.begin() as session:
+        tenant = Tenant(name="Workspace")
+        session.add(tenant)
+        session.flush()
+        tenant_id = tenant.id
         account = session.get(Account, account_id)
         assert account is not None
         account.status = AccountStatus.BANNED
+    token = RedisInvitationTokenStore(redis=redis_transport[0]).create(
+        InvitationToken(account_id, "invitee@example.com", tenant_id, "normal", False)
+    )
 
-    assert browser.get("/console/api/account/profile").status_code == 401
+    check = browser.get(f"/console/api/activate/check?token={token}")
+    assert check.status_code == 200, check.get_json()
+    assert check.get_json()["data"]["is_current_account"] is False
+    assert browser.post("/console/api/activate", json={"token": token}).status_code == 401
 
 
 def test_workspace_routes_still_require_a_workspace(browser: FlaskClient) -> None:

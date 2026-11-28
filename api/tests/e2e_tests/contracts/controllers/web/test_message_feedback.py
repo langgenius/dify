@@ -113,7 +113,9 @@ def harness(
     api = ExternalApi(app)
     api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
     api.add_resource(MessageListApi, "/messages")
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     yield _Harness(
         app,
         target,

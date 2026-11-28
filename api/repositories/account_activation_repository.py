@@ -60,6 +60,12 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
         setup: AccountSetup | None,
         create_membership: bool = True,
     ) -> ActivationPersistenceResult | None:
+        """Accept a validated invitation and initialize the account in one transaction.
+
+        Completing membership does not create a workspace or change Builder history.
+        Without setup, preserve the profile and advance only an uninitialized account.
+        Missing accounts, workspaces, or required existing membership leave state unchanged.
+        """
         with self._session_factory.begin() as session:
             tenant_id = session.scalar(
                 select(Tenant.id).where(
@@ -100,6 +106,7 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 account.interface_language = setup.interface_language
                 account.timezone = setup.timezone
                 account.interface_theme = "light"
+            if setup is not None or account.status == AccountStatus.UNINITIALIZED:
                 account.status = AccountStatus.ACTIVE
                 account.initialized_at = naive_utc_now()
 

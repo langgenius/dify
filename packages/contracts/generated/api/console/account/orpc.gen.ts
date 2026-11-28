@@ -356,12 +356,21 @@ export const integrates = {
   get: get6,
 }
 
+/**
+ * Change admitted Account credentials only while password login is enabled
+ *
+ * Existing passwords require verification. Disabled policy rejects before
+ * payload validation or credential writes; failures leave credentials unchanged.
+ */
 export const post9 = oc
   .route({
+    description:
+      'Existing passwords require verification. Disabled policy rejects before\npayload validation or credential writes; failures leave credentials unchanged.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountPassword',
     path: '/account/password',
+    summary: 'Change admitted Account credentials only while password login is enabled',
     tags: ['console'],
   })
   .input(z.object({ body: zPostAccountPasswordBody }))
@@ -489,12 +498,20 @@ export const personalAccessTokens = {
   byTokenId,
 }
 
+/**
+ * Return the profile for an admitted Console workspace without provisioning one
+ *
+ * Get the Console Account profile. A session without an active workspace returns 401.
+ */
 export const get11 = oc
   .route({
+    description:
+      'Get the Console Account profile. A session without an active workspace returns 401.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccountProfile',
     path: '/account/profile',
+    summary: 'Return the profile for an admitted Console workspace without provisioning one',
     tags: ['console'],
   })
   .output(zGetAccountProfileResponse)

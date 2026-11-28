@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   activate: vi.fn(),
   check: vi.fn(),
   replace: vi.fn(),
-  profile: vi.fn(),
 }))
 let searchParams = new URLSearchParams()
 vi.mock('react-i18next', async (importOriginal) => {
@@ -32,10 +31,6 @@ vi.mock('@/i18n/client', () => ({ setLocaleOnClient: vi.fn().mockResolvedValue(u
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mocks.replace }),
   useSearchParams: () => searchParams,
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: mocks.profile,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -63,17 +58,24 @@ vi.mock('@/utils/timezone', async (importOriginal) => ({
   getBrowserTimezone: () => 'Asia/Shanghai',
 }))
 
-const invitation = (overrides: { account_status?: string; requires_setup?: boolean } = {}) => ({
+const invitation = (
+  overrides: {
+    account_status?: string
+    requires_setup?: boolean
+    is_current_account?: boolean
+  } = {},
+) => ({
   is_valid: true,
   data: {
     workspace_name: 'Acme',
     workspace_id: 'workspace-id',
     email: 'invitee@example.com',
     requires_setup: true,
+    is_current_account: true,
     ...overrides,
   },
 })
-function setup({ data = invitation(), email = 'invitee@example.com' } = {}) {
+function setup({ data = invitation() } = {}) {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
     consoleQuery.activate.check.get.queryKey({ input: { query: { token: 'invite-token' } } }),
@@ -81,7 +83,6 @@ function setup({ data = invitation(), email = 'invitee@example.com' } = {}) {
   )
   return renderWithConsoleQuery(<InviteSettingsPage />, {
     queryClient,
-    accountProfile: { id: 'account-id', email },
     systemFeatures: { branding: { enabled: true, application_title: 'Acme AI' } },
   })
 }
@@ -92,17 +93,6 @@ beforeEach(() => {
   searchParams = new URLSearchParams('invite_token=invite-token')
   mocks.check.mockResolvedValue(invitation())
   mocks.activate.mockResolvedValue({ result: 'success' })
-  mocks.profile.mockImplementation(async () =>
-    Response.json({
-      id: 'account-id',
-      name: 'Invitee',
-      email: 'invitee@example.com',
-      avatar: '',
-      avatar_url: null,
-      is_password_set: false,
-      timezone: 'Asia/Shanghai',
-    }),
-  )
 })
 
 describe('Invitation activation', () => {
@@ -126,7 +116,7 @@ describe('Invitation activation', () => {
     { locale: 'zh-Hans', expected: 'zh-Hans' },
     { locale: 'unsupported-locale', expected: 'en-US' },
   ])(
-    'submits setup fields with $locale and refreshes the signed-in account',
+    'submits setup fields with $locale without requiring a Console profile',
     async ({ locale, expected }) => {
       vi.mocked(useLocale).mockReturnValue(locale as ReturnType<typeof useLocale>)
       const user = userEvent.setup()
@@ -142,9 +132,8 @@ describe('Invitation activation', () => {
             timezone: 'Asia/Shanghai',
           },
         },
-        undefined,
+        { context: { handleUnauthorizedLocally: true } },
       )
-      expect(mocks.profile).toHaveBeenCalled()
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
   )
@@ -160,7 +149,7 @@ describe('Invitation activation', () => {
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
       expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
         { body: { token: 'invite-token' } },
-        undefined,
+        { context: { handleUnauthorizedLocally: true } },
       )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },
@@ -248,8 +237,8 @@ describe('Invitation activation', () => {
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
   })
 
-  it('returns a different signed-in account to the invitation sign-in form', async () => {
-    setup({ email: 'current@example.com' })
+  it('returns an unmatched or unauthenticated invitation visitor to sign-in', async () => {
+    setup({ data: invitation({ is_current_account: false }) })
     await waitFor(() =>
       expect(mocks.replace).toHaveBeenCalledWith('/signin?invite_token=invite-token'),
     )
@@ -257,10 +246,19 @@ describe('Invitation activation', () => {
     expect(mocks.activate).not.toHaveBeenCalled()
   })
 
-  it('accepts a case-insensitive email match', async () => {
+  it('returns an expired invitation session to sign-in without losing the invitation', async () => {
     const user = userEvent.setup()
-    setup({ email: 'Invitee@Example.com' })
-    await user.type(screen.getByLabelText('login.name'), 'Invitee{Enter}')
-    await waitFor(() => expect(mocks.activate).toHaveBeenCalledOnce())
+    mocks.activate.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 401 }), {
+        code: 'unauthorized',
+        message: 'Unauthorized',
+        status: 401,
+      }),
+    )
+    setup({ data: invitation({ requires_setup: false }) })
+    await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledWith('/signin?invite_token=invite-token'),
+    )
   })
 })

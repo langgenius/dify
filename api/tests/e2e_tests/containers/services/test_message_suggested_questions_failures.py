@@ -27,6 +27,7 @@ from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl import base as plugin_base
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from extensions.ext_database import db
@@ -364,11 +365,10 @@ def test_console_missing_plugin_token_error_propagates_but_invocation_returns_em
     assert requests[0].url.path == f"/plugin/{scenario.context.tenant_id}/dispatch/llm/{suffix}"
     assert not active_sessions
     errors = [record.exc_info[1] for record in caplog.records if record.exc_info and record.exc_info[1] is not None]
-    # The daemon's -404 JSON response is translated to ValueError by the
-    # streaming transport; only -500 responses deserialize a plugin exception.
     assert any(
-        isinstance(error, ValueError) and "plugin not found" in str(error) and "code: -404" in str(error)
+        isinstance(cause, PluginDaemonClientSideError) and cause.description == "Plugin daemon returned HTTP 404"
         for error in errors
+        for cause in (error, error.__cause__)
     )
     payload = response.get_json()
     assert isinstance(payload, dict)

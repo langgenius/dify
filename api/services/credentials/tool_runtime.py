@@ -36,6 +36,7 @@ class RefreshedToolCredential:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedToolCredential:
+    credential_id: str
     credentials: Mapping[str, object]
     credential_type: str
 
@@ -129,7 +130,7 @@ class ToolCredentialService:
                     raise ToolCredentialRefreshError("Credential changed while it was being refreshed. Please retry.")
                 return self._resolved(latest)
             self._runtime.invalidate(record)
-            return ResolvedToolCredential(refreshed.credentials, record.credential_type)
+            return ResolvedToolCredential(record.id, refreshed.credentials, record.credential_type)
 
     def _load(self, *, workspace_id: str, credential_id: str | None) -> ToolRuntimeCredential:
         record = self._credentials.get_tool_credential(
@@ -140,4 +141,4 @@ class ToolCredentialService:
         return record
 
     def _resolved(self, record: ToolRuntimeCredential) -> ResolvedToolCredential:
-        return ResolvedToolCredential(self._runtime.decrypt(record), record.credential_type)
+        return ResolvedToolCredential(record.id, self._runtime.decrypt(record), record.credential_type)

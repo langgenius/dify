@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import field
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, cast, overload
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 from warnings import deprecated
 
@@ -539,7 +539,14 @@ class Workflow(TypeBase):
             for _, node_data in self.walk_nodes()
         )
 
+    @overload
+    def user_input_form(self, to_old_structure: Literal[True]) -> list[dict[str, Any]]: ...
+
+    @overload
+    def user_input_form(self, to_old_structure: bool = False) -> list[Any]: ...
+
     def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
+        """Read Start variables; legacy callers receive one single-key dictionary per variable."""
         # get start node from graph
         if not self.graph:
             return []
@@ -823,6 +830,15 @@ class WorkflowRun(TypeBase):
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
         sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
+        sa.Index(
+            "workflow_run_end_user_recent_idx",
+            "tenant_id",
+            "app_id",
+            "created_by_role",
+            "created_by",
+            "triggered_from",
+            "created_at",
+        ),
         sa.Index("workflow_run_task_id_idx", "task_id", postgresql_where=sa.text("task_id IS NOT NULL")),
     )
 
@@ -837,6 +853,7 @@ class WorkflowRun(TypeBase):
     # Historical runs can lack a task ID until pause replay.
     task_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    connection_context: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     status: Mapped[WorkflowExecutionStatus] = mapped_column(
         EnumText(WorkflowExecutionStatus, length=255),
         nullable=False,

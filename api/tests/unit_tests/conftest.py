@@ -347,6 +347,23 @@ def account_domain(
 
 
 @pytest.fixture
+def application_service_graph(
+    sqlite_session_factory: sessionmaker[Session], redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock]
+) -> ApplicationServices:
+    """Build the real composition root with SQLite and a network-free Redis transport."""
+    from configs import dify_config
+    from extensions.ext_application_services import build_application_services
+
+    redis, _ = redis_transport
+    return build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=dify_config.DEPLOYMENT_EDITION,
+        initialization_password="",
+        redis=redis,
+    )
+
+
+@pytest.fixture
 def account_application_services(
     sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
 ) -> ApplicationServices:

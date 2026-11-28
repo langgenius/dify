@@ -12,6 +12,145 @@ Bearer format: API_KEY
 ## web
 Web application API operations
 
+### [POST] /account/change-email
+**Send an old/new-email challenge for the cookie Account; no profile changes occur**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailSendPayload](#changeemailsendpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Verification challenge | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailChangeRateLimitExceededError](#emailchangeratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email/check-email-unique
+**Check email availability for an admitted Account; do not mutate accounts or tokens**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CheckEmailUniquePayload](#checkemailuniquepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email available | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email/reset
+**Change only the admitted Account's verified address; failures preserve identity and memberships**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailResetPayload](#changeemailresetpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email/validity
+**Verify this Account's challenge and promote its token without changing identity**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailValidityPayload](#changeemailvaliditypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Verified challenge | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
+| 400 | Bad Request | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailChangeLimitError](#emailchangelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/password
+**Set or change the admitted Account's password when password login is enabled**
+
+A same-origin Account cookie is required. Existing credentials require the
+current password; confirmation and policy failures leave credentials unchanged.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAccountPasswordPayload](#webaccountpasswordpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
+| 400 | Bad Request | **application/json**: [CurrentPasswordIncorrectError](#currentpasswordincorrecterror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[RepeatPasswordNotMatchError](#repeatpasswordnotmatcherror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/profile
+**Return private settings for an admitted Account; unavailable Accounts return 401 without caching**
+
+Get personal Account settings using the WebApp Account cookie, without App or workspace scope.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account profile | **application/json**: [WebAccountProfileResponse](#webaccountprofileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /account/profile
+**Update submitted profile fields for a same-origin Account cookie, without changing identity or membership**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountProfilePatchPayload](#accountprofilepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/session
+**Require the WebApp Origin and a portal code bound to this verifier**
+
+Success sets only the Web Account cookie, never a Console token or App Passport.
+Rejected origins, invalid proofs, and replays do not set any cookies.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebLoginExchangePayload](#webloginexchangepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account session established | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /audio-to-text
 **Convert audio to text**
 
@@ -49,11 +188,13 @@ Create a chat message for conversational applications.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
@@ -114,6 +255,300 @@ Stop a running completion message task.
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Personal connections | **application/json**: [EndUserConnectionListResponse](#enduserconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionCreatePayload](#enduserconnectioncreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | API-key connection created | **application/json**: [EndUserConnectionResponse](#enduserconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/asset
+Read a plugin README asset for a published personal Connection requirement.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| file_name | query | Asset filename relative to the plugin's _assets directory | Yes | string |
+| plugin_unique_identifier | query | Exact plugin artifact from connection_requirements | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin asset | **application/octet-stream**: binary<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/configuration
+Read saved choices and whether authorization must be renewed, without checking credentials.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | query | Existing Chatflow Conversation whose choices to read, including an empty set. Omit for App defaults when initializing a new conversation or plain Workflow. | No | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved Connection configuration | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /connections/configuration
+Replace saved choices and explicitly approve their authorization contract atomically.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionConfigurationPayload](#connectionconfigurationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection configuration saved | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/credential-schema
+Read API-key form fields for an authorized published tool node; no credential values.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_revision | query | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
+| node_id | query |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API-key form schema | **application/json**: [ConnectionCredentialSchemaResponse](#connectioncredentialschemaresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections/oauth/authorization-url
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionOAuthPayload](#enduserconnectionoauthpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | OAuth authorization URL | **application/json**: [EndUserConnectionOAuthResponse](#enduserconnectionoauthresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/oauth/{provider}/callback
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth completion page |  |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections/preflight
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionPreflightPayload](#enduserconnectionpreflightpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection statuses and preflight readiness | **application/json**: [EndUserConnectionPreflightResponse](#enduserconnectionpreflightresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/readme
+Read plugin documentation for a published personal Connection requirement.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | README language, as in the Console plugin API | No | string, <br>**Default:** en-US |
+| plugin_unique_identifier | query | Exact plugin artifact from connection_requirements | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin README | **application/json**: [ConnectionReadmeResponse](#connectionreadmeresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /connections/{connection_id}
+Disconnect locally and remove live selections, then attempt OAuth revocation against the original plugin artifact and Client. Remote failures never undo local deletion or fall back to installed versions.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Connection deleted |  |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/{connection_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Personal connection | **application/json**: [EndUserConnectionResponse](#enduserconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /connections/{connection_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionUpdatePayload](#enduserconnectionupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection updated | **application/json**: [EndUserConnectionResponse](#enduserconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections/{connection_id}/reauthorize
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionReauthorizePayload](#enduserconnectionreauthorizepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | OAuth reauthorization URL | **application/json**: [EndUserConnectionOAuthResponse](#enduserconnectionoauthresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/{connection_id}/revision
+Read a Provider revision for an owned Connection, independently of published tool nodes.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Current Provider revision | **application/json**: [EndUserConnectionRevisionResponse](#enduserconnectionrevisionresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations
@@ -691,6 +1126,7 @@ Check login status
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_code | query | Web app code | No | string |
+| mode | query | end_user reports actual Account authentication instead of Public App access | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
 | user_id | query | End user session ID | No | string |
 
 #### Responses
@@ -711,6 +1147,141 @@ Logout user from web application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Logout successful | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/apps
+List accessible Chat, Completion, legacy Agent, Chatflow, Workflow and Agent WebApps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| name | query |  | No | string |
+| view | query |  | No | string, <br>**Available values:** "favorites", "recent", "shared", <br>**Default:** recent |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Accessible personal Apps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}
+Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App removed from personal lists |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}/favorite
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App unfavorited |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /me/apps/{app_id}/favorite
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App favorited |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections
+List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connection Providers | **application/json**: [ConsumerConnectionProvidersResponse](#consumerconnectionprovidersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/providers/{provider}/connections
+List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connections | **application/json**: [ConsumerConnectionsResponse](#consumerconnectionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/connections/{connection_key}
+Disconnect all owned Connections matching a group key from a Provider's list. Cookie-authenticated browser mutations require the configured WebApp Origin.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_key | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Connection group disconnected |  |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/{connection_key}/apps
+List accessible WebApps associated with a Connection group from a Provider's list.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string (uuid) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| connection_key | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Associated WebApps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
@@ -823,6 +1394,41 @@ Retrieve the metadata for a specific app.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /migration/claim
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Ordinary Chatbot Apps transfer committed history without stopping or waiting for generation. In-flight Chatbot requests may fail after transfer; uncommitted answers may be lost. Their history reads and writes recheck the original caller's current conversation ownership. Existing model calls or streams are not guaranteed to stop immediately. Legacy agent configurations and non-Chatbot Guest history remain unsupported for Chatbot Claim. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionClaimPayload](#connectionclaimpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Whole Guest migration results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /migration/claimable-passports
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow, Chatflow and ordinary Chatbot Apps; other App modes are omitted. Chatbot Apps with legacy agent configurations or non-Chatbot Guest history are omitted. conversation_count counts Chatflow/Chatbot history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ClaimablePassportsPayload](#claimablepassportspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Claimable browser Passports | **application/json**: [ClaimablePassportsResponse](#claimablepassportsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /parameters
 **Retrieve app parameters**
 
@@ -832,7 +1438,7 @@ Retrieve the parameters for a specific app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 200 | Success | **application/json**: [WebAppParametersResponse](#webappparametersresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -846,6 +1452,7 @@ Get authentication passport for web application access
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| mode | query | end_user reuses Account login; console preserves legacy Web App authentication | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
 | user_id | query | End user session ID | No | string |
 
 #### Responses
@@ -853,8 +1460,32 @@ Get authentication passport for web application access
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Passport retrieved successfully | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
-| 401 | Unauthorized - missing app code or invalid authentication | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - missing app code or invalid authentication | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Application or user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /passport
+Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| X-App-Code | header | Web app code | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PassportLoginPayload](#passportloginpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web login completed | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /remote-files/upload
@@ -1026,12 +1657,17 @@ This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/cons
 except it is intended for use by the web app, instead of the console dashboard.
 
 Authentication configuration must be available before the authentication flow can be selected.
+No Account, App Passport, or app code is required. Return the configured
+Web console endpoint URL, independent of login enablement, so clients can
+compose the Account sign-in route. Preserve deployment base paths.
+Read deployment settings without issuing credentials or changing state;
+feature-query failures propagate unchanged.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System features retrieved successfully | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+| 200 | System features retrieved successfully | **application/json**: [WebSystemFeatureResponse](#websystemfeatureresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1100,7 +1736,7 @@ Check if user has permission to access a web application.
 ### [POST] /workflows/run
 **Run workflow**
 
-Execute a workflow with provided inputs and files.
+Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
 
 #### Request Body
 
@@ -1113,12 +1749,14 @@ Execute a workflow with provided inputs and files.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
@@ -1200,6 +1838,32 @@ Account is banned.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AccountBannedError |  | Account is banned. |  |
+
+#### AccountInFreezeError
+
+This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AccountInFreezeError |  | This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration. |  |
+
+#### AccountNotFoundError
+
+Account not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AccountNotFoundError |  | Account not found. |  |
+
+#### AccountProfilePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| interface_language | string |  | No |
+| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | No |
+| name | string |  | No |
+| timezone | string |  | No |
 
 #### AgentNotPublishedError
 
@@ -1299,6 +1963,12 @@ The 'More like this' feature is disabled. Please refresh your page.
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
+#### AppSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSelectorScope | string |  |  |
+
 #### AppSuggestedQuestionsAfterAnswerDisabledError
 
 The 'Suggested Questions After Answer' feature is disabled. Please refresh your page.
@@ -1329,6 +1999,12 @@ Audio size exceeded. {message}
 | ---- | ---- | ----------- | -------- |
 | AudioTooLargeError |  | Audio size exceeded. {message} |  |
 
+#### AuthReasonCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthReasonCode | string |  |  |
+
 #### AuthenticationFailedError
 
 Invalid email or password.
@@ -1336,6 +2012,12 @@ Invalid email or password.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
 
 #### BooleanResultResponse
 
@@ -1361,10 +2043,36 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | ButtonStyle | string | Button styles for user actions. |  |
 
+#### ChangeEmailResetPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| new_email | string |  | Yes |
+| token | string |  | Yes |
+
+#### ChangeEmailSendPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| language | string |  | No |
+| phase | string |  | No |
+| token | string |  | No |
+
+#### ChangeEmailValidityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| email | string |  | Yes |
+| token | string |  | Yes |
+
 #### ChatMessagePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Chatflow choices keyed by independent authorization node ID. Omit on an existing conversation to reuse its last accepted choices. Explicit choices replace the saved configuration after validation. An explicit null, empty map, or missing node does not inherit saved choices. Required for a new conversation with EndUser tool authentication. | No |
 | conversation_id | string | Conversation ID | No |
 | files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the chat | Yes |
@@ -1372,6 +2080,34 @@ Button styles for user actions.
 | query | string | User query/message | Yes |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
+
+#### CheckEmailUniquePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+
+#### ClaimablePassportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| app_name | string |  | Yes |
+| connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
+| conversation_count | integer | Remaining Chatflow/Chatbot conversations; Workflow normally has zero | Yes |
+| index | integer | Index of the candidate in the request's passports list | Yes |
+
+#### ClaimablePassportsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ClaimablePassportsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ClaimablePassportResponse](#claimablepassportresponse) ] |  | Yes |
 
 #### CompletionMessagePayload
 
@@ -1390,6 +2126,267 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
+
+#### ConnectionClaimErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimErrorCode | string |  |  |
+
+#### ConnectionClaimErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | [ConnectionClaimErrorCode](#connectionclaimerrorcode) |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ConnectionClaimFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [ConnectionClaimErrorResponse](#connectionclaimerrorresponse) |  | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+
+#### ConnectionClaimPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ConnectionClaimPreflightDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| failures | [ [ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimPreflightFailedError
+
+Guest migration preflight failed. No resources were transferred.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimPreflightFailedError |  | Guest migration preflight failed. No resources were transferred. |  |
+
+#### ConnectionClaimResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConnectionClaimSuccessResponse](#connectionclaimsuccessresponse)<br>[ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimSuccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| app_code | string |  | Yes |
+| claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
+| claimed_conversations | integer | Chat conversations transferred for supported Workflow/Chatflow/Chatbot Apps | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+| stop_requested_run_count | integer | Guest Runs with accepted stop requests; transfer waits until Guest Runs are terminal | Yes |
+
+#### ConnectionClaimUnavailableError
+
+Guest migration is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimUnavailableError |  | Guest migration is temporarily unavailable. Please retry. |  |
+
+#### ConnectionConfigurationInvalidError
+
+The connection is not compatible with this tool configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConfigurationInvalidError |  | The connection is not compatible with this tool configuration. |  |
+
+#### ConnectionConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Complete choices keyed by independent authorization node ID. Missing/null nodes are unselected; an empty map clears the configuration. Saving explicitly approves the submitted authorization contract. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### ConnectionConfigurationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
+| reauthorization_required | boolean | Whether this App user must renew authorization for the current requirements; not credential readiness. | Yes |
+
+#### ConnectionConflictError
+
+Connection changed during the operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialSchemaResponse | array |  |  |
+
+#### ConnectionCredentialStatus
+
+Last known credential lifecycle state, not readiness for a particular node.
+
+Keep the existing storage values. App-specific Client mismatches and unbinding
+must never be written back as a global credential state change.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialStatus | string | Last known credential lifecycle state, not readiness for a particular node.  Keep the existing storage values. App-specific Client mismatches and unbinding must never be written back as a global credential state change. |  |
+
+#### ConnectionCredentialType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialType | string |  |  |
+
+#### ConnectionCredentialsInvalidError
+
+Invalid credentials for this provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsInvalidError |  | Invalid credentials for this provider. |  |
+
+#### ConnectionCredentialsUnavailableError
+
+Connection credentials are temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsUnavailableError |  | Connection credentials are temporarily unavailable. |  |
+
+#### ConnectionNotFoundError
+
+Connection not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionNotFoundError |  | Connection not found. |  |
+
+#### ConnectionOauthFailedError
+
+OAuth authorization could not be completed. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
+
+#### ConnectionPreflightStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
+| connection_id | string |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
+
+#### ConnectionReadmeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| readme | string |  | Yes |
+
+#### ConnectionReauthorizationRequiredError
+
+The OAuth client changed or is unavailable. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionReauthorizationRequiredError |  | The OAuth client changed or is unavailable. Start authorization again. |  |
+
+#### ConnectionRequiredError
+
+Select a connection for every required tool before running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRequiredError |  | Select a connection for every required tool before running. |  |
+
+#### ConnectionRevisionChangeDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string |  | Yes |
+
+#### ConnectionRevisionChangedError
+
+The connection requirements changed. Refresh and confirm again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
+
+#### ConsumerAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| connection_status | string | App-level personal Connection status. not_configured means required End User tool nodes lack saved Connections; null means this action is not required. | No |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | string |  | Yes |
+| id | string |  | Yes |
+| is_favorite | boolean |  | Yes |
+| last_used_at | integer | Time of the Account's latest accepted WebApp execution, independent of retained execution logs. | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+
+#### ConsumerAppsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerAppResponse](#consumerappresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections_count | integer | Number of personal Connection groups under this Provider. | Yes |
+| description | object |  | Yes |
+| icon | string | Public plugin icon URL; null if the Provider is unavailable. | Yes |
+| icon_dark | string | Public dark icon URL; null if unavailable or not declared. | Yes |
+| label | object |  | Yes |
+| provider | string |  | Yes |
+
+#### ConsumerConnectionProvidersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionProviderResponse](#consumerconnectionproviderresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| connection_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| key | string (uuid) | Representative Connection ID for associated WebApp queries and disconnect. | Yes |
+| name | string | Name of the group member with the smallest Connection ID. | Yes |
+| provider | string |  | Yes |
+| webapps_count | integer | Number of distinct accessible WebApps associated with this group. | Yes |
+
+#### ConsumerConnectionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionResponse](#consumerconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
 
 #### ConversationCursorNotFoundError
 
@@ -1439,6 +2436,39 @@ The conversation was not found for this user and app.
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
+#### CredentialCheckResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checked_at | integer |  | Yes |
+| reason_code | [AuthReasonCode](#authreasoncode) |  | Yes |
+| retryable | boolean |  | Yes |
+| status | [CredentialCheckStatus](#credentialcheckstatus) |  | Yes |
+
+#### CredentialCheckStatus
+
+Outcome of a single provider check, separate from stored credential state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckStatus | string | Outcome of a single provider check, separate from stored credential state. |  |
+
+#### CredentialCheckUnavailableError
+
+Credential validation is temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckUnavailableError |  | Credential validation is temporarily unavailable. |  |
+
+#### CurrentPasswordIncorrectError
+
+Current password is incorrect.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CurrentPasswordIncorrectError |  | Current password is incorrect. |  |
+
 #### DeploymentEdition
 
 Enum representing the deployment edition of the platform.
@@ -1446,6 +2476,30 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
+#### EmailAlreadyInUseError
+
+A user with this email already exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailAlreadyInUseError |  | A user with this email already exists. |  |
+
+#### EmailChangeLimitError
+
+Too many failed email change attempts. Please try again in 24 hours.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailChangeLimitError |  | Too many failed email change attempts. Please try again in 24 hours. |  |
+
+#### EmailChangeRateLimitExceededError
+
+Too many email change emails have been sent. Please try again in {minutes} minutes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailChangeRateLimitExceededError |  | Too many email change emails have been sent. Please try again in {minutes} minutes. |  |
 
 #### EmailCodeError
 
@@ -1470,6 +2524,14 @@ Email code is invalid or expired.
 | email | string |  | Yes |
 | token | string |  | Yes |
 
+#### EmailDomainSuspendedError
+
+This email domain has been suspended.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailDomainSuspendedError |  | This email domain has been suspended. |  |
+
 #### EmailPasswordResetLimitError
 
 Too many failed password reset attempts. Please try again in 24 hours.
@@ -1485,6 +2547,113 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
+
+#### EndUserBusyError
+
+This Web App identity is being updated. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserBusyError |  | This Web App identity is being updated. Please retry. |  |
+
+#### EndUserConnectionCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| credentials | object |  | Yes |
+| name | string | Omit or leave empty to generate an incremental API KEY name. | No |
+| node_id | string |  | Yes |
+
+#### EndUserConnectionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| provider | string |  | No |
+
+#### EndUserConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EndUserConnectionResponse](#enduserconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### EndUserConnectionOAuthPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| name | string | Omit or leave empty to generate an incremental AUTH name. | No |
+| node_id | string |  | Yes |
+
+#### EndUserConnectionOAuthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorization_url | string |  | Yes |
+
+#### EndUserConnectionPreflightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### EndUserConnectionPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Connection contract revision evaluated by this preflight. | Yes |
+| connections | [ [ConnectionPreflightStatus](#connectionpreflightstatus) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### EndUserConnectionReauthorizePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+
+#### EndUserConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| created_at | integer |  | Yes |
+| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
+| credential_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| expires_at | integer |  | Yes |
+| id | string |  | Yes |
+| last_active_at | integer |  | Yes |
+| manual_revocation_required_on_expiry | boolean | For Guest API-key Connections: inactivity cleanup only removes the local key. To invalidate it, revoke it directly at the Provider. | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### EndUserConnectionRevisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Provider revision scoped to this Web App, for operations on the owned Connection. | Yes |
+
+#### EndUserConnectionUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Provider revision required when replacing credentials. | No |
+| credentials | object |  | No |
+| name | string |  | No |
+
+#### EndUserLoginRequiredError
+
+Sign in to use personal connections.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserLoginRequiredError |  | Sign in to use personal connections. |  |
 
 #### ErrorResponse
 
@@ -1838,6 +3007,25 @@ Public Human Input v2 submit payload, independent from the v1 form contract.
 | ---- | ---- | ----------- | -------- |
 | HumanInputV2UnavailableError |  |  |  |
 
+#### I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
+
+#### InvalidAccountPasswordError
+
+The password does not satisfy the account password policy.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidAccountPasswordError |  | The password does not satisfy the account password policy. |  |
+
 #### InvalidEmailError
 
 The email address is not valid.
@@ -1924,6 +3112,12 @@ Immutable evidence identity; no signed URLs, tokens or storage keys.
 | ---- | ---- | ----------- | -------- |
 | status | [LicenseStatus](#licensestatus) |  | Yes |
 
+#### LoginMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LoginMode | string |  |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
@@ -1936,6 +3130,7 @@ Immutable evidence identity; no signed URLs, tokens or storage keys.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_code | string | Web app code | No |
+| mode | [LoginMode](#loginmode) | end_user reports actual Account authentication instead of Public App access | No |
 | user_id | string | End user session ID | No |
 
 #### LoginStatusResponse
@@ -2004,6 +3199,12 @@ Dify Hosted OpenAI trial currently not support the GPT-4 model.
 | ---- | ---- | ----------- | -------- |
 | ModelCurrentlyNotSupportError |  | Dify Hosted OpenAI trial currently not support the GPT-4 model. |  |
 
+#### ModelSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelSelectorScope | string |  |  |
+
 #### NoAudioUploadedError
 
 Please upload your audio.
@@ -2019,6 +3220,14 @@ Please upload your file.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NoFileUploadedError |  | Please upload your file. |  |
+
+#### NodeConnectionStatus
+
+The current selection's effective status for one published Tool node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeConnectionStatus | string | The current selection's effective status for one published Tool node. |  |
 
 #### NotChatAppError
 
@@ -2044,6 +3253,13 @@ Please check if your Workflow app mode matches the right API route.
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your Workflow app mode matches the right API route. |  |
 
+#### Option
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
+
 #### ParagraphInputConfig
 
 Form input definition.
@@ -2054,34 +3270,24 @@ Form input definition.
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
-#### Parameters
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| annotation_reply | { **"enabled"**: boolean } |  | Yes |
-| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
-| more_like_this | { **"enabled"**: boolean } |  | Yes |
-| opening_statement |  |  | No |
-| retriever_resource | { **"enabled"**: boolean } |  | Yes |
-| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
-| show_thoughts | { **"enabled"**: boolean } |  | No |
-| speech_to_text | { **"enabled"**: boolean } |  | Yes |
-| suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
-| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
-| user_input_form | [ object ] |  | Yes |
-
 #### PassportAccessTokenResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_token | string |  | Yes |
 
+#### PassportLoginPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code_verifier | string |  | Yes |
+| login_code | string |  | Yes |
+
 #### PassportQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| mode | [LoginMode](#loginmode) | end_user reuses Account login; console preserves legacy Web App authentication | No |
 | user_id | string | End user session ID | No |
 
 #### PasswordMismatchError
@@ -2112,6 +3318,30 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
+
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [ProviderConfigType](#providerconfigtype) | The type of the credentials | Yes |
+| url | string |  | No |
+
+#### ProviderConfigType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderConfigType | string |  |  |
 
 #### ProviderNotInitializeError
 
@@ -2205,6 +3435,14 @@ The remote file URL is not allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | RemoteFileUrlBlockedError |  | The remote file URL is not allowed. |  |
+
+#### RepeatPasswordNotMatchError
+
+New password and repeat password does not match.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RepeatPasswordNotMatchError |  | New password and repeat password does not match. |  |
 
 #### ResolvedFileListResponse
 
@@ -2421,34 +3659,6 @@ Default configuration for form inputs.
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
 
-#### SystemFeatureModel
-
-Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
-| branding | [BrandingModel](#brandingmodel) |  | Yes |
-| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
-| enable_app_deploy | boolean |  | Yes |
-| enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_creators_platform | boolean |  | Yes |
-| enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
-| enable_explore_banner | boolean |  | Yes |
-| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
-| enable_marketplace | boolean |  | Yes |
-| enable_social_oauth_login | boolean |  | Yes |
-| enable_step_by_step_tour | boolean |  | Yes |
-| is_allow_register | boolean |  | Yes |
-| is_email_setup | boolean |  | Yes |
-| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| rbac_enabled | boolean |  | Yes |
-| sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
-
 #### SystemParameters
 
 | Name | Type | Description | Required |
@@ -2487,6 +3697,12 @@ Usage at this call's dispatch boundary and its authoritative disposition.
 | reason | string, <br>**Available values:** "call_limit_reached", "duplicate_tool_call" |  | No |
 | tool_identity | string |  | Yes |
 | used | integer |  | Yes |
+
+#### ToolSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSelectorScope | string |  |  |
 
 #### TriggerWorkflowServiceModeUnavailableError
 
@@ -2547,6 +3763,44 @@ in form definition, or a variable while the workflow is running.
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
 
+#### WebAccountPasswordPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| new_password | string |  | Yes |
+| password | string | Current password; may be omitted only before the first password is set. | No |
+| repeat_new_password | string |  | Yes |
+
+#### WebAccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | Yes |
+| avatar_url | string |  | Yes |
+| email | string |  | Yes |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| interface_language | string |  | Yes |
+| interface_theme | string |  | Yes |
+| is_password_set | boolean |  | Yes |
+| name | string |  | Yes |
+| timezone | string |  | Yes |
+
+#### WebAccountResponse
+
+Personal settings only; credentials, login IPs and Builder lifecycle stay private.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | Yes |
+| avatar_url | string |  | Yes |
+| email | string |  | Yes |
+| interface_language | string |  | Yes |
+| interface_theme | string |  | Yes |
+| is_password_set | boolean |  | Yes |
+| name | string |  | Yes |
+| timezone | string |  | Yes |
+
 #### WebAppAuthModel
 
 | Name | Type | Description | Required |
@@ -2563,6 +3817,22 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebAppConnectionRequirement
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| icon | string | Plugin icon URL, using the Integrations asset endpoint. | Yes |
+| icon_dark | string | Dark plugin icon URL; null when the plugin has no dark icon. | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
+| provider | string |  | Yes |
+| provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
+| purpose | string |  | Yes |
+| title | string |  | Yes |
+| verified | boolean | Whether Dify verified this exact plugin artifact. | Yes |
 
 #### WebAppCustomConfigResponse
 
@@ -2590,6 +3860,30 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### WebAppParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_login_enabled | boolean | Whether explicit Account login and Passport exchange are enabled. | Yes |
+| allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Authorization requirements and exact plugin artifacts in connection_revision, without personal state. | Yes |
+| connection_revision | string | Opaque revision of connection requirements, plugin artifacts and OAuth Client configurations; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
+| console_web_url | string | Web console base URL, preserving its deployment base path; independent of whether Account login is enabled. An empty string means the same-origin root. | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
+| opening_statement | string |  | No |
+| requires_end_user_connections | boolean | Whether this published version declares EndUser tool connections, independent of user readiness. | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
+
 #### WebAppSiteResponse
 
 | Name | Type | Description | Required |
@@ -2611,6 +3905,23 @@ Too many form requests. Please try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WebFormRateLimitExceededError |  | Too many form requests. Please try again later. |  |
+
+#### WebLoginExchangePayload
+
+Redeem an opaque one-use grant with the original browser's S256 verifier.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code_verifier | string |  | Yes |
+| login_code | string |  | Yes |
+
+#### WebLoginUnavailableError
+
+Web App login is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebLoginUnavailableError |  | Web App login is temporarily unavailable. Please retry. |  |
 
 #### WebMessageInfiniteScrollPagination
 
@@ -2679,6 +3990,43 @@ Too many form requests. Please try again later.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### WebSystemFeatureResponse
+
+Extend public bootstrap with the Web-only Account login entry point.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| console_web_url | string | Web console base URL, preserving its deployment base path; independent of whether Account login is enabled. An empty string means the same-origin root. | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
+
+#### WebappResourcesChangedError
+
+Web App resources changed before execution. Refresh and retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebappResourcesChangedError |  | Web App resources changed before execution. Refresh and retry. |  |
+
 #### WorkflowNotActiveError
 
 | Name | Type | Description | Required |
@@ -2689,5 +4037,7 @@ Too many form requests. Please try again later.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
 | files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |

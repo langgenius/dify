@@ -103,6 +103,22 @@ def test_provider_metadata_daemon_errors_reach_http_mapping_after_subscription_t
     assert not daemon.requests[0].open_transactions
 
 
+def test_provider_rejection_keeps_redacted_client_error(endpoint_harness: _Harness, daemon: _Daemon) -> None:
+    """An explicit provider rejection is a 400 without exposing its diagnostic."""
+    subscription = _add_subscription(endpoint_harness)
+    daemon.response_code = 1
+    daemon.response_message = "private test diagnostic"
+    daemon.response_data = None
+
+    response = Context().run(endpoint_harness.client.post, f"/triggers/plugin/{subscription.endpoint_id}", json={})
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json() == {
+        "error": "Endpoint processing failed",
+        "message": "Invalid webhook request or plugin response.",
+    }
+
+
 def test_invalid_persisted_provider_is_load_failure_not_missing_plugin(
     endpoint_harness: _Harness, daemon: _Daemon
 ) -> None:

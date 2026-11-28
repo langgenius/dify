@@ -97,7 +97,7 @@ class MessageListApi(WebApiResource):
             pagination = application_services().message_queries.get_page(
                 app_id=app_model.id,
                 app_owner_tenant_id=app_model.tenant_id,
-                actor=MessageEndUser(end_user_id=end_user.id),
+                actor=MessageEndUser(end_user_id=end_user.id, is_web_app=True),
                 conversation_id=query.conversation_id,
                 first_id=query.first_id,
                 limit=query.limit,
@@ -156,7 +156,7 @@ class MessageFeedbackApi(WebApiResource):
                 app_id=app_model.id,
                 app_owner_tenant_id=app_model.tenant_id,
                 message_id=message_id_str,
-                actor=MessageEndUser(end_user_id=end_user.id),
+                actor=MessageEndUser(end_user_id=end_user.id, is_web_app=True),
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
@@ -216,7 +216,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             response = application_services().message_more_like_this.generate(
                 app_id=app_model.id,
                 app_owner_tenant_id=app_model.tenant_id,
-                actor=MessageEndUser(end_user_id=end_user.id),
+                actor=MessageEndUser(end_user_id=end_user.id, is_web_app=True),
                 message_id=message_id_str,
                 streaming=streaming,
             )
@@ -297,7 +297,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
                 app_id=app_model.id,
                 app_owner_tenant_id=app_model.tenant_id,
                 expected_app_mode=app_model.mode,
-                actor=MessageEndUser(end_user_id=end_user.id),
+                actor=MessageEndUser(end_user_id=end_user.id, is_web_app=True),
                 invoke_from="web-app",
                 message_id=message_id_str,
             )
