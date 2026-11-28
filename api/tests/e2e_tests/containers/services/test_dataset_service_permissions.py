@@ -201,7 +201,7 @@ class TestDatasetServicePermissionsAndLifecycle:
 
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        send_deleted_signal.assert_called_once_with(dataset)
+        send_deleted_signal.assert_called_once_with(dataset, session=db_session_with_containers)
 
     def test_dataset_use_check_returns_true_when_join_exists(self, db_session_with_containers: Session) -> None:
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)

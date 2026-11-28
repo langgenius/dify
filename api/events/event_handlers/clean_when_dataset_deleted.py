@@ -1,14 +1,16 @@
+from sqlalchemy.orm import Session
+
 from events.dataset_event import dataset_was_deleted
-from extensions.ext_database import db
 from models import Dataset
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.clean_dataset_task import clean_dataset_task
 
 
 @dataset_was_deleted.connect
-def handle(sender: Dataset, **kwargs):
+def handle(sender: Dataset, *, session: Session, **kwargs):
+    """Enqueue dataset cleanup using the caller-provided delete session."""
     dataset = sender
-    doc_form = get_dataset_doc_form(dataset, session=db.session())
+    doc_form = get_dataset_doc_form(dataset, session=session)
     if not doc_form or not dataset.indexing_technique:
         return
     clean_dataset_task.delay(

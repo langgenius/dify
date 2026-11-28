@@ -146,7 +146,7 @@ class TestDatasetServiceDeleteDataset:
         # Assert
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        mock_dataset_was_deleted.send.assert_called_once_with(dataset)
+        mock_dataset_was_deleted.send.assert_called_once_with(dataset, session=db_session_with_containers)
 
     def test_delete_dataset_not_found(self, db_session_with_containers: Session) -> None:
         """
