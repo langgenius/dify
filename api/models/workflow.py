@@ -92,12 +92,33 @@ SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
 
 
 def _resolve_workflow_app_tenant_id(session: Session, app_id: str) -> str:
+    """Resolve the tenant that owns the app or workflow identified by ``app_id``.
+
+    Preconditions: ``app_id`` identifies either an ``App`` row or a ``Workflow`` row.
+    Postconditions: returns the owning ``tenant_id``; raises ``ValueError`` when no
+    owning row exists in either table.
+
+    Invariant: a workflow belongs to exactly one tenant, so the tenant resolved
+    from the workflow row is the tenant that owns the app. RAG Knowledge Pipelines
+    have a ``workflows`` row (``type='rag-pipeline'``, ``version='draft'``) but no
+    ``apps`` row, so the app lookup alone cannot resolve their tenant.
+    """
     from .model import App
 
     tenant_id = session.scalar(select(App.tenant_id).where(App.id == app_id))
-    if not tenant_id:
-        raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
-    return tenant_id
+    if tenant_id:
+        return tenant_id
+
+    tenant_id = session.scalar(
+        select(Workflow.tenant_id).where(
+            Workflow.app_id == app_id,
+            Workflow.version == Workflow.VERSION_DRAFT,
+        )
+    )
+    if tenant_id:
+        return tenant_id
+
+    raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
 
 
 class WorkflowContentDict(TypedDict):
