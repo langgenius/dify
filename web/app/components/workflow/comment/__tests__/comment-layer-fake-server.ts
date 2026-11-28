@@ -142,6 +142,16 @@ export const fakeCollaborationManager = {
     return () => {}
   },
   emitCommentsUpdate: collaboration.emit,
+  setNodes: () => {},
+  setEdges: () => {},
+  canApplyLocalGraphMutation: () => true,
+  getCurrentAppId: () => null,
+  // Mirrors the real manager: the callback runs immediately with the
+  // current readiness and returns an unsubscribe function.
+  onGraphReadyChange: (callback: (isReady: boolean) => void) => {
+    callback(true)
+    return () => {}
+  },
 }
 
 export function resetFakeServer() {

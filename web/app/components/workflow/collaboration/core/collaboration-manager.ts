@@ -845,6 +845,10 @@ export class CollaborationManager {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
   }
 
+  getCurrentAppId(): string | null {
+    return this.currentAppId
+  }
+
   async getOnlineUserAvatars(appId: string): Promise<Record<string, string>> {
     const socket = this.getActiveSocket()
     if (this.currentAppId !== appId || !socket?.connected) return {}
