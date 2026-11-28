@@ -373,10 +373,16 @@ const ChatWrapper = () => {
     if (respondingState) return null
     if (currentConversationId) return null
     if (!welcomeMessage) return null
-    if (!collapsed && inputsForms.length > 0 && !allInputsHidden) return null
+    const hasInputsForm = inputsForms.length > 0 && !allInputsHidden
+    if (!collapsed && hasInputsForm) return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
-        <div className="flex min-h-[50vh] items-center justify-center px-4 py-12">
+        <div
+          className={cn(
+            'flex justify-center px-4',
+            hasInputsForm ? 'pt-6' : 'min-h-[50vh] items-center py-12',
+          )}
+        >
           <div className="flex max-w-180 grow gap-4">
             <AppIcon size="xl" icon={appData?.site} />
             <div className="w-0 grow">
@@ -390,7 +396,12 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
+      <div
+        className={cn(
+          'flex flex-col items-center gap-3',
+          hasInputsForm ? 'pt-6' : 'min-h-[50vh] justify-center py-12',
+        )}
+      >
         <AppIcon size="xl" icon={appData?.site} />
         <div className="max-w-3xl px-4">
           <Markdown

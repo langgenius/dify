@@ -387,14 +387,16 @@ const ChatWrapper = () => {
     if (respondingState) return null
     if (currentConversationId) return null
     if (!welcomeMessage) return null
-    if (!collapsed && inputsForms.length > 0 && !allInputsHidden) return null
+    const hasInputsForm = inputsForms.length > 0 && !allInputsHidden
+    if (!collapsed && hasInputsForm) return null
     if (!appData?.site) return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
         <div
           className={cn(
-            'flex items-center justify-center px-4 py-12',
-            isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+            'flex justify-center px-4',
+            hasInputsForm ? 'pt-6' : 'items-center py-12',
+            !hasInputsForm && (isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]'),
           )}
         >
           <div className="flex max-w-180 grow gap-4">
@@ -410,8 +412,9 @@ const ChatWrapper = () => {
     return (
       <div
         className={cn(
-          'flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12',
-          isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+          'flex flex-col items-center gap-3',
+          hasInputsForm ? 'pt-6' : 'min-h-[50vh] justify-center py-12',
+          !hasInputsForm && (isBelowSm ? 'min-h-[30vh] py-0' : 'h-[50vh]'),
         )}
       >
         <AppIcon size="xl" icon={appData?.site} />
