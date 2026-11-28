@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -39,6 +40,7 @@ from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessageRole,
     TextPromptMessageContent,
+    UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
@@ -405,6 +407,11 @@ def _queue_manager() -> MessageBasedAppQueueManager:
     )
 
 
+def _streaming_generate_entity() -> EasyUIBasedAppGenerateEntity:
+    model_config = ModelConfigWithCredentialsEntity.model_construct(model="mock")
+    return EasyUIBasedAppGenerateEntity.model_construct(model_conf=model_config, stream=True)
+
+
 def _published_events(queue_manager: MessageBasedAppQueueManager) -> list[object]:
     return [message.event for message in queue_manager.listen()]
 
@@ -474,12 +481,10 @@ class TestAppRunner:
     def test_direct_output_streaming_publishes_chunks_and_end(self):
         runner = AppRunner()
         queue = _queue_manager()
-        model_config = ModelConfigWithCredentialsEntity.model_construct(model="mock")
-        app_generate_entity = EasyUIBasedAppGenerateEntity.model_construct(model_conf=model_config, stream=True)
 
         runner.direct_output(
             queue_manager=queue,
-            app_generate_entity=app_generate_entity,
+            app_generate_entity=_streaming_generate_entity(),
             prompt_messages=[],
             text="hi",
             stream=True,
@@ -488,6 +493,28 @@ class TestAppRunner:
         events = _published_events(queue)
         assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
         assert isinstance(events[-1], QueueMessageEndEvent)
+
+    def test_direct_output_streaming_publishes_the_prompt_once(self) -> None:
+        runner = AppRunner()
+        queue = _queue_manager()
+        prompt = [UserPromptMessage(content="question")]
+
+        runner.direct_output(
+            queue_manager=queue,
+            app_generate_entity=_streaming_generate_entity(),
+            prompt_messages=prompt,
+            text="hey",
+            stream=True,
+        )
+
+        events = _published_events(queue)
+        chunk_events = [event for event in events if isinstance(event, QueueLLMChunkEvent)]
+        assert [event.chunk.delta.message.content for event in chunk_events] == ["h", "e", "y"]
+        assert [list(event.chunk.prompt_messages) for event in chunk_events] == [prompt, [], []]
+        end_event = events[-1]
+        assert isinstance(end_event, QueueMessageEndEvent)
+        assert end_event.llm_result is not None
+        assert list(end_event.llm_result.prompt_messages) == prompt
 
     def test_handle_invoke_result_direct_publishes_end_event(self):
         runner = AppRunner()
@@ -666,6 +693,43 @@ class TestAppRunner:
         assert isinstance(events[-1], QueueMessageEndEvent)
         assert events[-1].llm_result.message.content == "abc"
         assert "Received multimodal output but missing required parameters" in caplog.messages
+
+    @pytest.mark.parametrize("agent", [False, True])
+    def test_handle_invoke_result_stream_publishes_the_prompt_once(self, agent: bool) -> None:
+        """The prompt is per-call data: it goes out with the first chunk event, however many follow.
+
+        Every published event is inspected in full, so a prompt repeated on each chunk would cost
+        work proportional to the conversation history for every streamed token.
+        """
+        runner = AppRunner()
+        queue = _queue_manager()
+        prompt = [UserPromptMessage(content="question"), AssistantPromptMessage(content="an earlier answer")]
+        chunks = [
+            LLMResultChunk(
+                model="stream-model",
+                prompt_messages=prompt,
+                delta=LLMResultChunkDelta(index=index, message=AssistantPromptMessage(content=text)),
+            )
+            for index, text in enumerate(["a", "b", "c"])
+        ]
+
+        def _stream() -> Generator[LLMResultChunk]:
+            yield from chunks
+
+        runner._handle_invoke_result(invoke_result=_stream(), queue_manager=queue, stream=True, agent=agent)
+
+        events = _published_events(queue)
+        chunk_events = [event for event in events if isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent)]
+        assert [type(event) for event in chunk_events] == [QueueAgentMessageEvent if agent else QueueLLMChunkEvent] * 3
+        assert [event.chunk.delta.message.content for event in chunk_events] == ["a", "b", "c"]
+        assert [list(event.chunk.prompt_messages) for event in chunk_events] == [prompt, [], []]
+        # The model runtime keeps using its chunks after yielding them; they are published as copies.
+        assert all(list(chunk.prompt_messages) == prompt for chunk in chunks)
+        end_event = events[-1]
+        assert isinstance(end_event, QueueMessageEndEvent)
+        assert end_event.llm_result is not None
+        assert list(end_event.llm_result.prompt_messages) == prompt
+        assert end_event.llm_result.message.content == "abc"
 
     def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
