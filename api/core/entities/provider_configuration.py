@@ -1091,7 +1091,13 @@ class ProviderConfiguration(BaseModel):
         return validated_credentials
 
     def create_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict[str, Any], credential_name: str | None
+        self,
+        model_type: ModelType,
+        model: str,
+        credentials: dict[str, Any],
+        credential_name: str | None,
+        *,
+        skip_validation: bool = False,
     ) -> str:
         """
         Create a custom model credential.
@@ -1112,9 +1118,10 @@ class ProviderConfiguration(BaseModel):
                     model=model, model_type=model_type, session=pre_session
                 )
 
-        credentials = self.validate_custom_model_credentials(
-            model_type=model_type, model=model, credentials=credentials
-        )
+        if not skip_validation:
+            credentials = self.validate_custom_model_credentials(
+                model_type=model_type, model=model, credentials=credentials
+            )
 
         with Session(db.engine) as session:
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
@@ -1167,6 +1174,8 @@ class ProviderConfiguration(BaseModel):
         credentials: dict[str, Any],
         credential_name: str | None,
         credential_id: str,
+        *,
+        skip_validation: bool = False,
     ) -> None:
         """
         Update a custom model credential.
@@ -1188,12 +1197,13 @@ class ProviderConfiguration(BaseModel):
             ):
                 raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
 
-        credentials = self.validate_custom_model_credentials(
-            model_type=model_type,
-            model=model,
-            credentials=credentials,
-            credential_id=credential_id,
-        )
+        if not skip_validation:
+            credentials = self.validate_custom_model_credentials(
+                model_type=model_type,
+                model=model,
+                credentials=credentials,
+                credential_id=credential_id,
+            )
 
         load_balancing_configs_changed = False
         with Session(db.engine) as session:
