@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import patch
@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, inspect, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -24,12 +24,10 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_manager import ToolManager
-from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
 from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
@@ -45,12 +43,38 @@ ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
 END_USER_ID = "00000000-0000-0000-0000-000000000005"
 CREATOR_ID = "00000000-0000-0000-0000-000000000006"
 
+# The scalar payloads ``WorkflowTool.create_variable_message`` carries, matching the
+# parametrized cases exercised below.
+type VariableValue = str | int | float | bool | list[int] | dict[str, str]
+
 
 @dataclass(frozen=True)
 class SqliteToolDb:
-    engine: Engine
-    session_maker: sessionmaker[Session]
     caller_session: Session
+
+
+def _variable_body(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
+    """Return the variable payload, asserting the message really is a variable message."""
+    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+    return message.message
+
+
+def _text_body(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
+    """Return the text payload, asserting the message really is a text message."""
+    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+    return message.message
+
+
+def _json_body(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessage:
+    """Return the json payload, asserting the message really is a json message."""
+    assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+    return message.message
+
+
+def _file_body(message: ToolInvokeMessage) -> ToolInvokeMessage.FileMessage:
+    """Return the file payload, asserting the message really is a file message."""
+    assert isinstance(message.message, ToolInvokeMessage.FileMessage)
+    return message.message
 
 
 def _record_calls(
@@ -69,17 +93,15 @@ def _record_calls(
 
 
 @pytest.fixture
-def sqlite_tool_db(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-) -> Iterator[SqliteToolDb]:
-    """Bind service-owned sessions to SQLite."""
-    models = (App, Workflow, EndUser, Account, Tenant, TenantAccountJoin)
-    TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(workflow_tool_module.session_factory, "create_session", session_maker)
-    with session_maker() as caller_session:
-        yield SqliteToolDb(engine=sqlite_engine, session_maker=session_maker, caller_session=caller_session)
+def sqlite_tool_db(sqlite_session: Session) -> SqliteToolDb:
+    """Persist real rows through the shared full-schema SQLite session.
+
+    ``tests/unit_tests/conftest.py`` binds ``core.db.session_factory`` to this same
+    SQLite database, so rows added here are visible to the service-owned sessions the
+    tool opens on its own.
+    """
+
+    return SqliteToolDb(caller_session=sqlite_session)
 
 
 def _persist_tenant(db: SqliteToolDb, *, tenant_id: str = TENANT_ID) -> Tenant:
@@ -189,9 +211,9 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
 
 
 def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+    sqlite_engine: Engine, sqlite_session: Session
 ) -> None:
-    tool_db = SqliteToolDb(sqlite_engine, sqlite_session_factory, sqlite_session)
+    tool_db = SqliteToolDb(caller_session=sqlite_session)
     _persist_tenant(tool_db)
     user = _persist_end_user(tool_db)
     app_model = _persist_app(tool_db)
@@ -257,7 +279,7 @@ def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
 def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure that WorkflowTool will throw a `ToolInvokeError` exception when
     `WorkflowAppGenerator.generate` returns a result with `error` key inside
     the `data` element.
@@ -287,7 +309,7 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 def test_workflow_tool_rejects_paused_generator_result(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     tool = _build_tool()
     user = make_account(account_id="test_user")
     generate, generate_calls = _record_calls(
@@ -313,7 +335,7 @@ def test_workflow_tool_rejects_paused_generator_result(
 def test_legacy_tool_disables_human_input(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     tool = _build_tool()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
@@ -335,7 +357,7 @@ def test_legacy_tool_disables_human_input(
 def test_workflow_tool_passes_parent_trace_context_from_runtime(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure nested workflow runtime metadata is forwarded as parent trace context."""
     tool = _build_tool()
     tool.set_parent_trace_context(
@@ -364,7 +386,7 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
 def test_workflow_tool_passes_parent_trace_session_id(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure nested workflows inherit the parent observability session ID."""
     tool = _build_tool()
     tool.entity.parameters = [
@@ -396,7 +418,7 @@ def test_workflow_tool_passes_parent_trace_session_id(
 def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure private trace context does not overwrite same-named workflow inputs."""
     tool = _build_tool()
     tool.entity.parameters = [
@@ -450,7 +472,7 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
 def test_workflow_tool_can_clear_parent_trace_context(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure reused WorkflowTool instances do not keep stale parent trace context."""
     tool = _build_tool()
     tool.set_parent_trace_context(
@@ -477,7 +499,7 @@ def test_workflow_tool_can_clear_parent_trace_context(
 def test_workflow_tool_can_clear_trace_session_id(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure reused WorkflowTool instances do not keep stale trace session IDs."""
     tool = _build_tool()
     tool.set_trace_session_id("session-1")
@@ -511,7 +533,7 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     runtime_parameters: dict[str, Any],
-):
+) -> None:
     """Ensure incomplete runtime metadata does not leak parent trace context into generator args."""
     tool = _build_tool()
     tool.runtime.runtime_parameters = runtime_parameters
@@ -534,7 +556,7 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
 def test_workflow_tool_should_generate_variable_messages_for_outputs(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Test that WorkflowTool should generate variable messages when there are outputs"""
     tool = _build_tool()
 
@@ -562,7 +584,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
     assert len(variable_messages) == 3
 
     # Verify content of each variable message
-    variable_dict = {msg.message.variable_name: msg.message.variable_value for msg in variable_messages}
+    variable_dict = {_variable_body(msg).variable_name: _variable_body(msg).variable_value for msg in variable_messages}
     assert variable_dict["result"] == "success"
     assert variable_dict["count"] == 42
     assert variable_dict["data"] == {"key": "value"}
@@ -570,18 +592,18 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
     # Verify text message
     text_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
     assert len(text_messages) == 1
-    assert json.loads(text_messages[0].message.text) == mock_outputs
+    assert json.loads(_text_body(text_messages[0]).text) == mock_outputs
 
     # Verify JSON message
     json_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
     assert len(json_messages) == 1
-    assert json_messages[0].message.json_object == mock_outputs
+    assert _json_body(json_messages[0]).json_object == mock_outputs
 
 
 def test_workflow_tool_should_handle_empty_outputs(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Test that WorkflowTool should handle empty outputs correctly"""
     tool = _build_tool()
 
@@ -612,12 +634,12 @@ def test_workflow_tool_should_handle_empty_outputs(
     # Verify text message
     text_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
     assert len(text_messages) == 1
-    assert text_messages[0].message.text == "{}"
+    assert _text_body(text_messages[0]).text == "{}"
 
     # Verify JSON message
     json_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
     assert len(json_messages) == 1
-    assert json_messages[0].message.json_object == {}
+    assert _json_body(json_messages[0]).json_object == {}
 
 
 @pytest.mark.parametrize(
@@ -631,31 +653,32 @@ def test_workflow_tool_should_handle_empty_outputs(
         ("dict_var", {"key": "value"}),
     ],
 )
-def test_create_variable_message(var_name, var_value):
+def test_create_variable_message(var_name: str, var_value: VariableValue) -> None:
     """Create variable messages for multiple value types."""
     tool = _build_tool()
 
     message = tool.create_variable_message(var_name, var_value)
 
     assert message.type == ToolInvokeMessage.MessageType.VARIABLE
-    assert message.message.variable_name == var_name
-    assert message.message.variable_value == var_value
-    assert message.message.stream is False
+    body = _variable_body(message)
+    assert body.variable_name == var_name
+    assert body.variable_value == var_value
+    assert body.stream is False
 
 
-def test_create_file_message_should_include_file_marker():
+def test_create_file_message_should_include_file_marker() -> None:
     """Ensure file message includes marker and meta payload."""
     tool = _build_tool()
 
-    file_obj = object()
-    message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
+    file_obj = File(transfer_method=FileTransferMethod.TOOL_FILE, type=FileType.DOCUMENT, reference="tool-file-1")
+    message = tool.create_file_message(file_obj)
 
     assert message.type == ToolInvokeMessage.MessageType.FILE
-    assert message.message.file_marker == "file_marker"
+    assert _file_body(message).file_marker == "file_marker"
     assert message.meta == {"file": file_obj}
 
 
-def test_resolve_user_from_database_falls_back_to_end_user(sqlite_tool_db: SqliteToolDb):
+def test_resolve_user_from_database_falls_back_to_end_user(sqlite_tool_db: SqliteToolDb) -> None:
     """Ensure worker context can resolve EndUser when Account is missing."""
     _persist_tenant(sqlite_tool_db)
     end_user = _persist_end_user(sqlite_tool_db)
@@ -677,7 +700,7 @@ def test_resolve_user_from_database_falls_back_to_end_user(sqlite_tool_db: Sqlit
     assert tool._resolve_user_from_database(user_id=other_tenant_end_user.id) is None
 
 
-def test_resolve_user_from_database_returns_none_when_no_tenant(sqlite_tool_db: SqliteToolDb):
+def test_resolve_user_from_database_returns_none_when_no_tenant(sqlite_tool_db: SqliteToolDb) -> None:
     """Return None if tenant cannot be found in worker context."""
     tool = _build_tool(tenant_id=OTHER_TENANT_ID)
     tool.runtime.invoke_from = InvokeFrom.SERVICE_API
@@ -687,7 +710,7 @@ def test_resolve_user_from_database_returns_none_when_no_tenant(sqlite_tool_db: 
     assert resolved_user is None
 
 
-def test_workflow_tool_provider_type_and_fork_runtime():
+def test_workflow_tool_provider_type_and_fork_runtime() -> None:
     """Verify provider type and forked runtime behavior."""
     tool = _build_tool()
     assert tool.tool_provider_type() == ToolProviderType.WORKFLOW
@@ -699,19 +722,19 @@ def test_workflow_tool_provider_type_and_fork_runtime():
     assert forked.runtime.tenant_id == "tenant-2"
 
 
-def test_derive_usage_from_top_level_usage_key():
+def test_derive_usage_from_top_level_usage_key() -> None:
     """Derive usage from top-level usage dict."""
     usage = WorkflowTool._derive_usage_from_result({"usage": {"total_tokens": 12, "total_price": "0.2"}})
     assert usage.total_tokens == 12
 
 
-def test_derive_usage_from_metadata_usage():
+def test_derive_usage_from_metadata_usage() -> None:
     """Derive usage from metadata usage dict."""
     metadata_usage = WorkflowTool._derive_usage_from_result({"metadata": {"usage": {"total_tokens": 7}}})
     assert metadata_usage.total_tokens == 7
 
 
-def test_derive_usage_from_totals():
+def test_derive_usage_from_totals() -> None:
     """Derive usage from top-level totals fields."""
     totals_usage = WorkflowTool._derive_usage_from_result(
         {"total_tokens": "9", "total_price": "1.3", "currency": "USD"}
@@ -720,13 +743,13 @@ def test_derive_usage_from_totals():
     assert str(totals_usage.total_price) == "1.3"
 
 
-def test_derive_usage_from_empty():
+def test_derive_usage_from_empty() -> None:
     """Default usage values when result is empty."""
     empty_usage = WorkflowTool._derive_usage_from_result({})
     assert empty_usage.total_tokens == 0
 
 
-def test_extract_usage_from_nested():
+def test_extract_usage_from_nested() -> None:
     """Extract nested usage dict from result payloads."""
     nested = WorkflowTool._extract_usage_dict({"nested": [{"data": {"usage": {"total_tokens": 3}}}]})
     assert nested == {"total_tokens": 3}
@@ -735,7 +758,7 @@ def test_extract_usage_from_nested():
 def test_invoke_raises_when_user_not_found(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Raise ToolInvokeError when user resolution fails."""
     tool = _build_tool()
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
@@ -746,7 +769,7 @@ def test_invoke_raises_when_user_not_found(
         list(tool.invoke(sqlite_session, "missing", {}))
 
 
-def test_resolve_user_from_database_returns_account(sqlite_tool_db: SqliteToolDb):
+def test_resolve_user_from_database_returns_account(sqlite_tool_db: SqliteToolDb) -> None:
     """Resolve Account and set tenant in worker context."""
     tenant = _persist_tenant(sqlite_tool_db)
     account = _persist_account(sqlite_tool_db)
@@ -759,7 +782,7 @@ def test_resolve_user_from_database_returns_account(sqlite_tool_db: SqliteToolDb
     assert inspect(resolved).detached is True
 
 
-def test_get_workflow_and_get_app_db_branches(sqlite_tool_db: SqliteToolDb):
+def test_get_workflow_and_get_app_db_branches(sqlite_tool_db: SqliteToolDb) -> None:
     """Cover workflow/app retrieval branches and error cases."""
     app = _persist_app(sqlite_tool_db)
     specific_workflow = _persist_workflow(sqlite_tool_db, version="1")
@@ -806,7 +829,7 @@ def _setup_transform_args_tool(monkeypatch: pytest.MonkeyPatch) -> WorkflowTool:
     return tool
 
 
-def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
+def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch) -> None:
     """Transform args into parameters and files payloads."""
     tool = _setup_transform_args_tool(monkeypatch)
     build_file_from_stored_mapping, build_file_calls = _record_calls(
@@ -867,7 +890,7 @@ def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
     assert all(call["tenant_id"] == "test_tool" for call in build_file_calls)
 
 
-def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
+def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ignore invalid file entries while keeping params."""
     tool = _setup_transform_args_tool(monkeypatch)
     invalid_params, invalid_files = tool._transform_args({"query": "hello", "files": [{"invalid": True}]})
@@ -879,7 +902,7 @@ def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
 def test_transform_args_normalizes_optional_files_parameter(
     monkeypatch: pytest.MonkeyPatch,
     empty_value: Any,
-):
+) -> None:
     """Pass optional workflow file-list inputs as an empty list when no files were provided."""
     tool = _build_tool()
     images_param = ToolParameter.get_simple_instance(
@@ -900,7 +923,7 @@ def test_transform_args_normalizes_optional_files_parameter(
 def test_workflow_tool_invocation_normalizes_optional_files_parameter(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """Ensure casted empty FILES values do not reach workflow input validation as [None]."""
     tool = _build_tool()
     images_param = ToolParameter.get_simple_instance(
@@ -926,7 +949,7 @@ def test_workflow_tool_invocation_normalizes_optional_files_parameter(
     assert call_kwargs["args"]["inputs"]["images"] == []
 
 
-def test_extract_files():
+def test_extract_files() -> None:
     """Extract file outputs into result and file list."""
     tool = _build_tool()
     built_files = [
@@ -965,7 +988,7 @@ def test_extract_files():
     assert len(extracted_files) == 2
 
 
-def test_update_file_mapping():
+def test_update_file_mapping() -> None:
     """Map tool/local file transfer methods into output shape."""
     tool = _build_tool()
     tool_file = tool._update_file_mapping({"transfer_method": "tool_file", "related_id": "tool-1"})

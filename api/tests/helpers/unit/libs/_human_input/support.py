@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, NotRequired
+
+from typing_extensions import TypedDict
 
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import TimeoutUnit
@@ -111,7 +113,7 @@ class FormSubmissionData:
     submitted_at: datetime = field(default_factory=naive_utc_now)
 
     @classmethod
-    def from_request(cls, form_id: str, request: FormSubmissionRequest) -> FormSubmissionData:  # type: ignore
+    def from_request(cls, form_id: str, request: FormSubmissionRequest) -> FormSubmissionData:
         return cls(form_id=form_id, inputs=request.inputs, action=request.action)
 
 
@@ -119,6 +121,20 @@ class FormSubmissionData:
 class FormSubmissionRequest:
     inputs: dict[str, Any]
     action: str
+
+
+class FormDefinitionDict(TypedDict, closed=True):
+    """Definition payload returned by ``FormService.get_form_definition``.
+
+    The in-memory service hands callers an already parsed mapping, so consumers read
+    the fields directly instead of re-checking their presence and type.
+    ``site`` is only present for token-based access.
+    """
+
+    form_content: str
+    inputs: list[FormInputConfig]
+    user_actions: list[dict[str, Any]]
+    site: NotRequired[dict[str, str]]
 
 
 # Repository
@@ -201,14 +217,14 @@ class FormService:
             raise FormNotFoundError()
         return form
 
-    def get_form_definition(self, form_id: str, *, is_token: bool) -> dict[str, object]:
+    def get_form_definition(self, form_id: str, *, is_token: bool) -> FormDefinitionDict:
         form = self.get_form_by_token(form_id) if is_token else self.get_form_by_id(form_id)
         if form.is_expired:
             raise FormExpiredError()
         if form.is_submitted:
             raise FormAlreadySubmittedError()
 
-        definition: dict[str, object] = {
+        definition: FormDefinitionDict = {
             "form_content": form.form_content,
             "inputs": form.inputs,
             "user_actions": form.user_actions,

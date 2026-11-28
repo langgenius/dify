@@ -3,10 +3,13 @@ Unit tests for FormService.
 """
 
 from datetime import timedelta
+from typing import NotRequired
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.workflow.nodes.human_input.entities import (
+    FormInputConfig,
     ParagraphInputConfig,
     UserActionConfig,
 )
@@ -24,22 +27,45 @@ from tests.helpers.unit.libs._human_input.support import (
     InvalidFormDataError,
 )
 
+# Explicitly annotated as the polymorphic element type so it can flow into
+# ``create_form(inputs: list[FormInputConfig])`` without a variance error.
+_INPUTS: list[FormInputConfig] = [ParagraphInputConfig(output_variable_name="input")]
+
+
+_REQUIRED_INPUTS: list[FormInputConfig] = [ParagraphInputConfig(output_variable_name="required_input")]
+
+
+class _CreateFormPayload(TypedDict, closed=True):
+    """Keyword payload accepted by the in-memory FormService.create_form."""
+
+    form_id: str
+    workflow_run_id: str
+    node_id: str
+    tenant_id: str
+    app_id: str | None
+    form_content: str
+    inputs: list[FormInputConfig]
+    user_actions: list[UserActionConfig]
+    timeout: int
+    timeout_unit: TimeoutUnit
+    form_token: NotRequired[str | None]
+
 
 class TestFormService:
     """Test FormService functionality."""
 
     @pytest.fixture
-    def repository(self):
+    def repository(self) -> InMemoryFormRepository:
         """Create in-memory repository for testing."""
         return InMemoryFormRepository()
 
     @pytest.fixture
-    def form_service(self, repository):
+    def form_service(self, repository: InMemoryFormRepository) -> FormService:
         """Create FormService with in-memory repository."""
         return FormService(repository)
 
     @pytest.fixture
-    def sample_form_data(self):
+    def sample_form_data(self) -> _CreateFormPayload:
         """Create sample form data."""
         return {
             "form_id": "form-123",
@@ -48,14 +74,14 @@ class TestFormService:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [ParagraphInputConfig(output_variable_name="input")],
+            "inputs": _INPUTS,
             "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
             "form_token": "token-xyz",
         }
 
-    def test_create_form(self, form_service, sample_form_data):
+    def test_create_form(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test form creation."""
         form = form_service.create_form(**sample_form_data)
 
@@ -71,7 +97,7 @@ class TestFormService:
         assert not form.is_expired
         assert not form.is_submitted
 
-    def test_get_form_by_id(self, form_service, sample_form_data):
+    def test_get_form_by_id(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test getting form by ID."""
         # Create form first
         created_form = form_service.create_form(**sample_form_data)
@@ -82,14 +108,14 @@ class TestFormService:
         assert retrieved_form.form_id == created_form.form_id
         assert retrieved_form.workflow_run_id == created_form.workflow_run_id
 
-    def test_get_form_by_id_not_found(self, form_service):
+    def test_get_form_by_id_not_found(self, form_service: FormService) -> None:
         """Test getting non-existent form by ID."""
         with pytest.raises(FormNotFoundError) as exc_info:
             form_service.get_form_by_id("non-existent-form")
 
         assert exc_info.value.error_code == "form_not_found"
 
-    def test_get_form_by_token(self, form_service, sample_form_data):
+    def test_get_form_by_token(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test getting form by token."""
         # Create form first
         created_form = form_service.create_form(**sample_form_data)
@@ -100,14 +126,14 @@ class TestFormService:
         assert retrieved_form.form_id == created_form.form_id
         assert retrieved_form.form_token == "token-xyz"
 
-    def test_get_form_by_token_not_found(self, form_service):
+    def test_get_form_by_token_not_found(self, form_service: FormService) -> None:
         """Test getting non-existent form by token."""
         with pytest.raises(FormNotFoundError) as exc_info:
             form_service.get_form_by_token("non-existent-token")
 
         assert exc_info.value.error_code == "form_not_found"
 
-    def test_get_form_definition_by_id(self, form_service, sample_form_data):
+    def test_get_form_definition_by_id(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test getting form definition by ID."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -121,7 +147,9 @@ class TestFormService:
         assert len(definition["inputs"]) == 1
         assert "site" not in definition  # Should not include site info for ID-based access
 
-    def test_get_form_definition_by_token(self, form_service, sample_form_data):
+    def test_get_form_definition_by_token(
+        self, form_service: FormService, sample_form_data: _CreateFormPayload
+    ) -> None:
         """Test getting form definition by token."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -133,7 +161,9 @@ class TestFormService:
         assert "inputs" in definition
         assert "site" in definition  # Should include site info for token-based access
 
-    def test_get_form_definition_expired_form(self, form_service, sample_form_data):
+    def test_get_form_definition_expired_form(
+        self, form_service: FormService, sample_form_data: _CreateFormPayload
+    ) -> None:
         """Test getting definition for expired form."""
         # Create form with past expiry
         form_service.create_form(**sample_form_data)
@@ -149,7 +179,9 @@ class TestFormService:
 
         assert exc_info.value.error_code == "human_input_form_expired"
 
-    def test_get_form_definition_submitted_form(self, form_service, sample_form_data):
+    def test_get_form_definition_submitted_form(
+        self, form_service: FormService, sample_form_data: _CreateFormPayload
+    ) -> None:
         """Test getting definition for already submitted form."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -164,7 +196,7 @@ class TestFormService:
 
         assert exc_info.value.error_code == "human_input_form_submitted"
 
-    def test_submit_form_success(self, form_service, sample_form_data):
+    def test_submit_form_success(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test successful form submission."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -182,7 +214,7 @@ class TestFormService:
         assert form.submitted_action == "submit"
         assert form.submitted_at is not None
 
-    def test_submit_form_missing_inputs(self, form_service, sample_form_data):
+    def test_submit_form_missing_inputs(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test form submission with missing inputs."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -200,7 +232,7 @@ class TestFormService:
         assert "Missing required inputs" in exc_info.value.message
         assert "input" in exc_info.value.message
 
-    def test_submit_form_invalid_action(self, form_service, sample_form_data):
+    def test_submit_form_invalid_action(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test form submission with invalid action."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -218,7 +250,7 @@ class TestFormService:
         assert "Invalid action" in exc_info.value.message
         assert "invalid_action" in exc_info.value.message
 
-    def test_submit_form_expired(self, form_service, sample_form_data):
+    def test_submit_form_expired(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test submitting expired form."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -236,7 +268,9 @@ class TestFormService:
 
         assert exc_info.value.error_code == "human_input_form_expired"
 
-    def test_submit_form_already_submitted(self, form_service, sample_form_data):
+    def test_submit_form_already_submitted(
+        self, form_service: FormService, sample_form_data: _CreateFormPayload
+    ) -> None:
         """Test submitting form that's already submitted."""
         # Create and submit form first
         form_service.create_form(**sample_form_data)
@@ -254,7 +288,7 @@ class TestFormService:
 
         assert exc_info.value.error_code == "human_input_form_submitted"
 
-    def test_cleanup_expired_forms(self, form_service, sample_form_data):
+    def test_cleanup_expired_forms(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test cleanup of expired forms."""
         # Create multiple forms
         for i in range(3):
@@ -289,20 +323,20 @@ class TestFormService:
 class TestFormValidation:
     """Test form validation logic."""
 
-    def test_validate_submission_with_extra_inputs(self):
+    def test_validate_submission_with_extra_inputs(self) -> None:
         """Test validation allows extra inputs that aren't defined in form."""
         repository = InMemoryFormRepository()
         form_service = FormService(repository)
 
         # Create form with one input
-        form_data = {
+        form_data: _CreateFormPayload = {
             "form_id": "form-123",
             "workflow_run_id": "run-456",
             "node_id": "node-789",
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "Test form",
-            "inputs": [ParagraphInputConfig(output_variable_name="required_input")],
+            "inputs": _REQUIRED_INPUTS,
             "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
