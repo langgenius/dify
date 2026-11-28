@@ -11,6 +11,7 @@ from core.rag.entities.processing_entities import (
     Segmentation,
 )
 from core.rag.entities.retrieval_settings import (
+    ExternalRetrievalRecord,
     KeywordSetting,
     RerankingModelConfig,
     VectorSetting,
@@ -25,6 +26,7 @@ __all__ = [
     "DocumentContext",
     "EconomySetting",
     "EmbeddingSetting",
+    "ExternalRetrievalRecord",
     "IndexMethod",
     "KeywordSetting",
     "MetadataFilteringCondition",

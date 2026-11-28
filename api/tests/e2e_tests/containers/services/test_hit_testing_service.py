@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import ExternalRetrievalRecord
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
@@ -181,7 +182,7 @@ class TestHitTestingService:
         self, db_session_with_containers: Session
     ) -> None:
         dataset = _create_dataset(db_session_with_containers, provider="external")
-        documents = [
+        documents: list[ExternalRetrievalRecord] = [
             {"content": "c1", "title": "t1", "score": 0.9, "metadata": {"m1": "v1"}},
             {"content": "c2", "title": "t2", "score": 0.8, "metadata": {"m2": "v2"}},
         ]
@@ -199,9 +200,10 @@ class TestHitTestingService:
         self, db_session_with_containers: Session
     ) -> None:
         dataset = _create_dataset(db_session_with_containers, provider="vendor")
+        documents: list[ExternalRetrievalRecord] = [{"content": "c1"}]
 
         response = _RetrieveResponse.model_validate(
-            HitTestingService.compact_external_retrieve_response(dataset, "test query", [{"content": "c1"}])
+            HitTestingService.compact_external_retrieve_response(dataset, "test query", documents)
         )
 
         assert response.query.content == "test query"

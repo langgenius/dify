@@ -15,7 +15,7 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor, 
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import AttachmentInfoDict, RetrievalChildChunk, RetrievalSegments
-from core.rag.entities import MetadataFilteringCondition
+from core.rag.entities import ExternalRetrievalRecord, MetadataFilteringCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -180,7 +180,12 @@ class RetrievalService:
         query: str,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
-    ):
+    ) -> list[ExternalRetrievalRecord]:
+        """Retrieve records from an external knowledge base.
+
+        Postconditions: returns the validated records of the external provider,
+        or an empty list when the dataset does not exist.
+        """
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = session.scalar(stmt)
         if not dataset:

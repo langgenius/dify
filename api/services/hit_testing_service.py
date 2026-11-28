@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from collections.abc import Sequence
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import ExternalRetrievalRecord
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
@@ -30,6 +32,11 @@ class QueryDict(TypedDict):
 class RetrieveResponseDict(TypedDict):
     query: QueryDict
     records: list[dict[str, Any]]
+
+
+class ExternalRetrieveResponseDict(TypedDict):
+    query: QueryDict
+    records: list[ExternalRetrievalRecord]
 
 
 default_retrieval_model = {
@@ -113,7 +120,12 @@ class HitTestingService:
         limit: int = 10,
         *,
         session: Session,
-    ):
+    ) -> RetrieveResponseDict:
+        """Run hit testing against the dataset's configured retrieval strategy.
+
+        Postconditions: the response always carries the echoed query and a list
+        of retrieval records; an empty list means nothing matched.
+        """
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default
@@ -201,7 +213,13 @@ class HitTestingService:
         metadata_filtering_conditions: dict[str, Any] | None = None,
         *,
         session: Session,
-    ):
+    ) -> ExternalRetrieveResponseDict:
+        """Run hit testing against an external knowledge provider.
+
+        Postconditions: datasets that are not externally backed return an empty
+        record list without contacting the provider; otherwise the records are
+        the validated external records of the dataset.
+        """
         if dataset.provider != "external":
             return {
                 "query": {"content": query},
@@ -233,7 +251,7 @@ class HitTestingService:
         session.add(dataset_query)
         session.commit()
 
-        return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
+        return cls.compact_external_retrieve_response(dataset, query, all_documents)
 
     @classmethod
     def compact_retrieve_response(
@@ -250,22 +268,33 @@ class HitTestingService:
         }
 
     @classmethod
-    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> RetrieveResponseDict:
-        records = []
-        if dataset.provider == "external":
-            for document in documents:
-                record = {
-                    "content": document.get("content", None),
-                    "title": document.get("title", None),
-                    "score": document.get("score", None),
-                    "metadata": document.get("metadata", None),
+    def compact_external_retrieve_response(
+        cls, dataset: Dataset, query: str, documents: Sequence[ExternalRetrievalRecord]
+    ) -> ExternalRetrieveResponseDict:
+        """Shape validated external records into a hit-testing response.
+
+        Preconditions: ``documents`` already satisfies ``ExternalRetrievalRecord``
+        (parsed once at the retrieval boundary), so this method only projects the
+        four display fields and never re-validates keys or types.
+
+        Postconditions: non-external datasets yield an empty record list; for
+        external datasets every record keeps ``content`` and an explicit ``None``
+        for fields the provider omitted.
+        """
+        if dataset.provider != "external":
+            return {"query": {"content": query}, "records": []}
+
+        records: list[ExternalRetrievalRecord] = []
+        for document in documents:
+            records.append(
+                {
+                    "content": document["content"],
+                    "title": document.get("title"),
+                    "score": document.get("score"),
+                    "metadata": document.get("metadata"),
                 }
-                records.append(record)
-            return {
-                "query": {"content": query},
-                "records": records,
-            }
-        return {"query": {"content": query}, "records": []}
+            )
+        return {"query": {"content": query}, "records": records}
 
     @classmethod
     def hit_testing_args_check(cls, args):

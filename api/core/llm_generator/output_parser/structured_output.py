@@ -2,10 +2,11 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
 from enum import StrEnum
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, NotRequired, cast, overload
 
 import json_repair
 from pydantic import TypeAdapter, ValidationError
+from typing_extensions import TypedDict
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
@@ -41,6 +42,26 @@ class SpecialModelType(StrEnum):
 
     GEMINI = "gemini"
     OLLAMA = "ollama"
+
+
+class ModelParameters(TypedDict, extra_items=Any):
+    """Model parameters handed to an invocation of this parser.
+
+    ``json_schema`` and ``response_format`` are the keys negotiated here for
+    structured output. Every other provider parameter passes through untouched,
+    so unknown keys have to stay legal.
+    """
+
+    json_schema: NotRequired[str]
+    response_format: NotRequired[str]
+
+
+_MODEL_PARAMETERS_ADAPTER: TypeAdapter[ModelParameters] = TypeAdapter(ModelParameters)
+
+
+def parse_model_parameters(raw: Mapping[str, Any] | None = None) -> ModelParameters:
+    """Parse raw model parameters into the typed shape at the boundary."""
+    return _MODEL_PARAMETERS_ADAPTER.validate_python(dict(raw or {}))
 
 
 @overload
@@ -118,12 +139,10 @@ def invoke_llm_with_structured_output(
     """
 
     # handle native json schema
-    model_parameters_with_json_schema: dict[str, Any] = {
-        **(model_parameters or {}),
-    }
+    model_parameters_with_json_schema = parse_model_parameters(model_parameters)
 
     if model_schema.support_structure_output:
-        model_parameters = _handle_native_json_schema(
+        model_parameters_with_json_schema = _handle_native_json_schema(
             provider, model_schema, json_schema, model_parameters_with_json_schema, model_schema.parameter_rules
         )
     else:
@@ -206,9 +225,9 @@ def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
     structured_output_schema: Mapping,
-    model_parameters: dict[str, Any],
+    model_parameters: ModelParameters,
     rules: list[ParameterRule],
-) -> dict[str, Any]:
+) -> ModelParameters:
     """
     Handle structured output for models with native JSON schema support.
 
@@ -230,7 +249,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]) -> None:
+def _set_response_format(model_parameters: ModelParameters, rules: list[ParameterRule]) -> None:
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -350,12 +369,13 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict[str, Any]) -> None:
+def remove_additional_properties(schema: object) -> None:
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
 
-    :param schema: JSON schema to modify in-place
+    :param schema: JSON schema to modify in-place; values that are not a
+        mapping are left untouched
     """
     if not isinstance(schema, dict):
         return

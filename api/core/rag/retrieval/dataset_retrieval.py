@@ -713,9 +713,10 @@ class DatasetRetrieval:
                         metadata_condition=metadata_condition,
                     )
                     for external_document in external_documents:
+                        external_metadata = external_document.get("metadata")
                         document = Document(
-                            page_content=external_document.get("content"),
-                            metadata=external_document.get("metadata"),
+                            page_content=external_document["content"],
+                            metadata=external_metadata if external_metadata is not None else {},
                             provider="external",
                         )
                         if document.metadata is not None:
@@ -1188,9 +1189,10 @@ class DatasetRetrieval:
                     metadata_condition=metadata_condition,
                 )
                 for external_document in external_documents:
+                    external_metadata = external_document.get("metadata")
                     document = Document(
-                        page_content=external_document.get("content"),
-                        metadata=external_document.get("metadata"),
+                        page_content=external_document["content"],
+                        metadata=external_metadata if external_metadata is not None else {},
                         provider="external",
                     )
                     if document.metadata is not None:

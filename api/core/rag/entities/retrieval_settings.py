@@ -1,3 +1,5 @@
+from typing import Any, NotRequired, TypedDict
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -49,3 +51,21 @@ class WeightedScoreConfig(BaseModel):
 
     vector_setting: VectorSetting
     keyword_setting: KeywordSetting
+
+
+class ExternalRetrievalRecord(TypedDict):
+    """One record of an external knowledge base retrieval response.
+
+    ``content`` is the only field the external contract requires. The remaining
+    fields come from the same JSON object and stay optional because providers
+    legitimately omit them; consumers must treat a missing value and an explicit
+    ``None`` identically, so they read these fields with ``.get``.
+
+    Lives in the core retrieval entities so the core retrieval service can name
+    its return type without importing the services layer.
+    """
+
+    content: str
+    title: NotRequired[str | None]
+    score: NotRequired[float | None]
+    metadata: NotRequired[dict[str, Any] | None]

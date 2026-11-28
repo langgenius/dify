@@ -1,4 +1,6 @@
 from configs import dify_config
+from graphon.dsl import SandboxCodeExecutor
+from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.entities import CodeLanguage, CodeNodeData
 from graphon.nodes.code.exc import (
@@ -7,9 +9,11 @@ from graphon.nodes.code.exc import (
     OutputValidationError,
 )
 from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.types import SegmentType
+from tests.workflow_test_utils import build_test_graph_init_params
 
-CodeNode._limits = CodeNodeLimits(
+_LIMITS = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
     max_number=dify_config.CODE_MAX_NUMBER,
     min_number=dify_config.CODE_MIN_NUMBER,
@@ -21,17 +25,46 @@ CodeNode._limits = CodeNodeLimits(
 )
 
 
+_CODE_EXECUTOR = SandboxCodeExecutor()
+
+_MINIMAL_NODE_DATA = CodeNodeData(
+    title="",
+    variables=[],
+    code_language=CodeLanguage.PYTHON3,
+    code="",
+    outputs={},
+)
+
+
+def _build_code_node(data: CodeNodeData | None = None) -> CodeNode:
+    """Construct a code node through its public constructor.
+
+    The default data carries no code, so validation-only tests never reach the
+    sandbox executor. Callers that exercise data parsing pass their own payload
+    as the parsed ``CodeNodeData``; raw mappings are rejected so the node never
+    receives data that skipped the production entity.
+    """
+    return CodeNode(
+        node_id="test-code-node",
+        data=_MINIMAL_NODE_DATA if data is None else data,
+        init_params=build_test_graph_init_params(workflow_id="test_workflow"),
+        runtime_state=RuntimeState(workflow_id="test_workflow", variable_pool=VariablePool(), start_at=0),
+        code_executor=_CODE_EXECUTOR,
+        code_limits=_LIMITS,
+    )
+
+
 class TestCodeNodeExceptions:
     """Test suite for code node exceptions."""
 
-    def test_code_node_error_is_value_error(self):
+    def test_code_node_error_is_value_error(self) -> None:
         """Test CodeNodeError inherits from ValueError."""
         error = CodeNodeError("test error")
 
         assert isinstance(error, ValueError)
         assert str(error) == "test error"
 
-    def test_output_validation_error_is_code_node_error(self):
+    def test_output_validation_error_is_code_node_error(self) -> None:
         """Test OutputValidationError inherits from CodeNodeError."""
         error = OutputValidationError("validation failed")
 
@@ -39,7 +72,7 @@ class TestCodeNodeExceptions:
         assert isinstance(error, ValueError)
         assert str(error) == "validation failed"
 
-    def test_depth_limit_error_is_code_node_error(self):
+    def test_depth_limit_error_is_code_node_error(self) -> None:
         """Test DepthLimitError inherits from CodeNodeError."""
         error = DepthLimitError("depth exceeded")
 
@@ -47,20 +80,20 @@ class TestCodeNodeExceptions:
         assert isinstance(error, ValueError)
         assert str(error) == "depth exceeded"
 
-    def test_code_node_error_with_empty_message(self):
+    def test_code_node_error_with_empty_message(self) -> None:
         """Test CodeNodeError with empty message."""
         error = CodeNodeError("")
 
         assert str(error) == ""
 
-    def test_output_validation_error_with_field_info(self):
+    def test_output_validation_error_with_field_info(self) -> None:
         """Test OutputValidationError with field information."""
         error = OutputValidationError("Output 'result' is not a valid type")
 
         assert "result" in str(error)
         assert "not a valid type" in str(error)
 
-    def test_depth_limit_error_with_limit_info(self):
+    def test_depth_limit_error_with_limit_info(self) -> None:
         """Test DepthLimitError with limit information."""
         error = DepthLimitError("Depth limit 5 reached, object too deep")
 
@@ -71,34 +104,34 @@ class TestCodeNodeExceptions:
 class TestCodeNodeClassMethods:
     """Test suite for CodeNode class methods."""
 
-    def test_code_node_version(self):
+    def test_code_node_version(self) -> None:
         """Test CodeNode version method."""
         version = CodeNode.version()
 
         assert version == "1"
 
-    def test_get_default_config_python3(self):
+    def test_get_default_config_python3(self) -> None:
         """Test get_default_config for Python3."""
         config = CodeNode.get_default_config(filters={"code_language": CodeLanguage.PYTHON3})
 
         assert config is not None
         assert isinstance(config, dict)
 
-    def test_get_default_config_javascript(self):
+    def test_get_default_config_javascript(self) -> None:
         """Test get_default_config for JavaScript."""
         config = CodeNode.get_default_config(filters={"code_language": CodeLanguage.JAVASCRIPT})
 
         assert config is not None
         assert isinstance(config, dict)
 
-    def test_get_default_config_no_filters(self):
+    def test_get_default_config_no_filters(self) -> None:
         """Test get_default_config with no filters defaults to Python3."""
         config = CodeNode.get_default_config()
 
         assert config is not None
         assert isinstance(config, dict)
 
-    def test_get_default_config_empty_filters(self):
+    def test_get_default_config_empty_filters(self) -> None:
         """Test get_default_config with empty filters."""
         config = CodeNode.get_default_config(filters={})
 
@@ -108,80 +141,80 @@ class TestCodeNodeClassMethods:
 class TestCodeNodeCheckMethods:
     """Test suite for CodeNode check methods."""
 
-    def test_check_string_none_value(self):
+    def test_check_string_none_value(self) -> None:
         """Test _check_string with None value."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_string(None, "test_var")
 
         assert result is None
 
-    def test_check_string_removes_null_bytes(self):
+    def test_check_string_removes_null_bytes(self) -> None:
         """Test _check_string removes null bytes."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_string("hello\x00world", "test_var")
 
         assert result == "helloworld"
         assert "\x00" not in result
 
-    def test_check_string_valid_string(self):
+    def test_check_string_valid_string(self) -> None:
         """Test _check_string with valid string."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_string("valid string", "test_var")
 
         assert result == "valid string"
 
-    def test_check_string_empty_string(self):
+    def test_check_string_empty_string(self) -> None:
         """Test _check_string with empty string."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_string("", "test_var")
 
         assert result == ""
 
-    def test_check_string_with_unicode(self):
+    def test_check_string_with_unicode(self) -> None:
         """Test _check_string with unicode characters."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_string("你好世界🌍", "test_var")
 
         assert result == "你好世界🌍"
 
-    def test_check_number_none_value(self):
+    def test_check_number_none_value(self) -> None:
         """Test _check_number with None value."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_number(None, "test_var")
 
         assert result is None
 
-    def test_check_number_integer_value(self):
+    def test_check_number_integer_value(self) -> None:
         """Test _check_number with integer value."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_number(42, "test_var")
 
         assert result == 42
 
-    def test_check_number_float_value(self):
+    def test_check_number_float_value(self) -> None:
         """Test _check_number with float value."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_number(float("3.14"), "test_var")
 
         assert result == float("3.14")
 
-    def test_check_number_zero(self):
+    def test_check_number_zero(self) -> None:
         """Test _check_number with zero."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_number(0, "test_var")
 
         assert result == 0
 
-    def test_check_number_negative(self):
+    def test_check_number_negative(self) -> None:
         """Test _check_number with negative number."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_number(-100, "test_var")
 
         assert result == -100
 
-    def test_check_number_negative_float(self):
+    def test_check_number_negative_float(self) -> None:
         """Test _check_number with negative float."""
-        node = CodeNode.__new__(CodeNode)
+        node = _build_code_node()
         result = node._check_number(-float("3.14159"), "test_var")
 
         assert result == -float("3.14159")
@@ -190,45 +223,45 @@ class TestCodeNodeCheckMethods:
 class TestCodeNodeConvertBooleanToInt:
     """Test suite for _convert_boolean_to_int static method."""
 
-    def test_convert_none_returns_none(self):
+    def test_convert_none_returns_none(self) -> None:
         """Test converting None returns None."""
         result = CodeNode._convert_boolean_to_int(None)
 
         assert result is None
 
-    def test_convert_true_returns_one(self):
+    def test_convert_true_returns_one(self) -> None:
         """Test converting True returns 1."""
         result = CodeNode._convert_boolean_to_int(True)
 
         assert result == 1
         assert isinstance(result, int)
 
-    def test_convert_false_returns_zero(self):
+    def test_convert_false_returns_zero(self) -> None:
         """Test converting False returns 0."""
         result = CodeNode._convert_boolean_to_int(False)
 
         assert result == 0
         assert isinstance(result, int)
 
-    def test_convert_integer_returns_same(self):
+    def test_convert_integer_returns_same(self) -> None:
         """Test converting integer returns same value."""
         result = CodeNode._convert_boolean_to_int(42)
 
         assert result == 42
 
-    def test_convert_float_returns_same(self):
+    def test_convert_float_returns_same(self) -> None:
         """Test converting float returns same value."""
         result = CodeNode._convert_boolean_to_int(float("3.14"))
 
         assert result == float("3.14")
 
-    def test_convert_zero_returns_zero(self):
+    def test_convert_zero_returns_zero(self) -> None:
         """Test converting zero returns zero."""
         result = CodeNode._convert_boolean_to_int(0)
 
         assert result == 0
 
-    def test_convert_negative_returns_same(self):
+    def test_convert_negative_returns_same(self) -> None:
         """Test converting negative number returns same value."""
         result = CodeNode._convert_boolean_to_int(-100)
 
@@ -238,63 +271,61 @@ class TestCodeNodeConvertBooleanToInt:
 class TestCodeNodeExtractVariableSelector:
     """Test suite for _extract_variable_selector_to_variable_mapping."""
 
-    def test_extract_empty_variables(self):
+    def test_extract_empty_variables(self) -> None:
         """Test extraction with no variables."""
-        node_data = {
-            "title": "Test",
-            "variables": [],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_1",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert result == {}
 
-    def test_extract_single_variable(self):
+    def test_extract_single_variable(self) -> None:
         """Test extraction with single variable."""
-        node_data = {
-            "title": "Test",
-            "variables": [
-                {"variable": "input_text", "value_selector": ["start", "text"]},
-            ],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[VariableSelector(variable="input_text", value_selector=["start", "text"])],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_1",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert "node_1.input_text" in result
         assert result["node_1.input_text"] == ["start", "text"]
 
-    def test_extract_multiple_variables(self):
+    def test_extract_multiple_variables(self) -> None:
         """Test extraction with multiple variables."""
-        node_data = {
-            "title": "Test",
-            "variables": [
-                {"variable": "var1", "value_selector": ["node_a", "output1"]},
-                {"variable": "var2", "value_selector": ["node_b", "output2"]},
-                {"variable": "var3", "value_selector": ["node_c", "output3"]},
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[
+                VariableSelector(variable="var1", value_selector=["node_a", "output1"]),
+                VariableSelector(variable="var2", value_selector=["node_b", "output2"]),
+                VariableSelector(variable="var3", value_selector=["node_c", "output3"]),
             ],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="code_node",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert len(result) == 3
@@ -302,22 +333,20 @@ class TestCodeNodeExtractVariableSelector:
         assert "code_node.var2" in result
         assert "code_node.var3" in result
 
-    def test_extract_with_nested_selector(self):
+    def test_extract_with_nested_selector(self) -> None:
         """Test extraction with nested value selector."""
-        node_data = {
-            "title": "Test",
-            "variables": [
-                {"variable": "deep_var", "value_selector": ["node", "obj", "nested", "value"]},
-            ],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[VariableSelector(variable="deep_var", value_selector=["node", "obj", "nested", "value"])],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_x",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert result["node_x.deep_var"] == ["node", "obj", "nested", "value"]
@@ -326,7 +355,7 @@ class TestCodeNodeExtractVariableSelector:
 class TestCodeNodeDataValidation:
     """Test suite for CodeNodeData validation scenarios."""
 
-    def test_valid_python3_code_node_data(self):
+    def test_valid_python3_code_node_data(self) -> None:
         """Test valid Python3 CodeNodeData."""
         data = CodeNodeData(
             title="Python Code",
@@ -338,7 +367,7 @@ class TestCodeNodeDataValidation:
 
         assert data.code_language == CodeLanguage.PYTHON3
 
-    def test_valid_javascript_code_node_data(self):
+    def test_valid_javascript_code_node_data(self) -> None:
         """Test valid JavaScript CodeNodeData."""
         data = CodeNodeData(
             title="JS Code",
@@ -350,7 +379,7 @@ class TestCodeNodeDataValidation:
 
         assert data.code_language == CodeLanguage.JAVASCRIPT
 
-    def test_code_node_data_with_all_output_types(self):
+    def test_code_node_data_with_all_output_types(self) -> None:
         """Test CodeNodeData with all valid output types."""
         data = CodeNodeData(
             title="All Types",
@@ -371,7 +400,7 @@ class TestCodeNodeDataValidation:
 
         assert len(data.outputs) == 8
 
-    def test_code_node_data_complex_nested_output(self):
+    def test_code_node_data_complex_nested_output(self) -> None:
         """Test CodeNodeData with complex nested output structure."""
         data = CodeNodeData(
             title="Complex Output",
@@ -405,72 +434,75 @@ class TestCodeNodeDataValidation:
 class TestCodeNodeInitialization:
     """Test suite for CodeNode initialization methods."""
 
-    def test_init_node_data_python3(self):
+    def test_init_node_data_python3(self) -> None:
         """Test init_node_data with Python3 configuration."""
-        node = CodeNode.__new__(CodeNode)
-        data = {
-            "title": "Test Node",
-            "variables": [],
-            "code_language": "python3",
-            "code": "def main(): return {'x': 1}",
-            "outputs": {"x": {"type": "number"}},
-        }
+        node = _build_code_node()
+        data = CodeNodeData(
+            title="Test Node",
+            variables=[],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {'x': 1}",
+            outputs={"x": CodeNodeData.Output(type=SegmentType.NUMBER)},
+        )
 
-        node._node_data = CodeNode._node_data_type.model_validate(data, from_attributes=True)
+        node.init_node_data(data)
 
         assert node._node_data.title == "Test Node"
         assert node._node_data.code_language == CodeLanguage.PYTHON3
 
-    def test_init_node_data_javascript(self):
+    def test_init_node_data_javascript(self) -> None:
         """Test init_node_data with JavaScript configuration."""
-        node = CodeNode.__new__(CodeNode)
-        data = {
-            "title": "JS Node",
-            "variables": [],
-            "code_language": "javascript",
-            "code": "function main() { return { x: 1 }; }",
-            "outputs": {"x": {"type": "number"}},
-        }
+        node = _build_code_node()
+        data = CodeNodeData(
+            title="JS Node",
+            variables=[],
+            code_language=CodeLanguage.JAVASCRIPT,
+            code="function main() { return { x: 1 }; }",
+            outputs={"x": CodeNodeData.Output(type=SegmentType.NUMBER)},
+        )
 
-        node._node_data = CodeNode._node_data_type.model_validate(data, from_attributes=True)
+        node.init_node_data(data)
 
         assert node._node_data.code_language == CodeLanguage.JAVASCRIPT
 
-    def test_get_title(self):
+    def test_get_title(self) -> None:
         """Test _get_title method."""
-        node = CodeNode.__new__(CodeNode)
-        node._node_data = CodeNodeData(
-            title="My Code Node",
-            variables=[],
-            code_language=CodeLanguage.PYTHON3,
-            code="",
-            outputs={},
+        node = _build_code_node(
+            CodeNodeData(
+                title="My Code Node",
+                variables=[],
+                code_language=CodeLanguage.PYTHON3,
+                code="",
+                outputs={},
+            )
         )
 
         assert node._get_title() == "My Code Node"
 
-    def test_get_description_none(self):
+    def test_get_description_none(self) -> None:
         """Test _get_description returns None when not set."""
-        node = CodeNode.__new__(CodeNode)
-        node._node_data = CodeNodeData(
-            title="Test",
-            variables=[],
-            code_language=CodeLanguage.PYTHON3,
-            code="",
-            outputs={},
+        node = _build_code_node(
+            CodeNodeData(
+                title="Test",
+                variables=[],
+                code_language=CodeLanguage.PYTHON3,
+                code="",
+                outputs={},
+            )
         )
 
         assert node._get_description() is None
 
-    def test_node_data_property(self):
+    def test_node_data_property(self) -> None:
         """Test node_data property returns node data."""
-        node = CodeNode.__new__(CodeNode)
-        node._node_data = CodeNodeData(
-            title="Base Test",
-            variables=[],
-            code_language=CodeLanguage.PYTHON3,
-            code="",
-            outputs={},
+        node = _build_code_node(
+            CodeNodeData(
+                title="Base Test",
+                variables=[],
+                code_language=CodeLanguage.PYTHON3,
+                code="",
+                outputs={},
+            )
         )
 
         result = node.node_data

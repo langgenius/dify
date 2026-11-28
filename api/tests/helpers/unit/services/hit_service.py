@@ -14,6 +14,9 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import ExternalRetrievalRecord
+from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account, Tenant
@@ -40,7 +43,6 @@ class HitTestingTestDataFactory:
         tenant_id: str = "tenant-123",
         provider: str = "vendor",
         retrieval_model: dict[str, Any] | None = None,
-        **kwargs,
     ) -> Dataset:
         """
         Create a dataset with specified attributes.
@@ -50,25 +52,21 @@ class HitTestingTestDataFactory:
             tenant_id: Tenant identifier
             provider: Dataset provider (vendor, external, etc.)
             retrieval_model: Optional retrieval model configuration
-            **kwargs: Additional mapped attributes for the dataset
 
         Returns:
             Configured Dataset instance
         """
-        dataset = Dataset(
+        return Dataset(
             id=dataset_id,
             tenant_id=tenant_id,
             provider=provider,
             retrieval_model=retrieval_model,
-            **kwargs,
         )
-        return dataset
 
     @staticmethod
     def create_user_mock(
         user_id: str = "user-789",
         tenant_id: str = "tenant-123",
-        **kwargs,
     ) -> Account:
         """
         Create a mock user (Account) with specified attributes.
@@ -76,12 +74,11 @@ class HitTestingTestDataFactory:
         Args:
             user_id: Unique identifier for the user
             tenant_id: Tenant identifier
-            **kwargs: Additional attributes to set on the mock
 
         Returns:
             Mock object configured as an Account instance
         """
-        user = Account(name="Test User", email="test@example.com", **kwargs)
+        user = Account(name="Test User", email="test@example.com")
         user.id = user_id
         user._current_tenant = Tenant(name="Test Tenant")
         user._current_tenant.id = tenant_id
@@ -96,28 +93,19 @@ class HitTestingTestDataFactory:
         return Document(page_content=content, metadata=metadata if metadata is not None else {})
 
     @staticmethod
-    def create_retrieval_record_mock(
-        content: str = "Test content",
-        score: float = 0.95,
-        **kwargs,
-    ) -> Mock:
+    def create_retrieval_record_mock(content: str = "Test content", score: float = 0.95) -> Mock:
         """
         Create a mock retrieval record.
 
         Args:
             content: Record content
             score: Retrieval score
-            **kwargs: Additional fields for the record
 
         Returns:
             Mock object with model_dump method returning record data
         """
         record = Mock()
-        record.model_dump.return_value = {
-            "content": content,
-            "score": score,
-            **kwargs,
-        }
+        record.model_dump.return_value = {"content": content, "score": score}
         return record
 
 
@@ -129,7 +117,7 @@ class TestHitTestingServiceRetrieve:
     various retrieval model configurations, metadata filtering, and query logging.
     """
 
-    def test_retrieve_success_with_default_retrieval_model(self, sqlite_session: Session):
+    def test_retrieve_success_with_default_retrieval_model(self, sqlite_session: Session) -> None:
         """
         Test successful retrieval with default retrieval model.
 
@@ -141,7 +129,7 @@ class TestHitTestingServiceRetrieve:
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
         retrieval_model = None
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         documents = [
             HitTestingTestDataFactory.create_document(content="Doc 1"),
@@ -179,7 +167,7 @@ class TestHitTestingServiceRetrieve:
             assert query_log.created_by == account.id
             assert json.loads(query_log.content) == [{"content_type": "text_query", "content": query}]
 
-    def test_retrieve_success_with_custom_retrieval_model(self, sqlite_session: Session):
+    def test_retrieve_success_with_custom_retrieval_model(self, sqlite_session: Session) -> None:
         """
         Test successful retrieval with custom retrieval model.
 
@@ -197,9 +185,16 @@ class TestHitTestingServiceRetrieve:
             "top_k": 5,
             "score_threshold_enabled": True,
             "score_threshold": 0.7,
-            "weights": {"vector_setting": 0.5, "keyword_setting": 0.5},
+            "weights": {
+                "vector_setting": {
+                    "vector_weight": 0.5,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {"keyword_weight": 0.5},
+            },
         }
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
@@ -229,7 +224,7 @@ class TestHitTestingServiceRetrieve:
             assert call_kwargs["score_threshold"] == 0.7
             assert call_kwargs["reranking_model"] == retrieval_model["reranking_model"]
 
-    def test_retrieve_with_metadata_filtering(self, sqlite_session: Session):
+    def test_retrieve_with_metadata_filtering(self, sqlite_session: Session) -> None:
         """
         Test retrieval with metadata filtering conditions.
 
@@ -240,16 +235,15 @@ class TestHitTestingServiceRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
+        metadata_filtering_conditions = MetadataFilteringCondition(
+            conditions=[Condition(name="category", comparison_operator="is", value="test")]
+        ).model_dump()
         retrieval_model = {
-            "metadata_filtering_conditions": {
-                "conditions": [
-                    {"name": "category", "comparison_operator": "is", "value": "test"},
-                ],
-            },
+            "metadata_filtering_conditions": metadata_filtering_conditions,
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         mock_dataset_retrieval = MagicMock()
         mock_dataset_retrieval.get_metadata_filter_condition.return_value = (
@@ -284,7 +278,7 @@ class TestHitTestingServiceRetrieve:
             call_kwargs = mock_retrieve.call_args[1]
             assert call_kwargs["document_ids_filter"] == ["doc-1", "doc-2"]
 
-    def test_retrieve_with_metadata_filtering_no_documents(self, sqlite_session: Session):
+    def test_retrieve_with_metadata_filtering_no_documents(self, sqlite_session: Session) -> None:
         """
         Test retrieval with metadata filtering that returns no documents.
 
@@ -295,19 +289,19 @@ class TestHitTestingServiceRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
+        metadata_filtering_conditions = MetadataFilteringCondition(
+            conditions=[Condition(name="category", comparison_operator="is", value="test")]
+        ).model_dump()
         retrieval_model = {
-            "metadata_filtering_conditions": {
-                "conditions": [
-                    {"name": "category", "comparison_operator": "is", "value": "test"},
-                ],
-            },
+            "metadata_filtering_conditions": metadata_filtering_conditions,
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         mock_dataset_retrieval = MagicMock()
-        mock_dataset_retrieval.get_metadata_filter_condition.return_value = ({}, True)
+        metadata_filter: dict[str, list[str]] = {}
+        mock_dataset_retrieval.get_metadata_filter_condition.return_value = (metadata_filter, True)
 
         with (
             patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
@@ -316,7 +310,8 @@ class TestHitTestingServiceRetrieve:
             ) as mock_format,
         ):
             mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
-            mock_format.return_value = []
+            formatted: list[RetrievalSegments] = []
+            mock_format.return_value = formatted
 
             # Act
             result = HitTestingService.retrieve(
@@ -327,7 +322,7 @@ class TestHitTestingServiceRetrieve:
             assert result["query"]["content"] == query
             assert result["records"] == []
 
-    def test_retrieve_with_dataset_retrieval_model(self, sqlite_session: Session):
+    def test_retrieve_with_dataset_retrieval_model(self, sqlite_session: Session) -> None:
         """
         Test retrieval using dataset's retrieval model when not provided.
 
@@ -345,7 +340,7 @@ class TestHitTestingServiceRetrieve:
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
         retrieval_model = None
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
@@ -381,7 +376,7 @@ class TestHitTestingServiceExternalRetrieve:
     including query escaping, response formatting, and provider validation.
     """
 
-    def test_external_retrieve_success(self, sqlite_session: Session):
+    def test_external_retrieve_success(self, sqlite_session: Session) -> None:
         """
         Test successful external retrieval.
 
@@ -392,10 +387,10 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = 'test query with "quotes"'
-        external_retrieval_model = {"top_k": 5, "score_threshold": 0.8}
+        external_retrieval_model: dict[str, object] = {"top_k": 5, "score_threshold": 0.8}
         metadata_filtering_conditions = {}
 
-        external_documents = [
+        external_documents: list[ExternalRetrievalRecord] = [
             {"content": "External doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
             {"content": "External doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
         ]
@@ -421,10 +416,11 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Assert
             assert result["query"]["content"] == query
-            assert len(result["records"]) == 2
-            assert result["records"][0]["content"] == "External doc 1"
-            assert result["records"][0]["title"] == "Title 1"
-            assert result["records"][0]["score"] == 0.95
+            records = result["records"]
+            assert len(records) == 2
+            assert records[0]["content"] == "External doc 1"
+            assert records[0]["title"] == "Title 1"
+            assert records[0]["score"] == 0.95
             mock_external_retrieve.assert_called_once()
             # Verify query was escaped
             assert mock_external_retrieve.call_args[1]["query"] == 'test query with \\"quotes\\"'
@@ -434,7 +430,7 @@ class TestHitTestingServiceExternalRetrieve:
             assert query_log.content == query
             assert query_log.created_by == account.id
 
-    def test_external_retrieve_non_external_provider(self, sqlite_session: Session):
+    def test_external_retrieve_non_external_provider(self, sqlite_session: Session) -> None:
         """
         Test external retrieval with non-external provider (should return empty).
 
@@ -445,7 +441,7 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="vendor")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
         metadata_filtering_conditions = {}
 
         # Act
@@ -458,7 +454,7 @@ class TestHitTestingServiceExternalRetrieve:
         assert result["records"] == []
         assert sqlite_session.scalar(select(DatasetQuery)) is None
 
-    def test_external_retrieve_with_metadata_filtering(self, sqlite_session: Session):
+    def test_external_retrieve_with_metadata_filtering(self, sqlite_session: Session) -> None:
         """
         Test external retrieval with metadata filtering conditions.
 
@@ -469,10 +465,14 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
-        external_retrieval_model = {"top_k": 3}
+        external_retrieval_model: dict[str, object] = {"top_k": 3}
+        # Deliberately non-canonical shape: external_retrieve passes the mapping
+        # through untouched, and the assertion below checks exact passthrough.
         metadata_filtering_conditions = {"category": "test"}
 
-        external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}]
+        external_documents: list[ExternalRetrievalRecord] = [
+            {"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}
+        ]
 
         with (
             patch(
@@ -499,7 +499,7 @@ class TestHitTestingServiceExternalRetrieve:
             call_kwargs = mock_external_retrieve.call_args[1]
             assert call_kwargs["metadata_filtering_conditions"] == metadata_filtering_conditions
 
-    def test_external_retrieve_empty_documents(self, sqlite_session: Session):
+    def test_external_retrieve_empty_documents(self, sqlite_session: Session) -> None:
         """
         Test external retrieval with empty document list.
 
@@ -510,7 +510,7 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
         metadata_filtering_conditions = {}
 
         with (
@@ -520,7 +520,8 @@ class TestHitTestingServiceExternalRetrieve:
             patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
-            mock_external_retrieve.return_value = []
+            external_records: list[ExternalRetrievalRecord] = []
+            mock_external_retrieve.return_value = external_records
 
             # Act
             result = HitTestingService.external_retrieve(
@@ -545,7 +546,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
     ensuring documents are properly formatted into retrieval records.
     """
 
-    def test_compact_retrieve_response_success(self, sqlite_session: Session):
+    def test_compact_retrieve_response_success(self, sqlite_session: Session) -> None:
         """
         Test successful response formatting.
 
@@ -582,7 +583,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             assert mock_format.call_args.args[0].get_bind() is sqlite_session.get_bind()
             assert mock_format.call_args.args[1] == documents
 
-    def test_compact_retrieve_response_empty_documents(self, sqlite_session: Session):
+    def test_compact_retrieve_response_empty_documents(self, sqlite_session: Session) -> None:
         """
         Test response formatting with empty document list.
 
@@ -596,7 +597,8 @@ class TestHitTestingServiceCompactRetrieveResponse:
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
         ) as mock_format:
-            mock_format.return_value = []
+            formatted: list[RetrievalSegments] = []
+            mock_format.return_value = formatted
 
             # Act
             result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
@@ -618,7 +620,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
     retrieval, ensuring proper field extraction and provider validation.
     """
 
-    def test_compact_external_retrieve_response_external_provider(self):
+    def test_compact_external_retrieve_response_external_provider(self) -> None:
         """
         Test external response formatting for external provider.
 
@@ -628,7 +630,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         query = "test query"
-        documents = [
+        documents: list[ExternalRetrievalRecord] = [
             {"content": "Doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
             {"content": "Doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
         ]
@@ -644,7 +646,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         assert result["records"][0]["score"] == 0.95
         assert result["records"][0]["metadata"] == {"key": "value"}
 
-    def test_compact_external_retrieve_response_non_external_provider(self):
+    def test_compact_external_retrieve_response_non_external_provider(self) -> None:
         """
         Test external response formatting for non-external provider.
 
@@ -654,7 +656,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="vendor")
         query = "test query"
-        documents = [{"content": "Doc 1"}]
+        documents: list[ExternalRetrievalRecord] = [{"content": "Doc 1"}]
 
         # Act
         result = HitTestingService.compact_external_retrieve_response(dataset, query, documents)
@@ -663,7 +665,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         assert result["query"]["content"] == query
         assert result["records"] == []
 
-    def test_compact_external_retrieve_response_missing_fields(self):
+    def test_compact_external_retrieve_response_missing_fields(self) -> None:
         """
         Test external response formatting with missing optional fields.
 
@@ -673,7 +675,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         query = "test query"
-        documents = [
+        documents: list[ExternalRetrievalRecord] = [
             {"content": "Doc 1"},  # Missing title, score, metadata
             {"content": "Doc 2", "title": "Title 2"},  # Missing score, metadata
         ]
@@ -698,7 +700,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
     meet the required criteria (non-empty, max 250 characters).
     """
 
-    def test_hit_testing_args_check_success(self):
+    def test_hit_testing_args_check_success(self) -> None:
         """
         Test successful argument validation.
 
@@ -710,7 +712,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         # Act & Assert (should not raise)
         HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_empty_query(self):
+    def test_hit_testing_args_check_empty_query(self) -> None:
         """
         Test validation fails with empty query.
 
@@ -723,20 +725,20 @@ class TestHitTestingServiceHitTestingArgsCheck:
         with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_none_query(self):
+    def test_hit_testing_args_check_none_query(self) -> None:
         """
         Test validation fails with None query.
 
         Verifies that None queries raise a ValueError with appropriate message.
         """
         # Arrange
-        args = {"query": None}
+        args: dict[str, str | None] = {"query": None}
 
         # Act & Assert
         with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_too_long_query(self):
+    def test_hit_testing_args_check_too_long_query(self) -> None:
         """
         Test validation fails with query exceeding 250 characters.
 
@@ -749,7 +751,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_exactly_250_characters(self):
+    def test_hit_testing_args_check_exactly_250_characters(self) -> None:
         """
         Test validation succeeds with exactly 250 characters.
 
@@ -771,7 +773,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
     ensuring special characters are properly escaped.
     """
 
-    def test_escape_query_for_search_with_quotes(self):
+    def test_escape_query_for_search_with_quotes(self) -> None:
         """
         Test escaping quotes in query.
 
@@ -787,7 +789,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
         # Assert
         assert result == 'test query with \\"quotes\\"'
 
-    def test_escape_query_for_search_without_quotes(self):
+    def test_escape_query_for_search_without_quotes(self) -> None:
         """
         Test query without quotes (no change).
 
@@ -802,7 +804,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
         # Assert
         assert result == query
 
-    def test_escape_query_for_search_multiple_quotes(self):
+    def test_escape_query_for_search_multiple_quotes(self) -> None:
         """
         Test escaping multiple quotes in query.
 
@@ -818,7 +820,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
         # Assert
         assert result == 'test \\"query\\" with \\"multiple\\" quotes'
 
-    def test_escape_query_for_search_empty_string(self):
+    def test_escape_query_for_search_empty_string(self) -> None:
         """
         Test escaping empty string.
 
