@@ -31,7 +31,10 @@ const FIELD_ERRORS: Readonly<Record<string, Readonly<{ param: string; msg: strin
 
 function toDetail(error: ErrorObject): ValidationDetail {
   const reading = FIELD_ERRORS[error.keyword]
-  const loc: (string | number)[] = error.instancePath.split(INSTANCE_PATH_SEPARATOR).filter(Boolean)
+  const loc: (string | number)[] = error.instancePath
+    .split(INSTANCE_PATH_SEPARATOR)
+    .slice(1)
+    .map((part) => part.replaceAll('~1', '/').replaceAll('~0', '~'))
   const named =
     reading === undefined ? undefined : (error.params as Record<string, unknown>)[reading.param]
   if (typeof named === 'string') loc.push(named)
