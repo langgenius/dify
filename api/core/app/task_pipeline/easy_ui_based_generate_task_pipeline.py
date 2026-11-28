@@ -116,6 +116,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         )
 
         self._conversation_name_generate_thread: Thread | None = None
+        # Agent Chat text is streamed as agent_message events without passing the
+        # streaming output check, so it is already visible to the client verbatim.
+        self._agent_message_streamed = False
 
     def process(
         self,
@@ -305,7 +308,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 if replacement is not None:
                     moderation_reply = True
                     answer, phase = replacement
-                    had_answer = bool(self._task_state.llm_result.message.get_text_content())
+                    had_answer = self._agent_message_streamed or bool(
+                        self._task_state.llm_result.message.get_text_content()
+                    )
                     self._task_state.llm_result.message.content = answer
                     if had_answer:
                         yield self._message_cycle_manager.message_replace_to_stream_response(answer=answer)
@@ -338,7 +343,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if output_moderation_answer is not None:
                         self._task_state.llm_result.message.content = output_moderation_answer
                     final_answer = self._task_state.llm_result.message.get_text_content()
-                    if (moderated or output_moderation_answer is not None) and final_answer != delivered_answer:
+                    if self._agent_message_streamed:
+                        # Agent text bypassed the streaming check and is already shown in full;
+                        # only a flagged completion must replace it.
+                        if output_moderation_answer is not None:
+                            yield self._message_cycle_manager.message_replace_to_stream_response(answer=final_answer)
+                    elif (moderated or output_moderation_answer is not None) and final_answer != delivered_answer:
                         if final_answer.startswith(delivered_answer):
                             tail = final_answer[len(delivered_answer) :]
                             if publisher:
@@ -395,6 +405,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     delta_text = self._chunk_delta_text(chunk)
                     if delta_text is None:
                         continue
+                    # New Agent apps deliver the final answer as moderated LLM chunks instead.
+                    if self._app_config.app_mode == AppMode.AGENT_CHAT:
+                        self._agent_message_streamed = True
                     yield self._agent_message_to_stream_response(
                         answer=delta_text,
                         message_id=self._message_id,

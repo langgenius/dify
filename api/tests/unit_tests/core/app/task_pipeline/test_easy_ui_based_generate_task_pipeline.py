@@ -29,7 +29,12 @@ from core.app.app_config.entities import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, CompletionAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    ChatAppGenerateEntity,
+    CompletionAppGenerateEntity,
+    InvokeFrom,
+)
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
@@ -64,6 +69,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
@@ -2618,3 +2624,121 @@ class TestEasyUiMessageEndFilesCases:
             assert len(result.files) == 1
             assert result.files[0]["url"].startswith("https://example.com/fallback-url")
             get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))
+
+
+def _agent_chat_pipeline_events(
+    monkeypatch: pytest.MonkeyPatch,
+    streamed: Sequence[str],
+    preset_response: str | None,
+    *,
+    platform_verdict: str | None = None,
+) -> list[object]:
+    """Run a legacy Agent Chat stream that ends with output moderation.
+
+    The agent runners stream their text as agent_message chunks and then publish the
+    aggregated answer in QueueMessageEndEvent; only the final answer is moderated.
+    """
+    pipeline = EasyUIBasedGenerateTaskPipeline(
+        application_generate_entity=_make_entity(AgentChatAppGenerateEntity, AppMode.AGENT_CHAT),
+        queue_manager=_FakeQueueManager(),
+        conversation=_make_conversation(AppMode.AGENT_CHAT),
+        message=_make_message(),
+        stream=True,
+    )
+
+    def _evaluate(text: str) -> ModerationOutputsResult | None:
+        if preset_response is None:
+            return None
+        return ModerationOutputsResult(
+            flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
+        )
+
+    pipeline.output_moderation_handler = OutputModeration(
+        tenant_id="tenant",
+        app_id="app",
+        rule=ModerationRule(type="keywords", config={}),
+        output_evaluator=_evaluate,
+    )
+    answer = "".join(streamed)
+    if platform_verdict is not None:
+        # A platform moderation verdict arrives as an error after the agent text was streamed.
+        _set_method(pipeline, "moderation_replacement", lambda error: (platform_verdict, "output"))
+        _set_queue_events(
+            pipeline,
+            [
+                *(_queue_message(QueueAgentMessageEvent(chunk=llm_chunk(text))) for text in streamed),
+                _queue_message(QueueErrorEvent(error=ValueError("flagged by the platform"))),
+            ],
+        )
+    else:
+        _set_queue_events(
+            pipeline,
+            [
+                *(_queue_message(QueueAgentMessageEvent(chunk=llm_chunk(text))) for text in streamed),
+                _queue_message(
+                    QueueMessageEndEvent(
+                        llm_result=LLMResult(
+                            model="mock",
+                            prompt_messages=[],
+                            message=AssistantPromptMessage(content=answer),
+                            usage=LLMUsage.empty_usage(),
+                        )
+                    )
+                ),
+            ],
+        )
+    _set_method(pipeline, "_save_message", lambda **kwargs: MagicMock())
+    _set_method(pipeline, "_emit_message_trace", lambda: None)
+    _set_method(pipeline, "_message_end_to_stream_response", lambda: MessageEndStreamResponse(task_id="t", id="msg"))
+    _set_method(
+        pipeline,
+        "_agent_message_to_stream_response",
+        lambda answer, message_id: AgentMessageStreamResponse(task_id="t", id=message_id, answer=answer),
+    )
+    session = MagicMock()
+    session.__enter__.return_value = session
+    monkeypatch.setattr(
+        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+        lambda: session,
+    )
+    return list(pipeline._process_stream_response(publisher=None))
+
+
+class TestAgentChatOutputModerationCases:
+    def test_unflagged_answer_is_not_sent_again(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        responses = _agent_chat_pipeline_events(monkeypatch, ["The sky ", "is blue"], preset_response=None)
+
+        assert "".join(r.answer for r in responses if isinstance(r, AgentMessageStreamResponse)) == "The sky is blue"
+        assert not any(isinstance(r, MessageStreamResponse | MessageReplaceStreamResponse) for r in responses)
+        assert isinstance(responses[-1], MessageEndStreamResponse)
+
+    def test_flagged_answer_replaces_the_streamed_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        responses = _agent_chat_pipeline_events(monkeypatch, ["The secret ", "is 42"], preset_response="[blocked]")
+
+        assert not any(isinstance(r, MessageStreamResponse) for r in responses)
+        replace = next(r for r in responses if isinstance(r, MessageReplaceStreamResponse))
+        assert replace.answer == "[blocked]"
+        # The replacement must reach the client before the message ends.
+        assert responses.index(replace) < len(responses) - 1
+        assert isinstance(responses[-1], MessageEndStreamResponse)
+
+    def test_flagged_answer_is_replaced_when_the_preset_extends_the_streamed_text(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A prefix check alone would append ", but I can't share that." to the visible text.
+        responses = _agent_chat_pipeline_events(
+            monkeypatch, ["Sorry"], preset_response="Sorry, but I can't share that."
+        )
+
+        assert not any(isinstance(r, MessageStreamResponse) for r in responses)
+        assert [r.answer for r in responses if isinstance(r, MessageReplaceStreamResponse)] == [
+            "Sorry, but I can't share that."
+        ]
+
+    def test_platform_verdict_replaces_the_streamed_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        responses = _agent_chat_pipeline_events(
+            monkeypatch, ["The secret ", "is 42"], preset_response=None, platform_verdict="[blocked]"
+        )
+
+        assert not any(isinstance(r, MessageStreamResponse) for r in responses)
+        assert [r.answer for r in responses if isinstance(r, MessageReplaceStreamResponse)] == ["[blocked]"]
