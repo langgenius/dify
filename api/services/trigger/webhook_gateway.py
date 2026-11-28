@@ -11,9 +11,14 @@ class ToolWebhookFiles:
         self._manager = manager
         self._access = access
 
-    def create(self, *, tenant_id: str, user_id: str, content: bytes, mimetype: str) -> File:
+    def create(self, *, tenant_id: str, user_id: str, content: bytes, mimetype: str, filename: str | None) -> File:
         record = self._manager.create_file_by_raw(
-            user_id=user_id, tenant_id=tenant_id, conversation_id=None, file_binary=content, mimetype=mimetype
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=None,
+            file_binary=content,
+            mimetype=mimetype,
+            filename=filename,
         )
         return file_factory.build_from_mapping(
             mapping={"tool_file_id": record.id, "transfer_method": FileTransferMethod.TOOL_FILE.value},

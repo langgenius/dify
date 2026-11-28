@@ -241,7 +241,7 @@ class WebhookRequestParser:
             file_content = self._request.get_data()
             if file_content:
                 mimetype = self._detect_binary_mimetype(file_content)
-                file_obj = self._create_file_from_binary(file_content, mimetype, webhook_trigger)
+                file_obj = self._create_file_from_binary(file_content, mimetype, webhook_trigger, filename=None)
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
@@ -295,7 +295,9 @@ class WebhookRequestParser:
                 try:
                     file_content = file.stream.read()
                     mimetype = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
-                    file_obj = self._create_file_from_binary(file_content, mimetype, webhook_trigger)
+                    file_obj = self._create_file_from_binary(
+                        file_content, mimetype, webhook_trigger, filename=file.filename
+                    )
                     processed_files[name] = file_obj.to_dict()
                 except Exception:
                     logger.exception("Failed to process file upload '%s'", name)
@@ -303,7 +305,9 @@ class WebhookRequestParser:
 
         return processed_files
 
-    def _create_file_from_binary(self, file_content: bytes, mimetype: str, webhook_trigger: WebhookContext) -> File:
+    def _create_file_from_binary(
+        self, file_content: bytes, mimetype: str, webhook_trigger: WebhookContext, *, filename: str | None
+    ) -> File:
         if self.actor is None and self._resolve_actor is not None:
             self.actor = self._resolve_actor(webhook_trigger)
         user_id = self.actor.id if self.actor is not None else webhook_trigger.created_by
@@ -312,6 +316,7 @@ class WebhookRequestParser:
             user_id=user_id,
             content=file_content,
             mimetype=mimetype,
+            filename=filename,
         )
 
     def _process_parameters(
