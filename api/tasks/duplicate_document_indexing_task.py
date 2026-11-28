@@ -170,8 +170,19 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
         except DocumentIsPausedError as ex:
             session.rollback()
             logger.info(click.style(str(ex), fg="yellow"))
-        except Exception:
+        except Exception as ex:
             session.rollback()
+            documents = list(
+                session.scalars(
+                    select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                ).all()
+            )
+            for document in documents:
+                document.indexing_status = IndexingStatus.ERROR
+                document.error = str(ex)
+                document.stopped_at = naive_utc_now()
+                session.add(document)
+            session.commit()
             logger.exception("duplicate_document_indexing_task failed, dataset_id: %s", dataset_id)
 
 
