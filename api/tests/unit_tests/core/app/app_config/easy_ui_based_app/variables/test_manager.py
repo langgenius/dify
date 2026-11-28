@@ -5,29 +5,34 @@ from core.app.app_config.easy_ui_based_app.variables.manager import (
     BasicVariablesConfigManager,
 )
 from graphon.variables.input_entities import VariableEntityType
+from models.model import AppModelConfig, AppModelConfigDict, UserInputFormItem
+
+
+def _default_config() -> AppModelConfigDict:
+    """Return an app model config with no variables configured, as the model layer builds it."""
+    return AppModelConfig(app_id="app-1", model="{}").to_dict(annotation_reply={"enabled": False})
 
 
 class TestBasicVariablesConfigManagerConvert:
-    def test_convert_empty_config(self):
-        config = {}
+    def test_convert_config_without_variable_sections(self) -> None:
+        config = _default_config()
 
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert variables == []
         assert external == []
 
-    def test_convert_external_data_tools_enabled_and_disabled(self, mocker: MockerFixture):
-        config = {
-            "external_data_tools": [
-                {"enabled": False},
-                {
-                    "enabled": True,
-                    "variable": "ext_var",
-                    "type": "tool_type",
-                    "config": {"k": "v"},
-                },
-            ]
-        }
+    def test_convert_external_data_tools_enabled_and_disabled(self, mocker: MockerFixture) -> None:
+        config = _default_config()
+        config["external_data_tools"] = [
+            {"enabled": False, "variable": "skipped", "type": "none", "config": {}},
+            {
+                "enabled": True,
+                "variable": "ext_var",
+                "type": "tool_type",
+                "config": {"k": "v"},
+            },
+        ]
 
         variables, external = BasicVariablesConfigManager.convert(config)
 
@@ -36,59 +41,60 @@ class TestBasicVariablesConfigManagerConvert:
         assert external[0].variable == "ext_var"
         assert external[0].type == "tool_type"
 
-    def test_convert_user_input_form_variable_types(self):
-        config = {
-            "user_input_form": [
-                {
-                    VariableEntityType.TEXT_INPUT: {
-                        "variable": "name",
-                        "label": "Name",
-                        "description": "desc",
-                        "required": True,
-                        "max_length": 50,
-                    }
-                },
-                {
-                    VariableEntityType.SELECT: {
-                        "variable": "choice",
-                        "label": "Choice",
-                        "options": ["a", "b"],
-                    }
-                },
-                {
-                    VariableEntityType.EXTERNAL_DATA_TOOL: {
-                        "variable": "ext",
-                        "type": "tool",
-                        "config": {"x": 1},
-                    }
-                },
-            ]
-        }
+    def test_convert_user_input_form_variable_types(self) -> None:
+        config = _default_config()
+        config["user_input_form"] = [
+            {
+                VariableEntityType.TEXT_INPUT: {
+                    "variable": "name",
+                    "label": "Name",
+                    "description": "desc",
+                    "required": True,
+                    "max_length": 50,
+                }
+            },
+            {
+                VariableEntityType.SELECT: {
+                    "variable": "choice",
+                    "label": "Choice",
+                    "options": ["a", "b"],
+                }
+            },
+            {
+                VariableEntityType.EXTERNAL_DATA_TOOL: {
+                    "variable": "ext",
+                    "label": "Ext",
+                    "type": "tool",
+                    "config": {"x": 1},
+                }
+            },
+        ]
 
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert len(variables) == 2
         assert len(external) == 1
 
-    def test_convert_empty_form_item_skipped(self):
-        config = {"user_input_form": [{}]}
+    def test_convert_empty_form_item_skipped(self) -> None:
+        config = _default_config()
+        config["user_input_form"] = [{}]
 
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert variables == []
         assert external == []
 
-    def test_convert_external_data_tool_without_config_skipped(self):
-        config = {
-            "user_input_form": [
-                {
-                    VariableEntityType.EXTERNAL_DATA_TOOL: {
-                        "variable": "ext",
-                        "type": "tool",
-                    }
+    def test_convert_external_data_tool_without_config_skipped(self) -> None:
+        config = _default_config()
+        config["user_input_form"] = [
+            {
+                VariableEntityType.EXTERNAL_DATA_TOOL: {
+                    "variable": "ext",
+                    "label": "Ext",
+                    "type": "tool",
                 }
-            ]
-        }
+            }
+        ]
 
         variables, external = BasicVariablesConfigManager.convert(config)
 
@@ -97,22 +103,22 @@ class TestBasicVariablesConfigManagerConvert:
 
 
 class TestValidateVariablesAndSetDefaults:
-    def test_validate_sets_empty_user_input_form_if_missing(self):
-        config = {}
+    def test_validate_sets_empty_user_input_form_if_missing(self) -> None:
+        config: dict[str, object] = {}
 
         updated, keys = BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
         assert updated["user_input_form"] == []
         assert "user_input_form" in keys
 
-    def test_validate_user_input_form_not_list_raises(self):
-        config = {"user_input_form": "invalid"}
+    def test_validate_user_input_form_not_list_raises(self) -> None:
+        config: dict[str, object] = {"user_input_form": "invalid"}
 
         with pytest.raises(ValueError, match="user_input_form must be a list of objects"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_invalid_key_raises(self):
-        config = {"user_input_form": [{"invalid": {}}]}
+    def test_validate_invalid_key_raises(self) -> None:
+        config: dict[str, object] = {"user_input_form": [{"invalid": dict[str, object]()}]}
 
         with pytest.raises(
             ValueError,
@@ -120,32 +126,36 @@ class TestValidateVariablesAndSetDefaults:
         ):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_empty_form_item_raises(self):
-        config = {"user_input_form": [{}]}
+    def test_validate_empty_form_item_raises(self) -> None:
+        config: dict[str, object] = {"user_input_form": [dict[str, object]()]}
 
         with pytest.raises(ValueError, match="Each item in user_input_form must be a non-empty object"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_missing_label_raises(self):
-        config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"variable": "name"}}]}
+    def test_validate_missing_label_raises(self) -> None:
+        config: dict[str, object] = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"variable": "name"}}]}
 
         with pytest.raises(ValueError, match="label is required in user_input_form"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_label_not_string_raises(self):
-        config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"variable": "name", "label": 123}}]}
+    def test_validate_label_not_string_raises(self) -> None:
+        config: dict[str, object] = {
+            "user_input_form": [{VariableEntityType.TEXT_INPUT: {"variable": "name", "label": 123}}]
+        }
 
         with pytest.raises(ValueError, match="label in user_input_form must be of string type"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_missing_variable_raises(self):
-        config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"label": "Name"}}]}
+    def test_validate_missing_variable_raises(self) -> None:
+        config: dict[str, object] = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"label": "Name"}}]}
 
         with pytest.raises(ValueError, match="variable is required in user_input_form"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_variable_not_string_raises(self):
-        config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"label": "Name", "variable": 123}}]}
+    def test_validate_variable_not_string_raises(self) -> None:
+        config: dict[str, object] = {
+            "user_input_form": [{VariableEntityType.TEXT_INPUT: {"label": "Name", "variable": 123}}]
+        }
 
         with pytest.raises(ValueError, match="variable in user_input_form must be of string type"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
@@ -154,8 +164,8 @@ class TestValidateVariablesAndSetDefaults:
         "variable_name",
         ["1invalid", "invalid space", "", None],
     )
-    def test_validate_variable_invalid_pattern_raises(self, variable_name):
-        config = {
+    def test_validate_variable_invalid_pattern_raises(self, variable_name: str | None) -> None:
+        config: dict[str, object] = {
             "user_input_form": [
                 {
                     VariableEntityType.TEXT_INPUT: {
@@ -175,8 +185,8 @@ class TestValidateVariablesAndSetDefaults:
         ):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_required_default_and_type(self):
-        config = {
+    def test_validate_required_default_and_type(self) -> None:
+        config: dict[str, object] = {
             "user_input_form": [
                 {
                     VariableEntityType.TEXT_INPUT: {
@@ -191,8 +201,8 @@ class TestValidateVariablesAndSetDefaults:
 
         assert updated["user_input_form"][0][VariableEntityType.TEXT_INPUT]["required"] is False
 
-    def test_validate_required_not_bool_raises(self):
-        config = {
+    def test_validate_required_not_bool_raises(self) -> None:
+        config: dict[str, object] = {
             "user_input_form": [
                 {
                     VariableEntityType.TEXT_INPUT: {
@@ -207,25 +217,21 @@ class TestValidateVariablesAndSetDefaults:
         with pytest.raises(ValueError, match="required in user_input_form must be of boolean type"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_select_options_default_not_in_options_raises(self):
-        config = {
-            "user_input_form": [
-                {
-                    VariableEntityType.SELECT: {
-                        "label": "Choice",
-                        "variable": "choice",
-                        "options": ["a", "b"],
-                        "default": "c",
-                    }
-                }
-            ]
+    def test_validate_select_options_default_not_in_options_raises(self) -> None:
+        select_item: UserInputFormItem = {
+            VariableEntityType.SELECT: {
+                "label": "Choice",
+                "variable": "choice",
+                "options": ["a", "b"],
+                "default": "c",
+            }
         }
 
         with pytest.raises(ValueError, match="default value in user_input_form must be in the options list"):
-            BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
+            BasicVariablesConfigManager.validate_variables_and_set_defaults({"user_input_form": [select_item]})
 
-    def test_validate_select_options_not_list_raises(self):
-        config = {
+    def test_validate_select_options_not_list_raises(self) -> None:
+        config: dict[str, object] = {
             "user_input_form": [
                 {
                     VariableEntityType.SELECT: {
@@ -242,22 +248,22 @@ class TestValidateVariablesAndSetDefaults:
 
 
 class TestValidateExternalDataToolsAndSetDefaults:
-    def test_validate_sets_empty_external_data_tools_if_missing(self):
-        config = {}
+    def test_validate_sets_empty_external_data_tools_if_missing(self) -> None:
+        config: dict[str, object] = {}
 
         updated, keys = BasicVariablesConfigManager.validate_external_data_tools_and_set_defaults("tenant", config)
 
         assert updated["external_data_tools"] == []
         assert "external_data_tools" in keys
 
-    def test_validate_external_data_tools_not_list_raises(self):
-        config = {"external_data_tools": "invalid"}
+    def test_validate_external_data_tools_not_list_raises(self) -> None:
+        config: dict[str, object] = {"external_data_tools": "invalid"}
 
         with pytest.raises(ValueError, match="external_data_tools must be of list type"):
             BasicVariablesConfigManager.validate_external_data_tools_and_set_defaults("tenant", config)
 
-    def test_validate_disabled_tool_skipped(self, mocker: MockerFixture):
-        config = {"external_data_tools": [{"enabled": False}]}
+    def test_validate_disabled_tool_skipped(self, mocker: MockerFixture) -> None:
+        config: dict[str, object] = {"external_data_tools": [{"enabled": False}]}
 
         spy = mocker.patch(
             "core.app.app_config.easy_ui_based_app.variables.manager.ExternalDataToolFactory.validate_config"
@@ -268,14 +274,14 @@ class TestValidateExternalDataToolsAndSetDefaults:
         spy.assert_not_called()
         assert updated["external_data_tools"][0]["enabled"] is False
 
-    def test_validate_enabled_tool_missing_type_raises(self):
-        config = {"external_data_tools": [{"enabled": True, "config": {}}]}
+    def test_validate_enabled_tool_missing_type_raises(self) -> None:
+        config: dict[str, object] = {"external_data_tools": [{"enabled": True, "config": dict[str, object]()}]}
 
         with pytest.raises(ValueError, match="external_data_tools\\[\\]\\.type is required"):
             BasicVariablesConfigManager.validate_external_data_tools_and_set_defaults("tenant", config)
 
-    def test_validate_enabled_tool_calls_factory(self, mocker: MockerFixture):
-        config = {"external_data_tools": [{"enabled": True, "type": "tool", "config": {"a": 1}}]}
+    def test_validate_enabled_tool_calls_factory(self, mocker: MockerFixture) -> None:
+        config: dict[str, object] = {"external_data_tools": [{"enabled": True, "type": "tool", "config": {"a": 1}}]}
 
         spy = mocker.patch(
             "core.app.app_config.easy_ui_based_app.variables.manager.ExternalDataToolFactory.validate_config"
@@ -287,8 +293,8 @@ class TestValidateExternalDataToolsAndSetDefaults:
 
 
 class TestValidateAndSetDefaultsIntegration:
-    def test_validate_and_set_defaults_calls_both(self, mocker: MockerFixture):
-        config = {}
+    def test_validate_and_set_defaults_calls_both(self, mocker: MockerFixture) -> None:
+        config: dict[str, object] = {}
 
         spy_var = mocker.patch.object(
             BasicVariablesConfigManager,
@@ -311,11 +317,11 @@ class TestValidateAndSetDefaultsIntegration:
 
 
 class TestBasicVariablesConfigManagerValidateVariables:
-    def test_validate_variables_rejects_trailing_newline(self):
+    def test_validate_variables_rejects_trailing_newline(self) -> None:
         # re.match with a "$" anchor still matches just before a trailing
         # newline, so "name\n" used to pass validation even though "\n" is
         # not in the allowed character set. fullmatch rejects it.
-        config = {
+        config: dict[str, object] = {
             "user_input_form": [
                 {"text-input": {"label": "Name", "variable": "name\n"}},
             ]
@@ -323,8 +329,8 @@ class TestBasicVariablesConfigManagerValidateVariables:
         with pytest.raises(ValueError, match="cannot start with a number"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
-    def test_validate_variables_accepts_valid_name(self):
-        config = {
+    def test_validate_variables_accepts_valid_name(self) -> None:
+        config: dict[str, object] = {
             "user_input_form": [
                 {"text-input": {"label": "Name", "variable": "name"}},
             ]

@@ -12,6 +12,7 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from services.model_provider.service import ModelProviderService
 
 
@@ -40,9 +41,9 @@ class TTSTool(BuiltinTool):
             model=model,
         )
         if not voice:
-            voices = model_instance.get_tts_voices()
+            voices: list[TTSModelVoice] = model_instance.get_tts_voices()
             if voices:
-                voice = voices[0].get("value")
+                voice = voices[0]["value"]
                 if not voice:
                     raise ValueError("Sorry, no voice available.")
             else:

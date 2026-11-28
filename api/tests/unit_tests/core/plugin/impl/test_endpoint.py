@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Mapping
 from unittest.mock import patch
 
 import httpx
@@ -44,7 +44,7 @@ class TestEndpointClientImplCases:
             with pytest.raises(PluginDaemonInternalServerError, match="Plugin daemon failed to"):
                 mutate(client)
 
-        def test_create_endpoint(self, mocker: MockerFixture):
+        def test_create_endpoint(self, mocker: MockerFixture) -> None:
             client = PluginEndpointClient()
             request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
@@ -57,7 +57,7 @@ class TestEndpointClientImplCases:
             assert args[:3] == ("POST", "plugin/tenant-1/endpoint/setup", bool)
             assert kwargs["data"]["plugin_unique_identifier"] == "org/plugin:1"
 
-        def test_list_endpoints(self, mocker: MockerFixture):
+        def test_list_endpoints(self, mocker: MockerFixture) -> None:
             client = PluginEndpointClient()
             request_mock = mocker.patch.object(
                 client, "_request_with_plugin_daemon_response", return_value=["endpoint"]
@@ -69,7 +69,7 @@ class TestEndpointClientImplCases:
             assert request_mock.call_args.args[1] == "plugin/tenant-1/endpoint/list"
             assert request_mock.call_args.kwargs["params"] == {"page": 2, "page_size": 20}
 
-        def test_list_endpoints_for_single_plugin(self, mocker: MockerFixture):
+        def test_list_endpoints_for_single_plugin(self, mocker: MockerFixture) -> None:
             client = PluginEndpointClient()
             request_mock = mocker.patch.object(
                 client, "_request_with_plugin_daemon_response", return_value=["endpoint"]
@@ -85,7 +85,7 @@ class TestEndpointClientImplCases:
                 "page_size": 10,
             }
 
-        def test_update_endpoint(self, mocker: MockerFixture):
+        def test_update_endpoint(self, mocker: MockerFixture) -> None:
             client = PluginEndpointClient()
             request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
@@ -94,7 +94,7 @@ class TestEndpointClientImplCases:
             assert result
             assert request_mock.call_args.args[:3] == ("POST", "plugin/tenant-1/endpoint/update", bool)
 
-        def test_enable_and_disable_endpoint(self, mocker: MockerFixture):
+        def test_enable_and_disable_endpoint(self, mocker: MockerFixture) -> None:
             client = PluginEndpointClient()
             request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
@@ -105,7 +105,7 @@ class TestEndpointClientImplCases:
             assert calls[0].args[1] == "plugin/tenant-1/endpoint/enable"
             assert calls[1].args[1] == "plugin/tenant-1/endpoint/disable"
 
-        def test_delete_endpoint_idempotent_and_re_raise(self, mocker: MockerFixture):
+        def test_delete_endpoint_idempotent_and_re_raise(self, mocker: MockerFixture) -> None:
             client = PluginEndpointClient()
             request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response")
 
@@ -132,14 +132,30 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 class TestEndpointClientCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def _patch_shared_httpx_client():
+    def _patch_shared_httpx_client() -> Iterator[None]:
         """Patch module-level client methods to delegate to module httpx.request/stream."""
 
-        def request[**P](*args: P.args, **kwargs: P.kwargs) -> httpx.Response:
-            response = httpx.request(*args, **kwargs)
-            method, url = kwargs["method"], kwargs["url"]
-            assert isinstance(method, str)
-            assert isinstance(url, str)
+        def request(
+            *,
+            method: str,
+            url: str,
+            headers: Mapping[str, str] | None = None,
+            params: Mapping[str, str | int] | None = None,
+            files: None = None,
+            timeout: httpx.Timeout | None = None,
+            data: Mapping[str, object] | None = None,
+            content: bytes | str | None = None,
+        ) -> httpx.Response:
+            response = httpx.request(
+                method,
+                url,
+                headers=headers,
+                params=params,
+                files=files,
+                timeout=timeout,
+                data=data,
+                content=content,
+            )
             response.request = httpx.Request(method, url)
             return response
 
@@ -159,16 +175,16 @@ class TestEndpointClientCases:
         """
 
         @pytest.fixture
-        def endpoint_client(self):
+        def endpoint_client(self) -> PluginEndpointClient:
             """Create a PluginEndpointClient instance for testing."""
             return PluginEndpointClient()
 
         @pytest.fixture
-        def mock_config(self, config_overrides: Callable[..., None]):
+        def mock_config(self, config_overrides: Callable[..., None]) -> None:
             """Mock plugin daemon configuration."""
             config_overrides(PLUGIN_DAEMON_URL="http://127.0.0.1:5002", PLUGIN_DAEMON_KEY="test-api-key")
 
-        def test_delete_endpoint_success(self, endpoint_client, mock_config):
+        def test_delete_endpoint_success(self, endpoint_client: PluginEndpointClient, mock_config: None) -> None:
             """Test successful endpoint deletion.
 
             Given:
@@ -203,9 +219,11 @@ class TestEndpointClientCases:
                 )
 
                 # Assert
-                assert result is True
+                assert result
 
-        def test_delete_endpoint_idempotent_record_not_found(self, endpoint_client, mock_config):
+        def test_delete_endpoint_idempotent_record_not_found(
+            self, endpoint_client: PluginEndpointClient, mock_config: None
+        ) -> None:
             """Test idempotent delete behavior when endpoint is already deleted.
 
             Given:
@@ -242,9 +260,11 @@ class TestEndpointClientCases:
                 )
 
                 # Assert - should return True instead of raising an error
-                assert result is True
+                assert result
 
-        def test_delete_endpoint_non_idempotent_other_errors(self, endpoint_client, mock_config):
+        def test_delete_endpoint_non_idempotent_other_errors(
+            self, endpoint_client: PluginEndpointClient, mock_config: None
+        ) -> None:
             """Test non-idempotent delete behavior for other errors.
 
             Given:
@@ -281,9 +301,11 @@ class TestEndpointClientCases:
                     )
 
                 # Assert - the error message should not be "record not found"
-                assert "record not found" not in str(exc_info.value.description)
+                assert "record not found" not in exc_info.value.description
 
-        def test_delete_endpoint_idempotent_case_insensitive(self, endpoint_client, mock_config):
+        def test_delete_endpoint_idempotent_case_insensitive(
+            self, endpoint_client: PluginEndpointClient, mock_config: None
+        ) -> None:
             """Test idempotent delete behavior with case-insensitive error message.
 
             Given:
@@ -316,9 +338,11 @@ class TestEndpointClientCases:
                 )
 
                 # Assert - should still return True
-                assert result is True
+                assert result
 
-        def test_delete_endpoint_multiple_calls_idempotent(self, endpoint_client, mock_config):
+        def test_delete_endpoint_multiple_calls_idempotent(
+            self, endpoint_client: PluginEndpointClient, mock_config: None
+        ) -> None:
             """Test that multiple delete calls are idempotent.
 
             Given:
@@ -375,10 +399,12 @@ class TestEndpointClientCases:
                 )
 
                 # Assert - both should return True
-                assert result1 is True
-                assert result2 is True
+                assert result1
+                assert result2
 
-        def test_delete_endpoint_non_idempotent_unauthorized_error(self, endpoint_client, mock_config):
+        def test_delete_endpoint_non_idempotent_unauthorized_error(
+            self, endpoint_client: PluginEndpointClient, mock_config: None
+        ) -> None:
             """Test that authorization errors are not treated as idempotent.
 
             Given:

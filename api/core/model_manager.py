@@ -52,6 +52,7 @@ from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from graphon.model_runtime.model_providers.base.speech2text_model import Speech2TextModel
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from models.provider import ProviderType
 
 if TYPE_CHECKING:
@@ -575,7 +576,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: str | None = None):
+    def get_tts_voices(self, language: str | None = None) -> list[TTSModelVoice]:
         """
         Invoke large language tts model voices
 

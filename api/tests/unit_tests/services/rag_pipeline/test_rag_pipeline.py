@@ -1,11 +1,12 @@
 import json
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Never
 from unittest import mock
-from unittest.mock import create_autospec
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -14,11 +15,21 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.datasource.entities.datasource_entities import (
+    DatasourceMessage,
+    GetOnlineDocumentPageContentRequest,
+    OnlineDriveBrowseFilesResponse,
+    OnlineDriveFile,
+    OnlineDriveFileBucket,
+    WebsiteCrawlMessage,
+    WebSiteInfo,
+)
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from graphon.engine_events import NodeRunFailedEvent
+from graphon.engine_events import NodeRunFailedEvent, NodeRunStartedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
+    WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -35,8 +46,14 @@ from models.dataset import (
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from models.workflow import Workflow, WorkflowRun
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowRunTriggeredFrom,
+)
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
@@ -44,7 +61,7 @@ from services.data_source.credential_gateway import DatasourceProviderCredential
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
-from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.rag_pipeline.rag_pipeline import DefaultBlockConfigDict, RagPipelineService
 from services.workflow_ref_service import WorkflowRef
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
@@ -94,7 +111,16 @@ class RagPipelineServiceTestContext:
 
 
 class MockRepo:
-    pass
+    """Offline stand-in for the workflow repositories the service is constructed with."""
+
+    def get_executions_by_workflow_run(self, **kwargs: object) -> list[object]:
+        """Fail loudly unless a test replaces this method with a patched result."""
+        raise NotImplementedError
+
+
+def _stream[T](values: Iterable[T]) -> Generator[T]:
+    """Wrap values in a one-shot generator that satisfies the full Generator protocol."""
+    yield from values
 
 
 def _make_account(account_id: str = "u1", tenant_id: str = "t1") -> Account:
@@ -133,7 +159,7 @@ def _make_workflow(
     workflow_id: str = "wf-1",
     tenant_id: str = "t1",
     app_id: str = "p1",
-    graph: dict[str, object] | None = None,
+    graph: Mapping[str, object] | None = None,
     features: dict[str, object] | None = None,
     rag_pipeline_variables: list[dict[str, object]] | None = None,
     created_by: str = "u1",
@@ -265,7 +291,7 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
 class TestRagPipelineServiceCases:
     @staticmethod
     @pytest.fixture
-    def pipeline_generator(mocker: MockerFixture):
+    def pipeline_generator(mocker: MockerFixture) -> MagicMock:
         return mocker.create_autospec(PipelineGenerator, instance=True, spec_set=True)
 
     @staticmethod
@@ -318,7 +344,7 @@ class TestRagPipelineServiceCases:
         session = sqlite_session
 
         remote_retrieval = mocker.Mock()
-        remote_retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
+        remote_retrieval.get_pipeline_templates.return_value = {"pipeline_templates": list[object]()}
 
         factory_mock = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
         factory_mock.get_pipeline_template_factory.return_value.return_value = remote_retrieval
@@ -510,7 +536,7 @@ class TestRagPipelineServiceCases:
         mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
     ) -> None:
         fake_node_class = mocker.Mock()
-        fake_node_class.get_default_config.return_value = {"type": "start", "config": {}}
+        fake_node_class.get_default_config.return_value = DefaultBlockConfigDict(type="start", config={})
 
         # Use a simpler approach: test with a known valid node type
 
@@ -549,6 +575,7 @@ class TestRagPipelineServiceCases:
             workflow_ref=workflow_ref,
         )
 
+        assert result is not None
         assert result.marked_name == "v1"
         assert result.marked_comment == "release"
         assert not hasattr(result, "disallowed")
@@ -747,7 +774,7 @@ class TestRagPipelineServiceCases:
         mock_runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
 
         # Mock the generator result for website crawl
-        def mock_crawl_gen(**kwargs):
+        def mock_crawl_gen(**kwargs: object) -> Generator[object]:
             yield mocker.Mock(result=mocker.Mock(status="processing", total=10, completed=2))
             yield mocker.Mock(
                 result=mocker.Mock(status="completed", total=10, completed=10, web_info_list=[{"title": "test"}])
@@ -828,7 +855,7 @@ class TestRagPipelineServiceCases:
         # 2. Mock Runtime and results
         mock_runtime = mocker.Mock()
 
-        def mock_doc_gen(**kwargs):
+        def mock_doc_gen(**kwargs: object) -> Generator[DatasourceMessage]:
             # Yield a variable message
             msg1 = DatasourceMessage(
                 type=DatasourceMessage.MessageType.VARIABLE,
@@ -892,7 +919,7 @@ class TestRagPipelineServiceCases:
             metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10},
         )
 
-        def mock_getter():
+        def mock_getter() -> Generator[NodeRunSucceededEvent]:
             event = NodeRunSucceededEvent(
                 id="event-1",
                 start_at=time.time(),
@@ -1056,7 +1083,9 @@ class TestRagPipelineServiceCases:
 
     @staticmethod
     def test_retry_error_document_success(
-        mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, pipeline_generator
+        mocker: MockerFixture,
+        rag_pipeline_service: RagPipelineServiceTestContext,
+        pipeline_generator: MagicMock,
     ) -> None:
         dataset = _make_dataset()
         document = _make_document()
@@ -1494,7 +1523,7 @@ class TestRagPipelineServiceCases:
             inputs={"x": 1},
         )
 
-        def _events():
+        def _events() -> Generator[NodeRunFailedEvent]:
             yield NodeRunFailedEvent(
                 id="e-1",
                 node_id="node-1",
@@ -1570,33 +1599,74 @@ class TestRagPipelineServiceCases:
         assert result == []
 
     @staticmethod
-    def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repository_results(
-        mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    def test_get_rag_pipeline_workflow_run_node_executions_returns_persisted_traces(
+        sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
+        """Read the persisted run and return only its public node execution traces."""
         pipeline = _make_pipeline()
-        mocker.patch.object(
-            rag_pipeline_service.service, "get_rag_pipeline_workflow_run", return_value=WorkflowRun(id="run-1")
-        )
-        node_repo = rag_pipeline_service.service._node_execution_service_repo
-        expected_executions = ["n1", "n2"]
-        expected_traces = ["retry-n1", "n1", "n2"]
-        node_repo.get_executions_by_workflow_run = mocker.Mock(return_value=expected_executions)
-        mock_assemble = mocker.patch(
-            "services.rag_pipeline.rag_pipeline.assemble_workflow_node_execution_traces",
-            return_value=expected_traces,
-        )
-
-        result = rag_pipeline_service.service.get_rag_pipeline_workflow_run_node_executions(
-            pipeline=pipeline, run_id="run-1", user=_make_account()
-        )
-
-        assert result == expected_traces
-        node_repo.get_executions_by_workflow_run.assert_called_once_with(
+        workflow_run = WorkflowRun(
+            id="run-1",
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            workflow_run_id="run-1",
+            workflow_id="wf-1",
+            type=ModelWorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+            version=Workflow.VERSION_DRAFT,
+            graph="{}",
+            inputs="{}",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="u1",
         )
-        mock_assemble.assert_called_once_with(expected_executions, node_repo, session=mock.ANY)
+        node_execution = WorkflowNodeExecutionModel(
+            id="execution-1",
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            workflow_id="wf-1",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_run_id=workflow_run.id,
+            index=1,
+            node_execution_id="node-execution-1",
+            node_id="node-1",
+            node_type="start",
+            title="Start",
+            inputs=json.dumps({"query": "question"}),
+            process_data=json.dumps({"step": "complete"}),
+            outputs=json.dumps({"answer": "42"}),
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="u1",
+        )
+        node_execution_from_another_run = WorkflowNodeExecutionModel(
+            id="unrelated-execution",
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            workflow_id="wf-1",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_run_id="another-run",
+            index=2,
+            node_execution_id="unrelated-node-execution",
+            node_id="unrelated-node",
+            node_type="start",
+            title="Unrelated Start",
+            inputs="{}",
+            process_data="{}",
+            outputs="{}",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="u1",
+        )
+        sqlite_session.add_all([workflow_run, node_execution, node_execution_from_another_run])
+        sqlite_session.commit()
+
+        service = RagPipelineService(session=sqlite_session, session_maker=sqlite_session_factory)
+        result = service.get_rag_pipeline_workflow_run_node_executions(
+            pipeline=pipeline, run_id=workflow_run.id, user=_make_account()
+        )
+
+        assert [(trace.id, trace.node_id, trace.status, trace.process_data, trace.outputs) for trace in result] == [
+            ("execution-1", "node-1", "succeeded", {"step": "complete"}, {"answer": "42"})
+        ]
 
     @staticmethod
     def test_get_recommended_plugins_returns_empty_when_no_active_plugins(
@@ -1729,10 +1799,10 @@ class TestRagPipelineServiceCases:
         runtime = mocker.Mock()
 
         class _FailingIterator:
-            def __iter__(self):
+            def __iter__(self) -> Iterator[object]:
                 return self
 
-            def __next__(self):
+            def __next__(self) -> Never:
                 raise RuntimeError("doc failed")
 
         runtime.get_online_document_pages.return_value = _FailingIterator()
@@ -1790,7 +1860,7 @@ class TestRagPipelineServiceCases:
 
         runtime = mocker.Mock()
 
-        def _bad_stream_generator[**P](*args: P.args, **kwargs: P.kwargs):
+        def _bad_stream_generator[**P](*args: P.args, **kwargs: P.kwargs) -> Generator[object]:
             yield DatasourceMessage(
                 type=DatasourceMessage.MessageType.VARIABLE,
                 message=DatasourceMessage.VariableMessage(variable_name="content", variable_value=1, stream=True),
@@ -1869,7 +1939,7 @@ class TestRagPipelineServiceCases:
     @staticmethod
     def test_retry_error_document_raises_when_execution_log_not_found(
         rag_pipeline_service: RagPipelineServiceTestContext,
-        pipeline_generator,
+        pipeline_generator: MagicMock,
     ) -> None:
         with pytest.raises(ValueError, match="Document pipeline execution log not found"):
             rag_pipeline_service.service.retry_error_document(
@@ -1901,8 +1971,14 @@ class TestRagPipelineServiceCases:
     ) -> None:
         node_instance = _make_start_node()
 
-        def _event_generator():
-            yield object()
+        def _event_generator() -> Generator[NodeRunStartedEvent]:
+            yield NodeRunStartedEvent(
+                id="e-1",
+                node_id="node-1",
+                node_type=BuiltinNodeTypes.START,
+                node_title="Start",
+                start_at=datetime.now(),
+            )
 
         with pytest.raises(ValueError, match="Node run failed with no run result"):
             rag_pipeline_service.service._handle_node_run_result(
@@ -1926,7 +2002,7 @@ class TestRagPipelineServiceCases:
         )
 
         result = rag_pipeline_service.service._handle_node_run_result(
-            getter=lambda: (node_instance, iter([event])),
+            getter=lambda: (node_instance, _stream([event])),
             start_at=time.perf_counter(),
             tenant_id="t1",
             node_id="node-1",
@@ -1946,7 +2022,7 @@ class TestRagPipelineServiceCases:
         node_instance, event = _make_failed_published_node_run()
 
         result = rag_pipeline_service.service._handle_node_run_result(
-            getter=lambda: (node_instance, iter([event])),
+            getter=lambda: (node_instance, _stream([event])),
             start_at=time.perf_counter(),
             tenant_id="t1",
             node_id="node-1",
@@ -2052,7 +2128,7 @@ class TestRagPipelineServiceCases:
         config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
         session = sqlite_session
         retrieval = mocker.Mock()
-        retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
+        retrieval.get_pipeline_templates.return_value = {"pipeline_templates": list[object]()}
         factory = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
         factory.get_pipeline_template_factory.return_value.return_value = retrieval
         builtin = factory.get_built_in_pipeline_template_retrieval.return_value
@@ -2159,8 +2235,8 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
         runtime = mocker.Mock()
 
-        def crawl_gen(**kwargs):
-            yield SimpleNamespace(result=SimpleNamespace(status="completed", total=1, completed=1, web_info_list=[]))
+        def crawl_gen(**kwargs: object) -> Generator[WebsiteCrawlMessage]:
+            yield WebsiteCrawlMessage(result=WebSiteInfo(status="completed", total=1, completed=1, web_info_list=[]))
 
         runtime.get_website_crawl.side_effect = crawl_gen
         runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
@@ -2213,8 +2289,17 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
         runtime = mocker.Mock()
 
-        def drive_gen(**kwargs):
-            yield SimpleNamespace(result={"items": [1]})
+        def drive_gen(**kwargs: object) -> Generator[OnlineDriveBrowseFilesResponse]:
+            yield OnlineDriveBrowseFilesResponse(
+                result=[
+                    OnlineDriveFileBucket(
+                        bucket="bucket-1",
+                        files=[OnlineDriveFile(id="file-1", name="a.txt", size=1, type="file")],
+                        is_truncated=False,
+                        next_page_parameters=None,
+                    )
+                ]
+            )
 
         runtime.online_drive_browse_files.side_effect = drive_gen
         runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
@@ -2241,14 +2326,19 @@ class TestRagPipelineServiceCases:
         )
 
         assert len(events) == 2
-        assert events[1]["data"] == {"items": [1]}
+        assert events[1]["data"] == [
+            {
+                "bucket": "bucket-1",
+                "files": [{"id": "file-1", "name": "a.txt", "size": 1, "type": "file", "remote_metadata": None}],
+                "is_truncated": False,
+                "next_page_parameters": None,
+            }
+        ]
 
     @staticmethod
     def test_run_datasource_node_preview_not_published_uses_draft(
         mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
     ) -> None:
-        from core.datasource.entities.datasource_entities import DatasourceMessage
-
         workflow = _make_workflow(
             graph={
                 "nodes": [
@@ -2267,7 +2357,7 @@ class TestRagPipelineServiceCases:
         get_draft = mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=workflow)
         runtime = mocker.Mock()
 
-        def doc_gen(**kwargs):
+        def doc_gen(**kwargs: object) -> Generator[DatasourceMessage]:
             yield DatasourceMessage(
                 type=DatasourceMessage.MessageType.VARIABLE,
                 message=DatasourceMessage.VariableMessage(variable_name="x", variable_value="v", stream=False),
@@ -2396,7 +2486,7 @@ class TestRagPipelineServiceCases:
     @staticmethod
     def test_retry_error_document_raises_when_pipeline_missing(
         rag_pipeline_service: RagPipelineServiceTestContext,
-        pipeline_generator,
+        pipeline_generator: MagicMock,
     ) -> None:
         exec_log = DocumentPipelineExecutionLog(
             pipeline_id="p1",
@@ -2417,7 +2507,7 @@ class TestRagPipelineServiceCases:
     @staticmethod
     def test_retry_error_document_raises_when_workflow_missing(
         rag_pipeline_service: RagPipelineServiceTestContext,
-        pipeline_generator,
+        pipeline_generator: MagicMock,
     ) -> None:
         exec_log = DocumentPipelineExecutionLog(
             pipeline_id="p1",
@@ -2538,9 +2628,10 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
         runtime = mocker.Mock()
 
-        def gen(**kwargs):
-            request = kwargs["datasource_parameters"]
-            assert request.workspace_id == "existing"
+        def gen(
+            *, datasource_parameters: GetOnlineDocumentPageContentRequest, **kwargs: object
+        ) -> Generator[DatasourceMessage]:
+            assert datasource_parameters.workspace_id == "existing"
             yield DatasourceMessage(
                 type=DatasourceMessage.MessageType.VARIABLE,
                 message=DatasourceMessage.VariableMessage(variable_name="ok", variable_value="1", stream=False),
@@ -2572,6 +2663,8 @@ class TestRagPipelineServiceCases:
     def test_run_datasource_node_preview_ignores_non_variable_messages(
         mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
     ) -> None:
+        from core.datasource.entities.datasource_entities import DatasourceMessage
+
         workflow = _make_workflow(
             graph={
                 "nodes": [
@@ -2590,8 +2683,11 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
         runtime = mocker.Mock()
 
-        def gen(**kwargs):
-            yield SimpleNamespace(type="log", message=None)
+        def gen(**kwargs: object) -> Generator[DatasourceMessage]:
+            yield DatasourceMessage(
+                type=DatasourceMessage.MessageType.LOG,
+                message=DatasourceMessage.TextMessage(text="ignored"),
+            )
 
         runtime.get_online_document_page_content.side_effect = gen
         mocker.patch(
