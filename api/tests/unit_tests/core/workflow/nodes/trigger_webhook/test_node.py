@@ -11,7 +11,13 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
+from core.workflow.nodes.trigger_webhook.node import (
+    TriggerWebhookNode,
+    WebhookFileDict,
+    WebhookFilePayload,
+    _webhook_file_record_id,
+    parse_webhook_file,
+)
 from core.workflow.system_variables import default_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -62,10 +68,6 @@ def _webhook_file_conversion_create_webhook_node(
         runtime_state=runtime_state,
     )
 
-    # Attach a lightweight app_config onto runtime state for tenant lookups
-    runtime_state.app_config = Mock()
-    runtime_state.app_config.tenant_id = tenant_id
-
     return node
 
 
@@ -73,7 +75,7 @@ def create_test_file_dict(
     filename: str = "test.jpg",
     file_type: str = "image",
     transfer_method: str = "local_file",
-) -> dict:
+) -> WebhookFileDict:
     """Create a test file dictionary as it would come from webhook service."""
     return {
         "id": "file-123",
@@ -101,11 +103,12 @@ def _webhook_file_conversion_build_webhook_variable_pool(inputs: dict[str, Any])
     )
 
 
-def expected_factory_mapping(file_dict: dict[str, Any]) -> dict[str, Any]:
-    return {**file_dict, "upload_file_id": file_dict["related_id"]}
+def expected_factory_mapping(file_dict: WebhookFileDict) -> WebhookFileDict:
+    related_id = file_dict.get("related_id")
+    return {**file_dict, "upload_file_id": related_id}
 
 
-def test_webhook_node_file_conversion_to_file_variable():
+def test_webhook_node_file_conversion_to_file_variable() -> None:
     """Test that webhook node converts file dictionaries to FileVariable objects."""
     # Create test file dictionary (as it comes from webhook service)
     file_dict = create_test_file_dict("uploaded_image.jpg")
@@ -180,7 +183,7 @@ def test_webhook_node_file_conversion_to_file_variable():
         assert result.outputs["message"] == "Test message"
 
 
-def test_webhook_node_file_conversion_with_missing_files():
+def test_webhook_node_file_conversion_with_missing_files() -> None:
     """Test webhook node file conversion with missing file parameter."""
     data = WebhookData(
         title="Test Webhook with Missing File",
@@ -214,7 +217,7 @@ def test_webhook_node_file_conversion_with_missing_files():
     assert result.outputs["_webhook_raw"]["files"] == {}
 
 
-def test_webhook_node_file_conversion_with_none_file():
+def test_webhook_node_file_conversion_with_none_file() -> None:
     """Test webhook node file conversion with None file value."""
     data = WebhookData(
         title="Test Webhook with None File",
@@ -250,7 +253,7 @@ def test_webhook_node_file_conversion_with_none_file():
     assert result.outputs["_webhook_raw"]["files"]["file"] is None
 
 
-def test_webhook_node_file_conversion_with_non_dict_file():
+def test_webhook_node_file_conversion_with_non_dict_file() -> None:
     """Test webhook node file conversion with non-dict file value."""
     data = WebhookData(
         title="Test Webhook with Non-Dict File",
@@ -286,7 +289,7 @@ def test_webhook_node_file_conversion_with_non_dict_file():
     assert result.outputs["_webhook_raw"]["files"]["file"] == "not_a_dict"
 
 
-def test_webhook_node_file_conversion_mixed_parameters():
+def test_webhook_node_file_conversion_mixed_parameters() -> None:
     """Test webhook node with mixed parameter types including files."""
     file_dict = create_test_file_dict("mixed_test.jpg")
 
@@ -357,7 +360,7 @@ def test_webhook_node_file_conversion_mixed_parameters():
         )
 
 
-def test_webhook_node_different_file_types():
+def test_webhook_node_different_file_types() -> None:
     """Test webhook node file conversion with different file types."""
     image_dict = create_test_file_dict("image.jpg", "image")
 
@@ -420,7 +423,7 @@ def test_webhook_node_different_file_types():
         assert result.outputs["video"] == mock_file_vars[2]
 
 
-def test_webhook_node_file_conversion_with_non_dict_wrapper():
+def test_webhook_node_file_conversion_with_non_dict_wrapper() -> None:
     """Test webhook node file conversion when the file wrapper is not a dict."""
     data = WebhookData(
         title="Test Webhook with Non-dict File Wrapper",
@@ -481,9 +484,6 @@ def _webhook_node_create_webhook_node(webhook_data: WebhookData, variable_pool: 
         runtime_state=runtime_state,
     )
 
-    # Provide tenant_id for conversion path
-    runtime_state.app_config = type("_AppCfg", (), {"tenant_id": "1"})()
-
     return node
 
 
@@ -495,23 +495,24 @@ def _webhook_node_build_webhook_variable_pool(inputs: dict[str, Any]) -> Variabl
     )
 
 
-def test_webhook_node_default_config():
+def test_webhook_node_default_config() -> None:
     """Test webhook node default configuration."""
     config = TriggerWebhookNode.get_default_config()
+    defaults = config["config"]
 
     assert config["type"] == "webhook"
-    assert config["config"]["method"] == "get"
-    assert config["config"]["content_type"] == "application/json"
-    assert config["config"]["headers"] == []
-    assert config["config"]["params"] == []
-    assert config["config"]["body"] == []
-    assert config["config"]["async_mode"] is True
-    assert config["config"]["status_code"] == 200
-    assert config["config"]["response_body"] == ""
-    assert config["config"]["timeout"] == 30
+    assert defaults["method"] == "get"
+    assert defaults["content_type"] == "application/json"
+    assert defaults["headers"] == []
+    assert defaults["params"] == []
+    assert defaults["body"] == []
+    assert defaults["async_mode"] is True
+    assert defaults["status_code"] == 200
+    assert defaults["response_body"] == ""
+    assert defaults["timeout"] == 30
 
 
-def test_webhook_node_run_with_headers():
+def test_webhook_node_run_with_headers() -> None:
     """Test webhook node execution with header extraction."""
     data = WebhookData(
         title="Test Webhook",
@@ -545,7 +546,7 @@ def test_webhook_node_run_with_headers():
     assert "_webhook_raw" in result.outputs
 
 
-def test_webhook_node_run_with_query_params():
+def test_webhook_node_run_with_query_params() -> None:
     """Test webhook node execution with query parameter extraction."""
     data = WebhookData(
         title="Test Webhook",
@@ -579,7 +580,7 @@ def test_webhook_node_run_with_query_params():
     assert result.outputs["missing"] is None  # Missing parameter should be None
 
 
-def test_webhook_node_run_with_body_params():
+def test_webhook_node_run_with_body_params() -> None:
     """Test webhook node execution with body parameter extraction."""
     data = WebhookData(
         title="Test Webhook",
@@ -617,7 +618,7 @@ def test_webhook_node_run_with_body_params():
     assert result.outputs["metadata"] == {"key": "value"}
 
 
-def test_webhook_node_run_with_file_params():
+def test_webhook_node_run_with_file_params() -> None:
     """Test webhook node execution with file parameter extraction."""
     # Create mock file objects
     file1 = File(
@@ -688,7 +689,7 @@ def test_webhook_node_run_with_file_params():
     assert result.outputs["upload"].value.filename == "image.jpg"
 
 
-def test_webhook_node_run_mixed_parameters():
+def test_webhook_node_run_mixed_parameters() -> None:
     """Test webhook node execution with mixed parameter types."""
     file_obj = File(
         file_type=FileType.IMAGE,
@@ -750,7 +751,7 @@ def test_webhook_node_run_mixed_parameters():
     assert "_webhook_raw" in result.outputs
 
 
-def test_webhook_node_run_empty_webhook_data():
+def test_webhook_node_run_empty_webhook_data() -> None:
     """Test webhook node execution with empty webhook data."""
     data = WebhookData(
         title="Test Webhook",
@@ -771,7 +772,7 @@ def test_webhook_node_run_empty_webhook_data():
     assert result.outputs["_webhook_raw"] == {}
 
 
-def test_webhook_node_run_case_insensitive_headers():
+def test_webhook_node_run_case_insensitive_headers() -> None:
     """Test webhook node header extraction is case-insensitive."""
     data = WebhookData(
         title="Test Webhook",
@@ -806,7 +807,7 @@ def test_webhook_node_run_case_insensitive_headers():
     assert result.outputs["authorization"] == "Bearer token"
 
 
-def test_webhook_node_variable_pool_user_inputs():
+def test_webhook_node_variable_pool_user_inputs() -> None:
     """Test that webhook node uses user_inputs from variable pool correctly."""
     data = WebhookData(title="Test Webhook")
 
@@ -834,7 +835,7 @@ def test_webhook_node_variable_pool_user_inputs():
     "method",
     [Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.PATCH, Method.HEAD],
 )
-def test_webhook_node_different_methods(method):
+def test_webhook_node_different_methods(method: Method) -> None:
     """Test webhook node with different HTTP methods."""
     data = WebhookData(
         title="Test Webhook",
@@ -859,7 +860,7 @@ def test_webhook_node_different_methods(method):
     assert node._node_data.method == method
 
 
-def test_webhook_data_content_type_field():
+def test_webhook_data_content_type_field() -> None:
     """Test that content_type accepts both raw strings and enum values."""
     data1 = WebhookData(title="Test", content_type="application/json")
     assert data1.content_type == ContentType.JSON
@@ -868,7 +869,7 @@ def test_webhook_data_content_type_field():
     assert data2.content_type == ContentType.FORM_DATA
 
 
-def test_webhook_parameter_models():
+def test_webhook_parameter_models() -> None:
     """Test webhook parameter model validation."""
     # Test WebhookParameter
     param = WebhookParameter(name="test_param", required=True)
@@ -889,7 +890,7 @@ def test_webhook_parameter_models():
     assert body_param_default.required is False
 
 
-def test_webhook_data_field_defaults():
+def test_webhook_data_field_defaults() -> None:
     """Test webhook data model field defaults."""
     data = WebhookData(title="Minimal Webhook")
 
@@ -902,3 +903,86 @@ def test_webhook_data_field_defaults():
     assert data.response_body == ""
     assert data.webhook_id is None
     assert data.timeout == 30
+
+
+def test_parse_webhook_file_rejects_non_mapping_and_empty_values() -> None:
+    assert parse_webhook_file(None) is None
+    assert parse_webhook_file("file-123") is None
+    assert parse_webhook_file(["file-123"]) is None
+    assert parse_webhook_file({}) is None
+    assert parse_webhook_file({"nested": {"id": "file-123"}}) is None
+    assert parse_webhook_file({1: "file-123"}) is None
+
+
+def test_parse_webhook_file_keeps_only_scalar_string_keyed_fields() -> None:
+    raw: WebhookFilePayload = {
+        "id": "file-123",
+        "size": 1024,
+        "used_at": None,
+        "nested": {"id": "inner"},
+        7: "non-string-key",
+    }
+    parsed = parse_webhook_file(raw)
+    assert parsed == {"id": "file-123", "size": 1024, "used_at": None}
+    assert raw["nested"] == {"id": "inner"}
+
+
+def test_parse_webhook_file_keeps_only_values_matching_declared_field_types() -> None:
+    parsed = parse_webhook_file({"reference": 42, "related_id": "rel-1", "transfer_method": 7})
+    assert parsed == {"related_id": "rel-1"}
+    assert _webhook_file_record_id(parsed) == "rel-1"
+
+
+def test_webhook_file_record_id_prefers_reference_then_related_id() -> None:
+    assert _webhook_file_record_id({"reference": "ref-1", "related_id": "rel-1"}) == "ref-1"
+    assert _webhook_file_record_id({"reference": "", "related_id": "rel-1"}) == "rel-1"
+    assert _webhook_file_record_id({"related_id": ""}) is None
+    assert _webhook_file_record_id({}) is None
+
+
+def test_generate_file_var_without_transfer_method_returns_none() -> None:
+    data = WebhookData(
+        title="Test Webhook",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[WebhookBodyParameter(name="upload", type="file", required=True)],
+    )
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool({"webhook_data": {}})
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    assert node.generate_file_var("upload", {"id": "file-123"}) is None
+    assert node.generate_file_var("upload", {"transfer_method": ""}) is None
+
+
+def test_generate_file_var_returns_none_when_file_build_fails() -> None:
+    data = WebhookData(
+        title="Test Webhook",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[WebhookBodyParameter(name="upload", type="file", required=True)],
+    )
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool({"webhook_data": {}})
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    # The real factory rejects a remote-url entry without any url before touching storage.
+    file = create_test_file_dict(transfer_method="remote_url")
+    del file["url"]
+    assert node.generate_file_var("upload", file) is None
+
+
+def test_webhook_node_binary_upload_without_parsable_file_keeps_raw() -> None:
+    data = WebhookData(
+        title="Test Webhook Binary",
+        method=Method.POST,
+        content_type=ContentType.BINARY,
+        body=[WebhookBodyParameter(name="upload", type="file", required=True)],
+    )
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool(
+        {"webhook_data": {"headers": {}, "query_params": {}, "body": {"raw": {"nested": {"id": "x"}}}}}
+    )
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["upload"] == {"nested": {"id": "x"}}
