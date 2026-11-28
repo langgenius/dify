@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
@@ -21,9 +22,10 @@ def database_session_maker(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatc
 
 
 class _FakeCell:
-    def __init__(self, value, hyperlink=None):
+    def __init__(self, value, hyperlink=None, data_type: str | None = None):
         self.value = value
         self.hyperlink = hyperlink
+        self.data_type = data_type
         self.row = 0
         self.column = 0
 
@@ -220,7 +222,30 @@ class TestExcelExtractor:
                 }
             ),
         ]
-        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbooks.pop(0))
+        formula_workbooks = [
+            _FakeWorkbook(
+                {
+                    "Data": _FakeSheet(
+                        header_rows=[("Question", "Answer", "Image")],
+                        data_rows=[(_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None))],
+                    )
+                }
+            ),
+            _FakeWorkbook(
+                {
+                    "Data": _FakeSheet(
+                        header_rows=[("Question", "Answer", "Image")],
+                        data_rows=[(_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None))],
+                    )
+                }
+            ),
+        ]
+
+        monkeypatch.setattr(
+            excel_module,
+            "load_workbook",
+            lambda *args, **kwargs: formula_workbooks.pop(0) if kwargs.get("data_only") is False else workbooks.pop(0),
+        )
         saves = _patch_image_persistence(monkeypatch)
 
         extractor = ExcelExtractor(
@@ -242,6 +267,201 @@ class TestExcelExtractor:
         assert first_docs[0].page_content == expected_page_content
         assert second_docs[0].page_content == expected_page_content
         assert len(saves) == 1
+
+    def test_extract_xlsx_keeps_formula_only_rows_with_label(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        cached_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[
+                (_FakeCell(None, data_type="n"), _FakeCell(None, data_type="n")),
+                (_FakeCell("control"), _FakeCell(3)),
+            ],
+        )
+        formula_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[
+                (_FakeCell(None, data_type="n"), _FakeCell("=1+2", data_type="f")),
+                (_FakeCell("control"), _FakeCell(3)),
+            ],
+        )
+        cached_workbook = _FakeWorkbook({"Data": cached_sheet})
+        formula_workbook = _FakeWorkbook({"Data": formula_sheet})
+
+        monkeypatch.setattr(
+            excel_module,
+            "load_workbook",
+            lambda *args, **kwargs: formula_workbook if kwargs.get("data_only") is False else cached_workbook,
+        )
+
+        extractor = ExcelExtractor("/tmp/sample.xlsx")
+        docs = extractor.extract()
+
+        assert cached_workbook.closed is True
+        assert formula_workbook.closed is True
+        assert len(docs) == 2
+        assert docs[0].page_content == '"Item":"";"Value":"[Uncalculated formula: =1+2]"'
+        assert docs[1].page_content == '"Item":"control";"Value":"3"'
+
+    def test_extract_xlsx_keeps_cached_formula_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        cached_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[
+                (_FakeCell(None, data_type="n"), _FakeCell(None, data_type="n")),
+                (_FakeCell("cached"), _FakeCell(3, data_type="n")),
+            ],
+        )
+        formula_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[
+                (_FakeCell(None, data_type="n"), _FakeCell(None, data_type="n")),
+                (_FakeCell("cached"), _FakeCell("=1+2", data_type="f")),
+            ],
+        )
+        cached_workbook = _FakeWorkbook({"Data": cached_sheet})
+        formula_workbook = _FakeWorkbook({"Data": formula_sheet})
+
+        monkeypatch.setattr(
+            excel_module,
+            "load_workbook",
+            lambda *args, **kwargs: formula_workbook if kwargs.get("data_only") is False else cached_workbook,
+        )
+
+        extractor = ExcelExtractor("/tmp/sample.xlsx")
+        docs = extractor.extract()
+
+        assert formula_workbook.closed is True
+        assert len(docs) == 1
+        assert docs[0].page_content == '"Item":"cached";"Value":"3"'
+
+    def test_extract_xlsx_empty_string_formula_cache_stays_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        cached_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[(_FakeCell("only-str"), _FakeCell(None, data_type="str"))],
+        )
+        formula_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[(_FakeCell("only-str"), _FakeCell("=1+2", data_type="f"))],
+        )
+        cached_workbook = _FakeWorkbook({"Data": cached_sheet})
+        formula_workbook = _FakeWorkbook({"Data": formula_sheet})
+
+        monkeypatch.setattr(
+            excel_module,
+            "load_workbook",
+            lambda *args, **kwargs: formula_workbook if kwargs.get("data_only") is False else cached_workbook,
+        )
+
+        extractor = ExcelExtractor("/tmp/sample.xlsx")
+        docs = extractor.extract()
+
+        assert formula_workbook.closed is True
+        assert len(docs) == 1
+        assert docs[0].page_content == '"Item":"only-str";"Value":""'
+
+    def test_extract_xlsx_array_formula_label(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        cached_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[(_FakeCell("array"), _FakeCell(None, data_type="n"))],
+        )
+        formula_sheet = _FakeSheet(
+            header_rows=[("Item", "Value")],
+            data_rows=[
+                (_FakeCell("array"), _FakeCell(SimpleNamespace(text="=SUM(A1:A2)"), data_type="f")),
+            ],
+        )
+        cached_workbook = _FakeWorkbook({"Data": cached_sheet})
+        formula_workbook = _FakeWorkbook({"Data": formula_sheet})
+
+        monkeypatch.setattr(
+            excel_module,
+            "load_workbook",
+            lambda *args, **kwargs: formula_workbook if kwargs.get("data_only") is False else cached_workbook,
+        )
+
+        extractor = ExcelExtractor("/tmp/sample.xlsx")
+        docs = extractor.extract()
+
+        assert formula_workbook.closed is True
+        assert len(docs) == 1
+        assert docs[0].page_content == '"Item":"array";"Value":"[Uncalculated formula: =SUM(A1:A2)]"'
+
+    def test_extract_xlsx_formula_only_rows_real_file(self, tmp_path: Path) -> None:
+        from openpyxl import Workbook
+
+        path = tmp_path / "formulas.xlsx"
+        book = Workbook()
+        sheet = book.active
+        assert sheet is not None
+        sheet.append(["Item", "Value"])
+        sheet["B2"] = "=1+2"
+        sheet["A3"] = "control"
+        sheet["B3"] = 3
+        book.save(path)
+        book.close()
+
+        docs = ExcelExtractor(str(path)).extract()
+
+        assert len(docs) == 2
+        assert docs[0].page_content == '"Item":"";"Value":"[Uncalculated formula: =1+2]"'
+        assert docs[1].page_content == '"Item":"control";"Value":"3"'
+
+    def test_extract_xlsx_shared_and_array_formulas_real_file(self, tmp_path: Path) -> None:
+        import re
+        import zipfile
+
+        from openpyxl import Workbook
+
+        path = tmp_path / "shared-array.xlsx"
+        book = Workbook()
+        sheet = book.active
+        assert sheet is not None
+        sheet.append(["Item", "Value"])
+        sheet["A2"] = "shared"
+        sheet["A3"] = "shared2"
+        sheet["A4"] = "array"
+        sheet["A5"] = "array2"
+        book.save(path)
+        book.close()
+
+        def _inline(text: str) -> str:
+            return f"<is><t>{text}</t></is>"
+
+        new_rows = (
+            '<row r="1" spans="1:2"><c r="A1" t="inlineStr">'
+            + _inline("Item")
+            + '</c><c r="B1" t="inlineStr">'
+            + _inline("Value")
+            + "</c></row>"
+            '<row r="2" spans="1:2"><c r="A2" t="inlineStr">'
+            + _inline("shared")
+            + '</c><c r="B2"><f t="shared" ref="B2:B3" si="0">A2*2</f></c></row>'
+            '<row r="3" spans="1:2"><c r="A3" t="inlineStr">'
+            + _inline("shared2")
+            + '</c><c r="B3"><f t="shared" si="0"/></c></row>'
+            '<row r="4" spans="1:2"><c r="A4" t="inlineStr">'
+            + _inline("array")
+            + '</c><c r="B4"><f t="array" ref="B4:B5">SUM(A4:A5)</f></c></row>'
+            '<row r="5" spans="1:2"><c r="A5" t="inlineStr">'
+            + _inline("array2")
+            + '</c><c r="B5"><f t="array" ref="B4:B5">SUM(A4:A5)</f></c></row>'
+        )
+        with zipfile.ZipFile(path, "r") as archive:
+            others = {name: archive.read(name) for name in archive.namelist() if name != "xl/worksheets/sheet1.xml"}
+            sheet_xml = archive.read("xl/worksheets/sheet1.xml").decode()
+        sheet_xml = re.sub(
+            r"<sheetData>.*?</sheetData>", f"<sheetData>{new_rows}</sheetData>", sheet_xml, flags=re.DOTALL
+        )
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, data in others.items():
+                archive.writestr(name, data)
+            archive.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+
+        docs = ExcelExtractor(str(path)).extract()
+
+        assert len(docs) == 4
+        assert docs[0].page_content == '"Item":"shared";"Value":"[Uncalculated formula: =A2*2]"'
+        assert docs[1].page_content == '"Item":"shared2";"Value":"[Uncalculated formula: =A3*2]"'
+        assert docs[2].page_content == '"Item":"array";"Value":"[Uncalculated formula: =SUM(A4:A5)]"'
+        assert docs[3].page_content == '"Item":"array2";"Value":"[Uncalculated formula: =SUM(A4:A5)]"'
 
     def test_extract_xls_path(self, monkeypatch: pytest.MonkeyPatch):
         class FakeExcelFile:
