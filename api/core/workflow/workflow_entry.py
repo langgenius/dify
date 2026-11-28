@@ -29,6 +29,7 @@ from core.workflow.node_factory import (
 )
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -95,7 +96,7 @@ def iter_dify_graph_engine_events(
         context=EngineEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
-            response_stream_filter or ResponseStreamFilter(),
+            response_stream_filter or DifyResponseStreamFilter(),
         ],
     )
 
@@ -153,7 +154,7 @@ class WorkflowEntry:
         self.graph_config = graph_config
         self.workflow_tool_sources: dict[str, WorkflowToolSource] = {}
         self.workflow_tool_event_listener_factory: WorkflowToolEventListenerFactory | None = None
-        self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
+        self._response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
         file_runtime = create_dify_workflow_file_runtime()
         execution_context_layer = ExecutionContextLayer()
         limits_layer = ExecutionLimitsLayer(
