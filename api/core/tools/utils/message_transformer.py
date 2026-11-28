@@ -56,7 +56,8 @@ def safe_json_value(v):
             return v
 
 
-def safe_json_dict(d: dict[str, Any]):
+def safe_json_dict(d: object) -> dict[object, object]:
+    """Normalize recognized values in a dict, preserving its keys and unrecognized values."""
     if not isinstance(d, dict):
         raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}
