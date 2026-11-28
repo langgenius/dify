@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.db.session_factory import session_factory
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.prompts import (
@@ -29,7 +30,6 @@ from core.model_manager import ModelInstance, ModelManager
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import PromptGenerationEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult
@@ -340,12 +340,14 @@ class LLMGenerator:
         try:
             from models.dataset import Dataset
 
-            names = db.session.scalars(
-                select(Dataset.name)
-                .where(Dataset.tenant_id == tenant_id)
-                .order_by(Dataset.created_at.desc())
-                .limit(_SUGGESTION_KB_LIMIT)
-            ).all()
+            # Short-lived session: the connection is released before the suggestion model call.
+            with session_factory.create_session() as session:
+                names = session.scalars(
+                    select(Dataset.name)
+                    .where(Dataset.tenant_id == tenant_id)
+                    .order_by(Dataset.created_at.desc())
+                    .limit(_SUGGESTION_KB_LIMIT)
+                ).all()
             kb_names = [name for name in names if name]
             if kb_names:
                 sections.append("Knowledge bases:\n" + "\n".join(f"- {name}" for name in kb_names))
