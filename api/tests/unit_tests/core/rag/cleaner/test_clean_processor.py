@@ -253,3 +253,16 @@ class TestCleanProcessor:
         """Test filter_string passthrough behavior."""
         processor = CleanProcessor()
         assert processor.filter_string("raw text") == "raw text"
+
+    def test_clean_does_not_replace_literal_markdown_placeholders(self) -> None:
+        """Literal placeholder text must not be restored as a protected link."""
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
+
+        text = "__MARKDOWN_PLACEHOLDER_0__ [guide](https://example.com/guide)"
+        assert CleanProcessor.clean(text, process_rule) == text
+
+        text = "[see __MARKDOWN_PLACEHOLDER_1__](https://example.com/a) [guide](https://example.com/b)"
+        assert CleanProcessor.clean(text, process_rule) == text
+
+        text = "[guide](https://example.com/__MARKDOWN_PLACEHOLDER_1__) [other](https://example.com/b)"
+        assert CleanProcessor.clean(text, process_rule) == text
