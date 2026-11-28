@@ -1339,6 +1339,37 @@ forbidden_modules =
     werkzeug
 allow_indirect_imports = True
 
+[importlinter:contract:agent-config-assets-read-contracts]
+name = Agent config asset reads use detached contracts without ORM or infrastructure
+type = forbidden
+source_modules =
+    services.agent.config_assets_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models.agent
+    models.model
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:inner-agent-config-controllers]
+name = Agent config and Knowledge handlers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.inner_api.plugin.agent_config
+    controllers.inner_api.agent.knowledge
+forbidden_modules =
+    extensions.ext_database
+    models.agent
+    models.model
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:console-agent-api-access-boundary]
 name = Agent API access and Sandbox controllers reach persistence through the composition root
 type = forbidden

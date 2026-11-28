@@ -10,9 +10,9 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from services.agent.config_service import AgentConfigServiceError
-from services.agent.knowledge_gateway import AgentKnowledgeGateway
+from services.agent.config_assets_store import AgentConfigTargetError
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
 from services.knowledge_fs.product_authorization import KnowledgeFSProductNotFoundError
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
@@ -31,10 +31,11 @@ class AgentKnowledgePrepareApi(Resource):
     @inner_api_ns.doc("inner_agent_knowledge_prepare")
     @inner_api_ns.expect(inner_api_ns.models[KnowledgeFsPrepareRequest.__name__])
     @inner_api_ns.response(200, "Private prepared command", inner_api_ns.models[KnowledgeFsPreparedRequest.__name__])
-    def post(self):
+    def post(self) -> dict[str, object] | tuple[dict[str, object], int]:
         try:
             payload = KnowledgeFsPrepareRequest.model_validate(request.get_json(silent=True) or {})
-            return AgentKnowledgeGateway().prepare(payload).model_dump(mode="json", exclude_none=True)
+            prepared = application_services().agent_apps.knowledge.prepare(payload)
+            return prepared.model_dump(mode="json", exclude_none=True)
         except ValidationError:
             return {
                 "code": "KNOWLEDGE_INVALID_REQUEST",
@@ -45,7 +46,7 @@ class AgentKnowledgePrepareApi(Resource):
         except (
             KnowledgeFSAppAdmissionError,
             KnowledgeFSProductNotFoundError,
-            AgentConfigServiceError,
+            AgentConfigTargetError,
             KnowledgeFSCapabilityPolicyError,
             PermissionError,
         ):
@@ -75,10 +76,10 @@ class AgentKnowledgeInvestigationApi(Resource):
         202, "Investigation queued", inner_api_ns.models[KnowledgeInvestigationAcceptedResponse.__name__]
     )
     @inner_api_ns.expect(inner_api_ns.models[KnowledgeInvestigationPayload.__name__])
-    def post(self):
+    def post(self) -> tuple[dict[str, object], int]:
         try:
             payload = KnowledgeInvestigationPayload.model_validate(request.get_json(silent=True) or {})
-            AgentKnowledgeGateway().authorize_investigation(payload)
+            application_services().agent_apps.knowledge.authorize_investigation(payload)
             from tasks.knowledge_fs_agent_investigation_tasks import capture_agent_knowledge_investigation_task
 
             # Per-space jobs allow one unavailable knowledge base to fail independently.
@@ -94,7 +95,7 @@ class AgentKnowledgeInvestigationApi(Resource):
         except KnowledgeFsError as exc:
             return {"code": exc.code, "message": exc.message, "status": exc.status_code}, exc.status_code
         except (
-            AgentConfigServiceError,
+            AgentConfigTargetError,
             KnowledgeFSAppAdmissionError,
             KnowledgeFSCapabilityPolicyError,
             PermissionError,

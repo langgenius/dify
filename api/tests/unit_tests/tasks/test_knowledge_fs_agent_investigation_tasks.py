@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 from uuid import uuid4
@@ -6,7 +7,9 @@ import pytest
 from celery.exceptions import Retry
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
+from flask import Flask
 
+from services.agent.config_assets_store import AgentConfigTargetError, AgentConfigTargetErrorCode
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from tasks import knowledge_fs_agent_investigation_tasks as module
 from tests.helpers.unit.tasks.knowledge_fs_task_fakes import RecordingRetry
@@ -26,6 +29,26 @@ class _Gateway:
             raise self.error
 
 
+@dataclass(frozen=True)
+class _AgentApps:
+    knowledge: _Gateway
+
+
+@dataclass(frozen=True)
+class _Services:
+    agent_apps: _AgentApps
+
+
+@pytest.fixture
+def gateway() -> Iterator[_Gateway]:
+    """Bind the investigation gateway through the Flask extension used by workers."""
+    app = Flask(__name__)
+    gateway = _Gateway()
+    app.extensions["application_services"] = _Services(agent_apps=_AgentApps(knowledge=gateway))
+    with app.app_context():
+        yield gateway
+
+
 def report() -> tuple[dict[str, object], str]:
     space = str(uuid4())
     attempts: list[dict[str, object]] = []
@@ -39,9 +62,7 @@ def report() -> tuple[dict[str, object], str]:
     }, space
 
 
-def test_dataset_worker_reconstructs_report_for_each_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
-    gateway = _Gateway()
-    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+def test_dataset_worker_reconstructs_report_for_each_delivery(gateway: _Gateway) -> None:
     payload, space = report()
     task = module.capture_agent_knowledge_investigation_task
     task.run(report=payload, control_space_id=space)
@@ -53,13 +74,16 @@ def test_dataset_worker_reconstructs_report_for_each_delivery(monkeypatch: pytes
     assert str(first[0].investigation_id) == payload["investigation_id"]
 
 
-def test_revoked_authority_stops_publication_and_transient_failures_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    gateway = _Gateway(error=KnowledgeFsError("KNOWLEDGE_SCOPE_CHANGED", "revoked", 403))
-    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+def test_revoked_authority_stops_publication_and_transient_failures_retry(
+    gateway: _Gateway, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gateway.error = KnowledgeFsError("KNOWLEDGE_SCOPE_CHANGED", "revoked", 403)
     payload, space = report()
     task = module.capture_agent_knowledge_investigation_task
     retry = RecordingRetry()
     monkeypatch.setattr(task, "retry", retry)
+    task.run(report=payload, control_space_id=space)
+    gateway.error = AgentConfigTargetError(AgentConfigTargetErrorCode.VERSION_NOT_FOUND, "missing config")
     task.run(report=payload, control_space_id=space)
     assert retry.calls == []
     gateway.error = OSError("offline")
@@ -70,10 +94,9 @@ def test_revoked_authority_stops_publication_and_transient_failures_retry(monkey
 
 @pytest.mark.parametrize("status_code", [400, 403, 409, 413, 422])
 def test_permanent_remote_rejections_do_not_retry(
-    monkeypatch: pytest.MonkeyPatch, status_code: Literal[400, 403, 409, 413, 422]
+    gateway: _Gateway, monkeypatch: pytest.MonkeyPatch, status_code: Literal[400, 403, 409, 413, 422]
 ) -> None:
-    gateway = _Gateway(error=KnowledgeFSProductRequestRejectedError(status_code=status_code))
-    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+    gateway.error = KnowledgeFSProductRequestRejectedError(status_code=status_code)
     task = module.capture_agent_knowledge_investigation_task
     retry = RecordingRetry()
     monkeypatch.setattr(task, "retry", retry)
@@ -87,11 +110,10 @@ def test_permanent_remote_rejections_do_not_retry(
 
 @pytest.mark.parametrize(("retries", "countdown"), [(0, 30), (1, 60), (2, 120)])
 def test_rate_limited_report_retries_with_backoff(
-    monkeypatch: pytest.MonkeyPatch, retries: int, countdown: int
+    gateway: _Gateway, monkeypatch: pytest.MonkeyPatch, retries: int, countdown: int
 ) -> None:
     error = KnowledgeFSProductRequestRejectedError(status_code=429)
-    gateway = _Gateway(error=error)
-    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+    gateway.error = error
     task = module.capture_agent_knowledge_investigation_task
     retry = RecordingRetry()
     monkeypatch.setattr(task, "retry", retry)
@@ -104,9 +126,9 @@ def test_rate_limited_report_retries_with_backoff(
     assert retry.calls == [{"exc": error, "countdown": countdown}]
 
 
-def test_malformed_queued_report_is_rejected_before_gateway_publication(monkeypatch: pytest.MonkeyPatch) -> None:
-    gateway = _Gateway()
-    monkeypatch.setattr(module, "AgentKnowledgeGateway", lambda: gateway)
+def test_malformed_queued_report_is_rejected_before_gateway_publication(
+    gateway: _Gateway, monkeypatch: pytest.MonkeyPatch
+) -> None:
     task = module.capture_agent_knowledge_investigation_task
     retry = RecordingRetry()
     monkeypatch.setattr(task, "retry", retry)

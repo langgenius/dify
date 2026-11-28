@@ -6,19 +6,23 @@ import io
 import json
 import zipfile
 from collections.abc import Callable, Generator, Mapping
+from pathlib import Path
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Table, delete, func, select, update
+from sqlalchemy import Engine, Table, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import QueuePool
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
+from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from models.account import Account
 from models.agent import (
     Agent,
@@ -3750,6 +3754,80 @@ def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metad
         assert "name: published-name" in skill_md
         assert "description: Published description" in skill_md
         assert "display-name: Published Name" in skill_md
+        assert archive.read("references/example.md") == b"Example"
+
+
+def test_runtime_agent_skill_pull_reads_legacy_archive_after_releasing_database(
+    sqlite_engine: Engine, tmp_path: Path
+) -> None:
+    """Read legacy identity and archive from disk after all database reads have ended."""
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+
+    class CheckedStorage(OpenDALStorage):
+        @override
+        def load_once(self, filename: str) -> bytes:
+            """Read real archive bytes only after checking that the pool is idle."""
+            assert pool.checkedout() == 0
+            return super().load_once(filename)
+
+    archive_key = "tools/legacy-skill.zip"
+    archive_bytes = _zip_payload({"SKILL.md": _skill_md(name="published-name"), "references/example.md": "Example"})
+    local_storage = CheckedStorage(scheme="fs", root=str(tmp_path))
+    local_storage.save(archive_key, archive_bytes)
+    skill_id, version_id, snapshot_id = (str(uuid4()) for _ in range(3))
+    tool_file = ToolFile(
+        tenant_id=TENANT,
+        user_id=USER,
+        conversation_id=None,
+        file_key=archive_key,
+        mimetype="application/zip",
+        name="legacy-skill.zip",
+        size=len(archive_bytes),
+    )
+    with session_factory.create_session() as session:
+        session.get_one(Agent, AGENT).active_config_snapshot_id = snapshot_id
+        session.add_all(
+            [
+                Skill(
+                    id=skill_id,
+                    tenant_id=TENANT,
+                    name="draft-name",
+                    display_name="Draft Name",
+                    description="Draft description",
+                    latest_published_version_id=version_id,
+                ),
+                SkillVersion(
+                    id=version_id,
+                    skill_id=skill_id,
+                    version_number=1,
+                    archive_tool_file_id=tool_file.id,
+                    archive_size=len(archive_bytes),
+                    hash_code="legacy-skill-hash",
+                    manifest=SkillVersionManifest(files=[]),
+                ),
+                AgentSkillBindingSnapshot(
+                    tenant_id=TENANT, agent_id=AGENT, config_snapshot_id=snapshot_id, skill_id=skill_id, priority=0
+                ),
+                tool_file,
+            ]
+        )
+        session.commit()
+
+    previous_storage = vars(storage).copy()
+    try:
+        storage.storage_runner = local_storage
+        result = SkillManagementService().pull_runtime_agent_skill(
+            tenant_id=TENANT, agent_id=AGENT, name="published-name"
+        )
+    finally:
+        vars(storage).clear()
+        vars(storage).update(previous_storage)
+
+    assert result.filename == "published-name.zip"
+    assert result.mime_type == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(result.payload)) as archive:
+        assert b"name: published-name" in archive.read("SKILL.md")
         assert archive.read("references/example.md") == b"Example"
 
 

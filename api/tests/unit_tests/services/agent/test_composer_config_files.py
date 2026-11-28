@@ -23,6 +23,8 @@ from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import CreatorUserRole
 from models.model import AppMode, UploadFile
 from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_config_repository import AgentConfigRepository
+from repositories.file_grant_repository import FileGrantRepository
 from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.composer_service import AgentComposerService
 from services.agent.config_service import (
@@ -52,6 +54,16 @@ class AssetTargetArgs(TypedDict, closed=True):
     user_id: str
     config_version_id: str
     config_version_kind: AgentConfigVersionKind
+
+
+@pytest.fixture
+def assets(sqlite_session_factory: sessionmaker[Session]) -> AgentConfigService:
+    """Build the real asset service over the same database as Composer."""
+    return AgentConfigService(
+        configs=AgentConfigRepository(session_factory=sqlite_session_factory),
+        files=FileGrantRepository(session_factory=sqlite_session_factory),
+        session_factory=sqlite_session_factory,
+    )
 
 
 @pytest.fixture(params=[False, True], ids=["agent", "inline-workflow"])
@@ -179,12 +191,12 @@ def asset_target(target: ComposerTarget) -> AssetTargetArgs:
 
 @pytest.mark.parametrize("file_count", [1, 2], ids=["single-bind", "batch-bind"])
 def test_omitted_files_preserve_bindings_created_after_the_composer_was_read(
+    assets: AgentConfigService,
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
     file_count: int,
 ) -> None:
     target = composer_target
-    assets = AgentConfigService(session_factory=sqlite_session_factory)
     with sqlite_session_factory() as stale_session:
         # Keep the old ORM rows cached while another request binds the files.
         _cached_agent = stale_session.get(Agent, target.agent_id)
@@ -208,11 +220,11 @@ def test_omitted_files_preserve_bindings_created_after_the_composer_was_read(
 
 
 def test_omitted_files_do_not_restore_an_asset_deleted_after_the_composer_was_read(
+    assets: AgentConfigService,
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
 ) -> None:
     target = composer_target
-    assets = AgentConfigService(session_factory=sqlite_session_factory)
     assets.push_file_for_console(**asset_target(target), upload_file_id=target.upload_ids[0])
     with sqlite_session_factory() as stale_session:
         _cached_draft = stale_session.get(AgentConfigDraft, target.draft_id)
@@ -228,12 +240,12 @@ def test_omitted_files_do_not_restore_an_asset_deleted_after_the_composer_was_re
 @pytest.mark.parametrize("delete_existing", [False, True], ids=["keep-batch", "keep-deletion"])
 @pytest.mark.parametrize("composer_target", [True], indirect=True, ids=["inline-workflow"])
 def test_omitted_files_do_not_autoflush_a_dirty_cached_snapshot_before_locking(
+    assets: AgentConfigService,
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
     delete_existing: bool,
 ) -> None:
     target = composer_target
-    assets = AgentConfigService(session_factory=sqlite_session_factory)
     if delete_existing:
         assets.push_file_for_console(**asset_target(target), upload_file_id=target.upload_ids[0])
     with sqlite_session_factory() as stale_session:
@@ -257,12 +269,12 @@ def test_omitted_files_do_not_autoflush_a_dirty_cached_snapshot_before_locking(
 
 @pytest.mark.parametrize("replace_with_file", [False, True], ids=["explicit-clear", "explicit-replace"])
 def test_explicit_files_keep_complete_replacement_semantics(
+    assets: AgentConfigService,
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
     replace_with_file: bool,
 ) -> None:
     target = composer_target
-    assets = AgentConfigService(session_factory=sqlite_session_factory)
     assets.push_file_for_console(**asset_target(target), upload_file_id=target.upload_ids[0])
     files: list[dict[str, str]] = (
         [{"name": "second.md", "file_kind": "upload_file", "file_id": target.upload_ids[1]}]
@@ -313,11 +325,11 @@ def test_omitted_files_refresh_a_cached_inline_snapshot_and_binding(
 
 
 def test_locking_the_latest_draft_keeps_pending_agent_profile_edits(
+    assets: AgentConfigService,
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
 ) -> None:
     target = composer_target
-    assets = AgentConfigService(session_factory=sqlite_session_factory)
     with sqlite_session_factory() as session:
         agent = session.get(Agent, target.agent_id)
         _cached_draft = session.get(AgentConfigDraft, target.draft_id)
@@ -341,11 +353,11 @@ def test_locking_the_latest_draft_keeps_pending_agent_profile_edits(
 
 @pytest.mark.parametrize("composer_target", [True], indirect=True, ids=["inline-workflow"])
 def test_inline_composer_shows_file_edits_before_the_next_node_save(
+    assets: AgentConfigService,
     sqlite_session_factory: sessionmaker[Session],
     composer_target: ComposerTarget,
 ) -> None:
     target = composer_target
-    assets = AgentConfigService(session_factory=sqlite_session_factory)
 
     def loaded_file_ids(snapshot_id: str | None = None) -> list[str | None]:
         with sqlite_session_factory() as session:

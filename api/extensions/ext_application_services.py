@@ -438,8 +438,10 @@ def _build_oauth_device_service(
     )
 
 
-def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:
-    repository = FileGrantRepository(session_factory=database_client)
+def _build_file_grant_service(
+    *, database_client: sessionmaker[Session], repository: FileGrantRepository
+) -> FileGrantService:
+    """Wire the file grant service to the shared file metadata repository."""
     return FileGrantService(
         repository=repository,
         files=FileGrantFileGateway(
@@ -551,6 +553,7 @@ def build_application_services(
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     console_apps = ConsoleAppRepository(session_factory=database_client)
     agent_app_repository = build_agent_app_repository(database_client=database_client)
+    file_grant_repository = FileGrantRepository(session_factory=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
         workspace_members=workspace_members,
@@ -703,7 +706,10 @@ def build_application_services(
         credential_queries=credential_queries,
         workflow_composer=WorkflowComposerGateway(session_factory=database_client),
         agent_apps=build_agent_app_services(
-            database_client=database_client, rbac_members=rbac.members, apps=agent_app_repository
+            database_client=database_client,
+            rbac_members=rbac.members,
+            apps=agent_app_repository,
+            config_files=file_grant_repository,
         ),
         agent_versions=build_agent_version_service(database_client=database_client),
         agent_invite_options=build_agent_invite_options_service(
@@ -821,7 +827,7 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
-        file_grants=_build_file_grant_service(database_client=database_client),
+        file_grants=_build_file_grant_service(database_client=database_client, repository=file_grant_repository),
         files=file_service,
         human_input_file_uploads=HumanInputFileUploadService(
             uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),

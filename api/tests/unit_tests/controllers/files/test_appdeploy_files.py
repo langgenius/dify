@@ -39,6 +39,7 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser, UploadFile
 from models.tools import ToolFile
+from repositories.file_grant_repository import FileGrantRepository
 from services.entities.file_grant_entities import FileGrantContext, FileGrantScope, FileKind, RemoteFile
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
@@ -107,7 +108,10 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
 
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine) -> Iterator[FileGrantService]:
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=sessions, repository=FileGrantRepository(session_factory=sessions)
+    )
     services = SimpleNamespace(file_grants=service)
     with (
         patch(f"{CONTROLLER_MODULE}.application_services", return_value=services),

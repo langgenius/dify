@@ -16,13 +16,17 @@ from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsError,
     KnowledgeFsPrepareRequest,
 )
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from core.app.file_access import FileAccessScope
 from enums import DeploymentEdition
+from models.account import TenantAccountJoin
 from models.agent import (
     Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentScope,
     AgentSource,
@@ -35,9 +39,9 @@ from models.enums import AppStatus
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode
 from models.workflow import Workflow
+from repositories.agent.agent_config_repository import AgentConfigRepository
 from services.agent import knowledge_gateway as gateway
-from services.agent.agent_config_contracts import AgentConfigVersionKind
-from services.agent.config_service import AgentConfigTarget
+from services.agent.config_assets_store import AgentConfigTargetError
 from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
@@ -155,8 +159,48 @@ def request(
 
 
 @pytest.fixture
-def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKnowledgeGateway, FakeRuntime]:
-    monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: SOUL))
+def authorized_configs(sqlite_session_factory: sessionmaker[Session]) -> AgentConfigRepository:
+    """Persist an admitted Agent and both config kinds used by the gateway tests."""
+    snapshot = AgentConfigSnapshot(tenant_id="tenant", agent_id="agent", version=1, config_snapshot=SOUL)
+    snapshot.id = "snapshot"
+    draft = AgentConfigDraft(
+        tenant_id="tenant", agent_id="agent", draft_type=AgentConfigDraftType.DRAFT, config_snapshot=SOUL
+    )
+    draft.id = "snapshot"
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(
+                    id="app",
+                    tenant_id="tenant",
+                    name="Agent",
+                    mode=AppMode.AGENT,
+                    status=AppStatus.NORMAL,
+                    enable_site=True,
+                    enable_api=True,
+                    max_active_requests=0,
+                ),
+                Agent(
+                    id="agent",
+                    tenant_id="tenant",
+                    name="Agent",
+                    app_id="app",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                ),
+                TenantAccountJoin(tenant_id="tenant", account_id="account"),
+                snapshot,
+                draft,
+            ]
+        )
+    return AgentConfigRepository(session_factory=sqlite_session_factory)
+
+
+@pytest.fixture
+def authorized_gateway(
+    monkeypatch: pytest.MonkeyPatch, authorized_configs: AgentConfigRepository
+) -> tuple[gateway.AgentKnowledgeGateway, FakeRuntime]:
+    """Use real owner and config reads while recording external capability requests."""
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -164,7 +208,7 @@ def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKn
         KNOWLEDGE_FS_BASE_URL="http://kfs:8000",
     )
     runtime = FakeRuntime()
-    return gateway.AgentKnowledgeGateway(cast(KnowledgeFSRuntime, runtime)), runtime
+    return gateway.AgentKnowledgeGateway(configs=authorized_configs, runtime=cast(KnowledgeFSRuntime, runtime)), runtime
 
 
 @pytest.mark.parametrize(
@@ -181,11 +225,7 @@ def test_disabled_feature_blocks_agent_commands_before_capability_issuance(
 ) -> None:
     service, runtime = authorized_gateway
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
-    monkeypatch.setattr(
-        gateway.AgentKnowledgeGateway,
-        "_authorize_context",
-        staticmethod(lambda _: pytest.fail("disabled KnowledgeFS must not read Agent configuration")),
-    )
+    context = context.model_copy(update={"tenant_id": "unavailable"})
     prepared_request = (
         request("search", context=context, query="hello") if command == "search" else request("spaces", context=context)
     )
@@ -288,8 +328,8 @@ def test_space_subset_changed_config_and_receipt_scope_fail_closed(
 
 
 def test_classic_bindings_do_not_block_knowledge_fs_authorization(
-    monkeypatch: pytest.MonkeyPatch,
     authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     soul = AgentSoulConfig.model_validate(
         {
@@ -307,7 +347,8 @@ def test_classic_bindings_do_not_block_knowledge_fs_authorization(
             }
         }
     )
-    monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: soul))
+    with sqlite_session_factory.begin() as session:
+        session.get_one(AgentConfigSnapshot, "snapshot").config_snapshot = soul
     service, runtime = authorized_gateway
 
     result = service.prepare(request("search", query="hello"))
@@ -388,63 +429,30 @@ def test_published_query_images_use_file_scope_and_keep_grants_out_of_public_pay
     assert "private-image-grant" not in repr(result)
 
 
-@pytest.mark.parametrize("sqlite_session", [(App, Agent, WorkflowAgentNodeBinding)], indirect=True)
 def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workflow(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session], authorized_configs: AgentConfigRepository
 ) -> None:
-    sqlite_session.add_all(
-        [
-            App(
-                id="app",
-                tenant_id="tenant",
-                name="Agent",
-                mode=AppMode.AGENT,
-                status=AppStatus.NORMAL,
-                enable_site=True,
-                enable_api=True,
-                max_active_requests=0,
-            ),
-            Agent(
-                id="agent",
-                tenant_id="tenant",
-                name="Agent",
-                app_id="app",
-                scope=AgentScope.ROSTER,
-                source=AgentSource.AGENT_APP,
-            ),
-        ]
-    )
-    sqlite_session.flush()
-    monkeypatch.setattr(gateway.session_factory, "create_session", lambda: nullcontext(sqlite_session))
-    monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: True)
-    target = AgentConfigTarget(
-        tenant_id="tenant",
-        agent_id="agent",
-        version_id="snapshot",
-        kind=AgentConfigVersionKind.SNAPSHOT,
-        writable=False,
-        version=AgentConfigSnapshot(tenant_id="tenant", agent_id="agent", version=1, config_snapshot=SOUL),
-        agent_soul=SOUL,
-    )
-    monkeypatch.setattr(gateway.AgentConfigService, "resolve_target", lambda *_args, **_kwargs: target)
-    assert gateway.AgentKnowledgeGateway._authorize_context(request()) == SOUL
+    service = gateway.AgentKnowledgeGateway(configs=authorized_configs)
+    assert service._authorize_context(request()) == SOUL
+    with pytest.raises(AgentConfigTargetError):
+        service._authorize_context(request(context=CONTEXT.model_copy(update={"agent_config_version_id": "unknown"})))
     for changes in (
         {"tenant_id": "foreign"},
         {"agent_id": "foreign-agent"},
         {"agent_mode": "workflow_run", "workflow_id": "wf", "node_id": "node"},
     ):
         with pytest.raises(KnowledgeFsError):
-            gateway.AgentKnowledgeGateway._authorize_context(request(context=CONTEXT.model_copy(update=changes)))
-    monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: False)
+            service._authorize_context(request(context=CONTEXT.model_copy(update=changes)))
+    with sqlite_session_factory.begin() as session:
+        membership = session.scalars(select(TenantAccountJoin)).one()
+        session.delete(membership)
     with pytest.raises(KnowledgeFsError, match="membership"):
-        gateway.AgentKnowledgeGateway._authorize_context(request())
-    monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: True)
-    agent = sqlite_session.get(Agent, "agent")
-    assert agent is not None
-    agent.status = AgentStatus.ARCHIVED
-    sqlite_session.flush()
+        service._authorize_context(request())
+    with sqlite_session_factory.begin() as session:
+        session.add(TenantAccountJoin(tenant_id="tenant", account_id="account"))
+        session.get_one(Agent, "agent").status = AgentStatus.ARCHIVED
     with pytest.raises(KnowledgeFsError, match="unavailable"):
-        gateway.AgentKnowledgeGateway._authorize_context(request())
+        service._authorize_context(request())
 
 
 def test_only_trusted_tool_metadata_produces_sources() -> None:

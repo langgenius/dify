@@ -34,8 +34,8 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode, EndUser
-from services.agent.agent_config_contracts import AgentConfigVersionKind
-from services.agent.config_service import AgentConfigService
+from services.agent.agent_config_contracts import AgentConfigSelection, AgentConfigVersionKind
+from services.agent.config_assets_store import AgentConfigReader
 from services.knowledge_fs.app_execution_capability import _move_query_image_grants_to_internal_header
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalQueryImageReference, KnowledgeFSRetrievalTestPayload
@@ -64,7 +64,9 @@ _OPERATIONS = {
 
 
 class AgentKnowledgeGateway:
-    def __init__(self, runtime: KnowledgeFSRuntime | None = None) -> None:
+    def __init__(self, *, configs: AgentConfigReader, runtime: KnowledgeFSRuntime | None = None) -> None:
+        """Bind the Agent configuration reader and the optional KnowledgeFS runtime."""
+        self._configs = configs
         self._runtime = runtime
 
     def _authorized_bindings(self, request: KnowledgeFsPrepareRequest) -> list[KnowledgeFsBinding]:
@@ -244,8 +246,12 @@ class AgentKnowledgeGateway:
             max_response_bytes=min(operation.max_response_bytes, 4 * 1024 * 1024),
         )
 
-    @staticmethod
-    def _authorize_context(request: KnowledgeFsPrepareRequest) -> AgentSoulConfig:
+    def _authorize_context(self, request: KnowledgeFsPrepareRequest) -> AgentSoulConfig:
+        """Validate the execution owner chain before loading its exact config version.
+
+        Close the admission session before invoking the configuration reader.
+        Unavailable or mismatched execution owners are denied before any config read.
+        """
         context = request.execution_context
         if not (
             context.app_id
@@ -310,17 +316,15 @@ class AgentKnowledgeGateway:
                     raise KnowledgeFsError("KNOWLEDGE_CONTEXT_INVALID", "Workflow Agent binding changed.", 403)
             else:
                 raise KnowledgeFsError("KNOWLEDGE_CONTEXT_INVALID", "Unsupported Agent execution mode.", 403)
-        return (
-            AgentConfigService()
-            .resolve_target(
+        return self._configs.get_config_target(
+            AgentConfigSelection(
                 tenant_id=context.tenant_id,
                 agent_id=context.agent_id,
-                user_id=context.user_id,
-                config_version_id=context.agent_config_version_id,
-                config_version_kind=AgentConfigVersionKind(context.agent_config_version_kind),
+                account_id=context.user_id,
+                version_id=context.agent_config_version_id,
+                version_kind=AgentConfigVersionKind(context.agent_config_version_kind),
             )
-            .agent_soul
-        )
+        ).agent_soul
 
     @staticmethod
     def _issue(runtime, request, binding, operation_id, resource_id=None):

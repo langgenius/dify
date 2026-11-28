@@ -30,6 +30,7 @@ from models.enums import CreatorUserRole, EndUserType
 from models.model import App, AppMode, EndUser, UploadFile
 from models.tools import ToolFile
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from repositories.file_grant_repository import FileGrantRepository
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.file_grant_gateways import FILE_GRANT_AUDIENCE
 from services.file_grant_service import (
@@ -135,7 +136,10 @@ def _persist_tool_file(session: Session, *, owner_id: str, tenant_id: str = TENA
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine, granted_config: None) -> Iterator[None]:
     del granted_config
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=sessions, repository=FileGrantRepository(session_factory=sessions)
+    )
     services = SimpleNamespace(file_grants=service)
     with patch(f"{CONTROLLER_MODULE}.application_services", return_value=services):
         yield

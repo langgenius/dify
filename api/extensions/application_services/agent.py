@@ -10,6 +10,7 @@ from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_config_repository import AgentConfigRepository
 from repositories.agent.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
 from repositories.agent.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent.agent_sandbox_repository import AgentSandboxRepository
@@ -29,10 +30,12 @@ from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
 from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.config_assets_store import AgentConfigFileReader
 from services.agent.config_service import AgentConfigService
 from services.agent.console_runtime import AgentConsoleRuntime
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.knowledge_gateway import AgentKnowledgeGateway
 from services.agent.knowledge_spaces import (
     authorize_composer_knowledge,
     authorize_published_agent_knowledge_bindings,
@@ -72,6 +75,7 @@ class AgentAppServices:
     build_session: AgentBuildSessionService
     composer: AgentAppComposer
     config_assets: AgentConfigService
+    knowledge: AgentKnowledgeGateway
     runtime: AgentConsoleRuntime
 
 
@@ -95,9 +99,14 @@ def build_agent_app_repository(*, database_client: sessionmaker[Session]) -> Age
 
 
 def build_agent_app_services(
-    *, database_client: sessionmaker[Session], rbac_members: MemberService, apps: AgentAppRepository
+    *,
+    database_client: sessionmaker[Session],
+    rbac_members: MemberService,
+    apps: AgentAppRepository,
+    config_files: AgentConfigFileReader,
 ) -> AgentAppServices:
-    """Wire Agent App use cases to the shared repository and their post-commit effects."""
+    """Wire Agent App use cases to the shared repositories and their post-commit effects."""
+    configs = AgentConfigRepository(session_factory=database_client)
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
         store=apps,
@@ -128,7 +137,8 @@ def build_agent_app_services(
             preview_enabled=FeatureService.is_agent_preview_enabled,
             generate=AppGenerateService.generate,
         ),
-        config_assets=AgentConfigService(session_factory=database_client),
+        config_assets=AgentConfigService(configs=configs, files=config_files, session_factory=database_client),
+        knowledge=AgentKnowledgeGateway(configs=configs),
         composer=AgentAppComposer(
             store=apps,
             authorize_knowledge=partial(authorize_composer_knowledge, session_factory=database_client),
