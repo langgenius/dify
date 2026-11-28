@@ -19,11 +19,11 @@ from collections.abc import AsyncGenerator, Callable, Iterator
 from contextlib import aclosing
 from json import JSONDecodeError
 from types import TracebackType
-from typing import Any, Self, TypeVar, cast
+from typing import Annotated, Any, Self, TypeVar, cast
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, BeforeValidator, TypeAdapter, ValidationError
 from pydantic_ai.messages import FunctionToolResultEvent
 
 from dify_agent.protocol import (
@@ -235,7 +235,7 @@ def _function_tool_result_payload_key() -> str:
 
 
 def _normalize_run_event_payload_for_local_pydantic_ai(payload: Any) -> Any:
-    """Normalize known pydantic-ai event field renames in one SSE frame."""
+    """Normalize known pydantic-ai event field renames in one run event."""
     if not isinstance(payload, dict) or payload.get("type") != "pydantic_ai_event":
         return payload
 
@@ -253,6 +253,21 @@ def _normalize_run_event_payload_for_local_pydantic_ai(payload: Any) -> Any:
         return normalized_payload
 
     return payload
+
+
+def _normalize_run_events_response_payload(payload: Any) -> Any:
+    """Apply the same wire compatibility to polling pages as to SSE events."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("events"), list):
+        return payload
+    return {
+        **payload,
+        "events": [_normalize_run_event_payload_for_local_pydantic_ai(event) for event in payload["events"]],
+    }
+
+
+_RUN_EVENTS_RESPONSE_ADAPTER: TypeAdapter[RunEventsResponse] = TypeAdapter(
+    Annotated[RunEventsResponse, BeforeValidator(_normalize_run_events_response_payload)]
+)
 
 
 class Client:
@@ -492,7 +507,7 @@ class Client:
         return _parse_model_response(response, RunStatusResponse)
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
-        """Return one cursor-paginated page of events for ``run_id``."""
+        """Return one event page, applying the same pydantic-ai wire compatibility as SSE."""
         try:
             response = await self._get_async_http_client().get(
                 self._url(f"/runs/{quote(run_id, safe='')}/events"),
@@ -504,7 +519,7 @@ class Client:
             raise DifyAgentTimeoutError("get_events timed out") from exc
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"get_events request failed: {exc}") from exc
-        return _parse_model_response(response, RunEventsResponse)
+        return _parse_run_events_response(response)
 
     def get_events_sync(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
         """Synchronous variant of ``get_events``."""
@@ -519,7 +534,7 @@ class Client:
             raise DifyAgentTimeoutError("get_events_sync timed out") from exc
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"get_events_sync request failed: {exc}") from exc
-        return _parse_model_response(response, RunEventsResponse)
+        return _parse_run_events_response(response)
 
     async def list_binding_files(self, backend_binding_ref: str, path: str) -> BindingFileListResponse:
         request_model = BindingFileListRequest(backend_binding_ref=backend_binding_ref, path=path)
@@ -1059,6 +1074,18 @@ def _parse_model_response(response: httpx.Response, model_type: type[_ResponseMo
     _raise_for_status(response)
     try:
         return model_type.model_validate_json(response.content)
+    except ValidationError as exc:
+        raise DifyAgentValidationError(
+            detail=exc.errors(include_url=False),
+            status_code=response.status_code,
+        ) from exc
+
+
+def _parse_run_events_response(response: httpx.Response) -> RunEventsResponse:
+    """Validate an event page after normalizing version-dependent event fields."""
+    _raise_for_status(response)
+    try:
+        return _RUN_EVENTS_RESPONSE_ADAPTER.validate_json(response.content)
     except ValidationError as exc:
         raise DifyAgentValidationError(
             detail=exc.errors(include_url=False),

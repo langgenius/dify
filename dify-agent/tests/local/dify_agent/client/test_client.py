@@ -248,6 +248,84 @@ def test_function_tool_result_payload_normalization_supports_old_part_schema(
     assert "result" not in normalized["data"]
 
 
+@pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
+@pytest.mark.parametrize("payload_key", ["part", "result"])
+def test_get_events_accepts_function_tool_result_wire_keys(sync: bool, payload_key: str) -> None:
+    tool_event = _function_tool_result_payload(payload_key)
+    tool_event["id"] = "2-0"
+    payload = {
+        "run_id": "run-1",
+        "events": [
+            RunStartedEvent(id="1-0", run_id="run-1").model_dump(mode="json"),
+            tool_event,
+            _run_succeeded_event(event_id="3-0").model_dump(mode="json"),
+        ],
+        "next_cursor": "3-0",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/runs/run-1/events"
+        assert dict(request.url.params) == {"after": "0-0", "limit": "3"}
+        return httpx.Response(200, json=payload)
+
+    async def async_scenario() -> RunEventsResponse:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            return await client.get_events("run-1", after="0-0", limit=3)
+
+    if sync:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", sync_http_client=http_client)
+            page = client.get_events_sync("run-1", after="0-0", limit=3)
+    else:
+        page = asyncio.run(async_scenario())
+
+    assert page.run_id == "run-1"
+    assert page.next_cursor == "3-0"
+    assert [event.id for event in page.events] == ["1-0", "2-0", "3-0"]
+    event = page.events[1]
+    assert event.type == "pydantic_ai_event"
+    assert event.data.event_kind == "function_tool_result"
+    assert event.data.tool_call_id == "call-1"
+    assert event.data.part.tool_name == "shell_run"
+    assert event.data.part.content == "ok"
+
+
+@pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
+@pytest.mark.parametrize(
+    ("body", "status_code", "error_type"),
+    [
+        (b"not JSON", 200, DifyAgentValidationError),
+        (b'{"run_id":"run-1","events":[{"type":"unknown"}]}', 200, DifyAgentValidationError),
+        (b'{"detail":"run not found"}', 404, DifyAgentNotFoundError),
+    ],
+    ids=["invalid-json", "invalid-event", "http-error"],
+)
+def test_get_events_preserves_response_errors(
+    sync: bool, body: bytes, status_code: int, error_type: type[DifyAgentHTTPError]
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status_code, content=body)
+
+    async def async_scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            await client.get_events("run-1")
+
+    with pytest.raises(error_type) as raised:
+        if sync:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+                client = Client(base_url="http://testserver", sync_http_client=http_client)
+                client.get_events_sync("run-1")
+        else:
+            asyncio.run(async_scenario())
+    assert raised.value.status_code == status_code
+    assert len(requests) == 1
+
+
 def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/runs":

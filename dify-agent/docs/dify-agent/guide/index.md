@@ -619,6 +619,11 @@ replay is exhausted. Both endpoints return `404` when the run record is missing.
 This read-command compatibility does not define the platform's full Redis
 support matrix; the Redis deployment constraints above still apply.
 
+The Python client's polling and SSE methods both accept the `part` and `result`
+field names used by different Pydantic AI versions for function tool results.
+They normalize that field to the installed dependency's schema before validating
+the event; malformed events still fail validation.
+
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
 end with `run_cancelled`. Each run can append at most one of these terminal
