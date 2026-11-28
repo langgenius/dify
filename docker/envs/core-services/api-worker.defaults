@@ -149,7 +149,7 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # SINGLE_CHUNK_ATTACHMENT_LIMIT=10
 
 # ------------------------------
-# Agents on /openapi/v1: the MCP endpoint and run jobs
+# Agents on /openapi/v1: the MCP endpoint, run jobs and file transfers
 # ------------------------------
 # OPENAPI_MCP_ENABLED=true
 # RUN_JOB_MAX_BACKGROUND_RUNS=10
@@ -160,6 +160,14 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # Operations one dify_find search answers, and characters of one MCP tool result.
 # OPENAPI_MCP_FIND_PAGE_SIZE=20
 # OPENAPI_MCP_RESULT_MAX_CHARS=40000
+# File transfers are on only while OPENAPI_MCP_ENABLED is also true.
+# FILE_TRANSFER_ENABLED=true
+# FILE_TRANSFER_TTL_SECONDS=1800
+# One upload request must also fit the reverse proxy's body limit (100 MB in the bundled nginx).
+# FILE_TRANSFER_MAX_BYTES=100663296
+# FILE_TRANSFER_MAX_PER_OWNER=20
+# Each request holding transfer bytes takes one of SERVER_WORKER_CONNECTIONS and the file in memory.
+# FILE_TRANSFER_MAX_ACTIVE=2
 
 # ------------------------------
 # File malware scanning

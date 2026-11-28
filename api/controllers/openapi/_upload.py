@@ -37,12 +37,19 @@ UploadPart = Annotated[FileStorage, _UploadPartType()]
 UploadParts = dict[str, UploadPart | list[UploadPart]]
 
 
+def is_binary_leaf(node: Mapping[str, Any]) -> bool:
+    """Postcondition: True for the schema of one file part, ``{"type": "string", "format": "binary"}``."""
+    if node.get("type") != "string":
+        return False
+    return node.get("format") == "binary"
+
+
 def has_binary_leaf(node: Any) -> bool:
     if isinstance(node, list):
         return any(has_binary_leaf(item) for item in node)
     if not isinstance(node, Mapping):
         return False
-    if node.get("type") == "string" and node.get("format") == "binary":
+    if is_binary_leaf(node):
         return True
     return any(has_binary_leaf(value) for value in node.values())
 
@@ -52,6 +59,24 @@ def file_fields(model: type[BaseModel]) -> frozenset[str]:
     return frozenset(name for name, prop in schema.get("properties", {}).items() if has_binary_leaf(prop))
 
 
+def is_part_mapping(node: Mapping[str, Any]) -> bool:
+    """Postcondition: True for the schema of a mapping of file parts, which one folder may fill."""
+    if node.get("type") != "object":
+        return False
+    return has_binary_leaf(node.get("additionalProperties"))
+
+
+def folder_fields(model: type[BaseModel]) -> frozenset[str]:
+    """Postcondition: the body fields that are a mapping of file parts, or may be one, so a folder may fill them."""
+    schema = model.model_json_schema()
+    return frozenset(
+        name
+        for name, prop in schema.get("properties", {}).items()
+        if any(is_part_mapping(option) for option in (prop, *prop.get(_ANY_OF, ())))
+    )
+
+
+_ANY_OF: Final = "anyOf"
 _JSON_MEDIA: Final = "application/json"
 _MULTIPART_MEDIA: Final = "multipart/form-data"
 
@@ -92,4 +117,13 @@ def describe_multipart_bodies(document: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-__all__ = ["UploadPart", "UploadParts", "describe_multipart_bodies", "file_fields", "has_binary_leaf"]
+__all__ = [
+    "UploadPart",
+    "UploadParts",
+    "describe_multipart_bodies",
+    "file_fields",
+    "folder_fields",
+    "has_binary_leaf",
+    "is_binary_leaf",
+    "is_part_mapping",
+]

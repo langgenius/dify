@@ -853,6 +853,10 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileResultResponse = {
+  file: TransferredFile
+}
+
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
@@ -1500,12 +1504,14 @@ export type OpenApiErrorCode =
   | 'credential_invalid'
   | 'credential_not_found'
   | 'credential_oauth_only'
+  | 'download_link_expired'
   | 'draft_changed'
   | 'draft_not_found'
   | 'dsl_invalid'
   | 'env_variable_not_found'
   | 'file_extension_blocked'
   | 'file_too_large'
+  | 'file_transfers_disabled'
   | 'filename_not_exists'
   | 'forbidden'
   | 'form_not_found'
@@ -1557,11 +1563,22 @@ export type OpenApiErrorCode =
   | 'skills_disabled'
   | 'too_many_files'
   | 'too_many_requests'
+  | 'transfers_busy'
   | 'trigger_workflow_service_mode_unavailable'
   | 'unauthorized'
   | 'unknown'
   | 'unsupported_file_type'
   | 'unsupported_media_type'
+  | 'upload_already_received'
+  | 'upload_archive_invalid'
+  | 'upload_field_too_long'
+  | 'upload_is_a_folder'
+  | 'upload_is_one_file'
+  | 'upload_link_expired'
+  | 'upload_not_a_zip'
+  | 'upload_not_found'
+  | 'upload_not_received'
+  | 'upload_too_large'
   | 'version_not_found'
   | 'version_not_restorable'
   | 'webapp_access_mode_console_only'
@@ -2137,6 +2154,43 @@ export type ToolRow = {
 }
 
 export type ToolSource = 'api' | 'builtin' | 'mcp' | 'workflow'
+
+export type TransferredFile = {
+  download_before: string
+  download_url: string
+  expires_at: string
+  id: string
+  name: string
+  sha256: string
+  size: number
+}
+
+export type UploadCommands = {
+  powershell: string
+  sh: string
+}
+
+export type UploadPreparePayload = {
+  folder?: boolean
+}
+
+export type UploadPrepared = {
+  expires_at: string
+  id: string
+  max_bytes: number
+  upload_before: string
+  upload_commands: UploadCommands
+  upload_url: string
+}
+
+export type UploadReceived = {
+  expires_at: string
+  id: string
+  name: string
+  next: string
+  sha256: string
+  size: number
+}
 
 export type UsageInfo = {
   completion_tokens?: number
@@ -4443,6 +4497,76 @@ export type GetPermittedExternalAppsByAppIdResponses = {
 
 export type GetPermittedExternalAppsByAppIdResponse =
   GetPermittedExternalAppsByAppIdResponses[keyof GetPermittedExternalAppsByAppIdResponses]
+
+export type PostTransfersData = {
+  body: UploadPreparePayload
+  path?: never
+  query?: never
+  url: '/transfers'
+}
+
+export type PostTransfersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostTransfersError = PostTransfersErrors[keyof PostTransfersErrors]
+
+export type PostTransfersResponses = {
+  201: UploadPrepared
+}
+
+export type PostTransfersResponse = PostTransfersResponses[keyof PostTransfersResponses]
+
+export type GetTransfersByTransferIdData = {
+  body?: never
+  path: {
+    transfer_id: string
+  }
+  query?: never
+  url: '/transfers/{transfer_id}'
+}
+
+export type GetTransfersByTransferIdErrors = {
+  default: ErrorBody
+}
+
+export type GetTransfersByTransferIdError =
+  GetTransfersByTransferIdErrors[keyof GetTransfersByTransferIdErrors]
+
+export type GetTransfersByTransferIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetTransfersByTransferIdResponse =
+  GetTransfersByTransferIdResponses[keyof GetTransfersByTransferIdResponses]
+
+export type PostTransfersByTransferIdData = {
+  body?: never
+  path: {
+    transfer_id: string
+  }
+  query?: never
+  url: '/transfers/{transfer_id}'
+}
+
+export type PostTransfersByTransferIdErrors = {
+  default: ErrorBody
+}
+
+export type PostTransfersByTransferIdError =
+  PostTransfersByTransferIdErrors[keyof PostTransfersByTransferIdErrors]
+
+export type PostTransfersByTransferIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostTransfersByTransferIdResponse =
+  PostTransfersByTransferIdResponses[keyof PostTransfersByTransferIdResponses]
 
 export type GetWorkspacesData = {
   body?: never

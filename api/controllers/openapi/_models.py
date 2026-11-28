@@ -5,9 +5,18 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal, Protocol, Self
+from typing import Annotated, Any, Final, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    PrivateAttr,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic.json_schema import SkipJsonSchema
 
 from configs import dify_config
@@ -32,6 +41,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
+from libs.datetime_utils import to_utc_iso
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, alphanumeric, to_timestamp, uuid_value
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
@@ -380,13 +390,13 @@ class RunPayloadBase(BaseModel):
     files: UploadParts | None = Field(
         default=None,
         description=(
-            "Local file paths keyed by the app's file variable name; each file is uploaded and becomes "
-            "that variable's value. Give a list of paths for a file-list variable"
+            "Files keyed by the app's file variable name; each becomes that variable's value. "
+            "Give a list for a file-list variable"
         ),
     )
     attachments: list[UploadPart] | None = Field(
         default=None,
-        description="Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
+        description="Files attached to the run itself (the app's `sys.files`), not to a variable",
     )
     workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
 
@@ -435,6 +445,57 @@ class FileUploadPayload(BaseModel):
     file: UploadPart = Field(
         description="The file to upload; its id can then be used in an app run's file variables",
     )
+
+
+UtcDateTime = Annotated[datetime, PlainSerializer(to_utc_iso, return_type=str)]
+"""A naive UTC time, written with ``Z`` on the wire."""
+
+
+class UploadPreparePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    folder: bool = Field(
+        default=False,
+        description="Leave out for one file. true when the upload is a zip of a folder's contents; "
+        "the server unpacks it.",
+    )
+
+
+class UploadCommands(BaseModel):
+    sh: str = Field(description="Sends the upload from a POSIX shell")
+    powershell: str = Field(description="Sends the upload from PowerShell")
+
+
+class UploadPrepared(BaseModel):
+    id: str = Field(description="Put this id in the file field of the operation you call next")
+    upload_url: str = Field(description="Send the file here with one multipart request; it needs no login")
+    upload_commands: UploadCommands
+    upload_before: UtcDateTime = Field(description="When the upload link stops accepting the file")
+    expires_at: UtcDateTime = Field(description="When the id stops working")
+    max_bytes: int = Field(description="The largest file this upload takes")
+
+
+class UploadReceived(BaseModel):
+    id: str
+    name: str
+    size: int
+    sha256: str
+    expires_at: UtcDateTime
+    next: str
+
+
+class TransferredFile(BaseModel):
+    id: str = Field(description="Pass this id to another operation's file field until expires_at")
+    name: str = Field(description="The file name the operation gave its file; empty when it gave none")
+    size: int
+    sha256: str
+    download_url: str = Field(description="GET the file here, without a login, until download_before")
+    download_before: UtcDateTime
+    expires_at: UtcDateTime
+
+
+class FileResultResponse(BaseModel):
+    file: TransferredFile
 
 
 class DeviceCodeRequest(BaseModel):
@@ -745,7 +806,7 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
     files: UploadParts | None = Field(
         default=None,
-        description="Local file paths keyed by the form's file input name, same convention as the run ops' `files`",
+        description="Files keyed by the form's file input name, same convention as the run ops' `files`",
     )
 
 
@@ -967,9 +1028,7 @@ class NodeRunPayload(BaseModel):
     )
     files: UploadParts | None = Field(
         default=None,
-        description=(
-            "Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded"
-        ),
+        description="Files keyed by the file variable name (a start variable or #node.var#)",
     )
 
 
@@ -1420,7 +1479,7 @@ class SkillPublishResponse(SkillVersionRow, Hinted):
 class SkillImportPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    files: UploadParts = Field(description="The skill folder, one part per file; SKILL.md at its root")
+    files: UploadParts = Field(description="The skill folder; SKILL.md at its root")
     skill_id: UUIDStr | None = Field(None, description="Overwrite this skill's draft; omit to create a new skill")
     draft_hash: str | None = Field(
         None,

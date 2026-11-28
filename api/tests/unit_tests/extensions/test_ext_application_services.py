@@ -4,7 +4,8 @@ import contextvars
 import json
 import logging
 import threading
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
@@ -122,6 +123,13 @@ from services.data_source.notion_import_application_service import NotionImportA
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError, EnterpriseServiceError
 from services.file_service import FileService
+from services.file_transfer import (
+    BUSY_RETRY_AFTER,
+    DOWNLOAD_LINK_LIFE,
+    MAX_UNPACKED_FILES,
+    UPLOAD_LINK_LIFE,
+    TransferLimits,
+)
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.installed_app_access_service import (
@@ -236,6 +244,36 @@ def test_build_application_services_configures_init_validation(
     )
 
     assert services.init_validation.is_validated(session_validated=session_validated) is expected
+
+
+def test_file_transfer_limits_take_the_four_settings_and_the_fixed_bounds(
+    sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(
+        FILE_TRANSFER_TTL_SECONDS=60,
+        FILE_TRANSFER_MAX_BYTES=4096,
+        FILE_TRANSFER_MAX_PER_OWNER=3,
+        FILE_TRANSFER_MAX_ACTIVE=1,
+    )
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="expected",
+        redis=_redis(),
+    )
+
+    assert services.file_transfers.limits == TransferLimits(
+        ttl=timedelta(seconds=60),
+        upload_link_life=UPLOAD_LINK_LIFE,
+        download_link_life=DOWNLOAD_LINK_LIFE,
+        max_bytes=4096,
+        max_unpacked_bytes=4096,
+        max_unpacked_files=MAX_UNPACKED_FILES,
+        max_per_owner=3,
+        max_active=1,
+        busy_retry_after=BUSY_RETRY_AFTER,
+    )
 
 
 def test_build_application_services_passes_the_expected_password(

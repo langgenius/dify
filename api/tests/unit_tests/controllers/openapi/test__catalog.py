@@ -39,6 +39,7 @@ _UNCATALOGUED = {
     "/openapi/v1/_health",
     "/openapi/v1/_version",
     "/openapi/v1/mcp",
+    "/openapi/v1/transfers/<string:transfer_id>",
     CATALOG_PATH,
 }
 

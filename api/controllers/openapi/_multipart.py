@@ -14,6 +14,20 @@ File part names are the field, optionally one key, optionally a ``[]`` list mark
 
 Only the fields the model declares with ``UploadPart`` may carry file parts, so a
 stray part can never land in a plain JSON field.
+
+A JSON body sends a file as a transfer id (from ``prepare.upload``, or the id of a file
+result). Inside a declared file field every string is such an id, and the parse layer
+swaps it for what the transfer holds, so the model validates the same parts::
+
+    "file": "<id>"                                  -> one part
+    "attachments": ["<id>", "<id>"]                 -> a list of parts
+    "files": {"doc": "<id>", "pages": ["<id>"]}     -> named parts
+    "files": "<folder id>"                          -> {path: part, ...}, a folder
+
+A folder id goes only where a mapping of parts is the whole field (``folder_fields``); every
+other id must be one file. A folder id where one file is expected, or the other way round, is
+refused with a 400 that names the field and says what to send. Everything outside the file
+fields is left as sent.
 """
 
 from __future__ import annotations
@@ -27,6 +41,7 @@ from flask import request
 from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._errors import InvalidFilePart
+from controllers.openapi._transfer import parts_of
 from controllers.openapi._upload import UploadParts
 
 LIST_SUFFIX: Final = "[]"
@@ -60,9 +75,28 @@ def _place(body: dict[str, Any], name: str, parts: list[FileStorage], *, file_fi
     target[leaf] = value
 
 
-def body_from_request(*, file_fields: Collection[str] = ()) -> dict[str, Any]:
+def _resolved(value: Any, *, field: str, folder: bool) -> Any:
+    """Postcondition: every string in ``value`` replaced by the parts of its transfer: the string ``value`` itself
+    must be a folder when ``folder`` is true, and every string inside a list or mapping must be one file."""
+    if isinstance(value, str):
+        return parts_of(value, field=field, folder=folder)
+    if isinstance(value, list):
+        return [_resolved(item, field=field, folder=False) for item in value]
+    if isinstance(value, dict):
+        return {key: _resolved(item, field=field, folder=False) for key, item in value.items()}
+    return value
+
+
+def body_from_request(*, file_fields: Collection[str] = (), folder_fields: Collection[str] = ()) -> dict[str, Any]:
     if request.mimetype != "multipart/form-data":
-        return request.get_json(silent=True) or {}
+        sent = request.get_json(silent=True) or {}
+        if not isinstance(sent, dict):
+            return sent
+        # Every string inside a file field, at any depth, is replaced by its parts.
+        return {
+            name: _resolved(value, field=name, folder=name in folder_fields) if name in file_fields else value
+            for name, value in sent.items()
+        }
     body: dict[str, Any] = {name: _json_part(name, raw, file_fields=file_fields) for name, raw in request.form.items()}
     for name in request.files:
         _place(body, name, request.files.getlist(name), file_fields=file_fields)

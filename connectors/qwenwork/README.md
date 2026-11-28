@@ -35,5 +35,5 @@ A workspace token can list and run apps. It cannot answer a human-input pause, a
 
 ## Notes
 
-- File upload is not available over MCP. Pass a file to an app as a URL in its inputs.
+- An agent whose shell can reach the Dify server can send a local file as a run input: it calls `prepare.upload` and runs the command it returns. Skill operations refuse personal and workspace tokens, so with these tokens their files stay out of reach. A URL in an app's inputs still works.
 - A bad token gets a 401 from Dify.

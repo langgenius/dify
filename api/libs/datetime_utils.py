@@ -3,7 +3,7 @@ import datetime
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, overload
 from zoneinfo import ZoneInfo
 
 
@@ -57,6 +57,19 @@ def ensure_naive_utc(dt: datetime.datetime) -> datetime.datetime:
     if dt.tzinfo is None:
         return dt
     return dt.astimezone(datetime.UTC).replace(tzinfo=None)
+
+
+@overload
+def to_utc_iso(dt: datetime.datetime) -> str: ...
+@overload
+def to_utc_iso(dt: None) -> None: ...
+def to_utc_iso(dt: datetime.datetime | None) -> str | None:
+    """ISO 8601 text marked as UTC with ``Z``; a naive value is read as UTC, as Dify stores times."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.UTC)
+    return dt.isoformat().replace("+00:00", "Z")
 
 
 def to_utc_timestamp(dt: datetime.datetime) -> int:
