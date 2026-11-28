@@ -25,13 +25,13 @@ function matchesOnly(name: string, only: readonly string[] | undefined): boolean
 // A run that dies mid-stream still folds to whatever arrived: the events already
 // seen are real, so they are reported as an `incomplete` result rather than thrown
 // away behind a network error.
-export const sseRenderer: Renderer = async (res, io, options) => {
+export const sseRenderer: Renderer = async (res, io, options, _opId, signal) => {
   const result = newFoldResult()
   const stream = options.stream ?? false
 
   if (res.body !== null) {
     try {
-      for await (const ev of normalizeDifyStream(parseSSE(res.body))) {
+      for await (const ev of normalizeDifyStream(parseSSE(res.body, signal))) {
         foldEvent(result, ev.name, parseEventData(ev.data))
         if (stream && matchesOnly(ev.name, options.only)) await io.raw(`${dec.decode(ev.data)}\n`)
       }
