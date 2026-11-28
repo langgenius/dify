@@ -34,18 +34,8 @@ from graphon.model_runtime.entities.message_entities import (
 )
 
 
-class _UnsupportedSelectorValue:
-    """Stands in for a value no selector branch accepts."""
-
-
-type _ArrayObjectValue = list[int] | dict[str, int] | dict[str, str] | str
-
-#: A tools selector with nothing selected, still a list of selector entries.
-_EMPTY_TOOLS: list[str] = []
-
-
 class TestEndpointEntity:
-    def test_endpoint_entity_with_instance_renders_url(self, config_overrides: Callable[..., None]) -> None:
+    def test_endpoint_entity_with_instance_renders_url(self, config_overrides: Callable[..., None]):
         config_overrides(ENDPOINT_URL_TEMPLATE="https://dify.test/{hook_id}")
         now = datetime.datetime.now(datetime.UTC)
 
@@ -66,7 +56,7 @@ class TestEndpointEntity:
 
         assert entity.url == "https://dify.test/hook-123"
 
-    def test_endpoint_entity_with_instance_keeps_existing_url(self) -> None:
+    def test_endpoint_entity_with_instance_keeps_existing_url(self):
         now = datetime.datetime.now(datetime.UTC)
         entity = EndpointEntityWithInstance.model_validate(
             {
@@ -87,7 +77,7 @@ class TestEndpointEntity:
 
 
 class TestMarketplaceEntities:
-    def test_marketplace_declaration_strips_empty_optional_fields(self) -> None:
+    def test_marketplace_declaration_strips_empty_optional_fields(self):
         declaration = MarketplacePluginDeclaration.model_validate(
             {
                 "name": "plugin",
@@ -112,7 +102,7 @@ class TestMarketplaceEntities:
         assert declaration.model is None
         assert declaration.tool is None
 
-    def test_marketplace_snapshot_computed_plugin_id(self) -> None:
+    def test_marketplace_snapshot_computed_plugin_id(self):
         snapshot = MarketplacePluginSnapshot(
             org="langgenius",
             name="search",
@@ -127,11 +117,11 @@ class TestPluginParameterEntities:
     def _label(self) -> I18nObject:
         return I18nObject(en_US="label")
 
-    def test_parameter_option_value_casts_to_string(self) -> None:
+    def test_parameter_option_value_casts_to_string(self):
         option = PluginParameterOption(value=123, label=self._label())
         assert option.value == "123"
 
-    def test_plugin_parameter_options_non_list_defaults_to_empty(self) -> None:
+    def test_plugin_parameter_options_non_list_defaults_to_empty(self):
         parameter = PluginParameter(name="p", label=self._label(), options="invalid")  # type: ignore[arg-type]
         assert parameter.options == []
 
@@ -144,14 +134,14 @@ class TestPluginParameterEntities:
             (PluginParameterType.NUMBER, PluginParameterType.NUMBER.value),
         ],
     )
-    def test_as_normal_type(self, parameter_type: PluginParameterType, expected: str) -> None:
+    def test_as_normal_type(self, parameter_type, expected):
         assert as_normal_type(parameter_type) == expected
 
     @pytest.mark.parametrize(
         ("value", "expected"),
         [(None, ""), (1, "1"), ("abc", "abc")],
     )
-    def test_cast_parameter_value_string_like(self, value: str | int | None, expected: str) -> None:
+    def test_cast_parameter_value_string_like(self, value, expected):
         assert cast_parameter_value(PluginParameterType.STRING, value) == expected
 
     @pytest.mark.parametrize(
@@ -168,7 +158,7 @@ class TestPluginParameterEntities:
             (0, False),
         ],
     )
-    def test_cast_parameter_value_boolean(self, value: str | int | None, expected: bool) -> None:
+    def test_cast_parameter_value_boolean(self, value, expected):
         assert cast_parameter_value(PluginParameterType.BOOLEAN, value) is expected
 
     @pytest.mark.parametrize(
@@ -180,10 +170,10 @@ class TestPluginParameterEntities:
             ("2.5", 2.5),
         ],
     )
-    def test_cast_parameter_value_number(self, value: int | float | str, expected: int | float) -> None:
+    def test_cast_parameter_value_number(self, value, expected):
         assert cast_parameter_value(PluginParameterType.NUMBER, value) == expected
 
-    def test_cast_parameter_value_file_and_files(self) -> None:
+    def test_cast_parameter_value_file_and_files(self):
         assert cast_parameter_value(PluginParameterType.FILES, "f1") == ["f1"]
         assert cast_parameter_value(PluginParameterType.SYSTEM_FILES, ["f1", "f2"]) == ["f1", "f2"]
         assert cast_parameter_value(PluginParameterType.FILE, ["one"]) == "one"
@@ -196,16 +186,11 @@ class TestPluginParameterEntities:
         [
             (PluginParameterType.MODEL_SELECTOR, {"m": "gpt"}, {"m": "gpt"}),
             (PluginParameterType.APP_SELECTOR, {"app": "a"}, {"app": "a"}),
-            (PluginParameterType.TOOLS_SELECTOR, _EMPTY_TOOLS, _EMPTY_TOOLS),
+            (PluginParameterType.TOOLS_SELECTOR, [], []),
             (PluginParameterType.ANY, {"k": "v"}, {"k": "v"}),
         ],
     )
-    def test_cast_parameter_value_selectors_valid(
-        self,
-        parameter_type: PluginParameterType,
-        value: dict[str, str] | list[str],
-        expected: dict[str, str] | list[str],
-    ) -> None:
+    def test_cast_parameter_value_selectors_valid(self, parameter_type, value, expected):
         assert cast_parameter_value(parameter_type, value) == expected
 
     @pytest.mark.parametrize(
@@ -217,9 +202,7 @@ class TestPluginParameterEntities:
             (PluginParameterType.ANY, object(), "var selector must be"),
         ],
     )
-    def test_cast_parameter_value_selectors_invalid(
-        self, parameter_type: PluginParameterType, value: str | _UnsupportedSelectorValue, message: str
-    ) -> None:
+    def test_cast_parameter_value_selectors_invalid(self, parameter_type, value, message):
         with pytest.raises(ValueError, match=message):
             cast_parameter_value(parameter_type, value)
 
@@ -232,9 +215,7 @@ class TestPluginParameterEntities:
             (PluginParameterType.OBJECT, '{"a":1}', {"a": 1}),
         ],
     )
-    def test_cast_parameter_value_array_and_object_valid(
-        self, parameter_type: PluginParameterType, value: _ArrayObjectValue, expected: _ArrayObjectValue
-    ) -> None:
+    def test_cast_parameter_value_array_and_object_valid(self, parameter_type, value, expected):
         assert cast_parameter_value(parameter_type, value) == expected
 
     @pytest.mark.parametrize(
@@ -244,19 +225,17 @@ class TestPluginParameterEntities:
             (PluginParameterType.OBJECT, "bad-json", {}),
         ],
     )
-    def test_cast_parameter_value_array_and_object_invalid_json_fallback(
-        self, parameter_type: PluginParameterType, value: str, expected: list[str] | dict[str, str]
-    ) -> None:
+    def test_cast_parameter_value_array_and_object_invalid_json_fallback(self, parameter_type, value, expected):
         assert cast_parameter_value(parameter_type, value) == expected
 
-    def test_cast_parameter_value_default_branch_and_wrapped_exception(self) -> None:
+    def test_cast_parameter_value_default_branch_and_wrapped_exception(self):
         class _Unknown(StrEnum):
             CUSTOM = "custom"
 
         assert cast_parameter_value(_Unknown.CUSTOM, 12) == "12"
 
         class _BadString:
-            def __str__(self) -> str:
+            def __str__(self):
                 raise RuntimeError("boom")
 
         with pytest.raises(
@@ -271,7 +250,7 @@ class TestPluginParameterEntities:
         assert isinstance(exc_info.value.__cause__, RuntimeError)
         assert str(exc_info.value.__cause__) == "boom"
 
-    def test_init_frontend_parameter(self) -> None:
+    def test_init_frontend_parameter(self):
         rule = PluginParameter(
             name="choice",
             label=self._label(),
@@ -323,10 +302,15 @@ class TestPluginParameterEntities:
 
 
 class TestPluginDaemonEntities:
-    def test_credential_type_helpers(self) -> None:
+    def test_credential_type_helpers(self):
         assert CredentialType.API_KEY.get_name() == "API KEY"
         assert CredentialType.OAUTH2.get_name() == "AUTH"
         assert CredentialType.UNAUTHORIZED.get_name() == "UNAUTHORIZED"
+
+        class _FakeCredential:
+            value = "custom-type"
+
+        assert CredentialType.get_name(_FakeCredential()) == "CUSTOM TYPE"
         assert CredentialType.API_KEY.is_editable() is True
         assert CredentialType.OAUTH2.is_editable() is False
         assert CredentialType.API_KEY.is_validate_allowed() is True
@@ -343,16 +327,16 @@ class TestPluginDaemonEntities:
             ("unauthorized", CredentialType.UNAUTHORIZED),
         ],
     )
-    def test_credential_type_of(self, raw: str, expected: CredentialType) -> None:
+    def test_credential_type_of(self, raw, expected):
         assert CredentialType.of(raw) == expected
 
-    def test_credential_type_of_invalid(self) -> None:
+    def test_credential_type_of_invalid(self):
         with pytest.raises(ValueError, match="Invalid credential type"):
             CredentialType.of("invalid")
 
 
 class TestPluginRequestEntities:
-    def test_request_invoke_llm_converts_prompt_messages(self) -> None:
+    def test_request_invoke_llm_converts_prompt_messages(self):
         payload = RequestInvokeLLM(
             provider="openai",
             model="gpt-4",
@@ -370,19 +354,23 @@ class TestPluginRequestEntities:
         assert isinstance(payload.prompt_messages[2], SystemPromptMessage)
         assert isinstance(payload.prompt_messages[3], ToolPromptMessage)
 
-    def test_request_invoke_speech2text_hex_conversion_and_error(self) -> None:
+    def test_request_invoke_llm_prompt_messages_must_be_list(self):
+        with pytest.raises(ValidationError):
+            RequestInvokeLLM(provider="openai", model="gpt-4", mode="chat", prompt_messages="invalid")  # type: ignore[arg-type]
+
+    def test_request_invoke_speech2text_hex_conversion_and_error(self):
         payload = RequestInvokeSpeech2Text(provider="openai", model="m", file=binascii.hexlify(b"abc").decode())
         assert payload.file == b"abc"
         with pytest.raises(ValidationError):
             RequestInvokeSpeech2Text(provider="openai", model="m", file=b"abc")  # type: ignore[arg-type]
 
-    def test_trigger_invoke_event_response_variables_conversion(self) -> None:
+    def test_trigger_invoke_event_response_variables_conversion(self):
         converted = TriggerInvokeEventResponse(variables='{"a": 1}', cancelled=False)
         assert converted.variables == {"a": 1}
         passthrough = TriggerInvokeEventResponse(variables={"b": 2}, cancelled=True)
         assert passthrough.variables == {"b": 2}
 
-    def test_trigger_dispatch_response_convert_response(self) -> None:
+    def test_trigger_dispatch_response_convert_response(self):
         response = Response("ok", status=202, headers={"X-Req": "1"})
         encoded = binascii.hexlify(serialize_response(response)).decode()
         parsed = TriggerDispatchResponse(user_id="u", events=["e"], response=encoded)
@@ -391,7 +379,7 @@ class TestPluginRequestEntities:
         with pytest.raises(ValidationError):
             TriggerDispatchResponse(user_id="u", events=["e"], response="not-hex")
 
-    def test_trigger_dispatch_response_payload_default(self) -> None:
+    def test_trigger_dispatch_response_payload_default(self):
         response = Response("ok", status=200)
         encoded = binascii.hexlify(serialize_response(response)).decode()
         parsed = TriggerDispatchResponse(user_id="u", events=["e"], response=encoded)

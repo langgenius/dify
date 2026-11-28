@@ -1,5 +1,4 @@
 import json
-from collections.abc import Mapping, Sequence
 from datetime import date
 from enum import StrEnum, auto
 from typing import Any
@@ -8,13 +7,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
-
-#: Every value a cast plugin parameter can hold: scalars, nested sequences and
-#: mappings of the same. ``None`` is included because a number parameter with an
-#: empty value stays unset rather than becoming a number.
-type PluginParameterValue = (
-    str | bool | int | float | None | Sequence[PluginParameterValue] | Mapping[str, PluginParameterValue]
-)
 
 
 class PluginParameterOption(BaseModel):
@@ -102,12 +94,7 @@ class PluginParameter(BaseModel):
         return v
 
 
-def as_normal_type(typ: StrEnum) -> str:
-    """Return the JSON-schema type name a parameter renders as.
-
-    Precondition: ``typ`` is a parameter type enum member. Postcondition: the
-    result is a JSON-schema primitive type name, never a parameter type alias.
-    """
+def as_normal_type(typ: StrEnum):
     if typ.value == PluginParameterType.DATE_RANGE:
         return "object"
     if typ.value in {
@@ -134,15 +121,7 @@ def _validate_date(value: Any, name: str = "date") -> str:
     return value
 
 
-def cast_parameter_value(typ: StrEnum, value: Any, /) -> PluginParameterValue:
-    """Coerce a raw parameter value into the shape its type declares.
-
-    Precondition: ``typ`` is a parameter type enum member; ``value`` is whatever
-    the caller received (form input, JSON payload, or a default).
-    Postcondition: the result is a ``PluginParameterValue`` of the declared shape.
-    Failure behaviour: a value that cannot be coerced raises ``ValueError`` with
-    the parameter type named in the message.
-    """
+def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
             case (
