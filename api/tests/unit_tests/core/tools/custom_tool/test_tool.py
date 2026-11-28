@@ -162,6 +162,33 @@ class TestApiToolRequestAssemblyCases:
         assert isinstance(sent_bodies[0]["amount"], (int, float))
 
     @staticmethod
+    def test_untyped_body_properties_keep_their_values(monkeypatch: pytest.MonkeyPatch) -> None:
+        properties = {
+            "status": {"enum": ["open", "closed"]},
+            "amount": {"oneOf": [{"type": "integer"}, {"type": "string"}]},
+            "customer": {"allOf": [{"$ref": "#/components/schemas/Customer"}], "description": "Buyer"},
+            "note": {"description": "Free text"},
+        }
+        tool = _build_tool(
+            openapi={
+                "parameters": [],
+                "requestBody": {"content": {"application/json": {"schema": {"properties": properties}}}},
+            }
+        )
+        sent_bodies: list[dict[str, Any]] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            sent_bodies.append(json.loads(request.content))
+            return httpx.Response(200)
+
+        values = {"status": "open", "amount": 5, "customer": {"id": "c1"}, "note": "Leave at the door"}
+        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            tool.do_http_request("https://api.example.com/orders", "POST", {}, values)
+
+        assert sent_bodies == [values]
+
+    @staticmethod
     @pytest.mark.parametrize("schema", [{"type": "number"}, {"anyOf": [{"type": "number"}]}])
     def test_invalid_number_body_keeps_existing_fallback(schema: dict[str, Any]) -> None:
         tool = _build_tool()
@@ -366,6 +393,8 @@ class TestCustomToolCases:
         assert tool._convert_body_property_type({"type": "object"}, '{"a":1}') == {"a": 1}
         assert tool._convert_body_property_type({"type": "array"}, "[1,2]") == [1, 2]
         assert tool._convert_body_property_type({"type": "invalid"}, "v") == "v"
+        assert tool._convert_body_property_type({"enum": ["a", "b"]}, "a") == "a"
+        assert tool._convert_body_property_type({}, 3) == 3
         assert tool._convert_body_property_type({"anyOf": [{"type": "integer"}]}, "2") == 2
 
     @staticmethod
