@@ -172,6 +172,8 @@ const ClassList: FC<Props> = ({
                     handleSortTopic(items)
                 }}
                 handle=".handle"
+                filter="input, textarea, select, [contenteditable]"
+                preventOnFilter={false}
                 ghostClass="bg-components-panel-bg"
                 animation={150}
                 disabled={readonly || keyboardSort.isSorting}
@@ -189,7 +191,7 @@ const ClassList: FC<Props> = ({
                       )}
                       style={{
                         // Performance hint for browser
-                        contain: 'layout style paint',
+                        contain: 'layout style',
                       }}
                     >
                       <div>
@@ -203,9 +205,9 @@ const ClassList: FC<Props> = ({
                         )}
                         <Item
                           labelId={`${labelIdPrefix}-${item.id}`}
-                          className={cn(canDrag && 'handle')}
                           headerClassName={cn(
-                            canDrag && 'cursor-grab group-focus-within:ps-5 group-hover:ps-5',
+                            canDrag &&
+                              'handle cursor-grab group-focus-within:ps-5 group-hover:ps-5',
                           )}
                           nodeId={nodeId}
                           key={item.id}

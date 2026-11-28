@@ -26,7 +26,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { CodeNode } from '@lexical/code-core'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
-import { $getRoot, defineExtension, TextNode } from 'lexical'
+import { $getRoot, defineExtension, SKIP_DOM_SELECTION_TAG, TextNode } from 'lexical'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -66,14 +66,17 @@ const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
     if (!shouldUpdate) return
 
     const editorState = editor.parseEditorState(textToEditorState(incomingValue))
-    editor.setEditorState(editorState)
-    editor.update(() => {
-      $getRoot()
-        .getAllTextNodes()
-        .forEach((node) => {
-          if (node instanceof CustomTextNode) node.markDirty()
-        })
-    })
+    editor.setEditorState(editorState, { tag: SKIP_DOM_SELECTION_TAG })
+    editor.update(
+      () => {
+        $getRoot()
+          .getAllTextNodes()
+          .forEach((node) => {
+            if (node instanceof CustomTextNode) node.markDirty()
+          })
+      },
+      { tag: SKIP_DOM_SELECTION_TAG },
+    )
   }, [editor, value])
 
   return null

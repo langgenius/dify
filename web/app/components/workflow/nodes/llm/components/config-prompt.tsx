@@ -205,6 +205,8 @@ const ConfigPrompt: FC<Props> = ({
                 onChange(list.map((item) => item.p))
               }}
               handle=".handle"
+              filter="input, textarea, select, [contenteditable]"
+              preventOnFilter={false}
               ghostClass="opacity-50"
               animation={150}
             >
@@ -235,8 +237,7 @@ const ConfigPrompt: FC<Props> = ({
                           ? `${nodeId}-chat-workflow-llm-prompt-editor`
                           : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`
                       }
-                      className={cn(canDrag && 'handle')}
-                      headerClassName={cn(canDrag && 'cursor-grab')}
+                      headerClassName={cn(canDrag && 'handle cursor-grab')}
                       canNotChooseSystemRole={!canChooseSystemRole}
                       canRemove={
                         payload.length > 1 && !(index === 0 && item.role === PromptRole.system)
