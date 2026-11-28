@@ -351,6 +351,39 @@ def test_shell_run_keeps_original_offset_when_tail_lookup_fails_for_truncated_ou
     assert commands.tail_calls == [TailCall(job_id="user-job")]
 
 
+@pytest.mark.parametrize("size", [4096, 4097, 8191, 8192, 8193])
+def test_shell_run_uses_the_full_prompt_output_budget(size: int) -> None:
+    output = "x" * 2000 + "界" + "y" * (size - 2003)
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: _command_result(
+            "user-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=output,
+            offset=size,
+            output_path="/tmp/shell.log",
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    layer.save_state(_runtime_state())
+
+    async def scenario() -> None:
+        result = await layer._tool_run(**{"script": "read output"})  # pyright: ignore[reportArgumentType]
+        metadata, rendered = _parse_tagged_observation(result)
+        assert metadata["output_path"] == "/tmp/shell.log"
+        if size <= 8192:
+            assert rendered == output
+        else:
+            assert "max output size is limited to 8192 bytes" in rendered
+            assert rendered.endswith("(check the /tmp/shell.log for full output)")
+
+    asyncio.run(scenario())
+    assert layer.runtime_state.job_offsets == {"user-job": size}
+    assert commands.tail_calls == []
+
+
 def test_shell_run_formats_large_non_truncated_output_without_tail_lookup() -> None:
     large_output = ("head-" + ("x" * 9000) + "-tail").replace("head-x", "head-y", 1)
     commands = FakeCommands(
