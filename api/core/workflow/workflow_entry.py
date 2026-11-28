@@ -21,6 +21,7 @@ from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.workflow.iteration_container_handler import DifyIterationContainerHandler
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -47,7 +48,6 @@ from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from graphon.engine import Engine
 from graphon.engine.command import CommandChannel, InMemoryChannel
-from graphon.engine.container_handler.builtin.iteration import IterationContainerHandler
 from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
@@ -175,7 +175,7 @@ class WorkflowEntry:
                 ),
                 partial(
                     WorkflowToolNestedContainerHandler,
-                    handler_factory=IterationContainerHandler,
+                    handler_factory=DifyIterationContainerHandler,
                     hidden_event_listener=limits_layer.on_event,
                     event_listeners=workflow_tool_event_listeners,
                 ),
