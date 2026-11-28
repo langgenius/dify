@@ -33,25 +33,31 @@ export const credentials = zModelCredentialResponse.parse({
   current_credential_name: 'Default key',
   available_credentials: [{ credential_id: 'key-1', credential_name: 'Default key' }],
 })
-const models: ModelItem[] = ['gpt-4', 'gpt-3.5'].map((model) => ({
+export const createModel = (
+  model: string,
+  status: ModelItem['status'] = ModelStatusEnum.active,
+): ModelItem => ({
   model,
   label: { en_US: model, zh_Hans: model },
   model_type: ModelTypeEnum.textGeneration,
   fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
+  status,
   model_properties: {},
   load_balancing_enabled: false,
-}))
+})
+const defaultModels = ['gpt-4', 'gpt-3.5'].map((model) => createModel(model))
 export const dialogName = 'modelProvider.modelProvider.auth.configModel'
 export function renderModelList({
   currentProvider = provider,
   errorToasts = false,
   permissions = ['plugin.model_config', 'credential.manage', 'credential.use'],
+  models = defaultModels,
 }: {
   currentProvider?: ComponentProps<typeof ModelList>['provider']
   /** Mirror the app's cache-level error toasts, so a failure's messages can be counted. */
   errorToasts?: boolean
   permissions?: string[]
+  models?: ModelItem[]
 } = {}) {
   const onChange = vi.fn()
   const onCollapse = vi.fn()

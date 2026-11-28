@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "最初にモデルプロバイダーをインストールしてください。",
   "modelProvider.emptyProviderTipWithMarketplace": "最初にモデルプロバイダーをインストールしてください。<marketplace>マーケットプレイス</marketplace>からモデルをインストールできます。",
   "modelProvider.emptyProviderTitle": "モデルプロバイダーが設定されていません",
+  "modelProvider.enableAllModels": "すべて有効化",
   "modelProvider.encrypted.back": " の技術で暗号化されて保存されます。",
   "modelProvider.encrypted.front": "API キーは",
   "modelProvider.featureSupported": "{{feature}}に対応",

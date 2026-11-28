@@ -4816,6 +4816,7 @@ export default interface Resources {
     'modelProvider.emptyProviderTip': 'Please install a model provider first.'
     'modelProvider.emptyProviderTipWithMarketplace': 'Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.'
     'modelProvider.emptyProviderTitle': 'Model provider not set up'
+    'modelProvider.enableAllModels': 'Enable all'
     'modelProvider.encrypted.back': ' technology.'
     'modelProvider.encrypted.front': 'Your API KEY will be encrypted and stored using'
     'modelProvider.featureSupported': '{{feature}} supported'

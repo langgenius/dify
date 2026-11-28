@@ -9,13 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { canConfigureModelsAtom } from '../atoms'
-import { ConfigurationMethodEnum } from '../declarations'
-import { useLazyModelProviderDetail } from '../hooks'
+import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
+import { useLazyModelProviderDetail, useUpdateModelList } from '../hooks'
 import LazyCustomModelActions from './lazy-custom-model-actions'
 // import Tab from './tab'
 import ModelListItem from './model-list-item'
@@ -85,6 +87,11 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
   const [loadingModelKey, setLoadingModelKey] = useState<string | null>(null)
   const [isModelLoadBalancingModalLoading, setIsModelLoadBalancingModalLoading] = useState(false)
   const { loadProviderDetail } = useLazyModelProviderDetail(provider.provider)
+  const queryClient = useQueryClient()
+  const updateModelList = useUpdateModelList()
+  const { mutateAsync: enableModel, isPending: isEnablingAll } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.enable.patch.mutationOptions(),
+  )
   const onModifyLoadBalancing = useCallback(
     async (model: ModelItem, credential?: Credential) => {
       if (loadingModelKey) return
@@ -128,6 +135,33 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
     [loadingModelKey, loadProviderDetail, onChange, provider, t],
   )
 
+  const disabledModels = models.filter(
+    (model) => model.status === ModelStatusEnum.disabled && !model.deprecated,
+  )
+  const enableAllModels = useCallback(async () => {
+    const results = await Promise.allSettled(
+      disabledModels.map((model) =>
+        enableModel({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        }),
+      ),
+    )
+
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+        input: { params: { provider: provider.provider } },
+      }),
+      exact: true,
+      refetchType: 'none',
+    })
+    new Set(disabledModels.map((model) => model.model_type)).forEach(updateModelList)
+    onChange?.(provider.provider)
+
+    if (results.some((result) => result.status === 'rejected'))
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+  }, [disabledModels, enableModel, onChange, provider.provider, queryClient, t, updateModelList])
+
   return (
     <>
       <div className="rounded-b-xl px-2 pb-2">
@@ -147,9 +181,19 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
                 <span className="me-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
               </button>
             </span>
-            {isConfigurable && canConfigureModels && (
-              <div className="flex grow justify-end">
-                <LazyCustomModelActions provider={provider} />
+            {canConfigureModels && (
+              <div className="flex grow items-center justify-end gap-1">
+                {disabledModels.length > 0 && (
+                  <button
+                    type="button"
+                    className="inline-flex h-6 cursor-pointer items-center rounded-lg border-none bg-transparent px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isEnablingAll}
+                    onClick={enableAllModels}
+                  >
+                    {t(($) => $['modelProvider.enableAllModels'], { ns: 'modelProvider' })}
+                  </button>
+                )}
+                {isConfigurable && <LazyCustomModelActions provider={provider} />}
               </div>
             )}
           </div>

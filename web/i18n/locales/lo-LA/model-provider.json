@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "ກະລຸນາຕິດຕັ້ງຜູ້ໃຫ້ບໍລິການໂມເດວກ່ອນ.",
   "modelProvider.emptyProviderTipWithMarketplace": "ກະລຸນາຕິດຕັ້ງຜູ້ໃຫ້ບໍລິການໂມເດວກ່ອນ. ທ່ານສາມາດຕິດຕັ້ງໂມເດວໄດ້ຈາກ <marketplace>ຕະຫຼາດແອັບ</marketplace>.",
   "modelProvider.emptyProviderTitle": "ຍັງບໍ່ໄດ້ຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການໂມເດວ",
+  "modelProvider.enableAllModels": "ເປີດໃຊ້ທັງໝົດ",
   "modelProvider.encrypted.back": " ເຕັກໂນໂລຊີ.",
   "modelProvider.encrypted.front": "API KEY ຂອງທ່ານຈະຖືກເຂົ້າລະຫັດ ແລະ ເກັບຮັກສາໂດຍໃຊ້",
   "modelProvider.featureSupported": "ຮອງຮັບ {{feature}}",

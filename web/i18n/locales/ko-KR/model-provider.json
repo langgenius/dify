@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "먼저 모델 공급자를 설치하십시오.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "모델 공급자가 설정되지 않음",
+  "modelProvider.enableAllModels": "모두 사용",
   "modelProvider.encrypted.back": " 기술.",
   "modelProvider.encrypted.front": "API 키는 다음 기술을 사용하여 암호화되어 저장됩니다",
   "modelProvider.featureSupported": "{{feature}} 지원됨",

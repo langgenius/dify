@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "कृपया पहले एक मॉडल प्रदाता स्थापित करें।",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "मॉडल प्रदाता सेट नहीं किया गया",
+  "modelProvider.enableAllModels": "सभी सक्षम करें",
   "modelProvider.encrypted.back": " तकनीक का उपयोग करके।",
   "modelProvider.encrypted.front": "आपकी API KEY को एन्क्रिप्ट और संग्रहीत किया जाएगा",
   "modelProvider.featureSupported": "{{feature}} समर्थित",

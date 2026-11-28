@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "Lütfen önce bir model sağlayıcı yükleyin.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "Model sağlayıcı ayarlanmadı",
+  "modelProvider.enableAllModels": "Tümünü etkinleştir",
   "modelProvider.encrypted.back": " teknolojisi.",
   "modelProvider.encrypted.front": "API ANAHTARINIZ şu kullanılarak şifrelenip saklanacak:",
   "modelProvider.featureSupported": "{{feature}} desteklenir",

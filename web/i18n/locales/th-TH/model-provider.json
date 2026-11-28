@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "โปรดติดตั้งผู้ให้บริการโมเดลก่อน",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "ไม่ได้ตั้งค่าผู้ให้บริการโมเดล",
+  "modelProvider.enableAllModels": "เปิดใช้งานทั้งหมด",
   "modelProvider.encrypted.back": "เทคโนโลยี ",
   "modelProvider.encrypted.front": "คีย์ API ของคุณจะถูกเข้ารหัสและจัดเก็บโดยใช้",
   "modelProvider.featureSupported": "รองรับ {{feature}}",
