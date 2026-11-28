@@ -772,6 +772,61 @@ def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
     assert trace["trajectory"]["steps"][-1]["content"] == "hello agent"
 
 
+def test_agent_node_evaluation_trace_retains_structured_output_retry_attempts() -> None:
+    class RetryingTraceBackendClient(ToolActivityBackendClient):
+        def __init__(self) -> None:
+            super().__init__(output={})
+            self._outputs = iter([{"score": "invalid"}, {"score": 42}])
+
+        @override
+        def _events(self, run_id: str):
+            self._output = next(self._outputs)
+            return super()._events(run_id)
+
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {
+                    "name": "score",
+                    "type": "number",
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ]
+        }
+    )
+
+    events = list(
+        _node(
+            binding_resolver=resolver,
+            agent_backend_client=RetryingTraceBackendClient(),
+            capture_agent_evaluation_trace=True,
+        )._run()
+    )
+
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
+    trace = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["evaluation_trace"]
+    steps = trace["trajectory"]["steps"]
+    assert [step["step_type"] for step in steps] == [
+        "tool_call",
+        "tool_result",
+        "agent_message",
+        "final_output",
+        "tool_call",
+        "tool_result",
+        "agent_message",
+        "final_output",
+    ]
+    assert [step["sequence"] for step in steps] == list(range(len(steps)))
+    assert len({step["step_id"] for step in steps}) == len(steps)
+    assert steps[3]["status"] == "failed"
+    assert steps[3]["content"] == '{"score": "invalid"}'
+    assert "score" in steps[3]["error"]
+    assert steps[-1]["status"] == "succeeded"
+    assert steps[-1]["content"] == '{"score": 42}'
+    assert len(trace["tool_calls"]) == 2
+
+
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
     events = list(
         _node(

@@ -374,6 +374,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
+        evaluation_trace_collector: AgentV2TraceCollector | None = None
         while True:
             try:
                 runtime_request = self._runtime_request_builder.build(
@@ -416,13 +417,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             # node's "inputs" payload that ends up in the workflow detail view.
             if attempt == 0:
                 inputs["agent_backend_request"] = runtime_request.redacted_request
+                evaluation_trace_collector = self._build_evaluation_trace_collector(
+                    enabled=dify_ctx.capture_agent_evaluation_trace,
+                    available_tools=runtime_request.available_tools,
+                )
             metadata.clear()
             metadata.update(runtime_request.metadata)
             metadata["attempt"] = attempt
-            evaluation_trace_collector = self._build_evaluation_trace_collector(
-                enabled=dify_ctx.capture_agent_evaluation_trace,
-                available_tools=runtime_request.available_tools,
-            )
+            if evaluation_trace_collector is not None:
+                evaluation_trace_collector.begin_attempt(attempt)
 
             try:
                 create_response = self._agent_backend_client.create_run(runtime_request.request)
@@ -527,6 +530,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     metadata["output_failure_reason"] = outcome.primary_reason
 
                     if outcome.decision == OutputFailureDecision.RETRY:
+                        if evaluation_trace_collector is not None:
+                            evaluation_trace_collector.record_failed_output_attempt(
+                                output=terminal_event.output,
+                                error=outcome.primary_reason,
+                            )
                         attempt = outcome.next_attempt
                         continue
 
