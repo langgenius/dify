@@ -1734,7 +1734,7 @@ export type GetDatasetsApiKeysResponse =
   GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
 
 export type PostDatasetsApiKeysData = {
-  body: DatasetApiKeyCreatePayload
+  body?: DatasetApiKeyCreatePayload
   path?: never
   query?: never
   url: '/datasets/api-keys'

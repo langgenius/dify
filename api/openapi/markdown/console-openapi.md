@@ -6336,11 +6336,15 @@ Get dataset API keys
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/api-keys
+**Create a key from a JSON scope object or an empty body**
+
+Reject invalid input before creating a key.
+
 #### Request Body
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
+|  No | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
 
 #### Responses
 

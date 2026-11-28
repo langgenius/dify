@@ -774,6 +774,7 @@ class DatasetApiKeyApi(Resource):
 
     @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
+    @console_ns.doc(params={"payload": {"required": False}})
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @console_account_admission(
@@ -781,23 +782,21 @@ class DatasetApiKeyApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
     )
     def post(self, request_context: RequestContext):
-        # Preserve the optional scope and validation response of the workspace route.
-        payload = request.get_json(silent=True) or {}
-        raw_dataset_ids = self._id_list(payload, "dataset_ids")
-        knowledge_space_ids = self._id_list(payload, "knowledge_space_ids")
+        """Create a key from a JSON scope object or an empty body. Reject invalid input before creating a key."""
+        body = request.get_json() if request.get_data() else {}
+        try:
+            payload = DatasetApiKeyCreatePayload.model_validate(body)
+        except ValidationError as error:
+            location = error.errors()[0]["loc"]
+            if location:
+                raise BadRequest(f"{location[0]} must be a list of strings.") from error
+            raise BadRequest("Request body must be a JSON object.") from error
+
         with api_key_create_errors():
             key = application_services().dataset_api_keys.create_workspace_key(
-                request_context, tuple(raw_dataset_ids), knowledge_space_ids=tuple(knowledge_space_ids)
+                request_context, tuple(payload.dataset_ids), knowledge_space_ids=tuple(payload.knowledge_space_ids)
             )
         return dump_response(ApiKeyItem, key), 200
-
-    @staticmethod
-    def _id_list(payload: object, key: str) -> list[str]:
-        raw = payload.get(key) if isinstance(payload, dict) else None
-        raw = raw or []
-        if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
-            raise BadRequest(f"{key} must be a list of strings.")
-        return list(dict.fromkeys(raw))
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")

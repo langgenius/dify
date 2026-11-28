@@ -303,15 +303,22 @@ export const get2 = oc
   })
   .output(zGetDatasetsApiKeysResponse)
 
+/**
+ * Create a key from a JSON scope object or an empty body
+ *
+ * Reject invalid input before creating a key.
+ */
 export const post = oc
   .route({
+    description: 'Reject invalid input before creating a key.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsApiKeys',
     path: '/datasets/api-keys',
+    summary: 'Create a key from a JSON scope object or an empty body',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostDatasetsApiKeysBody }))
+  .input(z.object({ body: zPostDatasetsApiKeysBody.optional() }).optional())
   .output(zPostDatasetsApiKeysResponse)
   .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
