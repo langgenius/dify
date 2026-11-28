@@ -98,6 +98,15 @@
     "expectedToolCalls": "Укажите инструменты и аргументы, которые должен использовать агент, в виде массива JSON.",
     "notice": "Эта строка содержит пояснения к примеру. Удалите её перед загрузкой набора данных для оценки."
   },
+  "sv-SE": {
+    "index": "Use a unique integer to identify this test row and find its results.",
+    "input": "Enter the input for this test row, such as a question, instruction, or value required by this field.",
+    "expectedOutput": "Enter the answer this node should produce for this test row. It is compared with the actual output.",
+    "retrievalExpectedOutput": "Enter the reference answer or key facts for this query to assess retrieval relevance and coverage.",
+    "successCriteria": "Enter the conditions the Agent must meet, one per line. Each is judged separately. Leave blank if none.",
+    "expectedToolCalls": "Enter the tools and arguments the Agent is expected to use as a JSON array.",
+    "notice": "Den här raden innehåller exempelförklaringar. Ta bort raden innan du laddar upp datauppsättningen för utvärdering."
+  },
   "it-IT": {
     "index": "Usa un numero intero univoco per identificare questa riga di test e trovarne il risultato.",
     "input": "Inserisci l'input per questa riga, ad esempio una domanda, un'istruzione o il valore richiesto dal campo.",

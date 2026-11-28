@@ -52,6 +52,7 @@ NOTICE_BY_LOCALE = {
     "ar-TN": "يحتوي هذا الصف على شروحات توضيحية. احذف هذا الصف قبل رفع مجموعة البيانات للتقييم.",
     "nl-NL": "Deze rij bevat voorbeelduitleg. Verwijder deze rij voordat je de dataset uploadt voor evaluatie.",
     "az-AZ": "Bu sətirdə nümunə izahlar var. Məlumat dəstini qiymətləndirmə üçün yükləməzdən əvvəl bu sətri silin.",
+    "sv-SE": "Den här raden innehåller exempelförklaringar. Ta bort raden innan du laddar upp datauppsättningen för utvärdering.",
 }
 
 

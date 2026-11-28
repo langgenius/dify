@@ -1,0 +1,17 @@
+{
+  "apply": "Verkställ",
+  "change": "Ändra",
+  "custom": "Anpassning",
+  "customize.contactUs": " kontakta oss ",
+  "customize.prefix": "För att anpassa varumärkeslogotypen i appen behöver du",
+  "customize.suffix": "uppgradera till Enterprise-utgåvan.",
+  "restore": "Återställ standardvärden",
+  "upgradeTip.des": "Uppgradera din plan för att anpassa ditt varumärke",
+  "upgradeTip.title": "Uppgradera din plan",
+  "upload": "Ladda upp",
+  "uploadedFail": "Det gick inte att ladda upp bilden. Försök igen.",
+  "uploading": "Laddar upp",
+  "webapp.changeLogo": "Ändra Powered by-varumärkesbild",
+  "webapp.changeLogoTip": "SVG- eller PNG-format med en minsta storlek på 40 × 40 px",
+  "webapp.removeBrand": "Ta bort Powered by Dify"
+}

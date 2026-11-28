@@ -78,6 +78,13 @@ const data = {
       supported: true,
     },
     {
+      value: 'sv-SE',
+      name: 'Svenska (Sverige)',
+      prompt_name: 'Swedish',
+      example: 'Hej, Dify!',
+      supported: true,
+    },
+    {
       value: 'it-IT',
       name: 'Italiano (Italia)',
       prompt_name: 'Italian',
