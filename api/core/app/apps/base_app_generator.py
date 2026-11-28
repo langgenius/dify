@@ -247,7 +247,7 @@ class BaseAppGenerator:
 
         if variable_entity.type == VariableEntityType.NUMBER:
             match value:
-                case int() | float():
+                case int() | float() if not isinstance(value, bool):
                     return value
                 case str():
                     # handle empty string case
@@ -264,7 +264,7 @@ class BaseAppGenerator:
                             f"{variable_entity.variable} in input form must be a valid number"
                         ) from caught_error
                 case _:
-                    raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
+                    raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
 
         match variable_entity.type:
             case VariableEntityType.SELECT:
