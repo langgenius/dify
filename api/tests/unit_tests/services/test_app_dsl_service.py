@@ -384,6 +384,30 @@ def test_extract_model_config_dependencies_skips_workspace_tool_providers() -> N
     assert AppDslService._extract_dependencies_from_model_config(model_config) == ["langgenius/time"]
 
 
+@pytest.mark.parametrize(
+    ("retrieval_model", "reranking_mode", "expected"),
+    [
+        ("multiple", None, ["langgenius/openai", "langgenius/cohere"]),
+        ("multiple", "reranking_model", ["langgenius/openai", "langgenius/cohere"]),
+        ("multiple", "weighted_score", ["langgenius/openai"]),
+        ("single", "reranking_model", ["langgenius/openai"]),
+    ],
+)
+def test_extract_model_config_dependencies_includes_reranking_model_provider(
+    retrieval_model: str, reranking_mode: str | None, expected: list[str]
+) -> None:
+    dataset_configs: dict[str, object] = {
+        "retrieval_model": retrieval_model,
+        "datasets": {"datasets": [{"dataset": {"enabled": True, "id": "dataset-1"}}]},
+        "reranking_model": {"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v3.5"},
+    }
+    if reranking_mode is not None:
+        dataset_configs["reranking_mode"] = reranking_mode
+    model_config = {"model": {"provider": "openai", "name": "gpt-4o"}, "dataset_configs": dataset_configs}
+
+    assert AppDslService._extract_dependencies_from_model_config(model_config) == expected
+
+
 def test_import_app_rejects_oversized_yaml_content_before_parsing(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:

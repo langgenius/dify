@@ -1330,16 +1330,18 @@ class AppDslService:
 
             # reranking model
             dataset_configs = model_config.get("dataset_configs", {})
-            if dataset_configs:
-                for dataset_config in dataset_configs.get("datasets", {}).get("datasets", []):
-                    if dataset_config.get("reranking_model"):
-                        dependencies.append(
-                            DependenciesAnalysisService.analyze_model_provider_dependency(
-                                dataset_config.get("reranking_model", {})
-                                .get("reranking_provider_name", {})
-                                .get("provider")
-                            )
-                        )
+            # Only multiple retrieval runs the rerank model (see DatasetConfigManager); mirrors the
+            # knowledge retrieval node branch in _extract_dependencies_from_workflow.
+            if (
+                dataset_configs
+                and dataset_configs.get("retrieval_model") == "multiple"
+                and dataset_configs.get("reranking_mode", "reranking_model") == "reranking_model"
+            ):
+                reranking_provider = (dataset_configs.get("reranking_model") or {}).get("reranking_provider_name")
+                if reranking_provider:
+                    dependencies.append(
+                        DependenciesAnalysisService.analyze_model_provider_dependency(reranking_provider)
+                    )
 
             # tools
             agent_configs = model_config.get("agent_mode", {})
