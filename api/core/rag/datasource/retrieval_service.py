@@ -208,14 +208,20 @@ class RetrievalService:
 
         Used when hybrid search skips early vector thresholding but no rerank
         runner applies a threshold afterward (same rule as ``calculate_vector_score``).
+
+        Documents retrieved by full-text search carry no vector score, so the
+        threshold cannot be evaluated for them: they are kept instead of being
+        silently dropped (#47357).
         """
         if score_threshold is None:
             return documents
-        return [
-            document
-            for document in documents
-            if document.metadata and document.metadata.get("score", 0) >= score_threshold
-        ]
+
+        def _meets_threshold(document: Document) -> bool:
+            if not document.metadata or "score" not in document.metadata:
+                return True
+            return document.metadata["score"] >= score_threshold
+
+        return [document for document in documents if _meets_threshold(document)]
 
     @classmethod
     def _deduplicate_documents(cls, documents: list[Document]) -> list[Document]:

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
@@ -1137,6 +1138,93 @@ class TestRetrievalServiceInternals:
         assert len(all_documents) == 4
         assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
         processor_instance.invoke.assert_called_once()
+
+    def test_filter_documents_by_vector_score_threshold_keeps_unscored_documents(self) -> None:
+        scored_doc = create_mock_document("scored", "scored-doc", 0.9)
+        low_scored_doc = create_mock_document("low", "low-doc", 0.1)
+        unscored_doc = Document(page_content="unscored", metadata={"doc_id": "unscored-doc"}, provider="dify")
+
+        result = RetrievalService._filter_documents_by_vector_score_threshold(
+            [scored_doc, low_scored_doc, unscored_doc], 0.5
+        )
+
+        assert {doc.metadata["doc_id"] for doc in result} == {"scored-doc", "unscored-doc"}
+
+    @pytest.mark.usefixtures("vector_engine")
+    def test_retrieve_internal_hybrid_keeps_unscored_fulltext_documents_without_rerank_runner(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset: Dataset
+    ) -> None:
+        """Only the unscored full-text hit survives a no-reranker search (#47357)."""
+        vector_doc = create_mock_document("vector hit", "vec-doc", 0.1)
+        fulltext_doc = Document(
+            page_content="fulltext hit",
+            metadata={"doc_id": "ft-doc", "document_id": str(uuid4()), "dataset_id": str(uuid4())},
+            provider="dify",
+        )
+
+        def embedding_search(_self: RetrievalService, *, all_documents: list[Document], **kwargs: object) -> None:
+            all_documents.append(vector_doc)
+
+        def full_text_search(_self: RetrievalService, *, all_documents: list[Document], **kwargs: object) -> None:
+            all_documents.append(fulltext_doc)
+
+        monkeypatch.setattr(RetrievalService, "embedding_search", embedding_search)
+        monkeypatch.setattr(RetrievalService, "full_text_index_search", full_text_search)
+
+        all_documents: list[Document] = []
+        RetrievalService()._retrieve(
+            flask_app=Flask(__name__),
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+            dataset=internal_dataset,
+            all_documents=all_documents,
+            exceptions=[],
+            query="query",
+            score_threshold=0.5,
+        )
+
+        assert all_documents == [fulltext_doc]
+
+    @pytest.mark.usefixtures("vector_engine")
+    def test_retrieve_internal_hybrid_leaves_thresholding_to_the_weighted_reranker(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset: Dataset
+    ) -> None:
+        low_scored_doc = create_mock_document("retrieval", "low-doc", 0.1)
+
+        def embedding_search(_self: RetrievalService, *, all_documents: list[Document], **kwargs: object) -> None:
+            all_documents.append(low_scored_doc)
+
+        def full_text_search(_self: RetrievalService, **kwargs: object) -> None:
+            pass
+
+        def unexpected_vector_filter(*args: object, **kwargs: object) -> list[Document]:
+            raise AssertionError("The real weighted reranker should be responsible for thresholding")
+
+        monkeypatch.setattr(RetrievalService, "embedding_search", embedding_search)
+        monkeypatch.setattr(RetrievalService, "full_text_index_search", full_text_search)
+        monkeypatch.setattr(RetrievalService, "_filter_documents_by_vector_score_threshold", unexpected_vector_filter)
+
+        all_documents: list[Document] = []
+        RetrievalService()._retrieve(
+            flask_app=Flask(__name__),
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+            dataset=internal_dataset,
+            all_documents=all_documents,
+            exceptions=[],
+            query="retrieval",
+            score_threshold=0.5,
+            reranking_mode=RerankMode.WEIGHTED_SCORE,
+            weights={
+                "vector_setting": {
+                    "vector_weight": 0.0,
+                    "embedding_provider_name": "unused",
+                    "embedding_model_name": "unused",
+                },
+                "keyword_setting": {"keyword_weight": 1.0},
+            },
+        )
+
+        assert all_documents == [low_scored_doc]
+        assert low_scored_doc.metadata["score"] == pytest.approx(1.0)
 
     @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_info_success(self, mock_sign, sqlite_session: Session):
