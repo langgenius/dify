@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -26,8 +27,33 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import RuntimeState, VariablePool
-from graphon.variables import ArrayObjectSegment, StringSegment
+from graphon.variables import ArrayObjectSegment, SecretVariable, StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def test_query_accepts_secret_environment_variable(sqlite_session: Session) -> None:
+    pool = VariablePool()
+    pool.add(["env", "query"], SecretVariable(name="query", value="What is Python?"))
+    node = KnowledgeRetrievalNode(
+        node_id="retrieval",
+        data=KnowledgeRetrievalNodeData(
+            title="Knowledge Retrieval",
+            type="knowledge-retrieval",
+            dataset_ids=[],
+            query_variable_selector=["env", "query"],
+            retrieval_mode="multiple",
+            multiple_retrieval_config=MultipleRetrievalConfig(top_k=5, reranking_enable=False),
+        ),
+        init_params=build_test_graph_init_params(),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=time.perf_counter()),
+        session_maker=sessionmaker(bind=sqlite_session.get_bind()),
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.inputs["query"] == "What is Python?"
+    assert result.outputs["result"] == ArrayObjectSegment(value=[])
 
 
 def _source() -> Source:

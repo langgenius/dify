@@ -28,6 +28,7 @@ from graphon.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from graphon.model_runtime.model_providers.base.large_language_model import LLMResultAccumulator
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -155,7 +156,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}
-            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
+            result = LLMResultAccumulator()
+            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict, result=result)
             scratchpad = AgentScratchpadUnit(
                 agent_response="",
                 thought="",
@@ -248,6 +250,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
                         trace_scope=trace_scope,
+                    )
+                    self._current_thoughts.extend(
+                        (
+                            result.to_result(model=model_instance.model_name, prompt_messages=prompt_messages).message,
+                            UserPromptMessage(content=f"Observation: {tool_invoke_response}\n\ncontinue"),
+                        )
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
@@ -388,6 +396,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         self._query = query
         self._agent_scratchpad = []
+        self._current_thoughts = []
         self._historic_prompt_messages = self._organize_historic_prompt_messages()
 
     @abstractmethod

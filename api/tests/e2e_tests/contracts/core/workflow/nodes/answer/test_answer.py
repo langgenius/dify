@@ -88,7 +88,7 @@ def test_execute_answer_renders_structured_output_object_as_json() -> None:
     assert result.outputs["answer"] == '{\n  "type": "greeting"\n}'
 
 
-def test_execute_answer_falls_back_to_plain_selector_text_when_structured_output_missing() -> None:
+def test_execute_answer_omits_missing_structured_output() -> None:
     node = _build_answer_node(
         answer="{{#1777539038857.structured_output#}}",
         variable_pool=_build_variable_pool(),
@@ -97,4 +97,4 @@ def test_execute_answer_falls_back_to_plain_selector_text_when_structured_output
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs["answer"] == "1777539038857.structured_output"
+    assert result.outputs["answer"] == ""

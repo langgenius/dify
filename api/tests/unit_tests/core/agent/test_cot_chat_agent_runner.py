@@ -52,6 +52,7 @@ class DummyRunner(CotChatAgentRunner):
         self._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
         self._query = "user query"
         self._agent_scratchpad = []
+        self._current_thoughts = []
         self.files = []
         self.application_generate_entity = DummyGenerateEntity()
         self._organize_historic_prompt_messages = MagicMock(return_value=["historic"])

@@ -1459,7 +1459,7 @@ dependencies = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.55.1,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.8.0" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.9.0" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
@@ -1852,7 +1852,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.201.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=2.7.0,<3.0.0" },
-    { name = "graphon", git = "https://github.com/langgenius/graphon?rev=4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" },
+    { name = "graphon", specifier = "==0.9.0" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -2726,11 +2726,11 @@ flask = [
 
 [[package]]
 name = "filelock"
-version = "3.20.3"
+version = "4.3.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1d/65/ce7f1b70157833bf3cb851b556a37d4547ceafc158aa9b34b36782f23696/filelock-3.20.3.tar.gz", hash = "sha256:18c57ee915c7ec61cff0ecf7f0f869936c7c30191bb0cf406f1341778d0834e1", size = 19485, upload-time = "2026-01-09T17:55:05.421Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/86/a5b9ec254b90efb180e390e31a4fa50a93b714d6e4174fa9a4ee25607159/filelock-4.3.1.tar.gz", hash = "sha256:4c5ee627c401f1863ac6a0de9a14a28d3bb5f8c730b45e2fd6e5dbc79cf34b9e", size = 742330, upload-time = "2026-11-23T18:01:13.656Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/36/7fb70f04bf00bc646cd5bb45aa9eddb15e19437a28b8fb2b4a5249fac770/filelock-3.20.3-py3-none-any.whl", hash = "sha256:4b0dda527ee31078689fc205ec4f1c1bf7d56cf88b6dc9426c4f230e46c2dce1", size = 16701, upload-time = "2026-01-09T17:55:04.334Z" },
+    { url = "https://files.pythonhosted.org/packages/53/7b/678c8fbd372ff96375ac0bbdd20b78f20ef8ba6ca5966c49548fa5886557/filelock-4.3.1-py3-none-any.whl", hash = "sha256:79e43df8e9fe509cd83a3899a7c186c8077cbbe4d200a1ed3705c2f3bb6bc487", size = 244559, upload-time = "2026-11-23T18:01:12.261Z" },
 ]
 
 [[package]]
@@ -3258,8 +3258,8 @@ grpc = [
 
 [[package]]
 name = "graphon"
-version = "0.8.0"
-source = { git = "https://github.com/langgenius/graphon?rev=4fa22141774dff80e90e4dfa98ea3e6fbf0421bb#4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" }
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },
@@ -3280,6 +3280,10 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unstructured", extra = ["docx", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/0f/b542dd6dc62e32e8eebe56e29414faf261beb644318fc04f9a436e88c701/graphon-0.9.0.tar.gz", hash = "sha256:992920b0ba2ea4bdd864ae0d295ce4c2000fe2c33956bf092bffcb74e8ae1dc5", size = 312644, upload-time = "2026-11-26T05:46:06.332Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/f3/53c51235aef5b2e298ba5dc095326fb5bafd3f6e89a8388f3159129a7bd1/graphon-0.9.0-py3-none-any.whl", hash = "sha256:065b2a28ea512b9e8b29d786fdb0db164b8d6c68be90026492ceab2fa86428a8", size = 419106, upload-time = "2026-11-26T05:46:04.976Z" },
 ]
 
 [[package]]
@@ -7855,10 +7859,11 @@ wheels = [
 
 [[package]]
 name = "unstructured"
-version = "0.27.5"
+version = "0.27.38"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
+    { name = "certifi" },
     { name = "charset-normalizer" },
     { name = "emoji" },
     { name = "filelock" },
@@ -7883,9 +7888,9 @@ dependencies = [
     { name = "unstructured-client" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/89/40ba552526ae54b80bc8daeea048b8cd7e409fec5795f6e70ce3207eb430/unstructured-0.27.5.tar.gz", hash = "sha256:68c72b9ea17fb34e0037126d3eca23f76290b9e5171b221d6d078dcff2ffd77d", size = 1560203, upload-time = "2026-08-28T21:18:29.131Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/3e/2d18613c884e7597f121e7dfd96f8dde9b46b38353f19c79d587654581f8/unstructured-0.27.38.tar.gz", hash = "sha256:63a24d1963e63b0ff3ba61f5ff4b0d812d4eb320e9507388a586f55ab6474030", size = 1628291, upload-time = "2026-11-24T21:10:45.357Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/56/3eb070e467178d763a27587f40a3a8fa8277ef7b087d13b286a5ec25d711/unstructured-0.27.5-py3-none-any.whl", hash = "sha256:4624145cb102296425ed0c4917711f8068746680f73718ac819b54568a5d293e", size = 1620083, upload-time = "2026-08-28T21:18:26.983Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/05/9feccc1826dd8b7525e9ba6c754fe67629a33cfd8e55a79d8ce252044ce6/unstructured-0.27.38-py3-none-any.whl", hash = "sha256:bd2627293bbf31628f2f4ee622f025d02178171cc2c95827e5f8eb6d820411ff", size = 1689804, upload-time = "2026-11-24T21:10:43.154Z" },
 ]
 
 [package.optional-dependencies]

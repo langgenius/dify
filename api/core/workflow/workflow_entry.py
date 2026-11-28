@@ -84,6 +84,8 @@ def iter_dify_graph_engine_events(
     Graphon emits raw variable stream chunks and requires callers to opt
     into the legacy response-ordered stream behavior that Dify exposes to its
     workflow runners and tests.
+    Engine frame observations must remain enabled for the filter to resolve
+    answer variables; full variable observations are consumed before yielding host events.
 
     ``response_stream_filter``, when supplied, must be the same instance a
     caller intends to persist on pause (see ``WorkflowRunAgg``) so

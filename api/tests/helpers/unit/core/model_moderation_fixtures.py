@@ -40,14 +40,14 @@ class RecordingLLM(LargeLanguageModel):
         self.invocations = 0
         self.credential_calls: list[dict[str, Any]] = []
         self.stream_closed = False
-        self.last_prompt_messages: list[PromptMessage] | None = None
+        self.last_prompt_messages: Sequence[PromptMessage] | None = None
 
     @override
     def invoke(
         self,
         model: str,
         credentials: dict[str, Any],
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict[str, Any] | None = None,
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,

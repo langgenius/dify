@@ -10,9 +10,6 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
-[manifest]
-overrides = [{ name = "filelock", specifier = "==4.2.1" }]
-
 [[package]]
 name = "aiofiles"
 version = "25.1.0"
@@ -588,7 +585,7 @@ docs = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.55.1,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.8.0" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.9.0" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
@@ -844,7 +841,7 @@ wheels = [
 
 [[package]]
 name = "graphon"
-version = "0.8.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -867,9 +864,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/82/a2ded2b6a7879e7ee855936db7410014cd41c1c709155a1ccfe07e208633/graphon-0.8.0.tar.gz", hash = "sha256:654ad8f5cb7ff1711cf6b09e68a6afc7fe1e552b2f8306babdb848142d0a6bf7", size = 281821, upload-time = "2026-09-09T20:03:19.606Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/0f/b542dd6dc62e32e8eebe56e29414faf261beb644318fc04f9a436e88c701/graphon-0.9.0.tar.gz", hash = "sha256:992920b0ba2ea4bdd864ae0d295ce4c2000fe2c33956bf092bffcb74e8ae1dc5", size = 312644, upload-time = "2026-11-26T05:46:06.332Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/8d/64552a2dc8ef4d1b0c43d927301000533be75d6c51664d5a33fb1ead00ff/graphon-0.8.0-py3-none-any.whl", hash = "sha256:183b668cdd2b1b6c39e75e68778994855400c9a8e314e0bda3b59a2b0fe7e8a0", size = 400203, upload-time = "2026-09-09T20:03:18.198Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/f3/53c51235aef5b2e298ba5dc095326fb5bafd3f6e89a8388f3159129a7bd1/graphon-0.9.0-py3-none-any.whl", hash = "sha256:065b2a28ea512b9e8b29d786fdb0db164b8d6c68be90026492ceab2fa86428a8", size = 419106, upload-time = "2026-11-26T05:46:04.976Z" },
 ]
 
 [[package]]
@@ -3675,10 +3672,11 @@ wheels = [
 
 [[package]]
 name = "unstructured"
-version = "0.24.1"
+version = "0.27.38"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
+    { name = "certifi" },
     { name = "charset-normalizer" },
     { name = "emoji" },
     { name = "filelock" },
@@ -3703,9 +3701,9 @@ dependencies = [
     { name = "unstructured-client" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/bf/b912a60c8523980e10639c36af3fc3053949df090e7f35924864659949c0/unstructured-0.24.1.tar.gz", hash = "sha256:e895794f2adea4bc7bb1fb394c575cecea3a5441ed39b4777eb7fb12c0720745", size = 1542546, upload-time = "2026-07-11T23:53:35.604Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/3e/2d18613c884e7597f121e7dfd96f8dde9b46b38353f19c79d587654581f8/unstructured-0.27.38.tar.gz", hash = "sha256:63a24d1963e63b0ff3ba61f5ff4b0d812d4eb320e9507388a586f55ab6474030", size = 1628291, upload-time = "2026-11-24T21:10:45.357Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/5b/891e3dd018dd9d1032707d3bcc406bdbfaad7ef153f8055d988279c3a390/unstructured-0.24.1-py3-none-any.whl", hash = "sha256:1744bf99dec2e07df80f9ba1fa5160be41778c76b021174be44a0235e7284adf", size = 1601417, upload-time = "2026-07-11T23:53:33.634Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/05/9feccc1826dd8b7525e9ba6c754fe67629a33cfd8e55a79d8ce252044ce6/unstructured-0.27.38-py3-none-any.whl", hash = "sha256:bd2627293bbf31628f2f4ee622f025d02178171cc2c95827e5f8eb6d820411ff", size = 1689804, upload-time = "2026-11-24T21:10:43.154Z" },
 ]
 
 [package.optional-dependencies]

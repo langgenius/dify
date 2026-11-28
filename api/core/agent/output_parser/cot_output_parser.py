@@ -5,6 +5,7 @@ from typing import Any
 
 from core.agent.entities import AgentScratchpadUnit
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
+from graphon.model_runtime.model_providers.base.large_language_model import LLMResultAccumulator
 
 # Keys that name the action even when the model adds other fields to the JSON blob,
 # highest priority first, so the selected tool does not depend on JSON key order.
@@ -14,7 +15,11 @@ _ACTION_NAME_KEYS = ("action", "action_name", "tool", "tool_name", "name")
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk], usage_dict: dict[str, Any]
+        cls,
+        llm_response: Generator[LLMResultChunk],
+        usage_dict: dict[str, Any],
+        *,
+        result: LLMResultAccumulator | None = None,
     ) -> Generator[str | AgentScratchpadUnit.Action]:
         def parse_action(action) -> str | AgentScratchpadUnit.Action:
             """Convert model-generated JSON into an action, or fall back to text.
@@ -97,11 +102,11 @@ class CotAgentOutputParser:
         last_character = ""
 
         for response in llm_response:
+            if result is not None:
+                result.consume(response)
             if response.delta.usage:
                 usage_dict["usage"] = response.delta.usage
-            response_content = response.delta.message.content
-            if not isinstance(response_content, str):
-                continue
+            response_content = response.delta.message.get_text_content()
 
             # stream
             index = 0

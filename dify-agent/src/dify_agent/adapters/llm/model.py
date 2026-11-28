@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from datetime import datetime, timezone
 from typing import cast
+from uuid import uuid4
 
 from opentelemetry.trace import Span, StatusCode, get_current_span
 
@@ -37,6 +38,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
     VideoPromptMessageContent,
 )
+from graphon.model_runtime.model_providers.base.large_language_model import LLMResultAccumulator
 from typing_extensions import assert_never, override
 
 from pydantic_ai._parts_manager import ModelResponsePartsManager
@@ -104,6 +106,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
     model_provider: str
     model_profile: InitVar[ModelProfileSpec | None] = None
     model_settings: InitVar[ModelSettings | None] = None
+    _tool_round_messages: dict[str, AssistantPromptMessage] = field(default_factory=dict, init=False, repr=False)
     _accumulated_usage: LLMUsage | None = field(default=None, init=False, repr=False)
 
     def __post_init__(
@@ -213,7 +216,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             return self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params),
+                prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params, self._tool_round_messages),
                 model_parameters=_map_model_settings_to_parameters(prepared_settings),
                 tools=_map_tool_definitions_to_prompt_tools(prepared_params),
                 stop=_get_stop_sequences(prepared_settings),
@@ -246,6 +249,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
                 chunks=response_chunks,
                 response_model_name=self.model_name,
                 provider_name_value=self.system,
+                tool_round_messages=self._tool_round_messages,
                 _reserved_tool_call_ids=_history_tool_call_ids(messages),
             )
             response._request_started_at = started_at
@@ -418,12 +422,14 @@ class DifyStreamedResponse(StreamedResponse):
     chunks: AsyncIterator[LLMResultChunk]
     response_model_name: str
     provider_name_value: str
+    tool_round_messages: dict[str, AssistantPromptMessage] = field(repr=False)
     _reserved_tool_call_ids: set[str] = field(default_factory=set, repr=False)
     _assigned_tool_call_ids: dict[tuple[str, int], tuple[str, str | None]] = field(
         default_factory=dict,
         init=False,
         repr=False,
     )
+    _latest_tool_call_ids: tuple[str, str | None] | None = field(default=None, init=False, repr=False)
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
     _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
@@ -453,7 +459,10 @@ class DifyStreamedResponse(StreamedResponse):
 
     async def _iterate_gateway_events(self) -> AsyncIterator[ModelResponseStreamEvent]:
         chunk_sequence = 0
+        result = LLMResultAccumulator()
         async for chunk in self.chunks:
+            # Graphon may assign a missing tool ID. The gateway ID allocator owns the IDs used by the agent.
+            result.consume(chunk.model_copy(deep=True) if chunk.delta.message.tool_calls else chunk)
             self._observe_trace_usage(chunk)
             if chunk.delta.usage is not None:
                 self._dify_usage = chunk.delta.usage
@@ -477,6 +486,17 @@ class DifyStreamedResponse(StreamedResponse):
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
+
+        parts = self._parts_manager.get_parts()
+        if any(isinstance(part, ToolCallPart) for part in parts) and (
+            result.opaque_body is not None
+            or any(block.opaque_body is not None for block in result.content_list)
+            or any(isinstance(part, ThinkingPart) for part in parts)
+        ):
+            # Only a lookup key enters agent history. The signed payload belongs to this run's adapter.
+            replay_key = uuid4().hex
+            self.tool_round_messages[replay_key] = result.to_result(model=self.model_name, prompt_messages=[]).message
+            self.provider_details = {**(self.provider_details or {}), "dify_tool_round": replay_key}
 
     def _allocate_chunk_tool_call_ids(
         self,
@@ -503,8 +523,9 @@ class DifyStreamedResponse(StreamedResponse):
           argument snapshots rather than deltas. Separate single-item chunks repeating the same
           non-empty plugin id map to ``(provider_id, 1)`` and update that call in place rather than
           guessing parallel boundaries from partial JSON arguments.
-        - Missing, blank, or ``"null"``/``"none"`` plugin ids allocate ``chunk-{chunk_sequence}-tool-{index}``
-          (with ``-<n>`` suffix on collision) and record ``renamed_provider_id=None``.
+        - Named calls with missing, blank, or ``"null"``/``"none"`` plugin ids allocate
+          ``chunk-{chunk_sequence}-tool-{index}`` (with ``-<n>`` suffix on collision).
+          Unnamed fragments without an id reuse the latest created call, including across text chunks.
         """
         if not tool_calls:
             return []
@@ -523,15 +544,19 @@ class DifyStreamedResponse(StreamedResponse):
         allocated: list[tuple[str, str | None]] = []
         for index, provider_id in enumerate(provider_ids):
             if provider_id is None:
-                base = f"chunk-{chunk_sequence}-tool-{index}"
-                tool_call_id = _next_available_id(
-                    base,
-                    self._reserved_tool_call_ids,
-                    start_suffix=2,
-                    keep_base=True,
-                )
-                self._reserved_tool_call_ids.add(tool_call_id)
-                allocated.append((tool_call_id, None))
+                if not tool_calls[index].function.name and self._latest_tool_call_ids is not None:
+                    allocated.append(self._latest_tool_call_ids)
+                else:
+                    base = f"chunk-{chunk_sequence}-tool-{index}"
+                    tool_call_id = _next_available_id(
+                        base,
+                        self._reserved_tool_call_ids,
+                        start_suffix=2,
+                        keep_base=True,
+                    )
+                    self._reserved_tool_call_ids.add(tool_call_id)
+                    self._latest_tool_call_ids = (tool_call_id, None)
+                    allocated.append(self._latest_tool_call_ids)
                 continue
 
             occurrence = occurrences.get(provider_id, 0) + 1
@@ -555,6 +580,7 @@ class DifyStreamedResponse(StreamedResponse):
                 assignment = (tool_call_id, provider_id)
 
             self._assigned_tool_call_ids[slot] = assignment
+            self._latest_tool_call_ids = assignment
             allocated.append(assignment)
 
         return allocated
@@ -662,6 +688,7 @@ def _next_available_id(
 def _map_messages_to_prompt_messages(
     messages: Sequence[ModelMessage],
     model_request_parameters: ModelRequestParameters,
+    tool_round_messages: Mapping[str, AssistantPromptMessage],
 ) -> list[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
     # Internal tool_call_ids are unique across turns, while each ModelResponse carries the
@@ -674,7 +701,9 @@ def _map_messages_to_prompt_messages(
             prompt_messages.extend(_map_model_request_to_prompt_messages(message, provider_tool_call_ids))
         elif isinstance(message, ModelResponse):
             provider_tool_call_ids = _response_provider_tool_call_ids(message)
-            assistant_message = _map_model_response_to_prompt_message(message)
+            replay_key = (message.provider_details or {}).get("dify_tool_round")
+            original = tool_round_messages.get(replay_key) if isinstance(replay_key, str) else None
+            assistant_message = _map_model_response_to_prompt_message(message, original)
             if assistant_message is not None:
                 prompt_messages.append(assistant_message)
         else:
@@ -797,6 +826,7 @@ def _map_tool_return_part_to_prompt_message(part: ToolReturnPart, *, tool_call_i
 
 def _map_model_response_to_prompt_message(
     message: ModelResponse,
+    original: AssistantPromptMessage | None,
 ) -> AssistantPromptMessage | None:
     """Map prior assistant output into daemon prompt history.
 
@@ -830,6 +860,9 @@ def _map_model_response_to_prompt_message(
             )
         else:
             raise UnexpectedModelBehavior(f"Unsupported response part for daemon adapter: {type(part).__name__}")
+
+    if original is not None:
+        return original.model_copy(update={"content": original.content or "", "tool_calls": tool_calls})
 
     content = _normalize_prompt_content(content_parts)
     if content is None and not tool_calls:
@@ -1042,6 +1075,11 @@ def _chunk_to_stream_events(
     embedded_thinking_parser: "_EmbeddedThinkingParser",
     tool_call_ids: Sequence[tuple[str, str | None]],
 ) -> list[ModelResponseStreamEvent]:
+    """Convert a gateway chunk using allocated call IDs, preserving snapshot and fragment semantics.
+
+    Named tool calls replace their snapshots; unnamed calls append arguments to their allocated slot.
+    Unsupported content raises before a response is returned.
+    """
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
 
@@ -1056,20 +1094,28 @@ def _chunk_to_stream_events(
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
     for tool_call, (tool_call_id, provider_tool_call_id) in zip(message.tool_calls, tool_call_ids, strict=True):
-        events.append(
-            parts_manager.handle_tool_call_part(
+        provider_details = (
+            {_PROVIDER_TOOL_CALL_ID_DETAIL: provider_tool_call_id} if provider_tool_call_id is not None else None
+        )
+        if tool_call.function.name:
+            event = parts_manager.handle_tool_call_part(
                 vendor_part_id=tool_call_id,
                 tool_name=tool_call.function.name,
                 args=tool_call.function.arguments,
                 tool_call_id=tool_call_id,
                 provider_name=provider_name,
-                provider_details=(
-                    {_PROVIDER_TOOL_CALL_ID_DETAIL: provider_tool_call_id}
-                    if provider_tool_call_id is not None
-                    else None
-                ),
+                provider_details=provider_details,
             )
-        )
+        else:
+            event = parts_manager.handle_tool_call_delta(
+                vendor_part_id=tool_call_id,
+                args=tool_call.function.arguments,
+                tool_call_id=tool_call_id,
+                provider_name=provider_name,
+                provider_details=provider_details,
+            )
+        if event is not None:
+            events.append(event)
 
     return events
 

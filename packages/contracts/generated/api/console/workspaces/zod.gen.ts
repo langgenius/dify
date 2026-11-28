@@ -5132,10 +5132,12 @@ export const zEndpointListResponse = z.object({
  * DefaultValueType
  */
 export const zDefaultValueType = z.enum([
+  'array[boolean]',
   'array[file]',
   'array[number]',
   'array[object]',
   'array[string]',
+  'boolean',
   'number',
   'object',
   'string',

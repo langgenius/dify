@@ -883,37 +883,75 @@ class TestWorkflowAppRunnerCoreCases:
                         event.node_id
                     ]
 
-        def test_handle_nested_answer_success_publishes_text_chunk(self):
-            published: list[object] = []
-
-            class _QueueManager:
-                def publish(self, event, publish_from):
-                    published.append(event)
-
-            runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-            workflow_entry = _workflow_entry(runner)
-
-            runner.handle_event(
-                workflow_entry,
-                NodeRunSucceededEvent(
-                    id="exec",
-                    node_id="answer-in-iteration",
-                    node_type=BuiltinNodeTypes.ANSWER,
-                    start_at=datetime.now(UTC),
-                    finished_at=datetime.now(UTC),
-                    node_run_result=NodeRunResult(
-                        outputs={"answer": "inside iteration"}, metadata={"iteration_id": "iteration"}
-                    ),
-                    container_id="iteration",
-                ),
+        @pytest.mark.parametrize("container_type", [BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION])
+        def test_nested_answers_stream_once_per_container_item(self, container_type: str) -> None:
+            """Run a real container and publish each child reply once before the root reply."""
+            queue = WorkflowAppQueueManager(
+                task_id="nested-answer", user_id="account", invoke_from=InvokeFrom.DEBUGGER, app_mode=AppMode.WORKFLOW
             )
+            runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+            pool = VariablePool()
+            pool.add(("start", "items"), ["one", "two"])
+            state = RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0.0)
+            container_settings = (
+                {"loop_count": 2, "break_conditions": [], "logical_operator": "and"}
+                if container_type == BuiltinNodeTypes.LOOP
+                else {"iterator_selector": ["start", "items"], "output_selector": ["answer", "answer"]}
+            )
+            config = {
+                "nodes": [
+                    {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                    {
+                        "id": "container",
+                        "data": {
+                            "type": container_type,
+                            "title": "Container",
+                            "start_node_id": "container-start",
+                            **container_settings,
+                        },
+                    },
+                    {
+                        "id": "container-start",
+                        "data": {
+                            "type": f"{container_type}-start",
+                            "title": "Container start",
+                            "container_id": "container",
+                        },
+                    },
+                    {
+                        "id": "answer",
+                        "data": {
+                            "type": "answer",
+                            "title": "Nested Answer",
+                            "answer": "inside|",
+                            "container_id": "container",
+                        },
+                    },
+                    {"id": "after", "data": {"type": "answer", "title": "Root Answer", "answer": "after"}},
+                ],
+                "edges": [
+                    {"source": "start", "target": "container"},
+                    {"source": "container-start", "target": "answer"},
+                    {"source": "container", "target": "after"},
+                ],
+            }
+            graph = runner._init_graph(
+                graph_config=config,
+                graph_runtime_state=state,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
+            )
+            entry = WorkflowEntry(graph_config=graph.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
+            events = list(entry.run())
+            assert isinstance(events[-1], GraphRunSucceededEvent)
+            for event in events:
+                runner.handle_event(entry, event)
+            published = [message.event for message in queue.listen()]
 
-            text_chunk = published[0]
-            assert isinstance(text_chunk, QueueTextChunkEvent)
-            assert text_chunk.text == "inside iteration"
-            assert text_chunk.from_variable_selector == ["answer-in-iteration", "answer"]
-            assert text_chunk.in_iteration_id == "iteration"
-            assert any(isinstance(event, QueueNodeSucceededEvent) for event in published)
+            assert "".join(event.text for event in published if isinstance(event, QueueTextChunkEvent)) == (
+                "inside|inside|after"
+            )
 
         def test_handle_root_answer_success_does_not_publish_extra_text_chunk(self):
             published: list[object] = []

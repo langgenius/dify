@@ -1201,6 +1201,119 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.model_name, "demo-model")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
+    async def test_tool_round_replays_original_signed_message(self) -> None:
+        tool = _tool_call("lookup", "{}", call_id="call-1")
+        block = TextPromptMessageContent(data="", opaque_body={"signature": "test-signature"})
+        reply = AssistantPromptMessage(content=[block], opaque_body=False, tool_calls=[tool])
+        chunks = [
+            *single_text_chunk("before"),
+            LLMResultChunk(model="demo-model", delta=LLMResultChunkDelta(index=1, message=reply)),
+            *single_text_chunk("after"),
+        ]
+        requests = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(json.loads(request.content)["target"]["prompt_messages"])
+            return build_stream_response(*(chunks if len(requests) == 1 else single_text_chunk("done")))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+            messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("look up")])]
+            response = await adapter.request(messages, None, ModelRequestParameters())
+            messages.extend([response, ModelRequest(parts=[ToolReturnPart("lookup", "result", "call-1")])])
+            await adapter.request(messages, None, ModelRequestParameters())
+            fresh_adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+            await fresh_adapter.request(messages, None, ModelRequestParameters())
+
+        replayed = AssistantPromptMessage.model_validate(requests[1][1])
+        self.assertIs(replayed.opaque_body, False)
+        self.assertEqual(
+            replayed.content, [TextPromptMessageContent(data="before"), block, TextPromptMessageContent(data="after")]
+        )
+        self.assertEqual(replayed.tool_calls, [tool])
+        self.assertEqual(requests[1][2]["tool_call_id"], "call-1")
+        self.assertNotIn("test-signature", json.dumps(requests[2]))
+
+    async def test_unsigned_text_blocks_in_a_tool_round_replay_as_plain_text(self) -> None:
+        requests = []
+        reply = AssistantPromptMessage(
+            content=[TextPromptMessageContent(data="checking")], tool_calls=[_tool_call("lookup", "{}")]
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(json.loads(request.content)["target"]["prompt_messages"])
+            return build_stream_response(
+                LLMResultChunk(model="demo-model", delta=LLMResultChunkDelta(index=0, message=reply))
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+            messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("look up")])]
+            async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                async for _ in stream:
+                    pass
+                messages.append(stream.get())
+            messages.append(ModelRequest(parts=[ToolReturnPart("lookup", "result", "lookup")]))
+            await adapter.request(messages, None, ModelRequestParameters())
+        self.assertEqual(requests[1][1]["content"], "checking")
+
+    async def test_agent_runs_fragmented_tool_call_and_replays_signed_content(self) -> None:
+        for fragment_id in ("call-1", ""):
+            with self.subTest(fragment_id=fragment_id):
+                requests = []
+                seen_queries = []
+                block = TextPromptMessageContent(data="<think>checking", opaque_body={"signature": "signed"})
+                messages = [
+                    AssistantPromptMessage(
+                        content=[block],
+                        opaque_body=False,
+                        tool_calls=[_tool_call("lookup", '{"query":', call_id="call-1")],
+                    ),
+                    AssistantPromptMessage(
+                        content=" details</think>",
+                        tool_calls=[_tool_call("", '"first"', call_id=fragment_id)],
+                    ),
+                    AssistantPromptMessage(tool_calls=[_tool_call("", "}", call_id=fragment_id)]),
+                ]
+
+                def handler(request: httpx.Request) -> httpx.Response:
+                    requests.append(json.loads(request.content)["target"]["prompt_messages"])
+                    if len(requests) == 1:
+                        return build_stream_response(
+                            *[
+                                LLMResultChunk(
+                                    model="demo-model", delta=LLMResultChunkDelta(index=index, message=message)
+                                )
+                                for index, message in enumerate(messages)
+                            ]
+                        )
+                    return build_stream_response(*single_text_chunk("done"))
+
+                async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                    adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+                    agent = Agent(adapter)
+
+                    @agent.tool_plain
+                    async def lookup(query: str) -> str:
+                        seen_queries.append(query)
+                        return f"result for {query}"
+
+                    result = await agent.run("look up first")
+
+                self.assertEqual(seen_queries, ["first"])
+                self.assertEqual(result.output, "done")
+                self.assertEqual(len(requests), 2)
+                self.assertEqual(
+                    AssistantPromptMessage.model_validate(requests[1][1]),
+                    AssistantPromptMessage(
+                        content=[block, TextPromptMessageContent(data=" details</think>")],
+                        opaque_body=False,
+                        tool_calls=[_tool_call("lookup", '{"query":"first"}', call_id="call-1")],
+                    ),
+                )
+                self.assertEqual(requests[1][2]["tool_call_id"], "call-1")
+                self.assertEqual(requests[1][2]["content"], "result for first")
+
     async def test_request_maps_tool_call_only_assistant_history_to_empty_string_content(self) -> None:
         messages = [
             ModelRequest(parts=[SystemPromptPart("request system"), UserPromptPart("hello")]),

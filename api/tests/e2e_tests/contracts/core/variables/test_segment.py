@@ -1,9 +1,6 @@
-import dataclasses
-from typing import Annotated
-
 import orjson
 import pytest
-from pydantic import BaseModel, Discriminator, Tag
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from core.helper import encrypter
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
@@ -24,12 +21,11 @@ from graphon.variables.segments import (
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
-    Segment,
+    SecretSegment,
+    SerializableSegment,
     StringSegment,
-    get_segment_discriminator,
 )
 from graphon.variables.template_resolution import convert_template
-from graphon.variables.types import SegmentType
 from graphon.variables.utils import (
     dumps_with_segments,
     segment_orjson_default,
@@ -37,10 +33,12 @@ from graphon.variables.utils import (
 )
 from graphon.variables.variables import (
     ArrayAnyVariable,
+    ArrayBooleanVariable,
     ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
+    BooleanVariable,
     FileVariable,
     FloatVariable,
     IntegerVariable,
@@ -51,25 +49,6 @@ from graphon.variables.variables import (
     Variable,
 )
 from models.utils.file_input_compat import rebuild_serialized_graph_files_without_lookup
-
-type SegmentUnion = Annotated[
-    (
-        Annotated[NoneSegment, Tag(SegmentType.NONE)]
-        | Annotated[StringSegment, Tag(SegmentType.STRING)]
-        | Annotated[FloatSegment, Tag(SegmentType.FLOAT)]
-        | Annotated[IntegerSegment, Tag(SegmentType.INTEGER)]
-        | Annotated[ObjectSegment, Tag(SegmentType.OBJECT)]
-        | Annotated[FileSegment, Tag(SegmentType.FILE)]
-        | Annotated[BooleanSegment, Tag(SegmentType.BOOLEAN)]
-        | Annotated[ArrayAnySegment, Tag(SegmentType.ARRAY_ANY)]
-        | Annotated[ArrayStringSegment, Tag(SegmentType.ARRAY_STRING)]
-        | Annotated[ArrayNumberSegment, Tag(SegmentType.ARRAY_NUMBER)]
-        | Annotated[ArrayObjectSegment, Tag(SegmentType.ARRAY_OBJECT)]
-        | Annotated[ArrayFileSegment, Tag(SegmentType.ARRAY_FILE)]
-        | Annotated[ArrayBooleanSegment, Tag(SegmentType.ARRAY_BOOLEAN)]
-    ),
-    Discriminator(get_segment_discriminator),
-]
 
 
 def _build_variable_pool(
@@ -129,7 +108,7 @@ def test_convert_variable_to_segment_group() -> None:
 
 
 class _Segments(BaseModel):
-    segments: list[SegmentUnion]
+    segments: list[SerializableSegment]
 
 
 class _Variables(BaseModel):
@@ -187,9 +166,12 @@ class TestSegmentDumpAndLoad:
         # Create one instance of each segment type
         test_file = create_test_file()
 
-        all_segments: list[SegmentUnion] = [
+        all_segments: list[SerializableSegment] = [
             NoneSegment(),
             StringSegment(value="test string"),
+            SecretSegment(value="secret value"),
+            BooleanSegment(value=True),
+            ArrayBooleanSegment(value=[True, False]),
             IntegerSegment(value=42),
             FloatSegment(value=float("3.14")),
             ObjectSegment(value={"key": "value", "number": 123}),
@@ -232,6 +214,9 @@ class TestSegmentDumpAndLoad:
         all_variables: list[Variable] = [
             NoneVariable(name="none_var"),
             StringVariable(value="test string", name="string_var"),
+            SecretVariable(value="secret value", name="secret_var"),
+            BooleanVariable(value=True, name="boolean_var"),
+            ArrayBooleanVariable(value=[True, False], name="array_boolean_var"),
             IntegerVariable(value=42, name="int_var"),
             FloatVariable(value=float("3.14"), name="float_var"),
             ObjectVariable(value={"key": "value", "number": 123}, name="object_var"),
@@ -267,153 +252,10 @@ class TestSegmentDumpAndLoad:
             else:
                 assert loaded_variable.value == original.value
 
-    def test_segment_discriminator_function_for_segment_types(self) -> None:
-        """Test the segment discriminator function"""
-
-        @dataclasses.dataclass
-        class TestCase:
-            segment: Segment
-            expected_segment_type: SegmentType
-
-        file1 = create_test_file()
-        file2 = create_test_file(filename="test2.txt")
-
-        cases = [
-            TestCase(
-                NoneSegment(),
-                SegmentType.NONE,
-            ),
-            TestCase(
-                StringSegment(value=""),
-                SegmentType.STRING,
-            ),
-            TestCase(
-                FloatSegment(value=0.0),
-                SegmentType.FLOAT,
-            ),
-            TestCase(
-                IntegerSegment(value=0),
-                SegmentType.INTEGER,
-            ),
-            TestCase(
-                ObjectSegment(value={}),
-                SegmentType.OBJECT,
-            ),
-            TestCase(
-                FileSegment(value=file1),
-                SegmentType.FILE,
-            ),
-            TestCase(
-                ArrayAnySegment(value=[0, 0.0, ""]),
-                SegmentType.ARRAY_ANY,
-            ),
-            TestCase(
-                ArrayStringSegment(value=[""]),
-                SegmentType.ARRAY_STRING,
-            ),
-            TestCase(
-                ArrayNumberSegment(value=[0, 0.0]),
-                SegmentType.ARRAY_NUMBER,
-            ),
-            TestCase(
-                ArrayObjectSegment(value=[{}]),
-                SegmentType.ARRAY_OBJECT,
-            ),
-            TestCase(
-                ArrayFileSegment(value=[file1, file2]),
-                SegmentType.ARRAY_FILE,
-            ),
-        ]
-
-        for test_case in cases:
-            segment = test_case.segment
-            assert get_segment_discriminator(segment) == test_case.expected_segment_type, (
-                f"get_segment_discriminator failed for type {type(segment)}"
-            )
-            model_dict = segment.model_dump(mode="json")
-            assert get_segment_discriminator(model_dict) == test_case.expected_segment_type, (
-                f"get_segment_discriminator failed for serialized form of type {type(segment)}"
-            )
-
-    def test_variable_discriminator_function_for_variable_types(self) -> None:
-        """Test the variable discriminator function"""
-
-        @dataclasses.dataclass
-        class TestCase:
-            variable: Variable
-            expected_segment_type: SegmentType
-
-        file1 = create_test_file()
-        file2 = create_test_file(filename="test2.txt")
-
-        cases = [
-            TestCase(
-                NoneVariable(name="none_var"),
-                SegmentType.NONE,
-            ),
-            TestCase(
-                StringVariable(value="test", name="string_var"),
-                SegmentType.STRING,
-            ),
-            TestCase(
-                FloatVariable(value=0.0, name="float_var"),
-                SegmentType.FLOAT,
-            ),
-            TestCase(
-                IntegerVariable(value=0, name="int_var"),
-                SegmentType.INTEGER,
-            ),
-            TestCase(
-                ObjectVariable(value={}, name="object_var"),
-                SegmentType.OBJECT,
-            ),
-            TestCase(
-                FileVariable(value=file1, name="file_var"),
-                SegmentType.FILE,
-            ),
-            TestCase(
-                SecretVariable(value="secret", name="secret_var"),
-                SegmentType.SECRET,
-            ),
-            TestCase(
-                ArrayAnyVariable(value=[0, 0.0, ""], name="array_any_var"),
-                SegmentType.ARRAY_ANY,
-            ),
-            TestCase(
-                ArrayStringVariable(value=[""], name="array_string_var"),
-                SegmentType.ARRAY_STRING,
-            ),
-            TestCase(
-                ArrayNumberVariable(value=[0, 0.0], name="array_number_var"),
-                SegmentType.ARRAY_NUMBER,
-            ),
-            TestCase(
-                ArrayObjectVariable(value=[{}], name="array_object_var"),
-                SegmentType.ARRAY_OBJECT,
-            ),
-            TestCase(
-                ArrayFileVariable(value=[file1, file2], name="array_file_var"),
-                SegmentType.ARRAY_FILE,
-            ),
-        ]
-
-        for test_case in cases:
-            variable = test_case.variable
-            assert get_segment_discriminator(variable) == test_case.expected_segment_type, (
-                f"get_segment_discriminator failed for type {type(variable)}"
-            )
-            model_dict = variable.model_dump(mode="json")
-            assert get_segment_discriminator(model_dict) == test_case.expected_segment_type, (
-                f"get_segment_discriminator failed for serialized form of type {type(variable)}"
-            )
-
-    def test_invalid_value_for_discriminator(self) -> None:
-        # Test invalid cases
-        assert get_segment_discriminator({"value_type": "invalid"}) is None
-        assert get_segment_discriminator({}) is None
-        assert get_segment_discriminator("not_a_dict") is None
-        assert get_segment_discriminator(42) is None
-        assert get_segment_discriminator(object) is None
+    @pytest.mark.parametrize("value", [{"value_type": "invalid"}, {}, "not_a_dict", 42, object])
+    def test_invalid_serialized_segment(self, value: object) -> None:
+        with pytest.raises(ValidationError):
+            TypeAdapter(SerializableSegment).validate_python(value)
 
 
 class TestSegmentAdditionalProperties:

@@ -373,7 +373,7 @@ class TestRun:
             ],
         )
 
-        def _handle_side_effect(chunks, usage_dict):
+        def _handle_side_effect(chunks, usage_dict, *, result):
             call_index = handle_output.call_count
             usage_dict["usage"] = usage_1 if call_index == 1 else usage_2
             return [action] if call_index == 1 else []
@@ -424,7 +424,7 @@ class TestRun:
         runner.model_instance.invoke_llm.return_value = provider_chunks()
         mocker.patch(
             "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
-            side_effect=lambda chunks, _usage: list(chunks),
+            side_effect=lambda chunks, _usage, **_kwargs: list(chunks),
         )
 
         results = list(runner.run(session, message, "query", {}))
