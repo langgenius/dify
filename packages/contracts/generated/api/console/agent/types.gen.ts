@@ -1321,6 +1321,7 @@ export type AgentLogIdentityOptionResponse = {
 }
 
 export type AgentLogMessageItemResponse = {
+  agent_thoughts?: Array<AgentThought>
   answer: string
   answer_tokens: number
   conversation_id: string
@@ -1353,6 +1354,7 @@ export type AgentThought = {
   position: number
   thought?: string | null
   tool?: string | null
+  tool_activity?: AgentToolActivity | null
   tool_input?: string | null
   tool_labels: AnyJsonValue
 }
@@ -1956,6 +1958,16 @@ export type AgentLogFeedbackResponse = {
   rating: 'dislike' | 'like'
 }
 
+export type AgentToolActivity = {
+  call_limit?: ToolCallLimitMetadata | null
+  error?: string | null
+  id: string
+  run_id: string
+  status: 'cancelled' | 'failed' | 'not_executed' | 'running' | 'started' | 'succeeded'
+  tool_call_id: string
+  tool_name: string
+}
+
 export type SimpleAccount = {
   email: string
   id: string
@@ -2331,6 +2343,8 @@ export type AgentSoulDifyToolConfig = {
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
   description?: string | null
   enabled?: boolean
+  last_max_calls_per_run?: number | null
+  max_calls_per_run?: number | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null
@@ -2448,6 +2462,14 @@ export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
   [key: string]: unknown
+}
+
+export type ToolCallLimitMetadata = {
+  execution_status: 'executed' | 'not_executed' | 'unconfirmed'
+  limit: number
+  reason?: 'call_limit_reached' | 'duplicate_tool_call' | null
+  tool_identity: string
+  used: number
 }
 
 export type UserActionConfig = {

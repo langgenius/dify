@@ -1,8 +1,15 @@
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from celery.app.task import Context
+from celery.exceptions import Reject
+from kombu.exceptions import OperationalError
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,7 +32,14 @@ from models import (
     PinnedConversation,
     SavedMessage,
 )
-from models.agent import AgentConfigDraftType
+from models.agent import (
+    AgentConfigDraftType,
+    AgentConfigVersionKind,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.enums import (
     ConversationFromSource,
     ConversationStatus,
@@ -37,7 +51,13 @@ from models.enums import (
 )
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType
 from models.tools import ToolConversationVariables, ToolFile
-from tasks.delete_conversation_task import _cleanup_conversation_related_data, sweep_deleted_conversations
+from services.agent.workspace_service import AgentWorkspaceService
+from tasks.collect_agent_resources_task import collect_agent_resources
+from tasks.delete_conversation_task import (
+    _cleanup_conversation_related_data,
+    delete_conversation_related_data,
+    sweep_deleted_conversations,
+)
 from tests.helpers.unit.model_factories import make_conversation, make_message
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -256,6 +276,107 @@ def test_cleanup_storage_failure_retains_marker_and_file_key(sqlite_session: Ses
     assert sqlite_session.get(ToolFile, tool_file.id) is not None
 
 
+def test_sweeper_recovers_retired_workspace_after_broker_outage(sqlite_session: Session) -> None:
+    workspace = AgentWorkspace(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+        owner_id=CONVERSATION_ID,
+        owner_scope_key="agent",
+        backend_workspace_ref="sbx-0123456789abcdef",
+        status=AgentWorkingResourceStatus.RETIRED,
+        active_guard=None,
+    )
+    sqlite_session.add_all([_conversation(CONVERSATION_ID, deleted=True), workspace])
+    sqlite_session.flush()
+    binding = AgentWorkspaceBinding(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        workspace_id=workspace.id,
+        agent_id=AGENT_ID,
+        agent_config_version_id=AGENT_ID,
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref=workspace.backend_workspace_ref,
+        status=AgentWorkingResourceStatus.RETIRED,
+    )
+    sqlite_session.add(binding)
+    sqlite_session.commit()
+    workspace_id, binding_id = workspace.id, binding.id
+
+    with patch.object(
+        delete_conversation_related_data.app, "send_task", side_effect=OperationalError("broker unavailable")
+    ) as send_task:
+        _ = delete_conversation_related_data.request_stack.push(
+            Context(
+                args=(CONVERSATION_ID,), kwargs={}, id="cleanup-task", called_directly=False, is_eager=False, retries=0
+            )
+        )
+        try:
+            with pytest.raises(Reject, match="broker unavailable"):
+                delete_conversation_related_data.run(CONVERSATION_ID)
+        finally:
+            delete_conversation_related_data.pop_request()
+
+    assert [call.args[0] for call in send_task.call_args_list] == [
+        collect_agent_resources.name,
+        delete_conversation_related_data.name,
+    ]
+    sqlite_session.expire_all()
+    assert sqlite_session.get(Conversation, CONVERSATION_ID) is None
+    retained_workspace = sqlite_session.get(AgentWorkspace, workspace_id)
+    assert retained_workspace is not None
+    assert retained_workspace.status == AgentWorkingResourceStatus.RETIRED
+
+    with (
+        patch.object(
+            collect_agent_resources,
+            "apply_async",
+            side_effect=lambda args, kwargs: collect_agent_resources.apply(args=args, kwargs=kwargs, throw=True),
+        ),
+        patch.object(AgentWorkspaceService, "_client") as client_context,
+    ):
+        assert sweep_deleted_conversations.run() == 1
+
+    destroy = client_context.return_value.__enter__.return_value.destroy_execution_binding_sync
+    destroy.assert_called_once()
+    request = destroy.call_args.args[0]
+    assert request.binding_ref == request.workspace_ref == "sbx-0123456789abcdef"
+    assert request.destroy_workspace is True
+    sqlite_session.expire_all()
+    assert sqlite_session.get(AgentWorkspaceBinding, binding_id) is None
+    assert sqlite_session.get(AgentWorkspace, workspace_id) is None
+
+
+@pytest.mark.parametrize("first_import", ["tasks.delete_conversation_task", "tasks.collect_agent_resources_task"])
+def test_cleanup_tasks_import_and_register_in_fresh_process(first_import: str) -> None:
+    script = """
+import os
+import sys
+from importlib import import_module
+
+modules = ["tasks.delete_conversation_task", "tasks.collect_agent_resources_task"]
+os.environ["ENABLE_CONVERSATION_CLEANUP_TASK"] = "true"
+import_module(sys.argv[1])
+from dify_app import DifyApp
+from extensions.ext_celery import init_app
+
+app = init_app(DifyApp("cleanup-import-test"))
+app.loader.import_default_modules()
+assert modules[0] + ".delete_conversation_related_data" in app.tasks
+assert modules[0] + ".sweep_deleted_conversations" in app.tasks
+assert modules[1] + ".collect_agent_resources" in app.tasks
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, first_import],
+        cwd=Path(__file__).resolve().parents[3],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_cleanup_skips_active_conversation(sqlite_session: Session) -> None:
     conversation = _conversation(CONVERSATION_ID, deleted=False)
     tool_file = _tool_file(name="active.txt")
@@ -283,3 +404,52 @@ def test_sweeper_dispatches_only_soft_deleted_conversations(sqlite_session: Sess
         assert sweep_deleted_conversations.run() == 1
 
     delay.assert_called_once_with(CONVERSATION_ID)
+
+
+def test_sweeper_advances_past_failed_retired_workspaces_and_wraps(sqlite_session: Session) -> None:
+    retired_at = datetime(2026, 1, 1)
+    workspace_ids = [f"88888888-8888-8888-8888-{index:012d}" for index in range(3)]
+    for index, workspace_id in enumerate(workspace_ids):
+        sqlite_session.add(
+            AgentWorkspace(
+                id=workspace_id,
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                owner_id=f"99999999-9999-9999-9999-{index:012d}",
+                owner_scope_key="agent",
+                backend_workspace_ref=f"sbx-{index:016x}",
+                status=AgentWorkingResourceStatus.RETIRED,
+                active_guard=None,
+                retired_at=retired_at + timedelta(seconds=index // 2),
+            )
+        )
+    sqlite_session.commit()
+
+    def enqueue(*, tenant_id: str, workspace_ids: list[str]) -> None:
+        assert tenant_id == TENANT_ID
+        if workspace_ids == [oldest]:
+            raise OperationalError("failed to enqueue oldest workspace")
+
+    oldest = workspace_ids[0]
+    cursor: dict[str, str] = {}
+    module = "tasks.delete_conversation_task"
+    with (
+        patch(f"{module}.dify_config.CONVERSATION_CLEANUP_BATCH_SIZE", 1),
+        patch(f"{module}.redis_client.get", side_effect=cursor.get) as read_cursor,
+        patch(f"{module}.redis_client.set", side_effect=cursor.__setitem__) as write_cursor,
+        patch(f"{module}.enqueue_agent_resource_collection", side_effect=enqueue) as dispatch,
+    ):
+        assert [sweep_deleted_conversations.run() for _ in range(4)] == [0, 1, 1, 0]
+        assert [call.kwargs["workspace_ids"] for call in dispatch.call_args_list] == [
+            [workspace_id] for workspace_id in [*workspace_ids, oldest]
+        ]
+
+        read_cursor.side_effect = RedisConnectionError("Redis unavailable")
+        write_cursor.side_effect = RedisConnectionError("Redis unavailable")
+        assert sweep_deleted_conversations.run() == 0
+        dispatch.assert_called_with(tenant_id=TENANT_ID, workspace_ids=[oldest])
+
+    remaining = sqlite_session.get(AgentWorkspace, oldest)
+    assert remaining is not None
+    assert remaining.status == AgentWorkingResourceStatus.RETIRED

@@ -19,6 +19,9 @@ import type {
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createHttpError } from '@/service/http-error'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
@@ -47,6 +50,11 @@ const clientMock = vi.hoisted(() => ({
 }))
 
 const openMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: { ...actual.toast, error: vi.fn() } }
+})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -459,8 +467,15 @@ async function settle(queryClient: QueryClient) {
   await waitFor(() => expect(queryClient.isFetching()).toBe(0))
 }
 
-async function renderSetup(draft: ConnectedDraft = defaultDraft, { settled = true } = {}) {
-  const queryClient = createTestQueryClient()
+async function renderSetup(
+  draft: ConnectedDraft = defaultDraft,
+  { errorToasts = false, settled = true } = {},
+) {
+  // `errorToasts` mirrors the app's cache-level error toasts so a failure's messages can be counted.
+  const queryClient = createTestQueryClient(
+    undefined,
+    errorToasts ? { caches: createErrorToastCaches() } : undefined,
+  )
   const onCompleted = vi.fn()
   const onDraftChange = vi.fn()
   const onExit = vi.fn()
@@ -519,6 +534,7 @@ async function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
 describe('ConnectedSourceWorkflow', () => {
   beforeEach(() => {
     for (const mock of Object.values(clientMock)) mock.mockReset()
+    vi.mocked(toast.error).mockClear()
     openMock.mockReset()
     vi.stubGlobal('open', openMock)
 
@@ -683,6 +699,23 @@ describe('ConnectedSourceWorkflow', () => {
     expect(prompt.closest('[role="status"]')).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
     expect(screen.queryByText('knowledgeSources.providerUnavailable')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed provider connection once, with the server reason under its title', async () => {
+    const message = 'The Notion credential has expired'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.createConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message }),
+    )
+    await renderSetup(defaultDraft, { errorToasts: true })
+
+    expect(
+      await screen.findByText('knowledgeSources.connectionFailed:{"provider":"Notion"}'),
+    ).toHaveAttribute('role', 'alert')
+    expect(screen.getByText(message)).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('clears a failed connection attempt when a provider refresh selects another integration', async () => {
@@ -1179,6 +1212,53 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce()
   })
 
+  it('shows a failed import once, with the translated reason next to the submit button', async () => {
+    const user = userEvent.setup()
+    const message = 'Too many pages are selected for this plan'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    clientMock.createWorkflowImport.mockRejectedValue(
+      createHttpError(new Response(null, { status: 422 }), { code: 'limit_exceeded', message }),
+    )
+    // The source is still a preview, so the import did not happen.
+    clientMock.getSource.mockResolvedValue(sourceResponse({ name: 'Team wiki', version: 4 }))
+    const view = await renderSetup(
+      { ...defaultDraft, sourceName: 'Team wiki' },
+      { errorToasts: true },
+    )
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.limit_exceeded')
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(view.onCompleted).not.toHaveBeenCalled()
+  })
+
   it('reconciles an accepted import when the response is lost before navigation', async () => {
     const user = userEvent.setup()
     clientMock.listDatasourceAuth.mockResolvedValue({
@@ -1344,6 +1424,33 @@ describe('ConnectedSourceWorkflow', () => {
       ),
     )
     expect(clientMock.refreshConnection).not.toHaveBeenCalled()
+  })
+
+  it('shows a failed retry of an errored connection in its panel, without a toast', async () => {
+    const user = userEvent.setup()
+    const message = 'The Notion credential has expired'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse({ error_code: 'PROVIDER_AUTH_FAILED', status: 'error' })],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message }),
+    )
+
+    await renderSetup(defaultDraft, { errorToasts: true })
+    expect(
+      await screen.findByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryProviderLoad' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(
+      screen.getByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('uses the Google Drive datasource as the Google Docs transport and imports a selected doc', async () => {

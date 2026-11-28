@@ -3,7 +3,7 @@ import logging
 from dataclasses import asdict
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -30,8 +30,8 @@ from models.agent_config_entities import (
 )
 from models.agent_soul_state import agent_soul_has_model, backfill_cli_tool_ids
 from models.workflow import Workflow
-from repositories.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
-from repositories.agent_drafts import (
+from repositories.agent.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
+from repositories.agent.agent_drafts import (
     agent_soul_matches_active_config,
     create_composer_snapshot,
     get_or_create_agent_draft,
@@ -40,11 +40,11 @@ from repositories.agent_drafts import (
     rebase_workflow_only_normal_draft,
     save_agent_draft,
 )
-from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from repositories.agent.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent.app_composer import composer_validation_findings
 from services.agent.app_composer_store import AgentComposerSnapshotMissingError
 from services.agent.build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
-from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
@@ -447,46 +447,6 @@ class AgentComposerService:
         return state
 
     @classmethod
-    def prepare_agent_composer_draft(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
-    ) -> AgentConfigDraft:
-        """Prepare a persisted normal draft for an explicit configuration write."""
-        with session.no_autoflush:
-            agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-            return cls.get_or_create_normal_agent_draft(
-                session=session, tenant_id=tenant_id, agent=agent, created_by=account_id
-            )
-
-    @classmethod
-    def load_agent_soul_for_debug(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        draft_type: AgentConfigDraftType,
-    ) -> AgentSoulConfig:
-        """Load the same normal or account-owned build draft used by Agent debug chat."""
-        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            draft = find_agent_draft(
-                session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                draft_type=draft_type,
-                account_id=account_id,
-            )
-            if draft is None:
-                raise AgentVersionNotFoundError()
-            return AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        state = cls.load_agent_composer(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            session=session,
-        )
-        return AgentSoulConfig.model_validate(state["agent_soul"])
-
-    @classmethod
     def _load_agent_composer_for_agent(
         cls, *, session: Session, agent: Agent, published_only: bool = False
     ) -> dict[str, Any]:
@@ -624,22 +584,6 @@ class AgentComposerService:
         return state
 
     @classmethod
-    def load_agent_app_build_draft(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
-    ) -> dict[str, Any]:
-        """Load an existing account draft in the legacy Config Inspector transaction."""
-        build_draft = find_agent_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            account_id=account_id,
-        )
-        if build_draft is None:
-            raise AgentVersionNotFoundError()
-        return cls._serialize_build_draft_state(build_draft)
-
-    @classmethod
     def collect_validation_findings(
         cls,
         *,
@@ -671,24 +615,10 @@ class AgentComposerService:
             )
 
     @classmethod
-    def resolve_workflow_node_agent_id(
-        cls, *, session: Session, tenant_id: str, app_id: str, node_id: str
-    ) -> str | None:
-        """The draft workflow node binding's agent id, if any (validate-endpoint context)."""
-        try:
-            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
-        except ValueError:
-            return None
-        binding = cls._get_workflow_binding(
-            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
-        )
-        return binding.agent_id if binding else None
-
-    @classmethod
-    def get_workflow_candidates(
+    def prepare_workflow_candidates(
         cls, *, session: Session, tenant_id: str, app_id: str, node_id: str, user_id: str
-    ) -> dict[str, Any]:
-        """Slash-menu data source for the workflow Agent node composer (ENG-615)."""
+    ) -> ComposerCandidatesResponse:
+        """Prepare all SQL-backed slash-menu candidates before workspace tool discovery."""
         from services.agent.composer_candidates import previous_node_output_candidates, soul_candidates
 
         try:
@@ -729,11 +659,11 @@ class AgentComposerService:
             dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(
                 session=session, tenant_id=tenant_id, dataset_ids=ids
             ),
-            workspace_tools_loader=lambda: cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id),
+            workspace_tools_loader=list,
         )
         truncated = truncated or soul_truncated
 
-        response = ComposerCandidatesResponse(
+        return ComposerCandidatesResponse(
             variant=ComposerVariant.WORKFLOW,
             allowed_node_job_candidates={
                 "previous_node_outputs": previous_outputs,
@@ -745,7 +675,17 @@ class AgentComposerService:
             allowed_soul_candidates=soul_lists,
             truncated=truncated,
         )
-        return response.model_dump(mode="json")
+
+    @staticmethod
+    def attach_workflow_candidate_tools(
+        response: ComposerCandidatesResponse, tools: list[dict[str, object]]
+    ) -> ComposerCandidatesResponse:
+        """Append the provider candidates after applying the shared per-list cap."""
+        from services.agent.composer_candidates import MAX_CANDIDATES_PER_LIST
+
+        response.allowed_soul_candidates["dify_tools"] = tools[:MAX_CANDIDATES_PER_LIST]
+        response.truncated = response.truncated or len(tools) > MAX_CANDIDATES_PER_LIST
+        return response
 
     # ── candidates IO helpers (ENG-615) ──────────────────────────────────────
 
@@ -807,46 +747,6 @@ class AgentComposerService:
 
         variables = WorkflowDraftVariableService(session=session).list_system_variables(app_id, user_id)
         return [(variable.name, variable.value_type.value) for variable in variables.variables]
-
-    _workspace_dify_tools = staticmethod(list_workspace_dify_tools)
-
-    @classmethod
-    def calculate_impact(cls, *, session: Session, tenant_id: str, current_snapshot_id: str) -> dict[str, Any]:
-        snapshot = session.scalar(
-            select(AgentConfigSnapshot)
-            .where(
-                AgentConfigSnapshot.tenant_id == tenant_id,
-                AgentConfigSnapshot.id == current_snapshot_id,
-            )
-            .limit(1)
-        )
-        agent_id = snapshot.agent_id if snapshot else None
-        predicates = [WorkflowAgentNodeBinding.current_snapshot_id == current_snapshot_id]
-        if agent_id:
-            predicates.append(
-                (WorkflowAgentNodeBinding.agent_id == agent_id)
-                & (WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT)
-            )
-        bindings = list(
-            session.scalars(
-                select(WorkflowAgentNodeBinding).where(
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    or_(*predicates),
-                )
-            ).all()
-        )
-        return {
-            "current_snapshot_id": current_snapshot_id,
-            "workflow_node_count": len(bindings),
-            "bindings": [
-                {
-                    "app_id": binding.app_id,
-                    "workflow_id": binding.workflow_id,
-                    "node_id": binding.node_id,
-                }
-                for binding in bindings
-            ],
-        }
 
     @classmethod
     def _save_node_job_only(
@@ -1713,8 +1613,8 @@ class AgentComposerService:
                 WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             ),
             "save_options": save_options,
-            "impact_summary": cls.calculate_impact(
-                session=session, tenant_id=binding.tenant_id, current_snapshot_id=version.id
+            "impact_summary": read_workflow_agent_impact(
+                session, tenant_id=binding.tenant_id, current_snapshot_id=version.id
             )
             if version
             else None,

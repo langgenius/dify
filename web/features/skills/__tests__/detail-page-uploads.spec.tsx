@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import {
   confirmUploadReview,
   createDataTransfer,
@@ -133,6 +133,31 @@ describe('SkillDetailPage uploads', () => {
         mocks.saveDraftFileMutationFn.mock.calls.map(([request]) => request.body.path),
       ).toEqual(expect.arrayContaining(['report-2.pdf', 'my-notes.md']))
     })
+  })
+
+  it('shows the check failure when the upload check fails with an unknown code', async () => {
+    mocks.checkDraftFilesMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'unknown_failure',
+        message: 'Server says why',
+      }),
+    )
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('SKILL.md')).toBeInTheDocument()
+    })
+    const upload = new File(['root'], 'root-guide.md', { type: 'text/markdown' })
+    fireEvent.drop(getFileTreeContextRegion(), {
+      dataTransfer: createDataTransfer([upload]).dataTransfer,
+    })
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'skill.skillManagement.detail.uploadCheckFailed',
+      ),
+    )
+    expect(mocks.uploadSkillFile).not.toHaveBeenCalled()
   })
 
   it('uploads externally dragged files to the highlighted folder', async () => {

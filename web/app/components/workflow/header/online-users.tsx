@@ -9,7 +9,7 @@ import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { queryOptions, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
@@ -19,7 +19,10 @@ import { CollaboratorAvatar } from '../collaboration/components/collaborator-ava
 import { CollaboratorPill } from '../collaboration/components/collaborator-pill'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
-import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
+import {
+  collaborationUpgradeDialogAtom,
+  collaborationUpgradeOpenedAtom,
+} from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
@@ -27,6 +30,7 @@ const OnlineUsers = () => {
   const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments', 'workflow'])
   const appId = useAtomValue(editorAppIdAtom)
   const upgradeDialog = useAtomValue(collaborationUpgradeDialogAtom)
+  const upgradeOpened = useSetAtom(collaborationUpgradeOpenedAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
@@ -95,6 +99,7 @@ const OnlineUsers = () => {
           render={
             <DialogTrigger
               handle={upgradeDialog}
+              onClick={() => upgradeOpened('canvas_avatar')}
               aria-label={collaborationLabel}
               className="flex h-8 cursor-pointer items-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg px-1.5 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] hover:bg-state-base-hover"
             >

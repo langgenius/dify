@@ -71,7 +71,7 @@ export function dataSourceAuthPolicies(
             preview: {
               get: {
                 queryOptions: {
-                  context: { silent: true },
+                  meta: { errorToast: false },
                   retry: false,
                   staleTime: 0,
                 },

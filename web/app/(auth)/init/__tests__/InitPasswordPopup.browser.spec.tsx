@@ -2,7 +2,7 @@ import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import InitPasswordPopup from '../InitPasswordPopup'
 
@@ -67,6 +67,22 @@ it('reports an incorrect password on the field until it is edited', async () => 
   expect(navigation.router.replace).not.toHaveBeenCalled()
 })
 
+it('sends an instance that finished setup to sign in', async () => {
+  fake.console.init.post.mockRejectedValue(
+    apiError({
+      status: 403,
+      code: 'already_setup',
+      message: 'Dify has been successfully installed.',
+    }),
+  )
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.poll(() => navigation.router.replace).toHaveBeenCalledWith('/signin')
+})
+
 it('reports other failures inside the form until the password is edited', async () => {
   fake.console.init.post.mockRejectedValue(
     apiError({ status: 500, code: 'internal_error', message: 'Internal error' }),
@@ -83,6 +99,16 @@ it('reports other failures inside the form until the password is edited', async 
   await userEvent.type(password, '!')
 
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
+})
+
+it('falls back to a generic message when the failure carries no server message', async () => {
+  fake.console.init.post.mockRejectedValue(networkError())
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
 })
 
 it('continues to install once after a correct password', async () => {

@@ -53,7 +53,7 @@ export default function ResourceAccessTokenPage() {
     getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })
   const deletion = useMutation(
     deleteToken.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onError: (error) => {
         if (!deleteDialogActionsRef.current) toast.error(deleteErrorMessage(error))
       },

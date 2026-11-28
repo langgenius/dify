@@ -27,9 +27,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const silentRequest = expect.objectContaining({
-  context: expect.objectContaining({ silent: true }),
-})
 vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
@@ -96,7 +93,7 @@ describe('EditWorkspaceContent', () => {
         {
           body: { name: 'Renamed Workspace' },
         },
-        silentRequest,
+        expect.anything(),
       )
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
     })

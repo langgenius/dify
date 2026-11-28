@@ -27,6 +27,7 @@ import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ConnectedSourceEditForm } from './setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from './setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from './setup/datasource-parameter-form'
@@ -193,20 +194,25 @@ function ConnectedSourceEditDialogContent({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
   const {
     data: connectionsData,
+    error: connectionsQueryError,
     fetchNextPage,
     hasNextPage,
     isError: connectionsError,
     isFetchNextPageError,
     isFetchingNextPage,
     isPending: connectionsPending,
+    isRefetching: connectionsRefetching,
+    refetch: refetchConnections,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: Boolean(source.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -325,15 +331,18 @@ function ConnectedSourceEditDialogContent({
           <div className="py-8">
             <p role="alert" className="system-sm-regular text-text-destructive">
               {datasourcePluginsQuery.isError || connectionsError
-                ? t(($) => $.providerLoadFailed)
+                ? describeRequestError(
+                    datasourcePluginsQuery.error ?? connectionsQueryError,
+                    t(($) => $.providerLoadFailed),
+                  )
                 : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
             </p>
-            {isFetchNextPageError && !connection && (
+            {connectionsError && !connection && (
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage}
-                onClick={() => void fetchNextPage()}
+                loading={isFetchingNextPage || connectionsRefetching}
+                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}
@@ -486,6 +495,7 @@ function WebsiteSourceEditDialogContent({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const [initialSource] = useState(source)
   const providerName = sourceProviderDetails(initialSource).name ?? ''
   const providerKey = metadataString(initialSource.metadata, 'providerKey')
@@ -500,13 +510,17 @@ function WebsiteSourceEditDialogContent({
   )
   const {
     data: connectionsData,
+    error: connectionsError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
+    isRefetching: connectionsRefetching,
+    refetch: refetchConnections,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -533,7 +547,7 @@ function WebsiteSourceEditDialogContent({
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [previewing, setPreviewing] = useState(false)
   const [previewRequested, setPreviewRequested] = useState(false)
-  const [previewError, setPreviewError] = useState(false)
+  const [previewError, setPreviewError] = useState<{ error?: unknown } | false>(false)
   const previewAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
   const providerOptions = useMemo(
@@ -676,7 +690,7 @@ function WebsiteSourceEditDialogContent({
       if (previewAttemptRef.current !== attempt) return
       previewJobIdRef.current = undefined
       if (response.status !== 'completed' || !response.result) {
-        setPreviewError(true)
+        setPreviewError({})
         return
       }
       setPreviewPages(
@@ -687,8 +701,8 @@ function WebsiteSourceEditDialogContent({
           title: page.title ?? page.source_url,
         })),
       )
-    } catch {
-      if (previewAttemptRef.current === attempt) setPreviewError(true)
+    } catch (error) {
+      if (previewAttemptRef.current === attempt) setPreviewError({ error })
     } finally {
       if (previewAttemptRef.current === attempt) setPreviewing(false)
     }
@@ -791,16 +805,19 @@ function WebsiteSourceEditDialogContent({
           ) : (
             <div>{sourceNameField}</div>
           )}
-          {initialSource.connectionId && !connection && isFetchNextPageError && (
+          {initialSource.connectionId && !connection && connectionsError && (
             <div className="mt-4">
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(($) => $.providerLoadFailed)}
+                {describeRequestError(
+                  connectionsError,
+                  t(($) => $.providerLoadFailed),
+                )}
               </p>
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage}
-                onClick={() => void fetchNextPage()}
+                loading={isFetchingNextPage || connectionsRefetching}
+                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}
@@ -823,7 +840,10 @@ function WebsiteSourceEditDialogContent({
               )}
               {previewError && (
                 <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-                  {t(($) => $.providerLoadFailed)}
+                  {describeRequestError(
+                    previewError.error,
+                    t(($) => $.providerLoadFailed),
+                  )}
                 </p>
               )}
               {previewPages.length > 0 && (

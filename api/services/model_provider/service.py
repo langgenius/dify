@@ -2,7 +2,6 @@ import logging
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from functools import cache
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, or_, select
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelSetting, ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.entities.provider_configuration import configuration_for_model
 from core.entities.provider_entities import CredentialConfiguration
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -54,7 +54,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.errors.app_model_config import ProviderNotFoundError
-from services.feature_service import FeatureService
+from services.feature_service import ProviderCatalogBilling
 
 logger = logging.getLogger(__name__)
 
@@ -368,7 +368,7 @@ class ModelProviderService:
         """List workspace providers without reading credit balances or decrypting credentials.
 
         A provider is configured if the workspace has custom configuration or is eligible for
-        hosting. Resolve the workspace pool at most once; subscription lookup failures propagate.
+        hosting. If Billing is unavailable, report only workspace-owned configuration.
         """
         # Read bindings first: remote-debug identity changes invalidate provider metadata
         # before the provider cache is consulted.
@@ -388,7 +388,7 @@ class ModelProviderService:
                 binding,
             )
 
-        get_credit_pool_type = cache(FeatureService.get_credit_pool_type)
+        billing = ProviderCatalogBilling(tenant_id)
         provider_summaries: list[ModelProviderSummaryResponse] = []
         emitted_provider_names: set[str] = set()
         for provider_entity in provider_entities:
@@ -420,8 +420,7 @@ class ModelProviderService:
                 and hosting
                 and hosting.enabled
                 and hosting.quotas
-                and hosting.select_quota_type(get_credit_pool_type(tenant_id), has_free_quota=state.has_free_quota)
-                is not None
+                and hosting.select_quota_type(billing.pool_type, has_free_quota=state.has_free_quota) is not None
             )
             preferred_provider_type = self._get_preferred_provider_type(
                 state,
@@ -835,15 +834,16 @@ class ModelProviderService:
 
     def get_model_parameter_rules(self, tenant_id: str, provider: str, model: str) -> list[ParameterRule]:
         """
-        get model parameter rules.
-        Only supports LLM.
+        Get LLM parameter rules using credentials from the same route as inference.
 
         :param tenant_id: workspace id
         :param provider: provider name
         :param model: model name
         :return:
         """
-        provider_configuration = self._get_provider_configuration(tenant_id, provider)
+        provider_configuration = configuration_for_model(
+            self._get_provider_configuration(tenant_id, provider), ModelType.LLM, model
+        )
 
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)

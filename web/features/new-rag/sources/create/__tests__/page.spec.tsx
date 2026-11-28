@@ -6,8 +6,11 @@ import type { SourceConnection, SourceProvider } from '../../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { newKnowledgeSourceDraftStorageKey } from '../../setup/source-draft'
 import { AddSourcePage } from '../page'
@@ -39,6 +42,7 @@ const connectFirecrawlButtonName = 'knowledgeSources.connectProvider:{"provider"
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const toastErrorMock = vi.hoisted(() => vi.fn())
 const providerApiResponse = vi.hoisted(() => (provider: SourceProvider) => ({
   auth_kinds: provider.authKinds,
   available: provider.available,
@@ -72,7 +76,7 @@ const connectionApiResponse = vi.hoisted(() => (connection: SourceConnection) =>
 }))
 
 vi.mock('@/app/notifications', () => ({
-  toast: { info: toastInfoMock },
+  toast: { error: toastErrorMock, info: toastInfoMock },
 }))
 
 type ServerResource<T> = { data: T; error: unknown; pending: boolean }
@@ -520,14 +524,27 @@ const connectionsKey = () =>
 
 let currentQueryClient: ReturnType<typeof renderWithConsoleQuery>['queryClient'] | undefined
 
+// Like the app, refresh a mutation's domain after it succeeds. Mirror the app's cache-level
+// error toasts for specs that count the failure's messages.
+function createPageQueryClient(errorToasts: boolean) {
+  const invalidation = createMutationInvalidation()
+  return createConsoleQueryClient({
+    invalidation,
+    ...(errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
+}
+
 /** Renders inside the space shell's context; by default waits until every settled request lands. */
-async function renderPage(ui: ReactElement, { settle = true } = {}) {
+async function renderPage(ui: ReactElement, { errorToasts = false, settle = true } = {}) {
   const view = renderWithConsoleQuery(
     <KnowledgeSpaceTestProvider
       space={createKnowledgeSpaceFixture({ permission_keys: knowledgeSpacePermissionState.keys })}
     >
       {ui}
     </KnowledgeSpaceTestProvider>,
+    { queryClient: createPageQueryClient(errorToasts) },
   )
   currentQueryClient = view.queryClient
   if (settle) await waitFor(() => expect(view.queryClient.isFetching()).toBe(0))
@@ -546,6 +563,7 @@ describe('AddSourcePage', () => {
     globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
     clientMock.refreshConnection.mockReset()
+    toastErrorMock.mockReset()
     server.providers = {
       data: { items: [firecrawlProvider, ...connectedProviders] },
       error: null,
@@ -602,6 +620,37 @@ describe('AddSourcePage', () => {
     expect(await screen.findByText('knowledgeSpace.providerLoadFailed')).toBeInTheDocument()
     expect(server.listConnections).toHaveBeenCalledTimes(2)
   })
+  it.each([
+    ['web', undefined],
+    [
+      'connected',
+      {
+        provider: 'Google Docs',
+        sourceName: 'Shared product docs',
+        sourceType: 'onlineDocuments',
+        syncPolicy: 'daily',
+      },
+    ],
+  ] as const)(
+    'shows the translated error code when a %s connection page fails',
+    async (_, initialSourceDraft) => {
+      if (initialSourceDraft) enableConnectedSources()
+      server.connections.data = [{ items: [] }, { items: [] }]
+      server.connections.nextPageError = createHttpError(new Response(null, { status: 503 }), {
+        code: 'knowledge_fs_space_not_found',
+        message: 'Server says why',
+      })
+
+      await renderPage(
+        <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
+      )
+
+      expect(
+        await screen.findByText('requestErrors.code.knowledge_fs_space_not_found'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
+    },
+  )
   it('finds the provider connection on a later loaded page', async () => {
     server.connections.data = [{ items: [] }, { items: [connection('active')] }]
 
@@ -1266,6 +1315,23 @@ describe('AddSourcePage', () => {
     expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
   })
 
+  it('shows a rejected connection once, with the translated reason next to the connect button', async () => {
+    const user = userEvent.setup()
+    const message = 'The Firecrawl API key is invalid'
+    clientMock.createConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { code: 'invalid_input', message }),
+    )
+
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(screen.getByRole('button', { name: /^knowledgeSources\.configureProvider/ }))
+    await user.type(screen.getByLabelText(/Api Key/), 'invalid-key')
+    await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
   it('reconciles a response-lost create before showing an error', async () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockImplementation(async () => {
@@ -1399,6 +1465,21 @@ describe('AddSourcePage', () => {
     await screen.findByText(/knowledgeSources\.providerConnected/)
   })
 
+  it('shows a failed connection refresh once, with the translated reason next to the retry button', async () => {
+    const user = userEvent.setup()
+    const message = 'The Firecrawl credential was revoked'
+    server.connections.data = [{ items: [connection('error')] }]
+    clientMock.refreshConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { code: 'invalid_input', message }),
+    )
+
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
   it('reconciles a refresh version race and retries with the server version', async () => {
     const user = userEvent.setup()
     server.connections.data = [{ items: [connection('error')] }]
@@ -1507,6 +1588,23 @@ describe('AddSourcePage', () => {
       'knowledgeSources.connectionRefreshFailed',
     )
     expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
+  })
+  it('shows the translated error code when provisioning reconciliation fails', async () => {
+    const user = userEvent.setup()
+    server.connections.data = [{ items: [connection('provisioning')] }]
+
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
+    server.connections.error = createHttpError(new Response(null, { status: 503 }), {
+      code: 'knowledge_fs_space_not_found',
+      message: 'Server says why',
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.knowledge_fs_space_not_found',
+    )
   })
   it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
     const user = userEvent.setup()

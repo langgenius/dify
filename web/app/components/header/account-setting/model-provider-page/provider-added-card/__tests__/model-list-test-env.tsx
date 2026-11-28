@@ -5,11 +5,12 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import {
   createProviderResponseFixture,
   createProviderSummaryFixture,
 } from '@/test/console/model-provider'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { modelProviderDetailsQueryOptions } from '../../utils'
 import ModelList from '../model-list'
@@ -44,9 +45,12 @@ const models: ModelItem[] = ['gpt-4', 'gpt-3.5'].map((model) => ({
 export const dialogName = 'modelProvider.modelProvider.auth.configModel'
 export function renderModelList({
   currentProvider = provider,
+  errorToasts = false,
   permissions = ['plugin.model_config', 'credential.manage', 'credential.use'],
 }: {
   currentProvider?: ComponentProps<typeof ModelList>['provider']
+  /** Mirror the app's cache-level error toasts, so a failure's messages can be counted. */
+  errorToasts?: boolean
   permissions?: string[]
 } = {}) {
   const onChange = vi.fn()
@@ -64,7 +68,13 @@ export function renderModelList({
         <ModelCredentialDialog />
       </>
     </NuqsTestingAdapter>,
-    { features: { model_load_balancing_enabled: true }, workspacePermissionKeys: permissions },
+    {
+      features: { model_load_balancing_enabled: true },
+      workspacePermissionKeys: permissions,
+      ...(errorToasts && {
+        queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+      }),
+    },
   )
   return { ...rendered, user: userEvent.setup(), onChange, onCollapse }
 }

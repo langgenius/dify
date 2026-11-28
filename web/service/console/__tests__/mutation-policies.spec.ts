@@ -163,6 +163,14 @@ describe('composeMutationOptions', () => {
     expect(policyRetry).toEqual({ retry: 3 })
   })
 
+  it("merges meta by key so a caller's error message keeps the policy's invalidation flags", () => {
+    const composed = composeMutationOptions(
+      { meta: { invalidate: false, errorMessage: 'policy' } },
+      { meta: { errorMessage: 'caller' } },
+    )
+    expect(composed).toEqual({ meta: { invalidate: false, errorMessage: 'caller' } })
+  })
+
   it('returns the caller options untouched when there is no policy', () => {
     const options = { onSuccess: vi.fn() }
     expect(composeMutationOptions(undefined, options)).toBe(options)

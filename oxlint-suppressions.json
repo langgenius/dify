@@ -2912,11 +2912,6 @@
       "count": 1
     }
   },
-  "web/service/__tests__/request-error-toast.spec.ts": {
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/service/__tests__/use-workflow.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 2

@@ -37,7 +37,7 @@ export function RenameDocumentForm({
   const saving = useIsMutating(documentRenameFilter(datasetId, document.id)) > 0
   const rename = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   return (

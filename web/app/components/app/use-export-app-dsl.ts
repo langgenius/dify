@@ -44,16 +44,14 @@ async function getSecretEnvironmentVariables(
   signal?: AbortSignal,
 ) {
   const input = { params: { app_id: appId } }
-  const context = { silent: true }
   const { items } = signal
     ? await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get(input, {
         signal,
-        context,
       })
     : await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input,
-          context,
+          meta: { errorToast: false },
         }),
       )
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
@@ -81,13 +79,12 @@ export async function exportAppDslFile(
       ...(format && { format }),
     },
   }
-  const context = { silent: true }
   const response = signal
-    ? await consoleClient.apps.byAppId.export.get(input, { signal, context })
+    ? await consoleClient.apps.byAppId.export.get(input, { signal })
     : await queryClient.query(
         consoleQuery.apps.byAppId.export.get.queryOptions({
           input,
-          context,
+          meta: { errorToast: false },
         }),
       )
 
@@ -154,6 +151,7 @@ export function useExportAppDsl() {
   const messages = useExportAppDslMessages()
   const queryClient = useQueryClient()
   const { mutateAsync, isPending, error, reset } = useMutation({
+    meta: { errorToast: false },
     mutationFn: (input: ExportAppDslInput) => downloadAppDsl(queryClient, input, messages),
   })
 
@@ -181,6 +179,7 @@ export function useExportWorkflowAppDsl() {
   const messages = useExportAppDslMessages()
   const queryClient = useQueryClient()
   const { mutateAsync, isPending, error, reset } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (input: ExportWorkflowAppDslInput): Promise<ExportWorkflowAppDslResult> => {
       if (input.signal?.aborted) return { status: 'cancelled' }
       let secretEnvList: EnvironmentVariableItemResponse[]

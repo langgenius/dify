@@ -15,39 +15,41 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       fileScanPolicy: {
         put: {
           mutationOptions: {
-            onSuccess: (policy, variables, _result, context) => {
-              context.client.setQueryData(
-                consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
-                  input: { params: variables.params },
-                }),
-                policy,
-              )
-              // Each scanner reports how many knowledge bases select it.
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.fileScan.providers.get.key(),
+            // Each scanner reports how many knowledge bases select it.
+            meta: { alsoInvalidate: ['fileScan'] },
+            onSuccess: async (policy, variables, _result, context) => {
+              const queryKey = consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
+                input: { params: variables.params },
               })
+              if (context.client.isFetching({ queryKey, exact: true }))
+                await context.client.cancelQueries({ queryKey, exact: true })
+              context.client.setQueryData(queryKey, policy)
             },
           },
         },
       },
       delete: {
         mutationOptions: {
-          onSuccess: (_data, variables, _result, context) => {
+          onSuccess: async (_data, variables, _result, context) => {
+            const lists = { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) }
+            const infiniteLists = { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) }
+            if (context.client.isFetching(lists) || context.client.isFetching(infiniteLists))
+              await Promise.all([
+                context.client.cancelQueries(lists),
+                context.client.cancelQueries(infiniteLists),
+              ])
+            context.client.setQueriesData(lists, (list: DatasetListResponse | undefined) => {
+              if (!list?.data.some((item) => item.id === variables.params.dataset_id)) return list
+              const total = Math.max(0, list.total - 1)
+              return {
+                ...list,
+                data: list.data.filter((item) => item.id !== variables.params.dataset_id),
+                total,
+                has_more: list.page * list.limit < total,
+              }
+            })
             context.client.setQueriesData(
-              { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) },
-              (list: DatasetListResponse | undefined) => {
-                if (!list?.data.some((item) => item.id === variables.params.dataset_id)) return list
-                const total = Math.max(0, list.total - 1)
-                return {
-                  ...list,
-                  data: list.data.filter((item) => item.id !== variables.params.dataset_id),
-                  total,
-                  has_more: list.page * list.limit < total,
-                }
-              },
-            )
-            context.client.setQueriesData(
-              { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) },
+              infiniteLists,
               (list: InfiniteData<DatasetListResponse, unknown> | undefined) => {
                 if (
                   !list?.pages.some((page) =>
@@ -77,23 +79,17 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       knowledgeFsUpgrades: {
         post: {
           mutationOptions: {
-            context: { silent: true },
-            // Waits for the running-upgrades list the job joins; dataset cards refresh in the background.
-            onSuccess: (_job, _variables, _result, { client }) => {
-              void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
-              return invalidateQueryKeys(client, [
-                consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-              ])
-            },
+            meta: { errorToast: false },
+            // Waits for the running-upgrades list the job joins.
+            onSuccess: (_job, _variables, _result, { client }) =>
+              invalidateQueryKeys(client, [consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key()]),
           },
         },
         byJobId: {
           post: {
             mutationOptions: {
-              // Waits for the job's detail and the running-upgrades list; dataset cards refresh in
-              // the background.
+              // Waits for the job's detail and the running-upgrades list.
               onSuccess: (_job, { params }, _result, { client }) => {
-                void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
                 return invalidateQueryKeys(client, [
                   consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
                     input: {
@@ -202,13 +198,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         },
       },
       documents: {
-        // Waits for the document list and the document's detail; the dataset card refreshes in
-        // the background.
+        // Waits for the document list and the document's detail.
         post: {
           mutationOptions: {
             onSuccess: (_data, { params }, _result, { client }) => {
               const input = { params: { dataset_id: params.dataset_id } }
-              void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
               return invalidateQueryKeys(client, [
                 consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
                 consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({ input }),
@@ -216,37 +210,20 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
             },
           },
         },
-        status: {
-          byAction: {
-            batch: {
-              patch: {
-                mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    // Enabled documents leave the auto-disabled notice.
-                    if (params.action !== 'enable') return
-                    void client.invalidateQueries({
-                      queryKey: consoleQuery.datasets.byDatasetId.autoDisableLogs.get.queryKey({
-                        input: { params: { dataset_id: params.dataset_id } },
-                      }),
-                    })
-                  },
-                },
-              },
-            },
-          },
-        },
         delete: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
+            onSuccess: async (_data, variables, _result, context) => {
               const documentIds = new Set(variables.query?.document_id ?? [])
               const input = { params: variables.params }
+              const lists = {
+                queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                  type: 'query',
+                  input,
+                }),
+              }
+              if (context.client.isFetching(lists)) await context.client.cancelQueries(lists)
               context.client.setQueriesData(
-                {
-                  queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                    type: 'query',
-                    input,
-                  }),
-                },
+                lists,
                 (list: DocumentWithSegmentsListResponse | undefined) => {
                   if (!list) return list
                   const data = list.data.filter((document) => !documentIds.has(document.id))
@@ -278,17 +255,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           },
           pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
         },
-        // Document metadata shows in the dataset fields, the document list and each
-        // document's detail.
         metadata: {
           post: {
             mutationOptions: {
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                void invalidateQueryKeys(context.client, [
-                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
-                ])
                 // The document panel leaves edit mode for the values in the refreshed detail,
                 // and the batch editor reopens from the document list (rewriting every field
                 // it holds), so saving waits for both instead of seeding the old values.
@@ -324,12 +296,6 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                void invalidateQueryKeys(context.client, [
-                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
-                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                    input: { params },
-                  }),
-                ])
                 // The rename dialog reopens with the name from this list.
                 return invalidateQueryKeys(context.client, [
                   consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
@@ -359,14 +325,21 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           byAction: {
             post: {
               mutationOptions: {
-                // Waits for the field list that shows the built-in fields.
-                onSettled: (_data, error, variables, _result, context) => {
+                // Shows the switch's new state at once, then waits for the field list that shows
+                // the built-in fields.
+                onSettled: async (_data, error, { params }, _result, { client }) => {
                   if (error) return
-                  return invalidateQueryKeys(context.client, [
-                    consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params: { dataset_id: variables.params.dataset_id } },
-                    }),
-                  ])
+                  const queryKey = consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                    input: { params: { dataset_id: params.dataset_id } },
+                  })
+                  if (client.isFetching({ queryKey, exact: true }))
+                    await client.cancelQueries({ queryKey, exact: true })
+                  client.setQueryData(
+                    queryKey,
+                    (data) =>
+                      data && { ...data, built_in_field_enabled: params.action === 'enable' },
+                  )
+                  return invalidateQueryKeys(client, [queryKey])
                 },
               },
             },
@@ -388,10 +361,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       byExternalKnowledgeApiId: {
         delete: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
+            onSuccess: async (_data, { params }, _result, { client }) => {
               const queryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryKey({
                 input: {},
               })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(
                 queryKey,
                 (previous) =>
@@ -412,8 +387,10 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       post: {
         mutationOptions: {
           // Writes the new key into its list, so the one-time secret shows at once.
-          onSuccess: (created, _variables, _onMutateResult, context) =>
-            addCreatedKeyToLists(context.client, consoleQuery.datasets.apiKeys.get.key(), created),
+          onSuccess: async (created, _variables, _onMutateResult, context) => {
+            const listKey = consoleQuery.datasets.apiKeys.get.key()
+            return addCreatedKeyToLists(context.client, listKey, created)
+          },
         },
       },
       byApiKeyId: {

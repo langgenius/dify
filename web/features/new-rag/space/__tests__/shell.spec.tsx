@@ -128,6 +128,7 @@ describe('KnowledgeSpaceShell', () => {
       '/datasets/new/space-1/documents',
       '/datasets/new/space-1/retrieval',
       '/datasets/new/space-1/quality',
+      '/datasets/new/space-1/tidy',
       '/datasets/new/space-1/settings',
     ])
     expect(await screen.findByText('knowledgeSpace.apiAccessActive')).toBeInTheDocument()
@@ -241,5 +242,20 @@ describe('KnowledgeSpaceShell', () => {
     await user.click(retry)
 
     expect(await screen.findByText('source content')).toBeInTheDocument()
+  })
+
+  it('describes a load failure with the translated error code under the fixed title', async () => {
+    service.getSpace.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
+    )
+
+    renderShell()
+
+    expect(await screen.findByText('requestErrors.code.invalid_input')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.detailErrorTitle')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.detailErrorDescription')).not.toBeInTheDocument()
   })
 })

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationActions, useEvaluationLogsQuery } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
@@ -49,6 +50,7 @@ const formatCreatedAt = (createdAt: number | null | undefined, formatTime: Forma
 
 const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const { t } = useTranslation(['evaluation'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp()
   const { data: membersData } = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
@@ -66,11 +68,18 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   )
   const evaluationActions = useEvaluationActions({ resourceType, resourceId })
   const fileDownloadMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (fileId: string) => {
       const fileInfo = await getEvaluationFile({ resourceType, resourceId }, fileId)
       downloadUrl({ url: fileInfo.download_url, fileName: fileInfo.name })
     },
-    onError: () => toast.error(t(($) => $['history.actions.downloadFailed'])),
+    onError: (error) =>
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['history.actions.downloadFailed']),
+        ),
+      ),
   })
   const records = useMemo(() => logsQuery.data?.data ?? [], [logsQuery.data?.data])
   const memberNameById = useMemo(() => {
@@ -120,8 +129,13 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     try {
       await evaluationActions.cancelRun(record.id)
       toast.success(t(($) => $['history.cancelSuccess']))
-    } catch {
-      toast.error(t(($) => $['history.cancelFailed']))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['history.cancelFailed']),
+        ),
+      )
     }
   }
 
@@ -130,8 +144,13 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
       await evaluationActions.retryRun(record.id)
       setSelectedRunId(resourceType, resourceId, record.id)
       toast.success(t(($) => $['history.retrySuccess']))
-    } catch {
-      toast.error(t(($) => $['history.retryFailed']))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['history.retryFailed']),
+        ),
+      )
     }
   }
 

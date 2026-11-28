@@ -75,6 +75,7 @@
   "entry.checkFailed": "無法檢查已發布版本，請重試。",
   "entry.duplicateNodeNames": "已發布版本中存在同名節點（{{names}}）。你可以繼續評測；建議修改節點名稱並發布新版本，方便區分結果。",
   "entry.duplicateNodeNamesTitle": "節點名稱重複",
+  "entry.triggerUnsupported": "無法評測由觸發器啟動的工作流程。請發布以「使用者輸入」節點開始的工作流程。",
   "history.actions.cancel": "取消任務",
   "history.actions.downloadFailed": "評測檔案下載失敗。",
   "history.actions.downloadResultFile": "下載結果",

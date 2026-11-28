@@ -16,7 +16,7 @@ from typing import cast, override
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.trace import StatusCode, get_current_span
 from pydantic import JsonValue
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 
 from pydantic import BaseModel, ConfigDict
@@ -26,12 +26,19 @@ from dify_agent.layers.dify_core_tools.client import (
     DifyCoreToolsClient,
     DifyCoreToolsClientConfigurationError,
     DifyCoreToolsClientError,
+    _validate_execution_context,
 )
 from dify_agent.layers.dify_core_tools.configs import (
     DifyCoreToolConfig,
     DifyCoreToolsLayerConfig,
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.tool_call_limits import (
+    ToolCallLimitGuard,
+    prepare_core_tool_validation_arguments,
+    validate_limited_tool_arguments,
+)
+from dify_agent.protocol.tool_call_limits import TOOL_VALIDATION_FAILED_METADATA_KEY
 
 
 CORE_TOOL_STRICT = False
@@ -71,7 +78,12 @@ class Toolset(FunctionToolset[Deps]):
             )
             for tool_config in config.tools:
                 self.add_tool(
-                    self._build_tool(client=client, execution_context=execution_context, tool_config=tool_config)
+                    self._build_tool(
+                        client=client,
+                        execution_context=execution_context,
+                        tool_config=tool_config,
+                        call_limit=ToolCallLimitGuard.for_tool(ctx.deps, tool_config),
+                    )
                 )
             self._loaded = True
         return await super().get_tools(ctx)
@@ -82,27 +94,60 @@ class Toolset(FunctionToolset[Deps]):
         client: DifyCoreToolsClient,
         execution_context: DifyExecutionContextLayerConfig,
         tool_config: DifyCoreToolConfig,
+        call_limit: ToolCallLimitGuard | None = None,
     ) -> Tool[Deps]:
         tool_name = tool_config.name or tool_config.tool_name
         tool_description = tool_config.description or tool_name
         tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-        async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
+        async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str | ToolReturn:
+            """Validate before reserving, then dispatch only an authoritative admission."""
+            reservation = None
+            failed = False
             try:
+                if call_limit is not None:
+                    _validate_execution_context(execution_context)
+                    validation_arguments = prepare_core_tool_validation_arguments(
+                        tool_schema, tool_config.parameters, tool_config.runtime_parameters, tool_arguments
+                    )
+                    validate_limited_tool_arguments(
+                        tool_schema,
+                        tool_config.parameters,
+                        tool_config.runtime_parameters,
+                        tool_arguments,
+                        prepared_arguments=validation_arguments,
+                    )
+                    reservation = await call_limit.reserve(_ctx)
+                    if not reservation.allowed:
+                        return call_limit.denied(reservation)
                 response = await client.invoke(
                     execution_context=execution_context,
                     tool_config=tool_config,
                     tool_parameters=cast(dict[str, JsonValue], tool_arguments),
                 )
-                return response.observation
+                observation = response.observation
             except DifyCoreToolsClientConfigurationError as exc:
+                failed = True
                 _mark_tool_span_failed(_ctx, exc)
-                return "Tool is unavailable because required execution context is missing."
+                observation = "Tool is unavailable because required execution context is missing."
             except DifyCoreToolsClientError as exc:
+                failed = True
                 _mark_tool_span_failed(_ctx, exc)
-                return _tool_error_text(tool_name=tool_name, error=exc)
+                observation = _tool_error_text(tool_name=tool_name, error=exc)
+            except ValueError as exc:
+                failed = True
+                observation = f"tool parameters validation error: {exc}, please check your tool parameters"
+                if call_limit is not None and reservation is None:
+                    # This attempt failed before admission and consumed no quota.
+                    return ToolReturn(observation, metadata={TOOL_VALIDATION_FAILED_METADATA_KEY: True})
+            if call_limit is not None and reservation is not None:
+                return call_limit.result(reservation, observation, failed=failed)
+            return observation
 
-        async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition:
+        async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
+            """Remove exhausted tools on later model turns; in-flight calls still reserve."""
+            if call_limit is not None and not await call_limit.available(_ctx):
+                return None
             return replace(tool_def, parameters_json_schema=tool_schema, strict=CORE_TOOL_STRICT)
 
         return Tool(

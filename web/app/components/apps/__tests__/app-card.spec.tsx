@@ -494,7 +494,7 @@ describe('AppCard', () => {
     expect(toast.error).toHaveBeenCalledWith('Failed to open new window')
   })
 
-  it('should render the tour-controlled operations menu as presentation only', async () => {
+  it('should open the tour-controlled operations menu', async () => {
     render(
       <AppCard
         dialogs={dialogs}
@@ -509,7 +509,6 @@ describe('AppCard', () => {
 
     expect(await screen.findByText('app.editApp')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'app.editApp', hidden: true })).toBeInTheDocument()
-    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('should tell workflow users to publish before opening in explore', async () => {
@@ -649,14 +648,10 @@ describe('AppCard', () => {
       await user.click(trigger)
       await user.click(await screen.findByRole('option', { name: 'Tag 1' }))
       await user.keyboard('{Escape}')
-      await waitFor(() =>
-        expect(api.bind).toHaveBeenCalledWith(
-          {
-            body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
-          },
-          { context: { silent: true } },
-        ),
-      )
+      await waitFor(() => expect(api.bind).toHaveBeenCalledOnce())
+      expect(api.bind.mock.calls[0]![0]).toEqual({
+        body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
+      })
       expect(mockPush).not.toHaveBeenCalled()
     },
   )

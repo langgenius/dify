@@ -52,7 +52,7 @@ export function SkillTagsEditor({
   const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
@@ -253,15 +253,6 @@ export function SkillTagsEditor({
         type="skill"
         show={showTagManagement}
         onClose={() => setShowTagManagement(false)}
-        onTagsChange={() => {
-          invalidateSkillDetail(queryClient, skillId)
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-          })
-        }}
       />
     </>
   )

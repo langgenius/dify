@@ -3,6 +3,7 @@ import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippe
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { mutationOptions, skipToken } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 
 const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
@@ -135,29 +136,50 @@ export function workflowVersionHistoryKey(resource: EditorResource) {
   }
 }
 
+/**
+ * A node that never ran answers 404, which the panel shows as "no last run" (`null`). Any other
+ * failure is reported by the query cache.
+ */
+function withMissingLastRunAsNull<TContext, TData, TOptions extends object>(
+  options: TOptions & { queryFn: (context: TContext) => TData | Promise<TData> },
+) {
+  return {
+    ...options,
+    queryFn: async (context: TContext): Promise<TData | null> => {
+      try {
+        return await options.queryFn(context)
+      } catch (error) {
+        if (isNotFoundError(error)) return null
+        throw error
+      }
+    },
+  }
+}
+
 export function lastRunQueryOptions(resource: EditorResource, nodeId: string) {
   switch (resource.kind) {
     case 'app':
-      return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
-        input: { params: { app_id: resource.appId, node_id: nodeId } },
-        retry: 0,
-        context: { silent: true },
-      })
-    case 'knowledge-pipeline':
-      return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
-        {
-          input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
+      return withMissingLastRunAsNull(
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
+          input: { params: { app_id: resource.appId, node_id: nodeId } },
           retry: 0,
-          context: { silent: true },
-        },
+        }),
+      )
+    case 'knowledge-pipeline':
+      return withMissingLastRunAsNull(
+        consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
+          {
+            input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
+            retry: 0,
+          },
+        ),
       )
     case 'snippet':
-      return consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
-        {
+      return withMissingLastRunAsNull(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
           input: { params: { snippet_id: resource.snippetId, node_id: nodeId } },
           retry: 0,
-          context: { silent: true },
-        },
+        }),
       )
   }
 }
@@ -203,23 +225,22 @@ export function sysVarValuesQueryOptions(resource: EditorResource | undefined) {
 
 export function restoreWorkflowMutationOptions(resource: EditorResource) {
   return mutationOptions({
+    // Callers show their own restore failure message.
+    meta: { errorToast: false },
     mutationFn: (versionId: string) => {
       switch (resource.kind) {
         case 'app':
-          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post(
-            { params: { app_id: resource.appId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post({
+            params: { app_id: resource.appId, workflow_id: versionId },
+          })
         case 'knowledge-pipeline':
-          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post(
-            { params: { pipeline_id: resource.pipelineId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post({
+            params: { pipeline_id: resource.pipelineId, workflow_id: versionId },
+          })
         case 'snippet':
-          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post(
-            { params: { snippet_id: resource.snippetId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post({
+            params: { snippet_id: resource.snippetId, workflow_id: versionId },
+          })
       }
     },
   })

@@ -10,6 +10,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -17,6 +18,7 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -28,18 +30,26 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
       if (!appDetail) return false
 
       if (!workflowId) {
         let syncFailed = false
+        let syncError: unknown
         await doSyncWorkflowDraft(undefined, {
-          onError: () => {
+          onError: (error) => {
             syncFailed = true
+            syncError = error
           },
         })
         if (syncFailed) {
-          toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+          toast.error(
+            describeRequestError(
+              syncError,
+              t(($) => $.exportFailed, { ns: 'app' }),
+            ),
+          )
           return false
         }
       }
@@ -77,7 +87,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const { items } = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          context: { silent: true },
+          meta: { errorToast: false },
         }),
       )
       const list = items.filter((env) => env.value_type === 'secret')

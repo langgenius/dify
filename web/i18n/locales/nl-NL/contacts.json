@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Het contact kon niet worden verwijderd. Probeer het opnieuw.",
   "directory.removalSingleTitle": "{{name}} verwijderen?",
   "directory.resultCount": "Resultaten: {{count}}",
-  "imPlatform.action.configure": "Config",
   "imPlatform.action.configureChannel": "{{provider}} configureren",
   "imPlatform.action.connect": "Verbinden",
   "imPlatform.action.copied": "Gekopieerd",

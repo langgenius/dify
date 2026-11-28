@@ -35,7 +35,7 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,6 +43,7 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { documentMetadataAtom, documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { denyDocumentWriteAtom, documentCanReadAtom, documentCanWriteAtom } from '../state/runtime'
 import { DocumentMetadataCreateForm } from './create-form'
@@ -54,7 +55,7 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   time: 'i-ri-time-line',
 }
 // Requests report failures once through useMetadataFieldMutation, including server messages.
-const silentRequest = { context: { silent: true } }
+const noErrorToast = { meta: { errorToast: false as const } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -62,20 +63,21 @@ function useMetadataFields() {
   const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   return useQuery({
     ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
+    // The drawer renders a failed field list inline.
+    meta: { errorToast: false },
     enabled: metadataRequest === '1' && canRead,
   })
 }
 
 function useMetadataFieldMutation() {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
-  const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const metadata = consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata
-  const createField = useMutation(metadata.post.mutationOptions(silentRequest))
-  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(silentRequest))
-  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(silentRequest))
+  const createField = useMutation(metadata.post.mutationOptions(noErrorToast))
+  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(noErrorToast))
+  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(noErrorToast))
   const isPending = createField.isPending || renameField.isPending || deleteField.isPending
   const fieldMutations = {
     create: createField.mutateAsync,
@@ -86,15 +88,8 @@ function useMetadataFieldMutation() {
     async (mutation: () => Promise<unknown>) => {
       if (!canWrite || isPending) return false
       try {
+        // Resolves once the policy has refreshed the field list and the documents.
         await mutation()
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
-          }),
-        ])
         return true
       } catch (error) {
         if (getHttpErrorStatus(error) === 403) denyWrite()
@@ -107,7 +102,7 @@ function useMetadataFieldMutation() {
         return false
       }
     },
-    [canWrite, denyWrite, isPending, queryClient, t],
+    [canWrite, denyWrite, isPending, t],
   )
 
   return { canWrite, fieldMutations, knowledgeSpaceId, mutate, pending: isPending }
@@ -338,6 +333,7 @@ function MetadataItem({
 
 export function DocumentMetadataDrawer() {
   const { t } = useTranslation(['dataset', 'common', 'knowledgeCitation'])
+  const describeRequestError = useRequestErrorDescriber()
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   const setMetadataRequest = useSetAtom(documentMetadataAtom)
@@ -381,9 +377,12 @@ export function DocumentMetadataDrawer() {
                 {metadataFieldsQuery.error && !metadataFieldsQuery.isFetching && (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
                     <span className="min-w-0 system-xs-regular text-text-tertiary">
-                      {t(($) => $.documentLoadErrorDescription, {
-                        ns: 'knowledgeCitation',
-                      })}
+                      {describeRequestError(
+                        metadataFieldsQuery.error,
+                        t(($) => $.documentLoadErrorDescription, {
+                          ns: 'knowledgeCitation',
+                        }),
+                      )}
                     </span>
                     <Button
                       className="shrink-0"

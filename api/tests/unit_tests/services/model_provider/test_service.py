@@ -413,6 +413,8 @@ class TestModelProviderServiceCases:
                 pytest.param(CloudPlan.SANDBOX, "tenant-1", False, True, id="sandbox-with-own-key"),
                 pytest.param(CloudPlan.SANDBOX, "tenant-2", False, False, id="sandbox-with-foreign-key-reference"),
                 pytest.param(CloudPlan.TEAM, None, True, True, id="paid-without-key"),
+                pytest.param(None, "tenant-1", False, True, id="billing-outage-with-own-key"),
+                pytest.param(None, None, False, False, id="billing-outage-without-key"),
             ],
         )
         def test_paid_only_provider_summary(
@@ -420,7 +422,7 @@ class TestModelProviderServiceCases:
             monkeypatch: pytest.MonkeyPatch,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
-            plan: CloudPlan,
+            plan: CloudPlan | None,
             key_owner: str | None,
             expected_hosted: bool,
             expected_configured: bool,
@@ -445,7 +447,13 @@ class TestModelProviderServiceCases:
                 provider.provider,
                 HostingConfiguration().init_openai(),
             )
-            monkeypatch.setattr(BillingService, "get_info", lambda *_, **__: subscription_info(plan))
+
+            def read_subscription(**_kwargs: object) -> billing.GetSubscriptionInfoReply:
+                if plan is None:
+                    raise billing.BillingSubscriptionUpstreamUnavailableError()
+                return subscription_info(plan)
+
+            monkeypatch.setattr(billing, "subscription_get_subscription_info", read_subscription)
             if key_owner is not None:
                 credential = ProviderCredential(
                     tenant_id=key_owner, provider_name="openai", credential_name="Workspace", encrypted_config="opaque"

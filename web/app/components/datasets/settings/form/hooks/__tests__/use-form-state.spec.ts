@@ -218,20 +218,17 @@ describe('useFormState', () => {
       })
 
       await act(async () => result.current.handleSave())
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            icon_info: {
-              icon_type: 'emoji',
-              icon: '🎉',
-              icon_background: '#FF0000',
-              icon_url: undefined,
-            },
-          }),
-        },
-        { silent: true },
-      )
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          icon_info: {
+            icon_type: 'emoji',
+            icon: '🎉',
+            icon_background: '#FF0000',
+            icon_url: undefined,
+          },
+        }),
+      })
     })
 
     it('persists the uploaded image icon', async () => {
@@ -246,20 +243,17 @@ describe('useFormState', () => {
       })
 
       await act(async () => result.current.handleSave())
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            icon_info: {
-              icon_type: 'image',
-              icon: 'file-123',
-              icon_background: undefined,
-              icon_url: 'https://example.com/icon.png',
-            },
-          }),
-        },
-        { silent: true },
-      )
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          icon_info: {
+            icon_type: 'image',
+            icon: 'file-123',
+            icon_background: undefined,
+            icon_url: 'https://example.com/icon.png',
+          },
+        }),
+      })
     })
   })
 
@@ -281,19 +275,16 @@ describe('useFormState', () => {
       })
 
       await act(async () => result.current.handleSave())
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            summary_index_setting: expect.objectContaining({
-              enable: true,
-              model_provider_name: 'openai',
-              model_name: 'gpt-4',
-            }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          summary_index_setting: expect.objectContaining({
+            enable: true,
+            model_provider_name: 'openai',
+            model_name: 'gpt-4',
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
   })
 
@@ -336,17 +327,14 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            name: 'Test Dataset',
-            description: 'Test description',
-            permission: PermissionLevel.onlyMe,
-          }),
-        },
-        { silent: true },
-      )
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          name: 'Test Dataset',
+          description: 'Test description',
+          permission: PermissionLevel.onlyMe,
+        }),
+      })
       expect(mockMutateDatasets).toHaveBeenCalledTimes(1)
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
     })
@@ -393,18 +381,15 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            partial_member_list: expect.arrayContaining([
-              expect.objectContaining({ user_id: 'user-1' }),
-              expect.objectContaining({ user_id: 'user-2' }),
-            ]),
-          }),
-        },
-        { silent: true },
-      )
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          partial_member_list: expect.arrayContaining([
+            expect.objectContaining({ user_id: 'user-1' }),
+            expect.objectContaining({ user_id: 'user-2' }),
+          ]),
+        }),
+      })
     })
   })
 
@@ -440,22 +425,19 @@ describe('useFormState', () => {
       })
 
       // Verify that weights were included and embedding model info was added
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            retrieval_model: expect.objectContaining({
-              weights: expect.objectContaining({
-                vector_setting: expect.objectContaining({
-                  embedding_provider_name: 'openai',
-                  embedding_model_name: 'text-embedding-ada-002',
-                }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            weights: expect.objectContaining({
+              vector_setting: expect.objectContaining({
+                embedding_provider_name: 'openai',
+                embedding_model_name: 'text-embedding-ada-002',
               }),
             }),
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
 
     it('should send the configured score threshold when score_threshold_enabled is true', async () => {
@@ -474,18 +456,15 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            retrieval_model: expect.objectContaining({
-              score_threshold_enabled: true,
-              score_threshold: 0.62,
-            }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            score_threshold_enabled: true,
+            score_threshold: 0.62,
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
   })
 
@@ -520,18 +499,15 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            retrieval_model: expect.objectContaining({
-              search_method: RETRIEVE_METHOD.hybrid,
-              reranking_enable: true,
-            }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            search_method: RETRIEVE_METHOD.hybrid,
+            reranking_enable: true,
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
 
     it('should leave reranking_enable untouched when Hybrid Search uses weighted score', async () => {
@@ -549,17 +525,14 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            retrieval_model: expect.objectContaining({
-              reranking_enable: false,
-            }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            reranking_enable: false,
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
 
     it('should leave reranking_enable untouched for semantic search', async () => {
@@ -577,17 +550,14 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            retrieval_model: expect.objectContaining({
-              reranking_enable: false,
-            }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          retrieval_model: expect.objectContaining({
+            reranking_enable: false,
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
   })
 
@@ -619,21 +589,18 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            external_knowledge_id: 'ext-123',
-            external_knowledge_api_id: 'api-456',
-            external_retrieval_model: expect.objectContaining({
-              top_k: expect.any(Number),
-              score_threshold: expect.any(Number),
-              score_threshold_enabled: expect.any(Boolean),
-            }),
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          external_knowledge_id: 'ext-123',
+          external_knowledge_api_id: 'api-456',
+          external_retrieval_model: expect.objectContaining({
+            top_k: expect.any(Number),
+            score_threshold: expect.any(Number),
+            score_threshold_enabled: expect.any(Boolean),
           }),
-        },
-        { silent: true },
-      )
+        }),
+      })
     })
 
     it('should use correct external retrieval settings', async () => {
@@ -653,19 +620,16 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(updateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            external_retrieval_model: {
-              top_k: 10,
-              score_threshold: 0.9,
-              score_threshold_enabled: false,
-            },
-          }),
-        },
-        { silent: true },
-      )
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          external_retrieval_model: {
+            top_k: 10,
+            score_threshold: 0.9,
+            score_threshold_enabled: false,
+          },
+        }),
+      })
     })
   })
 })

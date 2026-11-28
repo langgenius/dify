@@ -15,7 +15,7 @@ from typing import Any, Protocol
 from flask import render_template
 from pydantic import BaseModel, Field
 
-from extensions.ext_mail import mail
+from extensions.ext_mail import Mail, mail
 from services.entities.feature_entities import BrandingModel
 from services.system_feature_service import SystemFeatureService
 
@@ -151,10 +151,15 @@ class EmailSender(Protocol):
 class FlaskMailSender:
     """Flask-Mail based email sender."""
 
+    def __init__(self, mail_service: Mail | None = None) -> None:
+        """Use an injected mail service, or resolve the application mail service at delivery."""
+        self._mail_service = mail_service
+
     def send_email(self, to: str, subject: str, html_content: str):
         """Send email using Flask-Mail."""
-        if mail.is_inited():
-            mail.send(to=to, subject=subject, html=html_content)
+        mail_service = self._mail_service if self._mail_service is not None else mail
+        if mail_service.is_inited():
+            mail_service.send(to=to, subject=subject, html=html_content)
 
 
 class EmailI18nService:

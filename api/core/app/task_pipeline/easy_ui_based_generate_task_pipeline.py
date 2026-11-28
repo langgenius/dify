@@ -5,6 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
 from typing import Any, cast
 
+from dify_agent.protocol.tool_call_limits import agent_tool_activity_from_metadata
 from dify_trace_sdk.events import MessageCompleted
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -611,10 +612,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         )
 
     def _agent_thought_to_stream_response(self, event: QueueAgentThoughtEvent) -> AgentThoughtStreamResponse | None:
-        """
-        Agent thought to stream response.
-        :param event: agent thought event
-        :return:
+        """Serialize a committed thought snapshot and its validated tool sidecar.
+
+        The queue carries the owning thought id. Legacy rows remain unchanged;
+        raw tool metadata is never exposed, and execution is not inferred from
+        its observation. A missing row produces no SSE update.
         """
         with session_factory.create_session() as session:
             agent_thought: MessageAgentThought | None = session.scalar(
@@ -632,6 +634,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 tool_labels=agent_thought.tool_labels,
                 tool_input=agent_thought.tool_input or "",
                 message_files=agent_thought.files,
+                tool_activity=agent_tool_activity_from_metadata(agent_thought.tool_meta),
             )
 
         return None

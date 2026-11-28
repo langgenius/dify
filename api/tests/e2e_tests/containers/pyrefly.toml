@@ -78,7 +78,6 @@ project-excludes = [
   "tasks/test_enable_segments_to_index_task.py",
   "tasks/test_mail_account_deletion_task.py",
   "tasks/test_mail_change_mail_task.py",
-  "tasks/test_mail_email_code_login_task.py",
   "tasks/test_mail_human_input_delivery_task.py",
   "tasks/test_mail_inner_task.py",
   "tasks/test_mail_invite_member_task.py",

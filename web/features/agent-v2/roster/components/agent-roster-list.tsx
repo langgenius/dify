@@ -35,6 +35,7 @@ import { TagSelector } from '@/features/tag-management/tag-selector'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialogContent } from './duplicate-agent-dialog'
@@ -469,6 +470,7 @@ export function AgentRosterList({
 }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
   const [editDialog] = useState(() => createDialogHandle<AgentAppPartial>())
@@ -477,7 +479,9 @@ export function AgentRosterList({
   const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const regionRef = useRef<HTMLDivElement>(null)
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   return (
@@ -644,7 +648,14 @@ export function AgentRosterList({
               <DeleteAgentForm
                 agentName={payload.name}
                 isPending={deletion.isPending}
-                error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+                error={
+                  deletion.isError
+                    ? describeRequestError(
+                        deletion.error,
+                        t(($) => $['roster.deleteFailed']),
+                      )
+                    : undefined
+                }
                 onSubmit={() => {
                   if (deletion.isPending) return
                   deletion.mutate(

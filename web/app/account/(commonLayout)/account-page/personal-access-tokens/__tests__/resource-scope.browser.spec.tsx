@@ -161,7 +161,7 @@ it('keeps a selected resource through loading, failure, and retry with no remain
   request.reject(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Resource catalog unavailable' }),
   )
-  await expect.element(dialog.getByRole('alert')).toMatchTextContent(/Couldn.t load resources/)
+  await expect.element(dialog.getByRole('alert')).toMatchTextContent(/Couldn't load resources/)
   await expect.element(selected).toBeChecked()
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()

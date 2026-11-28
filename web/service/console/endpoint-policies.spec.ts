@@ -1,7 +1,9 @@
 import type { QueryKey } from '@tanstack/react-query'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createTestQueryClient } from '@/test/query-client'
 import { consoleQuery } from './index'
+import { createMutationInvalidation } from './mutation-invalidation'
 
 const { request } = vi.hoisted(() => ({
   request:
@@ -101,7 +103,10 @@ describe('endpoint mutation cache policy', () => {
   it.each(mutations)(
     '$name refreshes endpoint lists and plugin counts with local feedback',
     async ({ run, method, path }) => {
-      const client = new QueryClient()
+      // Plugin counts refresh through the invalidation fallback, as in the app.
+      const client = createTestQueryClient(undefined, {
+        invalidation: createMutationInvalidation(),
+      })
       const { affectedKeys, unrelatedKeys } = seedEndpointCaches(client)
       const onSuccess = vi.fn()
       request.mockResolvedValue(Response.json({ success: true }))

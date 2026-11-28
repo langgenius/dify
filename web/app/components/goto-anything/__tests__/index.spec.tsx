@@ -7,7 +7,9 @@ import { zSkillResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { detectPlatform, useHotkey } from '@tanstack/react-hotkeys'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useReactFlow } from 'reactflow'
+import { SystemModelDialog } from '@/app/components/header/account-setting/model-provider-page/system-model-selector/dialog'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useWorkflowSearch } from '@/app/components/workflow/hooks/use-workflow-search'
@@ -16,13 +18,13 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { ThemeProvider } from '@/features/theme/provider'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { TEST_AGENT_ID, TEST_APP_ID, TEST_DATASET_ID } from '@/test/console/ids'
+import { createModelCreditsFixture } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
-import { SYSTEM_MODELS_PATH } from '../actions/commands/models'
 import { GotoAnything } from '../index'
 
 const api = vi.hoisted(() => ({
@@ -69,6 +71,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.get': api.agents,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
       'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+      'workspaces.current.modelProviders.credits.get': async () => createModelCreditsFixture(),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: createPluginDeclarationFixture(),
@@ -135,12 +138,20 @@ const isMac = detectPlatform() === 'mac'
 const triggerSearchShortcut = (target: HTMLElement = document.body) =>
   fireEvent.keyDown(target, { key: 'k', ctrlKey: !isMac, metaKey: isMac })
 
-function setup({ datasetOperator = false, enableSkill = true, canInstall = true } = {}) {
+function setup({
+  datasetOperator = false,
+  enableSkill = true,
+  canInstall = true,
+  canConfigureModels = true,
+} = {}) {
   const { wrapper: ConsoleWrapper, queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: datasetOperator ? 'dataset_operator' : 'owner' },
     features: { enable_skill: enableSkill },
     accountProfileMeta: { currentVersion: '1.0.0' },
-    workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
+    workspacePermissionKeys: [
+      ...(canInstall ? ['plugin.install'] : []),
+      ...(canConfigureModels ? ['plugin.model_config'] : []),
+    ],
     systemFeatures: {
       enable_marketplace: true,
       rbac_enabled: true,
@@ -151,15 +162,20 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
     },
   })
   render(
-    <ConsoleWrapper>
-      <ThemeProvider defaultPreference="light">
-        <GotoAnything />
-        <AppToaster timeout={0} />
-      </ThemeProvider>
-    </ConsoleWrapper>,
+    <NuqsTestingAdapter>
+      <ConsoleWrapper>
+        <ThemeProvider defaultPreference="light">
+          <GotoAnything />
+          <SystemModelDialog />
+          <AppToaster timeout={0} />
+        </ThemeProvider>
+      </ConsoleWrapper>
+    </NuqsTestingAdapter>,
   )
   return { user: userEvent.setup(), queryClient }
 }
+const systemModelDialogName = 'modelProvider.modelProvider.systemModelSettingsTitle'
+const findSystemModelDialog = () => screen.findByRole('dialog', { name: systemModelDialogName })
 async function openSearch() {
   triggerSearchShortcut()
   const input = await screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
@@ -330,8 +346,19 @@ describe('real commands', () => {
     await user.type(await openSearch(), '/models')
     await screen.findByRole('option', { name: /modelProvider.modelProvider.systemModelSettings/ })
     await user.keyboard('{Enter}')
-    expect(api.push).toHaveBeenCalledExactlyOnceWith(SYSTEM_MODELS_PATH)
+    expect(await findSystemModelDialog()).toBeInTheDocument()
+    expect(api.push).not.toHaveBeenCalled()
     expect(api.apps).not.toHaveBeenCalled()
+  })
+  it('omits the models command without model configuration access', async () => {
+    const { user } = setup({ canConfigureModels: false })
+    await user.type(await openSearch(), '/')
+    expect(
+      await screen.findByRole('option', { name: /app.gotoAnything.actions.themeCategoryDesc/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', { name: /modelProvider.modelProvider.systemModelSettings/ }),
+    ).not.toBeInTheDocument()
   })
   it('finds an action by name even when every remote provider fails', async () => {
     for (const request of [api.apps, api.datasets, api.skills, api.agents, api.marketplace])
@@ -344,7 +371,8 @@ describe('real commands', () => {
         name: /modelProvider.modelProvider.systemModelSettings/,
       }),
     )
-    expect(api.push).toHaveBeenCalledExactlyOnceWith(SYSTEM_MODELS_PATH)
+    expect(await findSystemModelDialog()).toBeInTheDocument()
+    expect(api.push).not.toHaveBeenCalled()
   })
 
   it('keeps the selected command stable when remote results arrive', async () => {
@@ -362,7 +390,8 @@ describe('real commands', () => {
     await screen.findByRole('option', { name: /Models app/ })
     expect(input).toHaveAttribute('aria-activedescendant', command.id)
     await user.keyboard('{Enter}')
-    expect(api.push).toHaveBeenCalledExactlyOnceWith(SYSTEM_MODELS_PATH)
+    expect(await findSystemModelDialog()).toBeInTheDocument()
+    expect(api.push).not.toHaveBeenCalled()
   })
 
   it('refreshes an open navigation submenu when workspace access changes', async () => {

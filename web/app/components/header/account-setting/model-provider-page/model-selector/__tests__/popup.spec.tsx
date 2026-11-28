@@ -8,7 +8,9 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -215,7 +217,13 @@ async function setup(
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
         <>
-          <Harness modelList={modelList} onSelect={onSelect} onHide={onHide} {...props} />
+          <Harness
+            modelList={modelList}
+            onSelect={onSelect}
+            onHide={onHide}
+            onConfigureEmptyState={vi.fn()}
+            {...props}
+          />
           <ModelCredentialDialog />
         </>
       </NuqsTestingAdapter>,
@@ -620,6 +628,29 @@ describe('installation through real polling and invalidation', () => {
       expect(api.summary).not.toHaveBeenCalled()
     },
   )
+
+  it.each([
+    [
+      'the server message',
+      createHttpError(
+        { status: 404, statusText: '', headers: new Headers() },
+        { message: 'Plugin not found' },
+      ),
+      'Plugin not found',
+    ],
+    [
+      'the network message for a network failure',
+      new TypeError('Failed to fetch'),
+      'requestErrors.generic.network',
+    ],
+  ])('reports a failed marketplace lookup with %s', async (_case, error, message) => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const { user } = await setup({ modelList: [] }, { marketplace: true })
+    api.lookup.mockRejectedValue(error)
+    await user.click(installButton())
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith(message))
+    expect(installButton()).toBeEnabled()
+  })
 })
 
 describe('credentials in the model selector', () => {

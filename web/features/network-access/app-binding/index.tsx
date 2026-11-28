@@ -44,6 +44,7 @@ import {
 import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState, getAccessControlStatusChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
@@ -132,7 +133,6 @@ function AccessControlSession({
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
       input: { params: { app_id: appId } },
-      context: { silent: true },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
     }),
@@ -173,11 +173,17 @@ function AccessControlSession({
         selectedPolicyId
           ? { params: { group_id: selectedPolicyId } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
-  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
+  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ meta: { errorToast: false } }))
+  const currentIpErrorFallback = t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })
+  const ipCheckErrorMessage = useRequestErrorMessage(
+    saveCheck.error ?? ipCheck.error,
+    currentIpErrorFallback,
+  )
+  const saveCheckErrorMessage = useRequestErrorMessage(saveCheck.error, currentIpErrorFallback)
 
   if (!canFetchNetworkAccess) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null
@@ -408,6 +414,7 @@ function AccessControlSession({
       { params: { group_id: groupId } },
       {
         onSuccess: (check) => {
+          // Only the current attempt shows its result; a discarded one must not overwrite it.
           if (saveAttemptRef.current !== attempt) return
           queryClient.setQueryData(
             checkCurrentIp.queryKey({ input: { params: { group_id: groupId } } }),
@@ -552,6 +559,7 @@ function AccessControlSession({
                       ? 'error'
                       : undefined
                 }
+                ipCheckErrorMessage={ipCheckErrorMessage}
                 onRetryIpCheck={() => {
                   saveCheck.reset()
                   void ipCheck.refetch()
@@ -660,7 +668,7 @@ function AccessControlSession({
             )}
             {saveCheck.isError && (
               <p role="alert" className="system-sm-regular text-text-warning">
-                {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+                {saveCheckErrorMessage}
               </p>
             )}
           </div>

@@ -29,6 +29,7 @@ import {
 import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   getAgentToolPublishIssue,
   useAgentToolPresentation,
@@ -58,6 +59,7 @@ export function useAgentConfigureSync({
 }) {
   const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tWorkflow } = useTranslation(['workflow'])
+  const describeRequestError = useRequestErrorDescriber()
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
   const toolProviderCatalog = useAgentToolProviderCatalog()
@@ -105,24 +107,21 @@ export function useAgentConfigureSync({
 
   const { mutateAsync: saveComposerDraft } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
-      context: {
-        silent: true,
-      },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: saveComposerDraftOnPageClose } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
       context: {
         keepalive: true,
-        silent: true,
       },
+      // Best-effort save while the page closes; nothing is left on screen to report to.
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
     consoleQuery.agent.byAgentId.publish.post.mutationOptions({
-      context: {
-        silent: true,
-      },
+      meta: { errorToast: false },
     }),
   )
 
@@ -180,10 +179,7 @@ export function useAgentConfigureSync({
           })
         } catch (error) {
           // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
-          if (!silent) {
-            if (publish) throw error
-            throw new Error('Failed to save agent composer draft.')
-          }
+          if (!silent) throw error
 
           return false
         }
@@ -250,6 +246,7 @@ export function useAgentConfigureSync({
   const { isPending: isPublishing, mutateAsync: runPublishTransaction } = useMutation(
     mutationOptions({
       mutationKey: ['agent-configure', agentId, 'publish'],
+      meta: { errorToast: false },
       mutationFn: async ({
         configSnapshot,
         draftBaseline,
@@ -305,7 +302,12 @@ export function useAgentConfigureSync({
         silent: false,
       })
     } catch (error) {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+      toast.error(
+        describeRequestError(
+          error,
+          tCommon(($) => $['api.actionFailed']),
+        ),
+      )
       throw error
     } finally {
       explicitlySavingDraftKeysRef.current.delete(draftKey)
@@ -316,6 +318,7 @@ export function useAgentConfigureSync({
     saveComposer,
     store,
     tCommon,
+    describeRequestError,
     explicitlySavingDraftKeysRef,
   ])
 

@@ -4,11 +4,12 @@ import type { AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
-import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
+import { MutationCache, MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
+import { createMutationInvalidation } from './mutation-invalidation'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const clients: QueryClient[] = []
@@ -18,7 +19,28 @@ const createQueryClient = (...args: ConstructorParameters<typeof QueryClient>) =
   return client
 }
 
+const detachFallbacks: Array<() => void> = []
+
+/** A client with the app's background refresh after every console mutation. */
+const createQueryClientWithFallback = (
+  config: ConstructorParameters<typeof QueryClient>[0] = {},
+) => {
+  const invalidation = createMutationInvalidation()
+  const client = createQueryClient({
+    ...config,
+    mutationCache: new MutationCache({
+      onSuccess: (_data, _variables, _result, mutation) => invalidation.onMutationSuccess(mutation),
+    }),
+  })
+  detachFallbacks.push(invalidation.attach(client))
+  return client
+}
+
+// The fallback skips data written after the request succeeded; reads before it get an older time.
+const nextMillisecond = () => new Promise((resolve) => setTimeout(resolve, 2))
+
 afterEach(() => {
+  for (const detach of detachFallbacks.splice(0)) detach()
   for (const client of clients.splice(0)) client.clear()
   vi.restoreAllMocks()
   vi.doUnmock('../base')
@@ -191,7 +213,7 @@ const createWorkflowComposerState = (
 
 // Scenario: base URL selection and warnings.
 describe('consoleQuery transport context', () => {
-  it('uploads icon files as multipart data through the Console transport', async () => {
+  it('uploads icon files as multipart data and forwards progress through the Console transport', async () => {
     const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
     const response = { id: 'uploaded-icon', name: file.name, size: file.size }
     const request = vi.fn().mockResolvedValue(
@@ -201,12 +223,14 @@ describe('consoleQuery transport context', () => {
       }),
     )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const onUploadProgress = vi.fn()
     const mutation = new MutationObserver(
       createQueryClient(),
-      consoleQuery.files.upload.post.mutationOptions(),
+      consoleQuery.files.upload.post.mutationOptions({ context: { onUploadProgress } }),
     )
     await expect(mutation.mutate({ body: { file } })).resolves.toEqual(response)
     const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(request.mock.calls[0]?.[2]?.onUploadProgress).toBe(onUploadProgress)
     expect(outgoing.url).toContain('/files/upload')
     expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
     const form = await outgoing.formData()
@@ -268,7 +292,6 @@ describe('consoleQuery transport context', () => {
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const options = consoleQuery.apps.byAppId.export.get.queryOptions({
       input: { params: { app_id: 'app-1' } },
-      context: { silent: true },
     })
     const result = await options.queryFn({
       signal: new AbortController().signal,
@@ -303,41 +326,6 @@ describe('consoleQuery transport context', () => {
     expect(audio).toBeInstanceOf(Blob)
     expect(audio.type).toBe('audio/wav')
     expect(new Uint8Array(await audio.arrayBuffer())).toEqual(bytes)
-  })
-
-  it('should forward silent context to the base request transport', async () => {
-    const request = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({}), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-        },
-      }),
-    )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-      },
-      context: {
-        silent: true,
-      },
-    })
-
-    await expect(
-      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
-    ).resolves.toEqual({})
-
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining('/agent/agent-1/build-draft'),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-        silent: true,
-      }),
-    )
   })
 
   it('should forward keepalive context to the base request transport', async () => {
@@ -915,7 +903,7 @@ describe('consoleQuery app mutation defaults', () => {
   })
 
   it.each([undefined, 'existing-app'])(
-    'should refresh completed import data and wait for the app list (overwrite: %s)',
+    'should wait for the app list after a completed import (overwrite: %s)',
     async (appId) => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
@@ -938,25 +926,13 @@ describe('consoleQuery app mutation defaults', () => {
         createMutationContext(queryClient),
       )
 
-      if (appId) {
-        expect(invalidateQueries).not.toHaveBeenCalledWith({
-          queryKey: consoleQuery.features.get.key(),
-        })
-      } else {
-        expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: consoleQuery.features.get.key(),
-        })
-      }
       expect(result).toBeInstanceOf(Promise)
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.apps.get.key(),
-      })
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.apps.starred.get.key(),
-      })
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.apps.recent.get.key(),
-      })
+      // Starred and recent apps refresh through the fallback, quota and roster agents through
+      // the domains the import declares.
+      expect(invalidateQueries.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+        consoleQuery.apps.get.key(),
+      ])
+      expect(mutationOptions.meta?.alsoInvalidate).toEqual(['features', 'agent'])
     },
   )
 
@@ -1084,11 +1060,9 @@ describe('consoleQuery app mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.starred.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.recent.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.features.get.key() })
-    expect(invalidateQueries).toHaveBeenCalledTimes(4)
+    // Recent apps and the quota refresh through the fallback, which is never awaited.
+    expect(invalidateQueries).toHaveBeenCalledTimes(2)
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(['features'])
 
     invalidationResolvers.forEach((resolve) => resolve())
     await synchronization
@@ -1143,9 +1117,11 @@ describe('consoleQuery app mutation defaults', () => {
       ),
     ]
 
-    // Creates write the new key and refresh in the background (the dialog shows the
-    // one-time secret at once); deletes wait for the list the key leaves.
-    expect(results.slice(0, 2)).toEqual([undefined, undefined])
+    // Creates first cancel reads of their list, then write the new key and refresh in the
+    // background, so the dialog shows the one-time secret at once; deletes wait for the list
+    // the key leaves.
+    await expect(results[0]).resolves.toBeUndefined()
+    await expect(results[1]).resolves.toBeUndefined()
     for (const result of results.slice(2)) expect(result).toBeInstanceOf(Promise)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
@@ -1170,7 +1146,7 @@ describe('consoleQuery agent mutation defaults', () => {
   })
 
   it.each(['creation', 'deletion'])(
-    'invalidates agent keys and access status after key %s',
+    'invalidates agent keys and leaves access status to the fallback after key %s',
     async (operation) => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
@@ -1202,7 +1178,7 @@ describe('consoleQuery agent mutation defaults', () => {
           input: { params: { agent_id: 'agent-1' } },
         }),
       })
-      expect(invalidateQueries).toHaveBeenCalledWith({
+      expect(invalidateQueries).not.toHaveBeenCalledWith({
         queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
           input: { params: { agent_id: 'agent-1' } },
         }),
@@ -1210,7 +1186,7 @@ describe('consoleQuery agent mutation defaults', () => {
     },
   )
 
-  it('should invalidate roster and invite option lists after creating an agent', async () => {
+  it('should wait for the roster list after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1233,12 +1209,13 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    // Invite options are in the agent domain and refresh through the fallback.
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
 
-  it('should cache copied agent detail and invalidate roster lists after copying an agent', async () => {
+  it('should cache copied agent detail and wait for the roster list after copying an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1271,7 +1248,7 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
@@ -1422,7 +1399,7 @@ describe('consoleQuery agent mutation defaults', () => {
     ).toEqual(composerState)
   })
 
-  it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
+  it('should cache workflow composer state and wait for the roster list and saved agent after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1464,9 +1441,8 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agent.inviteOptions.get.key(),
-    })
+    // Invite options refresh through the fallback for the declared agent domain.
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(['agent'])
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.byAgentId.get.queryKey({
         input: {
@@ -1478,7 +1454,7 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
-  it('should cache snippet composer state and invalidate roster lists after saving inline agent to roster', async () => {
+  it('should cache snippet composer state and wait for the roster list and saved agent after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1522,9 +1498,8 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agent.inviteOptions.get.key(),
-    })
+    // Invite options refresh through the fallback for the declared agent domain.
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(['agent'])
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.byAgentId.get.queryKey({
         input: {
@@ -1602,7 +1577,7 @@ describe('consoleQuery agent mutation defaults', () => {
     },
   )
 
-  it('should invalidate invite option lists after updating an agent', async () => {
+  it('should leave invite option lists to the fallback after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1624,12 +1599,12 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
 
-  it('should invalidate roster and invite option lists after publishing an agent config', async () => {
+  it('should drop invite option lists and leave the roster list to the fallback after publishing an agent config', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1730,7 +1705,7 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -1799,7 +1774,7 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(queryClient.getQueryData(composerQueryKey)).toEqual(savedComposerState)
   })
 
-  it('should clear deleted agent queries and invalidate invite option lists', async () => {
+  it('should clear deleted agent queries and declare tag catalogs for the fallback', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1842,9 +1817,11 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    // Invite options refresh through the fallback; the agent's tags lose their usage.
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(['tags'])
     expect(queryClient.getQueryData(deletedAgentDetailQueryKey)).toBeUndefined()
     expect(queryClient.getQueryData(deletedAgentComposerQueryKey)).toBeUndefined()
     expect(queryClient.getQueryData(otherAgentDetailQueryKey)).toEqual(otherAgent)
@@ -1857,7 +1834,7 @@ describe('consoleQuery Web app access mutation defaults', () => {
     vi.restoreAllMocks()
   })
 
-  it('should invalidate access data and Agent details after updating Web app access', async () => {
+  it('should invalidate access data, app and Agent details after updating Web app access', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -1883,17 +1860,48 @@ describe('consoleQuery Web app access mutation defaults', () => {
       queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.apps.byAppId.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.byAgentId.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    // App lists refresh through the fallback for the declared apps domain.
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.starred.get.key(),
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(['apps'])
+  })
+
+  it('should wait for the app detail before finishing a Web app access update', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = createQueryClient()
+    const appDetailKey = JSON.stringify(consoleQuery.apps.byAppId.get.key())
+    let resolveAppDetail!: () => void
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation((filters) =>
+      JSON.stringify(filters?.queryKey) === appDetailKey
+        ? new Promise<void>((resolve) => {
+            resolveAppDetail = resolve
+          })
+        : Promise.resolve(),
+    )
+
+    let finished = false
+    const update = Promise.resolve(
+      consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions().onSuccess!(
+        { message: 'updated' },
+        { body: { appId: 'app-1', accessMode: 'private' } },
+        undefined,
+        createMutationContext(queryClient),
+      ),
+    ).then(() => {
+      finished = true
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.recent.get.key(),
-    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(finished).toBe(false)
+
+    resolveAppDetail()
+    await update
+    expect(finished).toBe(true)
   })
 })
 
@@ -2028,10 +2036,12 @@ describe('consoleQuery App Deploy cache behavior', () => {
   )
 
   it.each(['create', 'delete'] as const)(
-    'refreshes environment keys and their count after %s',
+    'refreshes environment keys and, through the fallback, their count after %s',
     async (action) => {
       const consoleQuery = await loadConsoleQuery()
-      const client = createQueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+      const client = createQueryClientWithFallback({
+        defaultOptions: { queries: { staleTime: Infinity } },
+      })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const key = { created_at: 1, id: 'key-1', token: 'secret', type: 'api' }
       let keys = action === 'create' ? [] : [key]
@@ -2052,6 +2062,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
         }),
       }
       await Promise.all([client.query(list), client.query(summary)])
+      await nextMillisecond()
 
       if (action === 'create') {
         const mutation = new MutationObserver(client, {
@@ -2074,15 +2085,20 @@ describe('consoleQuery App Deploy cache behavior', () => {
       }
 
       expect((await client.query(list)).data).toEqual(keys)
+      await vi.waitFor(() =>
+        expect(client.getQueryState(summary.queryKey)?.isInvalidated).toBe(true),
+      )
       expect((await client.query(summary)).api_key_count).toBe(keys.length)
     },
   )
 
   it.each(['deploy', 'undeploy'] as const)(
-    'refreshes deployment reads after %s',
+    'refreshes deployment reads and, through the fallback, app environments after %s',
     async (action) => {
       const consoleQuery = await loadConsoleQuery()
-      const client = createQueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+      const client = createQueryClientWithFallback({
+        defaultOptions: { queries: { staleTime: Infinity } },
+      })
       const params = { app_id: 'app-1', environment_id: 'staging', workflow_id: 'workflow-1' }
       const environment = {
         id: 'staging',
@@ -2113,6 +2129,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
         queryFn: readEnvironments,
       }
       await Promise.all([client.query(list), client.query(detail), client.query(environments)])
+      await nextMillisecond()
       const response = {
         operation: {
           id: 'operation-1',
@@ -2138,10 +2155,14 @@ describe('consoleQuery App Deploy cache behavior', () => {
         }).mutate({ params })
       }
 
+      await vi.waitFor(() =>
+        expect(client.getQueryState(environments.queryKey)?.isInvalidated).toBe(true),
+      )
       await Promise.all([client.query(list), client.query(detail), client.query(environments)])
       expect(readList).toHaveBeenCalledTimes(2)
       expect(readDetail).toHaveBeenCalledTimes(2)
-      expect(readEnvironments).toHaveBeenCalledTimes(action === 'undeploy' ? 2 : 1)
+      // Every deployment write refreshes the deploy service's reads in the background.
+      expect(readEnvironments).toHaveBeenCalledTimes(2)
     },
   )
 })
@@ -2252,15 +2273,11 @@ describe('consoleQuery tag mutation defaults', () => {
 
     expect(queryClient.getQueryData(appListKey)).toEqual([updatedTag, otherTag])
     expect(queryClient.getQueryData(knowledgeListKey)).toEqual([knowledgeTag])
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.starred.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.recent.get.key(),
-    })
+    // Tagged resources refresh through the fallback for the declared domains.
+    expect(invalidateQueries).not.toHaveBeenCalled()
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(
+      expect.arrayContaining(['apps', 'agent', 'datasets']),
+    )
   })
 
   it('should remove deleted tags across cached list queries', async () => {
@@ -2306,15 +2323,11 @@ describe('consoleQuery tag mutation defaults', () => {
 
     expect(queryClient.getQueryData(appListKey)).toEqual([remainingTag])
     expect(queryClient.getQueryData(knowledgeListKey)).toEqual([knowledgeTag])
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.starred.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.recent.get.key(),
-    })
+    // Tagged resources refresh through the fallback for the declared domains.
+    expect(invalidateQueries).not.toHaveBeenCalled()
+    expect(mutationOptions.meta?.alsoInvalidate).toEqual(
+      expect.arrayContaining(['apps', 'agent', 'datasets']),
+    )
   })
 })
 
@@ -2410,42 +2423,48 @@ describe('consoleQuery apiBasedExtension mutation defaults', () => {
 })
 
 describe('workspace skill deletion cache', () => {
-  it.each([true, false])('refreshes agent bindings after deletion (active: %s)', async (active) => {
-    const consoleQuery = await loadConsoleQuery()
-    const client = createQueryClient({
-      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
-    })
-    const input = { params: { agent_id: 'agent-1' } }
-    const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({ input })
-    const previousBindings = { agent_id: 'agent-1', skill_ids: ['skill-1'], data: [] }
-    const emptyBindings = { agent_id: 'agent-1', skill_ids: [], data: [] }
-    client.setQueryData(queryKey, previousBindings)
-    const queryFn = vi.fn(async () => emptyBindings)
-    const observer = new QueryObserver(client, { queryKey, queryFn })
-    let unsubscribe = active ? observer.subscribe(() => {}) : undefined
-    const onSuccess = vi.fn()
-    const mutation = new MutationObserver(
-      client,
-      consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-        mutationFn: async () => ({ id: 'skill-1', deleted: true }),
-        onSuccess,
-      }),
-    )
-
-    try {
-      await mutation.mutate({
-        params: { skill_id: 'skill-1' },
-        body: { confirmation_name: 'Skill' },
+  it.each([true, false])(
+    'refreshes agent bindings through the fallback after deletion (active: %s)',
+    async (active) => {
+      const consoleQuery = await loadConsoleQuery()
+      const client = createQueryClientWithFallback({
+        defaultOptions: { queries: { staleTime: Infinity, retry: false } },
       })
-      if (!active) unsubscribe = observer.subscribe(() => {})
-      await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual(emptyBindings))
-      expect(queryFn).toHaveBeenCalledTimes(1)
-      expect(onSuccess).toHaveBeenCalledTimes(1)
-    } finally {
-      unsubscribe?.()
-      client.clear()
-    }
-  })
+      const input = { params: { agent_id: 'agent-1' } }
+      const queryKey = consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({
+        input,
+      })
+      const previousBindings = { agent_id: 'agent-1', skill_ids: ['skill-1'], data: [] }
+      const emptyBindings = { agent_id: 'agent-1', skill_ids: [], data: [] }
+      client.setQueryData(queryKey, previousBindings)
+      const queryFn = vi.fn(async () => emptyBindings)
+      const observer = new QueryObserver(client, { queryKey, queryFn })
+      let unsubscribe = active ? observer.subscribe(() => {}) : undefined
+      await nextMillisecond()
+      const onSuccess = vi.fn()
+      const mutation = new MutationObserver(
+        client,
+        consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+          mutationFn: async () => ({ id: 'skill-1', deleted: true }),
+          onSuccess,
+        }),
+      )
+
+      try {
+        await mutation.mutate({
+          params: { skill_id: 'skill-1' },
+          body: { confirmation_name: 'Skill' },
+        })
+        if (!active) unsubscribe = observer.subscribe(() => {})
+        await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual(emptyBindings))
+        expect(queryFn).toHaveBeenCalledTimes(1)
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+      } finally {
+        unsubscribe?.()
+        client.clear()
+      }
+    },
+  )
 
   it('preserves cached bindings when deletion fails', async () => {
     const consoleQuery = await loadConsoleQuery()

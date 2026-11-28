@@ -156,9 +156,12 @@ function UpdateDSLModal({
   }
 
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const importMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (file: File) => {
       if (file.name.toLowerCase().endsWith('.ifpkg'))
         return requestImport({ body: { file, app_id: appId } })
@@ -183,7 +186,7 @@ function UpdateDSLModal({
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onError: (error) => notifyImportError(error),
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)

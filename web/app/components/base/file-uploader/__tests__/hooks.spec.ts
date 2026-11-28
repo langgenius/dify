@@ -8,6 +8,7 @@ import { createElement } from 'react'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -182,6 +183,25 @@ it('writes consecutive file edits to the real store and notifies subscribers', (
   expect(onChange).toHaveBeenLastCalledWith([])
 })
 
+it('shows the validation reason of a rejected upload instead of the generic failure', async () => {
+  const { result } = setup()
+  act(() => {
+    result.current.handleLocalFileUpload(new File(['a'], 'bad\\name.txt', { type: 'text/plain' }))
+  })
+  await waitFor(() => expect(fileUpload).toHaveBeenCalledOnce())
+
+  act(() =>
+    vi.mocked(fileUpload).mock.calls[0]![0].onErrorCallback(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_param',
+        message: 'Filename contains invalid characters',
+      }),
+    ),
+  )
+
+  expect(toast.error).toHaveBeenCalledExactlyOnceWith('Filename contains invalid characters')
+})
+
 it('keeps concurrent local uploads separate while progress, failure and retry update the store', async () => {
   const { result } = setup()
   act(() => {
@@ -200,9 +220,13 @@ it('keeps concurrent local uploads separate while progress, failure and retry up
   expect(result.current.files.find((file) => file.name === second.file.name)?.uploadedId).toBe(
     'second',
   )
-  act(() => first.onErrorCallback(new ORPCError('file_extension_blocked')))
+  act(() =>
+    first.onErrorCallback(
+      createHttpError(new Response(null, { status: 400 }), { code: 'unsupported_file_type' }),
+    ),
+  )
   expect(result.current.files.find((file) => file.id === firstId)?.progress).toBe(-1)
-  expect(toast.error).toHaveBeenCalledWith('common.fileUploader.fileExtensionBlocked')
+  expect(toast.error).toHaveBeenCalledWith('requestErrors.code.unsupported_file_type')
   act(() => result.current.handleReUploadFile(firstId))
   expect(result.current.files.find((file) => file.id === firstId)?.progress).toBe(0)
   act(() => vi.mocked(fileUpload).mock.calls[2]![0].onSuccessCallback(uploadResponse))
@@ -371,9 +395,7 @@ it('keeps public chat tokens on the normal upload transport', async () => {
   )
   await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', {
-    silent: true,
-  })
+  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf')
 })
 
 it.each(['unsupported', 'oversized', 'failed'] as const)(

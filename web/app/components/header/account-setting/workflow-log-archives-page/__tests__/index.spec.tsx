@@ -11,6 +11,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
@@ -232,7 +233,12 @@ describe('WorkflowLogArchivesPage', () => {
 
     it('keeps a rejected deletion open with an error and allows retry', async () => {
       const user = userEvent.setup()
-      archiveRequests.delete.mockRejectedValueOnce(new Error('Storage unavailable'))
+      archiveRequests.delete.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 503 }), {
+          code: 'storage_unavailable',
+          message: 'Server says why',
+        }),
+      )
       renderPage()
 
       await user.click(screen.getByRole('button', { name: 'common.operation.delete 2025-03' }))

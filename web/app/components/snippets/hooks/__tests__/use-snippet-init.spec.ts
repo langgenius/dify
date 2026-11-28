@@ -1,6 +1,7 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import { act, waitFor } from '@testing-library/react'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { useSnippetInit } from '../use-snippet-init'
@@ -120,6 +121,26 @@ it('keeps initialization gated on an unexpected draft failure', async () => {
   expect(result.current.data).toBeUndefined()
   expect(result.current.isLoading).toBe(true)
   expect(store.getState().isWorkflowDataLoaded).toBe(false)
+})
+
+it('reports an unexpected draft failure with the server message', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  requests.draft.mockRejectedValue(
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Draft unavailable' },
+    ),
+  )
+  const { result } = renderInit()
+  await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+  expect(result.current.isLoading).toBe(true)
+})
+
+it('treats a missing draft as an empty one without reporting it', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  const { result } = renderInit()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(toastError).not.toHaveBeenCalled()
 })
 
 it('ignores an outdated draft response after selecting another snippet', async () => {

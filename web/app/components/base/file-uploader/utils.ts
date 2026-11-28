@@ -1,7 +1,5 @@
-import type { TFunction } from 'i18next'
 import type { FileEntity, FilePreviewKind } from './types'
 import type { FileResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -9,28 +7,6 @@ import { consoleClient } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import { uploadPublicFile } from './public-upload'
 import { FileAppearanceTypeEnum } from './types'
-
-/**
- * Get appropriate error message for file upload errors
- * @param error - The error object from upload failure
- * @param defaultMessage - Default error message to use if no specific error is matched
- * @param t - Translation function
- * @returns Localized error message
- */
-export const getFileUploadErrorMessage = (
-  error: unknown,
-  defaultMessage: string,
-  t: TFunction<['common']>,
-): string => {
-  const errorCode = error instanceof ORPCError ? error.code : undefined
-
-  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
-
-  if (errorCode === 'file_extension_blocked')
-    return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
-
-  return defaultMessage
-}
 
 type FileUploadResponse = {
   created_at: number
@@ -58,7 +34,7 @@ export const fileUpload: FileUpload = (
   const onUploadProgress = ({ loaded, total }: { loaded: number; total: number }) => {
     onProgressCallback(Math.floor((loaded / total) * 100))
   }
-  const context = { silent: true, onUploadProgress }
+  const context = { onUploadProgress }
 
   let uploading: Promise<unknown>
   if (isPublic) {

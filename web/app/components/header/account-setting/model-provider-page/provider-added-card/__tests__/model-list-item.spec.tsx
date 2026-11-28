@@ -2,8 +2,12 @@ import type { ModelItem } from '../../declarations'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
-import { renderWithConsoleQuery as renderWithQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithQuery,
+} from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { modelProviderDetailsQueryOptions } from '../../utils'
 import ModelListItem from '../model-list-item'
@@ -66,6 +70,8 @@ it.each([
         isConfigurable={false}
         onChange={onChange}
       />,
+      // Both lists refresh through the invalidation fallback, as in the app.
+      { queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }) },
     )
 
     const catalogKey = consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
@@ -86,9 +92,9 @@ it.each([
         body: { model: 'gpt-4', model_type: 'llm' },
       }),
     )
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('test-provider'))
     expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(providerKey)?.isInvalidated).toBe(true)
-    expect(onChange).toHaveBeenCalledWith('test-provider')
   },
 )
 

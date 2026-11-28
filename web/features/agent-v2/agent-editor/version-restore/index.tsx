@@ -59,7 +59,7 @@ export function AgentVersionRestore({
     externallyDisabled || !canRestore || (deploymentEdition === 'CLOUD' && plan === undefined)
   const mutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onMutate: async () => {
         await onBeforeRestore?.()
       },

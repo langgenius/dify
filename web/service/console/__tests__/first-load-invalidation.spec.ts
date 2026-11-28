@@ -1,8 +1,9 @@
 import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
-import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
+import { MutationCache, MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
+import { createMutationInvalidation } from '../mutation-invalidation'
 import { invalidateQueryKeys } from '../policies/shared'
 
 type List = { data: string[] }
@@ -30,9 +31,19 @@ const annotationListKey = (): QueryKey =>
  * Mounts a list whose responses resolve only when the test says so, in the
  * order the test chooses.
  */
-function mountList(queryKey: QueryKey) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function mountList(queryKey: QueryKey, { withFallback = false } = {}) {
+  const invalidation = createMutationInvalidation()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+    ...(withFallback && {
+      mutationCache: new MutationCache({
+        onSuccess: (_data, _variables, _result, mutation) =>
+          invalidation.onMutationSuccess(mutation),
+      }),
+    }),
+  })
   clients.push(client)
+  if (withFallback) unsubscribers.push(invalidation.attach(client))
   const responses: Array<ReturnType<typeof createDeferred<List>>> = []
   const queryFn = vi.fn(() => {
     const response = createDeferred<List>()
@@ -135,7 +146,7 @@ describe('annotation policies', () => {
     ['create', () => consoleQuery.apps.byAppId.annotations.post.mutationOptions()],
     ['delete', () => consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions()],
     ['batch delete', () => consoleQuery.apps.byAppId.annotations.delete.mutationOptions()],
-  ])('%s refreshes the annotation quota', async (_, options) => {
+  ])('%s leaves the annotation quota to the fallback', async (_, options) => {
     const client = new QueryClient()
     clients.push(client)
     const invalidated = vi.spyOn(client, 'invalidateQueries')
@@ -149,9 +160,10 @@ describe('annotation policies', () => {
       { client, meta: undefined },
     )
 
-    expect(invalidated.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
+    expect(invalidated.mock.calls.map(([filters]) => filters?.queryKey)).not.toContainEqual(
       consoleQuery.features.get.key(),
     )
+    expect(options().meta?.alsoInvalidate).toEqual(['features'])
   })
 
   it('does not refresh after a failed write', async () => {
@@ -188,10 +200,11 @@ describe('annotation policies', () => {
   })
 
   it('waits for the annotation list on an add but not for the quota', async () => {
-    const { client, queryFn, responses } = mountList(annotationListKey())
+    const { client, queryFn, responses } = mountList(annotationListKey(), { withFallback: true })
     responses[0]!.resolve({ data: ['loaded'] })
     await settle()
-    const quotaFn = vi.fn(() => new Promise(() => undefined))
+    const quotaLoad = createDeferred<unknown>()
+    const quotaFn = vi.fn().mockReturnValueOnce(quotaLoad.promise).mockResolvedValue({})
     const quota = new QueryObserver(client, {
       queryKey: consoleQuery.features.get.queryKey(),
       queryFn: quotaFn,
@@ -215,10 +228,13 @@ describe('annotation policies', () => {
     expect(queryFn).toHaveBeenCalledTimes(2)
     expect(added).toBe(false)
 
-    // The list lands; the quota refetch is still pending and does not hold the add.
+    // The list lands; the quota's first load is still pending and does not hold the add.
     responses[1]!.resolve({ data: ['after write'] })
     await adding
     expect(added).toBe(true)
-    expect(quotaFn).toHaveBeenCalledTimes(2)
+    // That observed load started before the write: the fallback restarts it.
+    await vi.waitFor(() => expect(quotaFn).toHaveBeenCalledTimes(2))
+    quotaLoad.resolve({})
+    await vi.waitFor(() => expect(quota.getCurrentResult().isSuccess).toBe(true))
   })
 })

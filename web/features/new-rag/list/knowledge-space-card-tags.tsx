@@ -2,12 +2,13 @@
 
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { TagSelector } from '@/features/tag-management/tag-selector'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 export function KnowledgeSpaceCardTags({
   knowledgeSpace,
@@ -17,10 +18,11 @@ export function KnowledgeSpaceCardTags({
   onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation(['common'])
-  const queryClient = useQueryClient()
+  const describeRequestError = useRequestErrorDescriber()
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
-  // The latest submitted selection stays authoritative until every queued replacement and the
-  // follow-up cache sync finish, so reopening the picker never starts from stale server tags.
+  // The latest submitted selection stays authoritative until every queued replacement and its
+  // cache sync (awaited by the policy) finish, so reopening the picker never starts from stale
+  // server tags.
   const [submittedTagIds, setSubmittedTagIds] = useState<string[]>()
   const replacementQueueRef = useRef<{ next?: string[]; running: boolean }>({ running: false })
   const tags = useMemo<Tag[]>(() => {
@@ -41,7 +43,7 @@ export function KnowledgeSpaceCardTags({
   const { mutateAsync: replaceTags } = useMutation(
     // The tag trigger stays in place, so a failed replacement needs its own message.
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -57,26 +59,15 @@ export function KnowledgeSpaceCardTags({
           params: { control_space_id: knowledgeSpace.control_space_id },
           body: { tag_ids: currentTagIds },
         })
-      } catch {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      } catch (error) {
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          ),
+        )
       }
       nextTagIds = queue.next
-    }
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.tags.get.key({
-          type: 'query',
-          input: { query: { type: 'knowledge' } },
-        }),
-      }),
-    ]).catch(() => undefined)
-    // A selection submitted during the cache sync starts its own replacement run.
-    if (queue.next) {
-      void runReplacements(queue.next)
-      return
     }
     queue.running = false
     setSubmittedTagIds(undefined)

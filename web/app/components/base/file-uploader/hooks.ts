@@ -22,18 +22,14 @@ import { isAppAccessError } from '@/features/app-access-error/state'
 import { useParams } from '@/next/navigation'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { TransferMethod } from '@/types/app'
 import { getErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 import { isAbortError } from '@/utils/is-abort-error'
 import { useFileStore } from './store'
 import { useFileUploadContext } from './upload-context'
-import {
-  fileUpload,
-  getFileUploadErrorMessage,
-  getSupportFileType,
-  isAllowedFileExtension,
-} from './utils'
+import { fileUpload, getSupportFileType, isAllowedFileExtension } from './utils'
 
 export const getFileSizeLimit = (fileUploadConfig?: UploadConfig) => {
   const imgSizeLimit =
@@ -60,15 +56,18 @@ export const getFileSizeLimit = (fileUploadConfig?: UploadConfig) => {
 
 export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const fileStore = useFileStore()
   const params = useParams()
   const { trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
-    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.remoteFiles.upload.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: uploadTrialRemoteFile } = useMutation(
     consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
@@ -196,10 +195,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           },
           onErrorCallback: (error?: unknown) => {
             if (!fileStore.getState().isActive) return
-            const errorMessage = getFileUploadErrorMessage(
+            const errorMessage = describeRequestError(
               error,
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-              t,
             )
             if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
@@ -213,7 +211,15 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         }
       }
     },
-    [fileStore, t, handleUpdateFile, uploadStrategy, params.token, trialAppId],
+    [
+      fileStore,
+      t,
+      handleUpdateFile,
+      uploadStrategy,
+      params.token,
+      trialAppId,
+      describeRequestError,
+    ],
   )
 
   const startProgressTimer = useCallback(
@@ -255,7 +261,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
-      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url, { silent: true })
+      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
       else remoteUpload = uploadConsoleRemoteFile({ body: { url } })
 
       remoteUpload
@@ -295,11 +301,10 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           if (!fileStore.getState().isActive) return
           if (!isAppAccessError(error) && !isAbortError(error))
             toast.error(
-              getFileUploadErrorMessage(
+              describeRequestError(
                 error,
                 getErrorMessage(error) ??
                   t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }),
-                t,
               ),
             )
           handleRemoveFile(uploadingFile.id)
@@ -310,6 +315,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleAddFile,
       handleUpdateFile,
       t,
+      describeRequestError,
       handleRemoveFile,
       fileConfig?.allowed_file_types,
       fileConfig.allowed_file_extensions,
@@ -393,10 +399,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             },
             onErrorCallback: (error?: unknown) => {
               if (!fileStore.getState().isActive) return
-              const errorMessage = getFileUploadErrorMessage(
+              const errorMessage = describeRequestError(
                 error,
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-                t,
               )
               if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
               handleUpdateFile({ ...uploadingFile, progress: -1 })
@@ -425,6 +430,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       noNeedToCheckEnable,
       checkSizeLimit,
       t,
+      describeRequestError,
       handleAddFile,
       handleUpdateFile,
       uploadStrategy,

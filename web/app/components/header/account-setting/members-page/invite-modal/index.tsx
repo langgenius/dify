@@ -27,6 +27,7 @@ import { getCountQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -50,7 +51,7 @@ type InviteFormProps = {
   isEmailSetup: boolean
   isPending: boolean
   errorCode: InviteFieldErrorCode | null
-  hasError: boolean
+  error: unknown
   results: InvitationResults | undefined
   onSubmit: (
     emails: string[],
@@ -65,12 +66,13 @@ function InviteForm({
   isEmailSetup,
   isPending,
   errorCode,
-  hasError,
+  error,
   results,
   onSubmit,
   onDismissError,
 }: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const workspaceId = useAtomValue(currentWorkspaceAtom).id
   const { data: reservedSeats = 0 } = useQuery({
@@ -90,8 +92,11 @@ function InviteForm({
         ? { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) }
         : undefined
   const formError =
-    hasError && !fieldErrors
-      ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
+    error && !fieldErrors
+      ? describeRequestError(
+          error,
+          t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }),
+        )
       : null
   const memberLimit = features
     ? getCountQuota(
@@ -254,7 +259,7 @@ export function InviteModal({ onSend }: InviteModalProps) {
     !isEmailSetup && results.some(({ status }) => status === 'success')
   const { mutate, reset, isPending, error, data } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
         const results = response.invitation_results
         onSend(results.map(({ email }) => email.toLowerCase()))
@@ -325,7 +330,7 @@ export function InviteModal({ onSend }: InviteModalProps) {
                 isPending={isBusy}
                 // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
                 errorCode={isDefinedError(error) ? error.code : null}
-                hasError={!!error}
+                error={error}
                 results={data?.invitation_results}
                 onSubmit={handleSubmit}
                 onDismissError={() => {

@@ -282,10 +282,9 @@ describe('Human Input migration executor', () => {
       ],
     })
     await executeHumanInputV2Migration(harness.dependencies)
-    expect(harness.post).toHaveBeenCalledWith(
-      { body: { nodes: [{ node_id: 'a', node_data: node.data }] } },
-      { context: { silent: true } },
-    )
+    expect(harness.post).toHaveBeenCalledWith({
+      body: { nodes: [{ node_id: 'a', node_data: node.data }] },
+    })
     expect(harness.getGraph().nodes[0]?.data).toMatchObject({
       recipients_spec: [
         { type: 'all_workspace_contacts' },

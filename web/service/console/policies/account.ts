@@ -6,8 +6,53 @@ import type { ConsolePolicies, ConsoleQuery } from './types'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { invalidateQueryKeys } from './shared'
 
+// Signing in replaces the account, so the redirect waits for its profile to reload from
+// scratch; resetting also drops an earlier 401.
+const resetProfile = (consoleQuery: ConsoleQuery, client: QueryClient) =>
+  client.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+
+export function authPolicies(
+  consoleQuery: ConsoleQuery,
+): Pick<ConsolePolicies, 'login' | 'emailCodeLogin' | 'emailRegister' | 'init'> {
+  const onSignedIn = {
+    mutationOptions: {
+      onSuccess: (
+        response: { result: string },
+        _v: unknown,
+        _r: unknown,
+        { client }: { client: QueryClient },
+      ) => (response.result === 'success' ? resetProfile(consoleQuery, client) : undefined),
+    },
+  }
+  return {
+    login: { post: onSignedIn },
+    emailCodeLogin: { validity: { post: onSignedIn } },
+    emailRegister: { post: onSignedIn },
+    init: {
+      post: {
+        mutationOptions: {
+          // The install redirect reads the finished status right away.
+          onSuccess: async (_data, _variables, _result, { client }) => {
+            const queryKey = consoleQuery.init.get.queryKey()
+            if (client.isFetching({ queryKey, exact: true }))
+              await client.cancelQueries({ queryKey, exact: true })
+            client.setQueryData(queryKey, { status: 'finished' })
+          },
+        },
+      },
+    },
+  }
+}
+
 export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['account'] {
   return {
+    init: {
+      post: {
+        mutationOptions: {
+          onSuccess: (_data, _variables, _result, { client }) => resetProfile(consoleQuery, client),
+        },
+      },
+    },
     personalAccessTokens: {
       byTokenId: {
         delete: {
@@ -35,9 +80,6 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
                 consoleQuery,
               ),
             onSuccess: (_data, variables, _onMutateResult, context) => {
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.account.personalAccessTokens.get.key(),
-              ])
               // The edit form seeds its next draft and version from this detail, and closing it
               // would cancel an unfinished refetch, so the save waits for the new version.
               return invalidateQueryKeys(context.client, [
@@ -53,8 +95,16 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
         mutationOptions: {
           // The dialog shows the one-time secret as soon as the create resolves, so the new
           // token is written into the cached lists instead of waiting for their refetch.
-          onSuccess: (created, _variables, _onMutateResult, context) => {
+          onSuccess: async (created, _variables, _onMutateResult, context) => {
             const { secret: _secret, ...token } = created
+            if (
+              context.client.isFetching({
+                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+              })
+            )
+              await context.client.cancelQueries({
+                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+              })
             context.client.setQueriesData<PersonalAccessTokenListResponse>(
               { queryKey: consoleQuery.account.personalAccessTokens.get.key() },
               (list) =>
@@ -72,35 +122,21 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
     education: {
       get: {
         queryOptions: {
-          // Passive probe: every callsite degrades to "not a student", so no toast.
-          context: { silent: true },
+          // Passive probe: most callers degrade to "not a student"; verification and pricing
+          // render their own error.
+          meta: { errorToast: false },
           retry: false,
         },
       },
       post: {
         mutationOptions: {
+          // Verified education changes the plan features.
+          meta: { alsoInvalidate: ['features'] },
+          // Waits for the education status.
           onSuccess: (data, _variables, _onMutateResult, context) => {
             if (data.message !== 'success') return
-
-            // Verified education changes the plan features, which refresh in the background;
-            // the save waits for the education status.
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.features.get.queryKey(),
-            })
             return context.client.invalidateQueries({
               queryKey: consoleQuery.account.education.get.key(),
-            })
-          },
-        },
-      },
-    },
-    password: {
-      post: {
-        mutationOptions: {
-          // The request alone decides success; a slow profile refresh must not hold the mutation.
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.account.profile.get.queryKey(),
             })
           },
         },

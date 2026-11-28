@@ -1,6 +1,6 @@
 from collections.abc import Callable, Generator
 from datetime import datetime
-from inspect import getsource, unwrap
+from inspect import getsource
 from typing import Self, cast
 from unittest.mock import MagicMock
 
@@ -10,35 +10,18 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import console_ns
-from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
-from controllers.console.agent.composer import (
-    WorkflowAgentComposerApi,
-    WorkflowAgentComposerCandidatesApi,
-    WorkflowAgentComposerCopyFromRosterApi,
-    WorkflowAgentComposerImpactApi,
-    WorkflowAgentComposerSaveToRosterApi,
-    WorkflowAgentComposerValidateApi,
-)
 from controllers.console.agent.roster import (
     AgentAppCopyApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
 )
 from controllers.console.app import completion as completion_controller
-from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
 from controllers.console.app.error import CompletionRequestError
 from enums import DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import App, AppMode, IconType
-from services.entities.agent_entities import (
-    ComposerSavePayload,
-    ComposerSaveStrategy,
-    ComposerVariant,
-    WorkflowAgentComposerQuery,
-    WorkflowComposerCopyFromRosterPayload,
-)
 from tests.helpers.unit.model_factories import make_account
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -72,26 +55,6 @@ def test_query_values_accepts_repeated_and_indexed_arrays() -> None:
 
     with app.test_request_context("/?source%5B0%5D=workflow:app-3"):
         assert roster_controller._query_values("sources", "source") == ["workflow:app-3"]
-
-
-def _workflow_composer_response(**overrides: object) -> dict[str, object]:
-    response: dict[str, object] = {
-        "variant": "workflow",
-        "agent": None,
-        "active_config_snapshot": None,
-        "binding": None,
-        "soul_lock": {"locked": False, "can_unlock": False, "reason": "workflow_only_empty"},
-        "agent_soul": {},
-        "node_job": {},
-        "effective_declared_outputs": [],
-        "save_options": ["node_job_only"],
-        "impact_summary": None,
-        "app_id": "app-1",
-        "workflow_id": "workflow-1",
-        "node_id": "node-1",
-    }
-    response.update(overrides)
-    return response
 
 
 def _app_detail_obj(**overrides: object) -> App:
@@ -225,240 +188,6 @@ def test_agent_app_create_payload_allows_optional_role() -> None:
     assert blank.role == ""
 
 
-def test_workflow_composer_get_put_validate_candidates_impact_and_save(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    app_model = _app_detail_obj(id="app-1")
-    payload = {
-        "variant": ComposerVariant.WORKFLOW.value,
-        "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
-        "binding": {"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
-    }
-    captured_load: dict[str, object] = {}
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "load_workflow_composer",
-        lambda **kwargs: captured_load.update(kwargs) or _workflow_composer_response(node_id=kwargs["node_id"]),
-    )
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "save_workflow_composer",
-        lambda **kwargs: _workflow_composer_response(save_options=[kwargs["payload"].save_strategy.value]),
-    )
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "get_workflow_candidates",
-        lambda **kwargs: _candidates_response("workflow"),
-    )
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "calculate_impact",
-        lambda **kwargs: {
-            "current_snapshot_id": kwargs["current_snapshot_id"],
-            "workflow_node_count": 1,
-            "bindings": [],
-        },
-    )
-    with app.test_request_context("?snapshot_id=preview-version"):
-        workflow_state = unwrap(WorkflowAgentComposerApi.get)(
-            WorkflowAgentComposerApi(),
-            WorkflowAgentComposerQuery(snapshot_id="preview-version"),
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )
-    assert workflow_state["node_id"] == "node-1"
-    assert captured_load["account_id"] == account_id
-    assert captured_load["snapshot_id"] == "preview-version"
-    composer_save_payload = ComposerSavePayload(
-        variant=ComposerVariant.WORKFLOW,
-        save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
-        binding={"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
-    )
-    with app.test_request_context(json=payload):
-        saved_state = unwrap(WorkflowAgentComposerApi.put)(
-            WorkflowAgentComposerApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )
-        assert saved_state["save_options"] == ["node_job_only"]
-        assert unwrap(WorkflowAgentComposerValidateApi.post)(
-            WorkflowAgentComposerValidateApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            app_model,
-            "node-1",
-        ) == {"result": "success", "errors": [], "warnings": [], "knowledge_retrieval_placeholder": []}
-    assert (
-        unwrap(WorkflowAgentComposerCandidatesApi.get)(
-            WorkflowAgentComposerCandidatesApi(), MagicMock(), "tenant-1", account_id, app_model, "node-1"
-        )["variant"]
-        == "workflow"
-    )
-    with app.test_request_context(json=payload):
-        assert unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            app_model,
-            "node-1",
-        ) == {"current_snapshot_id": "version-1", "workflow_node_count": 1, "bindings": []}
-        assert unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
-            WorkflowAgentComposerSaveToRosterApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )["save_options"] == ["node_job_only"]
-
-
-def test_workflow_composer_get_uses_write_transaction() -> None:
-    assert "@with_session\n    @get_app_model" in getsource(WorkflowAgentComposerApi)
-
-
-def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str) -> None:
-    app_model = _app_detail_obj(id="app-1")
-    captured: dict[str, object] = {}
-
-    def fake_copy_from_roster(**kwargs: object) -> dict[str, object]:
-        captured.update(kwargs)
-        return _workflow_composer_response(
-            binding={
-                "id": "binding-1",
-                "binding_type": "inline_agent",
-                "agent_id": "inline-agent-1",
-                "current_snapshot_id": "inline-version-1",
-                "workflow_id": "workflow-1",
-                "node_id": kwargs["node_id"],
-            },
-            agent={
-                "id": "inline-agent-1",
-                "name": "Nadia",
-                "description": "",
-                "scope": "workflow_only",
-                "status": "active",
-            },
-            active_config_snapshot={"id": "inline-version-1", "version": 1},
-        )
-
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService, "copy_workflow_composer_from_roster", fake_copy_from_roster
-    )
-    with app.test_request_context(
-        json={
-            "source_agent_id": "roster-agent-1",
-            "source_snapshot_id": "roster-version-1",
-            "idempotency_key": "copy-1",
-        }
-    ):
-        result = unwrap(WorkflowAgentComposerCopyFromRosterApi.post)(
-            WorkflowAgentComposerCopyFromRosterApi(),
-            WorkflowComposerCopyFromRosterPayload(
-                source_agent_id="roster-agent-1",
-                source_snapshot_id="roster-version-1",
-                idempotency_key="copy-1",
-            ),
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )
-    assert result["binding"]["binding_type"] == "inline_agent"
-    captured.pop("session", None)
-    assert captured == {
-        "tenant_id": "tenant-1",
-        "app_id": "app-1",
-        "node_id": "node-1",
-        "account_id": account_id,
-        "source_agent_id": "roster-agent-1",
-        "source_snapshot_id": "roster-version-1",
-        "idempotency_key": "copy-1",
-    }
-
-
-def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
-    payload = {"variant": ComposerVariant.WORKFLOW.value, "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value}
-    with app.test_request_context(json=payload):
-        result = unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(),
-            ComposerSavePayload(
-                variant=ComposerVariant.WORKFLOW,
-                save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
-            ),
-            MagicMock(),
-            "tenant-1",
-            _app_detail_obj(id="app-1"),
-            "node-1",
-        )
-    assert result == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
-
-
-def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
-    captured: dict[str, object] = {}
-
-    def resolve_agent_app_model(**kwargs: object) -> object:
-        captured["stop_resolve"] = kwargs
-        return app_model
-
-    def resolve_agent_app_model_with_session(_self, **kwargs: object) -> object:
-        captured["resolve_session"] = _self._session
-        captured["resolve"] = kwargs
-        return app_model
-
-    def create_chat_message(**kwargs: object) -> dict[str, object]:
-        captured["create"] = kwargs
-        return {"result": "generated"}
-
-    def stop_chat_message(**kwargs: object) -> tuple[dict[str, object], int]:
-        captured["stop"] = kwargs
-        return ({"result": "success"}, 200)
-
-    monkeypatch.setattr(completion_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
-    monkeypatch.setattr(
-        completion_controller.AgentRosterService,
-        "get_agent_runtime_app_model",
-        resolve_agent_app_model_with_session,
-    )
-    monkeypatch.setattr(completion_controller, "_create_chat_message", create_chat_message)
-    monkeypatch.setattr(completion_controller, "_stop_chat_message", stop_chat_message)
-    with app.test_request_context(json={"inputs": {}, "query": "hello"}):
-        assert unwrap(AgentChatMessageApi.post)(
-            AgentChatMessageApi(), unbound_session, "tenant-1", _account(account_id=account_id), agent_id
-        ) == {"result": "generated"}
-    assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
-    assert captured["resolve_session"] is unbound_session
-    create_call = cast(dict[str, object], captured["create"])
-    assert create_call["session"] is unbound_session
-    assert create_call["app_model"] is app_model
-    assert cast(Account, create_call["current_user"]).id == account_id
-    assert unwrap(AgentChatMessageStopApi.post)(
-        AgentChatMessageStopApi(), unbound_session, "tenant-1", account_id, agent_id, "task-1"
-    ) == ({"result": "success"}, 200)
-    assert captured["stop_resolve"] == {
-        "session": unbound_session,
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-    }
-    stop_call = cast(dict[str, object], captured["stop"])
-    assert stop_call == {"current_user_id": account_id, "app_model": app_model, "task_id": "task-1"}
-
-
 def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
     class ClosableStream:
         def __init__(self) -> None:
@@ -500,91 +229,6 @@ def test_agent_chat_stream_preflight_preserves_first_normal_event() -> None:
         'data: {"event":"message","answer":"hello"}\n\n',
         'data: {"event":"message_end"}\n\n',
     ]
-
-
-def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
-    captured: dict[str, object] = {}
-
-    def resolve_agent_app_model(**kwargs: object) -> object:
-        captured["resolve"] = kwargs
-        return app_model
-
-    def create_finalization_message(**kwargs: object) -> dict[str, object]:
-        captured["finalize"] = kwargs
-        return {"result": "generated"}
-
-    monkeypatch.setattr(
-        completion_controller.AgentRosterService,
-        "get_agent_runtime_app_model",
-        lambda _self, **kwargs: resolve_agent_app_model(**kwargs),
-    )
-    monkeypatch.setattr(completion_controller, "_create_build_chat_finalization_message", create_finalization_message)
-    with app.test_request_context():
-        assert unwrap(AgentBuildChatFinalizeApi.post)(
-            AgentBuildChatFinalizeApi(), unbound_session, "tenant-1", _account(account_id=account_id), agent_id
-        ) == {"result": "generated"}
-    assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
-    finalize_call = cast(dict[str, object], captured["finalize"])
-    assert finalize_call["session"] is unbound_session
-    assert finalize_call["app_model"] is app_model
-    assert finalize_call["current_tenant_id"] == "tenant-1"
-    assert finalize_call["agent_id"] == agent_id
-    assert cast(Account, finalize_call["current_user"]).id == account_id
-
-
-def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
-) -> None:
-    app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
-    captured: dict[str, object] = {}
-
-    def resolve_debug_conversation(**kwargs: object) -> str:
-        captured["resolve_debug_conversation"] = kwargs
-        return "debug-conversation-1"
-
-    def generate(**kwargs: object) -> object:
-        captured["generate"] = kwargs
-        return iter(
-            ["event: ping\n\n", 'data: {"event":"message","answer":"working"}\n\n', 'data: {"event":"message_end"}\n\n']
-        )
-
-    monkeypatch.setattr(
-        completion_controller, "_resolve_current_user_agent_debug_conversation_id", resolve_debug_conversation
-    )
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
-    with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
-        result = completion_controller._create_build_chat_finalization_message(
-            current_tenant_id="tenant-1",
-            current_user=_account(account_id=account_id),
-            app_model=app_model,
-            agent_id="agent-1",
-            session=unbound_session,
-        )
-    assert result == ({"result": "success"}, 200)
-    resolve_call = cast(dict[str, object], captured["resolve_debug_conversation"])
-    assert resolve_call.pop("current_user") is not None
-    assert resolve_call == {
-        "session": unbound_session,
-        "current_tenant_id": "tenant-1",
-        "app_model": app_model,
-        "agent_id": "agent-1",
-        "draft_type": AgentConfigDraftType.DEBUG_BUILD,
-    }
-    generate_call = cast(dict[str, object], captured["generate"])
-    assert generate_call["app_model"] is app_model
-    assert generate_call["streaming"] is True
-    args = cast(dict[str, object], generate_call["args"])
-    assert args["draft_type"] == "debug_build"
-    assert args["response_mode"] == "streaming"
-    assert args["conversation_id"] == "debug-conversation-1"
-    assert args["inputs"] == {}
-    assert args["auto_generate_name"] is False
-    assert "_agent_runtime_exit_intent" not in args
-    assert args["external_trace_id"] == "trace-1"
 
 
 def test_drain_streaming_generate_response_returns_on_message_end() -> None:

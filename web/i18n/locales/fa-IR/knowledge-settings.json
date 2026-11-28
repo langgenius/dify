@@ -16,6 +16,8 @@
   "settings.membersRequired": "حداقل یک عضو تیم را انتخاب کنید.",
   "settings.nameRequired": "نام پایگاه دانش Agent الزامی است.",
   "settings.pageDescription": "اطلاعات پایه، دسترسی API و بازیابی را مدیریت کنید.",
+  "settings.personalAgentDescription": "اعضا می‌توانند به عامل‌های خود (Claude Code، Codex، کلاینت‌های MCP) اجازه دهند این پایگاه دانش را با مجوزهای خودشان بخوانند.",
+  "settings.personalAgentLabel": "عامل‌های شخصی",
   "settings.reloadLatest": "بارگیری آخرین تنظیمات",
   "settings.rerankModelRequired": "یک مدل رتبه‌بندی مجدد انتخاب کنید.",
   "settings.retrievalDepth": "عمق بازیابی",

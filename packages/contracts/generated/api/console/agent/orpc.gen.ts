@@ -385,6 +385,8 @@ export const apiKeys = {
 }
 
 /**
+ * Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft
+ *
  * Transcribe audio using the current Agent debug configuration
  */
 export const post3 = oc
@@ -394,6 +396,7 @@ export const post3 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdAudioToText',
     path: '/agent/{agent_id}/audio-to-text',
+    summary: 'Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft',
     tags: ['console'],
   })
   .input(
@@ -426,6 +429,8 @@ export const audioToText = {
 }
 
 /**
+ * Drain the admitted account's Build turn to the first message-end event
+ *
  * Run a build-draft Agent App turn that asks the agent to push config updates
  */
 export const post4 = oc
@@ -435,6 +440,7 @@ export const post4 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdBuildChatFinalize',
     path: '/agent/{agent_id}/build-chat/finalize',
+    summary: "Drain the admitted account's Build turn to the first message-end event",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdBuildChatFinalizePath }))
@@ -619,6 +625,8 @@ export const byMessageId = {
 }
 
 /**
+ * Stop a task owned by the admitted account after resolving the Agent's runtime App
+ *
  * Stop a running Agent App chat message generation
  */
 export const post7 = oc
@@ -628,6 +636,7 @@ export const post7 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdChatMessagesByTaskIdStop',
     path: '/agent/{agent_id}/chat-messages/{task_id}/stop',
+    summary: "Stop a task owned by the admitted account after resolving the Agent's runtime App",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdChatMessagesByTaskIdStopPath }))
@@ -772,6 +781,9 @@ export const composer = {
   validate,
 }
 
+/**
+ * Post the selected Agent configuration asset for the admitted account
+ */
 export const post9 = oc
   .route({
     inputStructure: 'detailed',
@@ -779,6 +791,7 @@ export const post9 = oc
     operationId: 'postAgentByAgentIdConfigFilesBatch',
     path: '/agent/{agent_id}/config/files/batch',
     successStatus: 201,
+    summary: 'Post the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -795,12 +808,16 @@ export const batch = {
   post: post9,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigFilesByNameDownload',
     path: '/agent/{agent_id}/config/files/{name}/download',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -816,12 +833,16 @@ export const download = {
   get: get9,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigFilesByNamePreview',
     path: '/agent/{agent_id}/config/files/{name}/preview',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -837,12 +858,16 @@ export const preview = {
   get: get10,
 }
 
+/**
+ * Delete the selected Agent configuration asset for the admitted account
+ */
 export const delete3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAgentByAgentIdConfigFilesByName',
     path: '/agent/{agent_id}/config/files/{name}',
+    summary: 'Delete the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -860,12 +885,16 @@ export const byName = {
   preview,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigFiles',
     path: '/agent/{agent_id}/config/files',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -877,6 +906,9 @@ export const get11 = oc
   .output(zGetAgentByAgentIdConfigFilesResponse)
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
+/**
+ * Post the selected Agent configuration asset for the admitted account
+ */
 export const post10 = oc
   .route({
     inputStructure: 'detailed',
@@ -884,6 +916,7 @@ export const post10 = oc
     operationId: 'postAgentByAgentIdConfigFiles',
     path: '/agent/{agent_id}/config/files',
     successStatus: 201,
+    summary: 'Post the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -903,12 +936,16 @@ export const files = {
   byName,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigManifest',
     path: '/agent/{agent_id}/config/manifest',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -924,6 +961,9 @@ export const manifest = {
   get: get12,
 }
 
+/**
+ * Post the selected Agent configuration asset for the admitted account
+ */
 export const post11 = oc
   .route({
     inputStructure: 'detailed',
@@ -931,6 +971,7 @@ export const post11 = oc
     operationId: 'postAgentByAgentIdConfigSkillsUpload',
     path: '/agent/{agent_id}/config/skills/upload',
     successStatus: 201,
+    summary: 'Post the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -947,12 +988,16 @@ export const upload = {
   post: post11,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkillsByNameDownload',
     path: '/agent/{agent_id}/config/skills/{name}/download',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -968,12 +1013,16 @@ export const download2 = {
   get: get13,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkillsByNameFilesContent',
     path: '/agent/{agent_id}/config/skills/{name}/files/content',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdConfigSkillsByNameFilesContentPath }))
@@ -984,12 +1033,16 @@ export const content = {
   get: get14,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkillsByNameFilesDownload',
     path: '/agent/{agent_id}/config/skills/{name}/files/download',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -1005,12 +1058,16 @@ export const download3 = {
   get: get15,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkillsByNameFilesPreview',
     path: '/agent/{agent_id}/config/skills/{name}/files/preview',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -1032,12 +1089,16 @@ export const files2 = {
   preview: preview2,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkillsByNameInspect',
     path: '/agent/{agent_id}/config/skills/{name}/inspect',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -1053,12 +1114,16 @@ export const inspect = {
   get: get17,
 }
 
+/**
+ * Delete the selected Agent configuration asset for the admitted account
+ */
 export const delete4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAgentByAgentIdConfigSkillsByName',
     path: '/agent/{agent_id}/config/skills/{name}',
+    summary: 'Delete the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -1077,12 +1142,16 @@ export const byName2 = {
   inspect,
 }
 
+/**
+ * Get the selected Agent configuration asset for the admitted account
+ */
 export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkills',
     path: '/agent/{agent_id}/config/skills',
+    summary: 'Get the selected Agent configuration asset for the admitted account',
     tags: ['console'],
   })
   .input(
@@ -1740,6 +1809,8 @@ export const statistics = {
 }
 
 /**
+ * Require an existing runtime App, then discover provider voices without a DB session
+ *
  * Get available TTS voices for an Agent and language
  */
 export const get33 = oc
@@ -1749,6 +1820,7 @@ export const get33 = oc
     method: 'GET',
     operationId: 'getAgentByAgentIdTextToAudioVoices',
     path: '/agent/{agent_id}/text-to-audio/voices',
+    summary: 'Require an existing runtime App, then discover provider voices without a DB session',
     tags: ['console'],
   })
   .input(
@@ -1771,6 +1843,8 @@ export const voices = {
 }
 
 /**
+ * Synthesize an owned message or preview text using the existing runtime App
+ *
  * Preview an Agent TTS voice or read an Agent chat message
  */
 export const post20 = oc
@@ -1780,6 +1854,7 @@ export const post20 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdTextToAudio',
     path: '/agent/{agent_id}/text-to-audio',
+    summary: 'Synthesize an owned message or preview text using the existing runtime App',
     tags: ['console'],
   })
   .input(

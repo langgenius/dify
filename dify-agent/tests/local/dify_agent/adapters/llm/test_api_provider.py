@@ -86,7 +86,7 @@ def test_api_client_propagates_gateway_quota_error() -> None:
             429,
             json={
                 "code": "agent_llm_quota_exceeded",
-                "message": "Insufficient Message Credits.",
+                "message": "Insufficient AI Credits.",
                 "status": 429,
             },
         )
@@ -116,7 +116,7 @@ def test_api_client_propagates_gateway_quota_error() -> None:
                     )
                 ]
             assert exc_info.value.status_code == 429
-            assert "Insufficient Message Credits" in str(exc_info.value)
+            assert "Insufficient AI Credits" in str(exc_info.value)
 
     asyncio.run(scenario())
 

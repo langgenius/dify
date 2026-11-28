@@ -435,7 +435,9 @@ describe('Sources: edit-metadata', () => {
       await page.getByRole('button', { name: /knowledgeSources.sourceActions/ }).click()
       await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
       const dialog = page.getByRole('dialog')
-      await expect.element(dialog.getByText('knowledgeSpace.providerLoadFailed')).toBeVisible()
+      await expect
+        .element(dialog.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' }))
+        .toBeVisible()
       connectionResponses.nextPageError = false
       await dialog.getByRole('button', { name: 'common.operation.retry' }).click()
       await expect
@@ -444,7 +446,7 @@ describe('Sources: edit-metadata', () => {
         )
         .toBeVisible()
       await expect
-        .element(dialog.getByText('knowledgeSpace.providerLoadFailed'))
+        .element(dialog.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' }))
         .not.toBeInTheDocument()
     },
   )

@@ -44,6 +44,7 @@ import { isContactsManagementEnabled } from '@/features/contacts/management/feat
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
 import { EditWorkspaceContent } from './edit-workspace-content'
@@ -90,6 +91,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
     'navigation',
     'contacts',
   ])
+  const describeRequestError = useRequestErrorDescriber()
   const locale = useLocale()
 
   const { data: userProfileEmail } = useSuspenseQuery({
@@ -130,7 +132,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   )
   const removal = useMutation(
     consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
@@ -162,16 +164,17 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
   const revocation = useMutation(
     consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const isInvitationGone = (error: typeof revocation.error) =>
     isDefinedError(error) && error.code === 'pending_invitation_not_found'
   const revocationError =
     revocation.isError && !isInvitationGone(revocation.error)
-      ? isDefinedError(revocation.error)
-        ? revocation.error.message
-        : t(($) => $['api.actionFailed'], { ns: 'common' })
+      ? describeRequestError(
+          revocation.error,
+          t(($) => $['api.actionFailed'], { ns: 'common' }),
+        )
       : null
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
@@ -179,7 +182,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
 
   const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -511,7 +514,10 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                           </AlertDialogDescription>
                           {removal.isError && (
                             <p role="alert" className="text-text-destructive">
-                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                              {describeRequestError(
+                                removal.error,
+                                t(($) => $['api.actionFailed'], { ns: 'common' }),
+                              )}
                             </p>
                           )}
                         </AlertDialogBody>
@@ -534,7 +540,10 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                         {removal.isError && (
                           <AlertDialogBody>
                             <p role="alert" className="text-text-destructive">
-                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                              {describeRequestError(
+                                removal.error,
+                                t(($) => $['api.actionFailed'], { ns: 'common' }),
+                              )}
                             </p>
                           </AlertDialogBody>
                         )}
@@ -593,7 +602,12 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                   />
                 </fieldset>
                 {roleUpdate.isError && (
-                  <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+                  <p role="alert">
+                    {describeRequestError(
+                      roleUpdate.error,
+                      t(($) => $['api.actionFailed'], { ns: 'common' }),
+                    )}
+                  </p>
                 )}
               </form>
             )}

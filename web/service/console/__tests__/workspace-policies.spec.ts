@@ -20,7 +20,7 @@ describe('workspace mutation cache policies', () => {
     queryClient = createTestQueryClient()
   })
 
-  it('refreshes education status and plan features after a successful application', async () => {
+  it('waits for the education status and declares plan features after a successful application', async () => {
     const featuresKey = consoleQuery.features.get.queryKey()
     const educationKey = consoleQuery.account.education.get.queryKey()
     const variables = { body: { token: 't', role: 'Student', institution: 'School' } } as never
@@ -32,7 +32,7 @@ describe('workspace mutation cache policies', () => {
       undefined,
       context(),
     )
-    expect(isInvalidated(queryClient, featuresKey)).toBe(false)
+    expect(isInvalidated(queryClient, educationKey)).toBe(false)
 
     await consoleQuery.account.education.post.mutationOptions().onSuccess!(
       { message: 'success' } as never,
@@ -40,22 +40,16 @@ describe('workspace mutation cache policies', () => {
       undefined,
       context(),
     )
-    expect(isInvalidated(queryClient, featuresKey)).toBe(true)
+    // Plan features refresh through the invalidation fallback.
+    expect(isInvalidated(queryClient, featuresKey)).toBe(false)
     expect(isInvalidated(queryClient, educationKey)).toBe(true)
+    expect(consoleQuery.account.education.post.mutationOptions().meta?.alsoInvalidate).toEqual([
+      'features',
+    ])
   })
 
-  it('refreshes the profile after a password change', async () => {
-    const profileKey = consoleQuery.account.profile.get.queryKey()
-    seed(queryClient, [profileKey])
-
-    await consoleQuery.account.password.post.mutationOptions().onSuccess!(
-      {} as never,
-      { body: {} } as never,
-      undefined,
-      context(),
-    )
-
-    expect(isInvalidated(queryClient, profileKey)).toBe(true)
+  it('leaves the profile refresh after a password change to the fallback', () => {
+    expect(consoleQuery.account.password.post.mutationOptions().onSuccess).toBeUndefined()
   })
 
   it.each(['post', 'put'] as const)(
@@ -103,7 +97,7 @@ describe('workspace mutation cache policies', () => {
     expect(isInvalidated(queryClient, otherToolsKey)).toBe(false)
   })
 
-  it('refreshes provider summaries after a provider priority change', async () => {
+  it('waits for the provider list after a provider priority change', async () => {
     const modelsKey = workspace.modelProviders.byProvider.models.get.queryKey({
       input: { params: { provider: 'openai' } },
     })
@@ -119,12 +113,17 @@ describe('workspace mutation cache policies', () => {
       context(),
     )
 
-    expect(isInvalidated(queryClient, modelsKey)).toBe(true)
-    expect(isInvalidated(queryClient, summaryKey)).toBe(true)
+    // Model lists and summaries refresh through the invalidation fallback.
+    expect(isInvalidated(queryClient, modelsKey)).toBe(false)
+    expect(isInvalidated(queryClient, summaryKey)).toBe(false)
     expect(isInvalidated(queryClient, providersKey)).toBe(true)
+    expect(
+      workspace.modelProviders.byProvider.preferredProviderType.post.mutationOptions().meta
+        ?.alsoInvalidate,
+    ).toEqual(['workspaces.current.models.modelTypes'])
   })
 
-  it('refreshes provider summaries after switching the active credential', async () => {
+  it('waits for the provider list after switching the active credential', async () => {
     const summaryKey = workspace.modelProviders.summary.get.queryKey()
     const providersKey = workspace.modelProviders.get.queryKey()
     seed(queryClient, [summaryKey, providersKey])
@@ -136,8 +135,12 @@ describe('workspace mutation cache policies', () => {
       context(),
     )
 
-    expect(isInvalidated(queryClient, summaryKey)).toBe(true)
+    expect(isInvalidated(queryClient, summaryKey)).toBe(false)
     expect(isInvalidated(queryClient, providersKey)).toBe(true)
+    expect(
+      workspace.modelProviders.byProvider.credentials.switch.post.mutationOptions().meta
+        ?.alsoInvalidate,
+    ).toEqual(['workspaces.current.models.modelTypes'])
   })
 
   it('refreshes the saved default model types only when the save succeeds', async () => {

@@ -67,13 +67,13 @@ export const TransferOwnershipContent = () => {
   )
   const { mutateAsync: checkOwnerTransfer } = useMutation(
     consoleQuery.workspaces.current.members.ownerTransferCheck.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   // Outcome handlers live on the hook so they still run if the dialog unmounts mid-request.
   const { isPending: isTransfer, mutate: transferOwnership } = useMutation(
     consoleQuery.workspaces.current.members.byMemberId.ownerTransfer.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => {
         globalThis.location.reload()
       },

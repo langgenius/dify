@@ -16,6 +16,8 @@
   "settings.membersRequired": "Виберіть принаймні одного учасника команди.",
   "settings.nameRequired": "Потрібно вказати назву бази знань Agent.",
   "settings.pageDescription": "Керуйте основною інформацією, доступом до API та пошуком.",
+  "settings.personalAgentDescription": "Учасники можуть дозволити своїм агентам (Claude Code, Codex, MCP-клієнтам) читати цю базу знань з їхніми правами.",
+  "settings.personalAgentLabel": "Особисті агенти",
   "settings.reloadLatest": "Завантажити актуальні налаштування",
   "settings.rerankModelRequired": "Виберіть модель переранжування.",
   "settings.retrievalDepth": "Глибина пошуку",

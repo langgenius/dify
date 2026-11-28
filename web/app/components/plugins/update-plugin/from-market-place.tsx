@@ -63,6 +63,8 @@ const UpdateFromMarketplaceContent = ({
   )
   const upgrade = useMutation({
     mutationKey: updateMutationKey(payload),
+    // The nested exclude and upgrade mutations report their own request failures.
+    meta: { errorToast: false },
     // Keep exclusion and task creation in one submission. The task list owns installation progress.
     mutationFn: async (excludeFromAutoUpdate: boolean) => {
       if (excludeFromAutoUpdate)

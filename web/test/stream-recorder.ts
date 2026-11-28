@@ -37,7 +37,7 @@ export function createStreamRecorder({
     // Requests that do not go through a recorded sender would reach the network; ignore them.
     request({
       signal: new AbortController().signal,
-      context: { silent: true, stream: true },
+      context: { stream: true },
     }).catch(() => {})
   }
 

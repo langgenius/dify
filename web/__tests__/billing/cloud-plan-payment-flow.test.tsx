@@ -96,10 +96,7 @@ describe('Cloud plan payment flow', () => {
       if (interval === 'year') expect(screen.getByText(`$${price * 12}`)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/checkout'))
-      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith(
-        { query: { plan, interval } },
-        { context: { silent: true } },
-      )
+      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith({ query: { plan, interval } })
       expect(mockGetInvoices).not.toHaveBeenCalled()
     },
   )

@@ -15,8 +15,10 @@ WORKFLOW_LEADER_PREFIX = "workflow_leader:"
 WS_SID_MAP_PREFIX = "ws_sid_map:"
 WS_SERVER_HEARTBEAT_PREFIX = "ws_server_heartbeat:"
 WS_SERVER_SESSIONS_PREFIX = "ws_server_sessions:"
-GRAPH_VIEW_STATE_LOCK_PREFIX = "workflow_graph_view_state_lock:"
-GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS = 15
+WORKFLOW_PAGE_SESSION_PREFIX = "workflow_page_session:"
+# Joins and visibility updates share the existing per-workflow lock.
+ROOM_STATE_LOCK_PREFIX = "workflow_graph_view_state_lock:"
+ROOM_STATE_LOCK_TIMEOUT_SECONDS = 15
 
 _UPDATE_SESSION_GRAPH_ACTIVE_LUA = """
 local raw = redis.call('HGET', KEYS[1], ARGV[1])
@@ -56,6 +58,12 @@ class SidMapping(TypedDict):
     workflow_id: str
     user_id: str
     server_id: NotRequired[str]
+    page_id: NotRequired[str]
+
+
+class WorkflowPageSession(TypedDict):
+    sid: str
+    sequence: int
 
 
 class WorkflowCollaborationRepository:
@@ -87,6 +95,11 @@ class WorkflowCollaborationRepository:
         return f"{WS_SERVER_SESSIONS_PREFIX}{server_id}"
 
     @staticmethod
+    def _page_key(workflow_id: str, user_id: str, page_id: str) -> str:
+        """Key a private page credential to the admitted workflow and account."""
+        return f"{WORKFLOW_PAGE_SESSION_PREFIX}{workflow_id}:{user_id}:{page_id}"
+
+    @staticmethod
     def _decode(value: str | bytes | None) -> str | None:
         if value is None:
             return None
@@ -102,24 +115,30 @@ class WorkflowCollaborationRepository:
         if self._redis.exists(sid_key):
             self._redis.expire(sid_key, SESSION_STATE_TTL_SECONDS)
 
-    def set_session_info(self, workflow_id: str, session_info: WorkflowSessionInfo) -> None:
+    def set_session_info(
+        self, workflow_id: str, session_info: WorkflowSessionInfo, *, page_id: str | None = None
+    ) -> None:
+        """Register a SID. With a page ID, it becomes active when that page points to it."""
         workflow_key = self.workflow_key(workflow_id)
         sid_mapping: SidMapping = {"workflow_id": workflow_id, "user_id": session_info["user_id"]}
         if server_id := session_info.get("server_id"):
             sid_mapping["server_id"] = server_id
+        if page_id is not None:
+            sid_mapping["page_id"] = page_id
 
         self._redis.hset(workflow_key, session_info["sid"], json.dumps(session_info))
-        if server_id:
-            self._redis.hset(self.server_sessions_key(server_id), session_info["sid"], workflow_id)
-            self._redis.expire(self.server_sessions_key(server_id), SESSION_STATE_TTL_SECONDS)
         self._redis.set(
             self.sid_key(session_info["sid"]),
             json.dumps(sid_mapping),
             ex=SESSION_STATE_TTL_SECONDS,
         )
+        if server_id:
+            self._redis.hset(self.server_sessions_key(server_id), session_info["sid"], workflow_id)
+            self._redis.expire(self.server_sessions_key(server_id), SESSION_STATE_TTL_SECONDS)
         self.refresh_session_state(workflow_id, session_info["sid"])
 
-    def get_sid_mapping(self, sid: str) -> SidMapping | None:
+    def _read_sid_mapping(self, sid: str) -> SidMapping | None:
+        """Read the SID index, including entries that have been superseded."""
         raw = self._redis.get(self.sid_key(sid))
         if not raw:
             return None
@@ -131,18 +150,38 @@ class WorkflowCollaborationRepository:
         except (TypeError, json.JSONDecodeError):
             return None
 
+    def get_sid_mapping(self, sid: str) -> SidMapping | None:
+        """Return the admission for a SID only while it owns its page's session."""
+        mapping = self._read_sid_mapping(sid)
+        if mapping is not None and (page_id := mapping.get("page_id")) is not None:
+            page = self.get_page_session(mapping["workflow_id"], mapping["user_id"], page_id)
+            if page is None or page["sid"] != sid:
+                return None
+        return mapping
+
+    def get_page_session(self, workflow_id: str, user_id: str, page_id: str) -> WorkflowPageSession | None:
+        """Return the last admitted join for the page until its session record expires."""
+        raw = self._redis.get(self._page_key(workflow_id, user_id, page_id))
+        return json.loads(raw) if raw is not None else None
+
+    def set_page_session(self, workflow_id: str, user_id: str, page_id: str, page: WorkflowPageSession) -> None:
+        """Activate a registered SID and fence its predecessor in one Redis write.
+
+        The caller holds the room state lock across comparing and advancing the join sequence.
+        """
+        self._redis.set(self._page_key(workflow_id, user_id, page_id), json.dumps(page), ex=SESSION_STATE_TTL_SECONDS)
+
     def delete_session(self, workflow_id: str, sid: str) -> None:
-        mapping = self.get_sid_mapping(sid)
-        if mapping and (server_id := mapping.get("server_id")):
-            self._redis.hdel(self.server_sessions_key(server_id), sid)
+        """Remove the room membership without clearing the page's join sequence."""
+        mapping = self._read_sid_mapping(sid)
+        if mapping is not None and mapping["workflow_id"] == workflow_id:
+            self._redis.delete(self.sid_key(sid))
+            if server_id := mapping.get("server_id"):
+                self._redis.hdel(self.server_sessions_key(server_id), sid)
         self._redis.hdel(self.workflow_key(workflow_id), sid)
-        self._redis.delete(self.sid_key(sid))
 
     def session_exists(self, workflow_id: str, sid: str) -> bool:
         return self._redis.hexists(self.workflow_key(workflow_id), sid)
-
-    def sid_mapping_exists(self, sid: str) -> bool:
-        return self._redis.exists(self.sid_key(sid))
 
     def get_session_sids(self, workflow_id: str) -> list[str]:
         raw_sids = self._redis.hkeys(self.workflow_key(workflow_id))
@@ -226,11 +265,11 @@ class WorkflowCollaborationRepository:
         )
         return bool(result)
 
-    def graph_view_state_lock(self, workflow_id: str) -> Lock:
-        """Serialize visibility state changes and their leader-election side effects."""
+    def room_state_lock(self, workflow_id: str) -> Lock:
+        """Serialize membership and visibility changes with leader election across workers."""
         return self._redis.lock(
-            f"{GRAPH_VIEW_STATE_LOCK_PREFIX}{workflow_id}",
-            timeout=GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS,
+            f"{ROOM_STATE_LOCK_PREFIX}{workflow_id}",
+            timeout=ROOM_STATE_LOCK_TIMEOUT_SECONDS,
         )
 
     def refresh_server_heartbeat(self, server_id: str) -> None:
@@ -248,10 +287,21 @@ class WorkflowCollaborationRepository:
             workflow_id = self._decode(raw_workflow_id)
             if not sid or not workflow_id:
                 continue
-            if not self.sid_mapping_exists(sid):
+            mapping = self._read_sid_mapping(sid)
+            if mapping is None:
                 self._redis.hdel(server_sessions_key, sid)
                 continue
-            self.refresh_session_state(workflow_id, sid)
+            if (page_id := mapping.get("page_id")) is None:
+                self.refresh_session_state(workflow_id, sid)
+            else:
+                # A join may have written the SID index before activating it. Leave
+                # that index alone and extend TTLs only for the admitted SID.
+                page = self.get_page_session(workflow_id, mapping["user_id"], page_id)
+                if page is not None and page["sid"] == sid:
+                    self.refresh_session_state(workflow_id, sid)
+                    self._redis.expire(
+                        self._page_key(workflow_id, mapping["user_id"], page_id), SESSION_STATE_TTL_SECONDS
+                    )
         if sessions:
             self._redis.expire(server_sessions_key, SESSION_STATE_TTL_SECONDS)
 

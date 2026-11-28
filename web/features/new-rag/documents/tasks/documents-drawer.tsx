@@ -26,6 +26,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -297,6 +298,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
   const { canRead, canWrite, includeCancelTarget, includeRetryTarget, knowledgeSpaceId } =
@@ -308,6 +310,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const [pending, setPending] = useState(false)
   const [actionFailure, setActionFailure] = useState<{
     lifecycle: string
+    error: unknown
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
   const mountedRef = useRef(true)
@@ -325,13 +328,18 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     }
   }, [])
   const cancelTask = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
+    // Cancel and retry failures are shown next to the task's action button.
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
   )
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
+  // A rejected cancel or retry may still have reached the server; the fallback refreshes after
+  // a successful one.
   const refreshDocumentsAndTasks = () => {
     void Promise.allSettled([
       queryClient.invalidateQueries({
@@ -352,6 +360,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     const closeButton = taskDrawerCloseButton(focusTarget)
     setPending(true)
     setActionFailure(undefined)
+    let failed = false
     try {
       const input = {
         params: {
@@ -375,22 +384,30 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
         onTaskUpdated(updated as DocumentProcessingTask)
       if (document.activeElement === focusTarget) closeButton?.focus()
     } catch (error) {
+      failed = true
       const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+      // A 403 is also how a knowledge rate limit fails, so the failure stays recorded while write
+      // access is rechecked; it is shown only if that access holds.
       if (getHttpErrorStatus(error) === 403) {
         closeButton?.focus()
-        denyWrite()
-      } else if (
+        void denyWrite()
+      }
+      if (
         mountedRef.current &&
         canReadRef.current &&
         taskLifecycleRef.current === actionLifecycle
       ) {
-        setActionFailure({ lifecycle: actionLifecycle, messageKey })
+        setActionFailure({
+          lifecycle: actionLifecycle,
+          error,
+          messageKey,
+        })
       }
     } finally {
       pendingActionRef.current = false
       if (mountedRef.current) {
         setPending(false)
-        if (canReadRef.current) refreshDocumentsAndTasks()
+        if (failed && canReadRef.current) refreshDocumentsAndTasks()
       }
     }
   }
@@ -427,11 +444,14 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
 
   return (
     <div className="flex shrink-0 flex-col items-end">
-      {actionFailure?.lifecycle === taskLifecycle(task) && (
+      {canWrite && actionFailure?.lifecycle === taskLifecycle(task) && (
         <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
           {actionFailureMessageKey
             ? tError(($) => $[actionFailureMessageKey])
-            : t(($) => $.taskActionFailed)}
+            : describeRequestError(
+                actionFailure.error,
+                t(($) => $.taskActionFailed),
+              )}
         </p>
       )}
       <div className="flex items-center gap-1">

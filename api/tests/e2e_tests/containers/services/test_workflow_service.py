@@ -6,17 +6,22 @@ TestContainers to ensure realistic database interactions and proper isolation.
 """
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from threading import Event
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session, sessionmaker
 
+from events.app_event import app_draft_workflow_was_synced
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
+from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.core.model_fixtures import make_model_instance
@@ -740,6 +745,79 @@ class TestWorkflowService:
         assert result.graph == json.dumps(graph)
         assert result.features == json.dumps(features)
         assert result.created_by == account.id
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    def test_competing_first_saves_create_one_draft(self, db_session_with_containers: Session, mode: AppMode) -> None:
+        """The Redis lease covers commit and the next save sees the committed first draft."""
+        account = self._create_test_account(db_session_with_containers)
+        app = self._create_test_app(db_session_with_containers)
+        app.mode = mode
+        db_session_with_containers.commit()
+        app_id, tenant_id, account_id = app.id, app.tenant_id, account.id
+        sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        service = WorkflowService(sessions)
+        first_ready = Event()
+        allow_commit = Event()
+        contender_started = Event()
+
+        def pause_before_commit(_session: Session) -> None:
+            first_ready.set()
+            assert allow_commit.wait(timeout=10)
+
+        def sync(title: str, *, first: bool) -> Workflow | None:
+            with sessions() as session:
+                admitted_app = session.get(App, app_id)
+                actor = session.get(Account, account_id)
+                assert admitted_app is not None
+                assert actor is not None
+                if first:
+                    event.listen(session, "before_commit", pause_before_commit, once=True)
+                else:
+                    assert service.get_draft_workflow(admitted_app, session=session) is None
+                    contender_started.set()
+                try:
+                    return service.sync_draft_workflow(
+                        app_model=admitted_app,
+                        graph={"nodes": [{"id": "start", "data": {"type": "start", "title": title}}], "edges": []},
+                        features={},
+                        unique_hash=None,
+                        account=actor,
+                        environment_variables=[],
+                        conversation_variables=[],
+                        session=session,
+                        sync_agent_bindings=False,
+                        serialize_creation=True,
+                    )
+                except WorkflowHashNotEqualError:
+                    return None
+
+        with (
+            app_draft_workflow_was_synced.muted(),
+            ThreadPoolExecutor(max_workers=2) as executor,
+            sessions() as observer,
+        ):
+            initializer = executor.submit(sync, "First save", first=True)
+            try:
+                assert first_ready.wait(timeout=5)
+                contender = executor.submit(sync, "Competing save", first=False)
+                assert contender_started.wait(timeout=5)
+                with pytest.raises(TimeoutError):
+                    contender.result(timeout=0.25)
+            finally:
+                allow_commit.set()
+
+            first = initializer.result(timeout=5)
+            assert first is not None
+            assert contender.result(timeout=5) is None
+            stored = observer.scalars(
+                select(Workflow).where(
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.app_id == app_id,
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                )
+            ).one()
+            assert stored.id == first.id
+            assert stored.graph_dict == first.graph_dict
 
     def test_sync_draft_workflow_update_existing(self, db_session_with_containers: Session):
         """

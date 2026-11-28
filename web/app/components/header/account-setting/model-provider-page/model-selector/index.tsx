@@ -55,9 +55,7 @@ type ModelSelectorBaseProps = {
   loading?: boolean
   scopeFeatures?: readonly string[]
   showDeprecatedWarnIcon?: boolean
-  hideProviderSettingsFooter?: boolean
-  onConfigureEmptyState?: () => void
-  onOpenMarketplace?: () => void
+  onOpenProviderSettings?: () => void
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -92,9 +90,7 @@ function ModelSelectorRoot({
   shape,
   scopeFeatures = [],
   showDeprecatedWarnIcon = true,
-  hideProviderSettingsFooter,
-  onConfigureEmptyState,
-  onOpenMarketplace,
+  onOpenProviderSettings,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
@@ -106,10 +102,7 @@ function ModelSelectorRoot({
   const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const [settingsDestination, setSettingsDestination] = useQueryState(
-    settingsQueryParamName,
-    settingsQueryParser,
-  )
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { currentProvider, currentModel } = getCurrentProviderAndModel(models, value)
 
   const handleOpenChange = useCallback(
@@ -146,22 +139,9 @@ function ModelSelectorRoot({
 
   const handleOpenSettings = useCallback(() => {
     handleHide()
-    setSettingsDestination('provider')
-  }, [handleHide, setSettingsDestination])
-
-  const handleConfigureEmptyState = useCallback(() => {
-    if (onConfigureEmptyState) {
-      handleHide()
-      onConfigureEmptyState()
-      return
-    }
-    if (settingsDestination === 'provider') {
-      handleHide()
-      return
-    }
-
-    handleOpenSettings()
-  }, [handleHide, handleOpenSettings, onConfigureEmptyState, settingsDestination])
+    onOpenProviderSettings?.()
+    void setSettingsDestination('provider')
+  }, [handleHide, onOpenProviderSettings, setSettingsDestination])
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -208,13 +188,8 @@ function ModelSelectorRoot({
               scopeFeatures={scopeFeatures}
               modelPredicate={modelPredicate}
               modelSuggestionPredicate={modelSuggestionPredicate}
-              onOpenProviderSettings={
-                !hideProviderSettingsFooter && settingsDestination !== 'provider'
-                  ? handleOpenSettings
-                  : undefined
-              }
-              onConfigureEmptyState={handleConfigureEmptyState}
-              onOpenMarketplace={onOpenMarketplace}
+              onOpenProviderSettings={handleOpenSettings}
+              onConfigureEmptyState={handleOpenSettings}
               onInputValueChange={setInputValue}
               onSelect={handleSelect}
               onHide={handleHide}

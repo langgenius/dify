@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import robotAvatar from '../assets/robot-avatar.svg'
 
 type AddAnnotationDialogProps = {
@@ -35,18 +36,19 @@ type AddAnnotationDialogProps = {
 
 type AddAnnotationDialogPopupProps = {
   isPending: boolean
-  isError: boolean
+  error: unknown
   onSave: (body: CreateAnnotationPayload, onSuccess: () => void) => void
   onClose: () => void
 }
 
 function AddAnnotationDialogPopup({
   isPending,
-  isError,
+  error,
   onSave,
   onClose,
 }: AddAnnotationDialogPopupProps) {
   const { t } = useTranslation(['appAnnotation', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const quota = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => getCountQuota(data.annotation_quota_limit),
@@ -120,9 +122,12 @@ function AddAnnotationDialogPopup({
                 {t(($) => $['errorMessage.answerRequired'], { ns: 'appAnnotation' })}
               </FieldError>
             </Field>
-            {isError && (
+            {error != null && (
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                {describeRequestError(
+                  error,
+                  t(($) => $['api.actionFailed'], { ns: 'common' }),
+                )}
               </p>
             )}
             {quotaFull && <AnnotationFull />}
@@ -168,7 +173,7 @@ export default function AddAnnotationDialog({ appId, onAdded }: AddAnnotationDia
   const actionsRef = useRef<DialogActions>(null)
   const creation = useMutation(
     consoleQuery.apps.byAppId.annotations.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: onAdded,
     }),
   )
@@ -194,7 +199,7 @@ export default function AddAnnotationDialog({ appId, onAdded }: AddAnnotationDia
         <DialogBackdrop />
         <AddAnnotationDialogPopup
           isPending={creation.isPending}
-          isError={creation.isError}
+          error={creation.error}
           onSave={(body, onSuccess) => {
             creation.mutate({ params: { app_id: appId }, body }, { onSuccess })
           }}

@@ -1,7 +1,20 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleQuery, WorkspaceCurrentPolicies } from './types'
-import { upsertStartedPluginTask } from '../plugin-task-cache'
+import { pluginTaskListInput, upsertStartedPluginTask } from '../plugin-task-cache'
 import { invalidateQueryKeys } from './shared'
+
+// MCP edits and deletes report a refused write in the body as `result: 'error'`.
+const isSuccessResult = (data: unknown) =>
+  typeof data === 'object' && data !== null && 'result' in data && data.result === 'success'
+
+// Model selectors list models by type, with their providers' status.
+const modelTypeLists = 'workspaces.current.models.modelTypes'
+
+// Plugin lists show each plugin's endpoint counts.
+const endpointCountReaders = [
+  'workspaces.current.plugin.list.get',
+  'workspaces.current.plugin.byCategory.list.get',
+]
 
 export function workspacePluginPolicies(
   consoleQuery: ConsoleQuery,
@@ -9,31 +22,25 @@ export function workspacePluginPolicies(
   WorkspaceCurrentPolicies,
   'modelProviders' | 'defaultModel' | 'toolProvider' | 'plugin' | 'endpoints'
 > {
+  const refreshMCPLists = (client: QueryClient) =>
+    invalidateQueryKeys(client, [
+      consoleQuery.workspaces.current.toolProviders.get.key(),
+      consoleQuery.workspaces.current.tools.mcp.get.key(),
+    ])
+
   return {
-    // Switching or re-prioritizing credentials changes the provider summaries. The
-    // per-model-type lists depend on the provider's supported types, which callers own.
-    // Both wait for the provider list; summaries refresh in the background.
+    // Switching or re-prioritizing credentials changes the provider summaries and the
+    // per-model-type lists. Both wait for the provider list.
     modelProviders: {
       byProvider: {
         preferredProviderType: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) => {
-                void client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
-                      input: { params: { provider: params.provider } },
-                    }),
-                  exact: true,
-                  refetchType: 'none',
-                })
-                void invalidateQueryKeys(client, [
-                  consoleQuery.workspaces.current.modelProviders.summary.get.key(),
-                ])
-                return invalidateQueryKeys(client, [
+              meta: { alsoInvalidate: [modelTypeLists] },
+              onSuccess: (_data, _variables, _result, { client }) =>
+                invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.modelProviders.get.key(),
-                ])
-              },
+                ]),
             },
           },
         },
@@ -41,23 +48,25 @@ export function workspacePluginPolicies(
           switch: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _result, { client }) => {
-                  void invalidateQueryKeys(client, [
-                    consoleQuery.workspaces.current.modelProviders.summary.get.key(),
-                  ])
-                  return invalidateQueryKeys(client, [
+                meta: { alsoInvalidate: [modelTypeLists] },
+                onSuccess: (_data, _variables, _result, { client }) =>
+                  invalidateQueryKeys(client, [
                     consoleQuery.workspaces.current.modelProviders.get.key(),
-                  ])
-                },
+                  ]),
               },
             },
           },
+        },
+        models: {
+          enable: { patch: { mutationOptions: { meta: { alsoInvalidate: [modelTypeLists] } } } },
+          disable: { patch: { mutationOptions: { meta: { alsoInvalidate: [modelTypeLists] } } } },
         },
       },
     },
     defaultModel: {
       post: {
         mutationOptions: {
+          meta: { alsoInvalidate: [modelTypeLists] },
           // Waits for the saved model types' defaults.
           onSuccess: (response, { body }, _result, { client }) => {
             if (response.result !== 'success') return
@@ -74,7 +83,24 @@ export function workspacePluginPolicies(
       },
     },
     toolProvider: {
+      // The MCP list opens the created or edited provider by its id, so writes wait for the
+      // catalogs that list it. Edits and deletes report a refused write as `result: 'error'`.
       mcp: {
+        post: {
+          mutationOptions: { onSuccess: (_d, _v, _r, { client }) => refreshMCPLists(client) },
+        },
+        put: {
+          mutationOptions: {
+            onSuccess: (data, _v, _r, { client }) =>
+              isSuccessResult(data) ? refreshMCPLists(client) : undefined,
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (data, _v, _r, { client }) =>
+              isSuccessResult(data) ? refreshMCPLists(client) : undefined,
+          },
+        },
         update: {
           byProviderId: {
             get: {
@@ -152,14 +178,15 @@ export function workspacePluginPolicies(
       readme: {
         get: {
           queryOptions: {
-            context: { silent: true },
+            meta: { errorToast: false },
             retry: false,
           },
         },
       },
       asset: {
         get: {
-          queryOptions: { context: { silent: true } },
+          // README images fall back to the URL in the markdown.
+          queryOptions: { meta: { errorToast: false } },
         },
       },
       autoUpgrade: {
@@ -188,7 +215,18 @@ export function workspacePluginPolicies(
         marketplace: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -197,7 +235,18 @@ export function workspacePluginPolicies(
         pkg: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -206,7 +255,18 @@ export function workspacePluginPolicies(
         github: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -217,7 +277,18 @@ export function workspacePluginPolicies(
         marketplace: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -226,43 +297,48 @@ export function workspacePluginPolicies(
       },
     },
     // Endpoint writes change the endpoint list and the endpoint counts shown on plugin lists.
-    // Each waits for the endpoint list; plugin list counts refresh in the background.
+    // Each waits for the endpoint list, also after a failure.
     endpoints: {
       post: {
         mutationOptions: {
-          onSettled: (_data, _error, _variables, _result, { client }) =>
-            invalidateEndpointQueries(consoleQuery, client),
+          meta: { alsoInvalidate: endpointCountReaders },
+          onSettled: (_data, error, _variables, _result, { client }) =>
+            invalidateEndpointQueries(consoleQuery, client, error),
         },
       },
       byId: {
         patch: {
           mutationOptions: {
-            onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+            meta: { alsoInvalidate: endpointCountReaders },
+            onSettled: (_data, error, _variables, _result, { client }) =>
+              invalidateEndpointQueries(consoleQuery, client, error),
           },
         },
         delete: {
           mutationOptions: {
-            onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+            meta: { alsoInvalidate: endpointCountReaders },
+            onSettled: (_data, error, _variables, _result, { client }) =>
+              invalidateEndpointQueries(consoleQuery, client, error),
           },
         },
       },
       enable: {
         post: {
           mutationOptions: {
+            meta: { alsoInvalidate: endpointCountReaders },
             // The endpoint switch reads the refreshed list and stays disabled until it lands.
-            onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+            onSettled: (_data, error, _variables, _result, { client }) =>
+              invalidateEndpointQueries(consoleQuery, client, error),
           },
         },
       },
       disable: {
         post: {
           mutationOptions: {
+            meta: { alsoInvalidate: endpointCountReaders },
             // The endpoint switch reads the refreshed list and stays disabled until it lands.
-            onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+            onSettled: (_data, error, _variables, _result, { client }) =>
+              invalidateEndpointQueries(consoleQuery, client, error),
           },
         },
       },
@@ -270,12 +346,14 @@ export function workspacePluginPolicies(
   }
 }
 
-// Returns once the endpoint list has refreshed; plugin list counts refresh in the background.
-function invalidateEndpointQueries(query: ConsoleQuery, client: QueryClient) {
-  void invalidateQueryKeys(client, [
-    query.workspaces.current.plugin.list.get.key(),
-    query.workspaces.current.plugin.byCategory.list.get.key(),
-  ])
+// Returns once the endpoint list has refreshed. The fallback refreshes plugin counts after a
+// success; after a failure they refresh here.
+function invalidateEndpointQueries(query: ConsoleQuery, client: QueryClient, error: unknown) {
+  if (error)
+    void invalidateQueryKeys(client, [
+      query.workspaces.current.plugin.list.get.key(),
+      query.workspaces.current.plugin.byCategory.list.get.key(),
+    ])
   return invalidateQueryKeys(client, [query.workspaces.current.endpoints.list.key()])
 }
 
@@ -304,4 +382,9 @@ function invalidateBuiltinOAuthClientQueries(
     oauth.clientSchema.get.key(input),
     oauth.customClient.get.key(input),
   ])
+}
+
+// The task list a started install or upgrade is written into.
+function pluginTaskListKey(query: ConsoleQuery) {
+  return query.workspaces.current.plugin.tasks.get.queryKey({ input: pluginTaskListInput })
 }

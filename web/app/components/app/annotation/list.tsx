@@ -148,7 +148,7 @@ export function List({
   const removalFocus = useRef<HTMLElement | null>(null)
   const update = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: onEdited,
     }),
   )
@@ -267,7 +267,7 @@ export function List({
                   appId={appId}
                   item={payload}
                   isPending={update.isPending}
-                  isError={update.isError}
+                  error={update.error}
                   onSave={(body, onSuccess) =>
                     update.mutate(
                       { params: { app_id: appId, annotation_id: payload.id }, body },

@@ -79,18 +79,18 @@ export function SourceActions({
   const syncAction = displayStatus === 'error' ? 'retry' : 'sync'
   const sourceUri = getOpenableSourceUri(source.uri)
   const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
-  const silentRequest = { context: { silent: true } }
+  const noErrorToast = { meta: { errorToast: false as const } }
   const { mutateAsync: requestSync } = useMutation(
-    spaceApi.sources.bySourceId.sync.post.mutationOptions(silentRequest),
+    spaceApi.sources.bySourceId.sync.post.mutationOptions(noErrorToast),
   )
   const { mutateAsync: requestWorkflowRetry } = useMutation(
-    spaceApi.sourceWorkflows.byRunId.retry.post.mutationOptions(silentRequest),
+    spaceApi.sourceWorkflows.byRunId.retry.post.mutationOptions(noErrorToast),
   )
   const { mutateAsync: requestSourcePatch } = useMutation(
-    spaceApi.sources.bySourceId.patch.mutationOptions(silentRequest),
+    spaceApi.sources.bySourceId.patch.mutationOptions(noErrorToast),
   )
   const { mutateAsync: requestSourceDelete } = useMutation(
-    spaceApi.sources.bySourceId.delete.mutationOptions(silentRequest),
+    spaceApi.sources.bySourceId.delete.mutationOptions(noErrorToast),
   )
 
   const runAction = async <Result,>(

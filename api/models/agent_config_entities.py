@@ -658,7 +658,9 @@ class AgentSoulDifyToolConfig(BaseModel):
     ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
     ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
     keeps compatibility with existing Agent tool config payloads; new callers
-    should send ``plugin_id`` + ``provider`` when available.
+    should send ``plugin_id`` + ``provider`` when available. A per-run call
+    limit is either absent/unlimited or a strict positive integer for one
+    concrete operation; provider-wide entries cannot define a call limit.
     """
 
     # ``extra="ignore"`` (not ``"allow"``) so historical Agent Soul payloads
@@ -677,6 +679,14 @@ class AgentSoulDifyToolConfig(BaseModel):
     # entry into every tool the provider currently declares; ``credential_ref``
     # applies to all of them. Mention form: ``[§tool:<provider>/*§]``.
     tool_name: str | None = Field(default=None, min_length=1, max_length=255)
+    max_calls_per_run: Annotated[int, Field(strict=True, gt=0)] | None = Field(
+        default=None,
+        description="Maximum dispatches of this operation per logical run; null or omitted means unlimited.",
+    )
+    last_max_calls_per_run: Annotated[int, Field(strict=True, gt=0)] | None = Field(
+        default=None,
+        description="Last enabled limit retained by the editor; does not enforce a runtime quota.",
+    )
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at
@@ -706,8 +716,18 @@ class AgentSoulDifyToolConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_provider_and_credentials(self) -> AgentSoulDifyToolConfig:
+        """Validate a tool entry without changing its persisted quota or identity.
+
+        Requires a decoded tool configuration. Returns it unchanged when its
+        provider, credential, operation-level quota and name are valid; raises
+        ValueError before persistence or runtime preparation otherwise.
+        """
         if not self.provider_id and not (self.plugin_id and self.provider):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
+        if self.max_calls_per_run is not None and self.tool_name is None:
+            raise ValueError(
+                "max_calls_per_run requires a concrete tool_name; provider-wide call limits are unsupported"
+            )
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
             # credential resolved by provider_id, see ``ToolManager``
             if self.provider_type not in {ToolProviderType.API, ToolProviderType.WORKFLOW}:

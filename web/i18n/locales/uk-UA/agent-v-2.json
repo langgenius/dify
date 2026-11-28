@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Інструменти дозволяють агенту діяти — наприклад, шукати в інтернеті або викликати ваші застосунки",
   "agentDetail.configure.tools.empty.title": "Поки що немає інструментів",
   "agentDetail.configure.tools.label": "Інструменти",
-  "agentDetail.configure.tools.moreActions": "Більше дій для {{name}}",
   "agentDetail.configure.tools.removeAction": "Видалити {{name}}",
   "agentDetail.configure.tools.removeProvider": "Видалити всі інструменти",
   "agentDetail.configure.tools.richTip": "Додайте інструменти Dify зі свого workspace. <docLink>Докладніше</docLink>\n\nІнструменти, які агент встановлює у своїй sandbox, не з'являться тут, але залишаться йому доступними.",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "Відновити",
   "agentDetail.versionHistory.versionName": "Версія {{version}}",
   "agentDetail.versionHistory.viewOnly": "Лише перегляд",
-  "exportAgent": "Експортувати агента"
+  "exportAgent": "Експортувати агента",
+  "toolCallLimit.invalid": "Введіть ціле число більше за 0.",
+  "toolCallLimit.label": "Ліміт викликів {{toolName}}",
+  "toolCallLimit.maximum": "Максимальна кількість викликів",
+  "toolCallLimit.notExecuted": "Не виконано",
+  "toolCallLimit.reached": "Досягнуто ліміт викликів ({{limit}} за запуск). Цей запит не виконано.",
+  "toolCallLimit.reason": "Причина",
+  "toolCallLimit.set": "Установити ліміт",
+  "toolCallLimit.summary_one": "{{count}} виклик / запуск",
+  "toolCallLimit.summary_other": "{{count}} викликів / запуск",
+  "toolCallLimit.title": "Ліміт викликів за запуск",
+  "toolCallLimit.used_one": "Використано {{used}} із {{limit}} виклику",
+  "toolCallLimit.used_other": "Використано {{used}} із {{limit}} викликів"
 }

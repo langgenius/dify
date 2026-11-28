@@ -44,14 +44,16 @@ from models.model import App, AppMode, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
-from repositories.agent_drafts import agent_soul_matches_active_config
-from repositories.agent_roster_queries import load_reference_counts_by_agent_id
-from repositories.agent_roster_repository import list_invite_options_in_session
-from repositories.agent_version_queries import visible_version_operations
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.agent.agent_drafts import agent_soul_matches_active_config
+from repositories.agent.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent.agent_roster_repository import list_invite_options_in_session
+from repositories.agent.agent_version_queries import visible_version_operations
+from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent import composer_service, roster_service
 from services.agent.composer_service import AgentComposerService
+from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentNameConflictError,
@@ -885,30 +887,6 @@ def test_load_agent_composer_does_not_select_personal_build_draft(sqlite_session
     assert not sqlite_session.dirty
 
 
-def test_prepare_agent_composer_draft_creates_only_for_explicit_write(sqlite_session: Session) -> None:
-    agent = _agent()
-    snapshot = _snapshot()
-    agent.active_config_snapshot_id = snapshot.id
-    sqlite_session.add_all([agent, snapshot])
-    sqlite_session.commit()
-    result = AgentComposerService.load_agent_composer(
-        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id
-    )
-    assert result["draft"] is None
-    draft = AgentComposerService.prepare_agent_composer_draft(
-        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
-    )
-    sqlite_session.commit()
-    assert draft.config_snapshot_dict == snapshot.config_snapshot_dict
-    assert draft.created_by == "account-2"
-    assert (
-        AgentComposerService.prepare_agent_composer_draft(
-            session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
-        ).id
-        == draft.id
-    )
-
-
 def test_save_agent_app_composer_rejects_version_save_strategy(sqlite_session: Session):
     session = sqlite_session
     payload = ComposerSavePayload.model_validate(
@@ -1057,66 +1035,8 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     assert result["active_config_is_published"] is True
 
 
-@pytest.mark.parametrize(
-    ("draft_type", "account_id"),
-    [
-        (AgentConfigDraftType.DRAFT, None),
-        (AgentConfigDraftType.DEBUG_BUILD, "account-1"),
-    ],
-)
-def test_load_agent_soul_for_debug_selects_requested_draft(
-    draft_type: AgentConfigDraftType,
-    account_id: str | None,
-    sqlite_session: Session,
-):
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
-    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=draft_type,
-        account_id=account_id,
-        draft_owner_key=account_id or "",
-        config_snapshot=agent_soul,
-    )
-    session.add_all([agent, draft])
-    session.commit()
-
-    result = AgentComposerService.load_agent_soul_for_debug(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-        draft_type=draft_type,
-        session=session,
-    )
-
-    assert result == agent_soul
-
-
-def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session: Session):
-    session = sqlite_session
-
-    with pytest.raises(AgentVersionNotFoundError):
-        AgentComposerService.load_agent_soul_for_debug(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            account_id="account-1",
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            session=session,
-        )
-
-
-def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_workflow_composer_impact_includes_roster_agent_references(sqlite_session: Session) -> None:
+    """Count direct snapshot references and roster bindings to the same Agent."""
     session = sqlite_session
     bindings = [
         WorkflowAgentNodeBinding(
@@ -1133,37 +1053,17 @@ def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch
         for node_id in ("node-1", "node-2")
     ]
     session.add_all(bindings)
+    session.add(_snapshot(snapshot_id="older-version"))
     session.commit()
 
-    # Candidates assembly is covered in test_composer_candidates.py; here we stub
-    # the IO loaders and assert the response envelope per variant (ENG-615).
-    def _no_draft_workflow(**kwargs):
-        raise ValueError("draft workflow not found")
-
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
-    monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
-
-    workflow_candidates = AgentComposerService.get_workflow_candidates(
-        session=session,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        node_id="node-1",
-        user_id="account-1",
-    )
-    impact = AgentComposerService.calculate_impact(
-        session=session, tenant_id="tenant-1", current_snapshot_id="version-1"
-    )
-
-    assert workflow_candidates["variant"] == "workflow"
-    assert workflow_candidates["allowed_node_job_candidates"]["previous_node_outputs"] == []
-    assert workflow_candidates["truncated"] is False
-    assert impact["workflow_node_count"] == 2
-    assert impact["bindings"][1]["node_id"] == "node-2"
+    for snapshot_id in ("version-1", "older-version"):
+        impact = read_workflow_agent_impact(session, tenant_id="tenant-1", current_snapshot_id=snapshot_id)
+        assert impact["current_snapshot_id"] == snapshot_id
+        assert impact["workflow_node_count"] == 2
+        assert {binding["node_id"] for binding in impact["bindings"]} == {"node-1", "node-2"}
 
 
-def test_serialize_workflow_state_changes_lock_and_save_options(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+def test_serialize_workflow_state_changes_lock_and_save_options(sqlite_session: Session):
     session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         app_id="app-1",
@@ -1197,8 +1097,6 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"x"}}',
     )
-    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
-
     state = AgentComposerService._serialize_workflow_state(
         session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
@@ -1214,9 +1112,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     assert effective_names == ["text"]
 
 
-def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(sqlite_session: Session):
     session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         app_id="app-1",
@@ -1248,8 +1144,6 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"x"}}',
     )
-    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
-
     state = AgentComposerService._serialize_workflow_state(
         session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
@@ -1295,7 +1189,6 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"x"}}',
     )
-    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
     monkeypatch.setattr(
         AgentComposerService,
         "_workflow_inline_debug_conversation_id",
@@ -5349,7 +5242,7 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
         staticmethod(lambda user_id, tenant_id: [provider]),
     )
 
-    entries = AgentComposerService._workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
+    entries = list_workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
 
     assert entries[0] == {
         "id": "duckduckgo/*",
@@ -5362,51 +5255,6 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     }
     assert [entry["id"] for entry in entries[1:]] == ["duckduckgo/ddg_search", "duckduckgo/ddg_news"]
     assert {entry["granularity"] for entry in entries[1:]} == {"tool"}
-
-
-def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    session = sqlite_session
-
-    def boom(cls, **kwargs):
-        raise ValueError("no draft workflow")
-
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", classmethod(boom))
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        is None
-    )
-
-    monkeypatch.setattr(
-        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: _workflow(workflow_id="wf-1"))
-    )
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: None))
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        is None
-    )
-
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_workflow_binding",
-        classmethod(
-            lambda cls, **kwargs: WorkflowAgentNodeBinding(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                workflow_id="workflow-1",
-                workflow_version="draft",
-                node_id="node-1",
-                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-                node_job_config=WorkflowNodeJobConfig(),
-                agent_id="agent-7",
-            )
-        ),
-    )
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        == "agent-7"
-    )
 
 
 def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):

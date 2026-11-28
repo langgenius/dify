@@ -14,7 +14,9 @@ const CreateCard = () => {
   const { push } = useRouter()
 
   const { mutateAsync: createEmptyDataset } = useMutation(
-    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const handleCreate = useCallback(async () => {

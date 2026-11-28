@@ -160,9 +160,7 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: { agent_id: agentId },
     },
-    context: {
-      silent: true,
-    },
+    meta: { errorToast: false },
   })
   const buildDraftQuery = useQuery(
     queryOptions({
@@ -296,7 +294,9 @@ export function useAgentConfigureBuildDraftActions({
     consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions(),
   )
   const discardBuildDraftMutation = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: finalizeBuildChatRequest } = finalizeBuildChatMutation
   const { mutateAsync: applyBuildDraftRequest } = applyBuildDraftMutation
@@ -392,7 +392,7 @@ export function useAgentConfigureBuildDraftActions({
       })
       if (await exitBuildDraftMode(true)) toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch {
-      // Each failed request already surfaces its backend error through the console client.
+      // Each failed request already reports its backend error.
     } finally {
       setIsApplyingBuildDraftWorkflow(false)
     }

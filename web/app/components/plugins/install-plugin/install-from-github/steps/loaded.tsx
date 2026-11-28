@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { updateFromGitHub } from '@/service/plugins'
 import { usePluginTaskList } from '@/service/use-plugins'
 import Card from '../../../card'
@@ -136,7 +137,7 @@ const Loaded: React.FC<LoadedProps> = ({
         onFailed(e)
         return
       }
-      onFailed()
+      onFailed(getRequestErrorMessage(e))
     } finally {
       setIsInstalling(false)
     }

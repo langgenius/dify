@@ -16,6 +16,7 @@ export function getContactRecipientQueryOptions(
     input,
     queryKey: [...operation.queryKey({ input }), { workspaceId }],
     retry: false,
-    context: { silent: true },
+    // The recipients editor and the checklist show a failed lookup.
+    meta: { errorToast: false },
   })
 }

@@ -59,15 +59,12 @@ export function MCPAccessPointCard({
     select: selectMCPServerDetail,
   })
   const { data: detail, isPending: serverDetailLoading } = useQuery(serverDetailQueryOptions)
-  const invalidateServerDetail = () =>
-    queryClient.invalidateQueries({ queryKey: serverDetailQueryOptions.queryKey })
   const updateServerMutation = useMutation(
     consoleQuery.apps.byAppId.server.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `app-mcp-toggle:${appInfo.id}`,
       },
-      onSuccess: () => invalidateServerDetail(),
       onError: (error) => {
         toast.error(
           getErrorMessage(error) ??
@@ -86,7 +83,7 @@ export function MCPAccessPointCard({
   const regenerating = useIsMutating(rotationFilter) > 0
   const { mutate: refreshServerCode } = useMutation(
     rotateServerCode.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (_server, { params }) => {
         setRegenerationAppId((current) => (current === params.app_id ? null : current))
       },
@@ -226,10 +223,7 @@ export function MCPAccessPointCard({
           appID={appInfo.id}
           data={serverPublished ? detail : undefined}
           latestParams={latestParams}
-          onHide={() => {
-            setShowServerModal(false)
-            invalidateServerDetail()
-          }}
+          onHide={() => setShowServerModal(false)}
           appInfo={appInfo}
         />
       )}

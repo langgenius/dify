@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "工具讓 Agent 可以執行操作，例如搜尋網頁或呼叫你的應用程式",
   "agentDetail.configure.tools.empty.title": "暫無工具",
   "agentDetail.configure.tools.label": "工具",
-  "agentDetail.configure.tools.moreActions": "{{name}} 的更多操作",
   "agentDetail.configure.tools.removeAction": "移除 {{name}}",
   "agentDetail.configure.tools.removeProvider": "移除所有工具",
   "agentDetail.configure.tools.richTip": "新增工作區中的 Dify 工具。<docLink>了解更多</docLink>\n\nAgent 在沙箱中自行安裝的工具不會顯示在這裡，但仍然可用。",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "還原",
   "agentDetail.versionHistory.versionName": "版本 {{version}}",
   "agentDetail.versionHistory.viewOnly": "唯讀",
-  "exportAgent": "匯出 Agent"
+  "exportAgent": "匯出 Agent",
+  "toolCallLimit.invalid": "請輸入大於 0 的整數。",
+  "toolCallLimit.label": "{{toolName}} 的呼叫上限",
+  "toolCallLimit.maximum": "最大呼叫次數",
+  "toolCallLimit.notExecuted": "未執行",
+  "toolCallLimit.reached": "已達呼叫上限（每次執行 {{limit}} 次）。此請求未執行。",
+  "toolCallLimit.reason": "原因",
+  "toolCallLimit.set": "設定上限",
+  "toolCallLimit.summary_one": "{{count}} 次 / 執行",
+  "toolCallLimit.summary_other": "{{count}} 次 / 執行",
+  "toolCallLimit.title": "單次執行呼叫上限",
+  "toolCallLimit.used_one": "已使用 {{used}} / {{limit}} 次",
+  "toolCallLimit.used_other": "已使用 {{used}} / {{limit}} 次"
 }

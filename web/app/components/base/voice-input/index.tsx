@@ -17,7 +17,7 @@ type VoiceInputProps = {
   onConverted: (text: string) => void
   onCancel: () => void
   onBeforeTranscribe?: () => Promise<unknown>
-  onError?: () => void
+  onError?: (error?: unknown) => void
   onStartError?: (error: unknown) => void
   target: SpeechToTextTarget
 }
@@ -114,8 +114,8 @@ function VoiceInput({
     try {
       const audioResponse = await transcribeAudio(target, file, abortController.signal)
       if (mountedRef.current && !cancelledRef.current) onConverted(audioResponse.text)
-    } catch {
-      if (mountedRef.current && !cancelledRef.current) onError?.()
+    } catch (error) {
+      if (mountedRef.current && !cancelledRef.current) onError?.(error)
     } finally {
       transcriptionAbortControllerRef.current = null
       if (mountedRef.current && !cancelledRef.current) onCancel()

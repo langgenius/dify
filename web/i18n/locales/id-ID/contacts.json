@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Kontak tidak dapat dihapus. Coba lagi.",
   "directory.removalSingleTitle": "Hapus {{name}}?",
   "directory.resultCount": "Hasil: {{count}}",
-  "imPlatform.action.configure": "Konfigurasikan",
   "imPlatform.action.configureChannel": "Konfigurasikan {{provider}}",
   "imPlatform.action.connect": "Sambung",
   "imPlatform.action.copied": "Disalin",

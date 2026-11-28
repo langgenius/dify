@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "उपकरण एजेंट को कार्य करने देते हैं, जैसे वेब खोजना या आपके ऐप्स को कॉल करना",
   "agentDetail.configure.tools.empty.title": "अभी तक कोई उपकरण नहीं",
   "agentDetail.configure.tools.label": "उपकरण",
-  "agentDetail.configure.tools.moreActions": "{{name}} के लिए और क्रियाएँ",
   "agentDetail.configure.tools.removeAction": "{{name}} हटाएँ",
   "agentDetail.configure.tools.removeProvider": "सभी उपकरण हटाएँ",
   "agentDetail.configure.tools.richTip": "अपने workspace से Dify tools जोड़ें। <docLink>और जानें</docLink>\n\nएजेंट अपने sandbox में जो tools इंस्टॉल करता है वे यहां दिखाई नहीं देंगे, लेकिन उसके लिए उपलब्ध रहेंगे।",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "रीस्टोर करें",
   "agentDetail.versionHistory.versionName": "संस्करण {{version}}",
   "agentDetail.versionHistory.viewOnly": "केवल देखें",
-  "exportAgent": "एजेंट निर्यात करें"
+  "exportAgent": "एजेंट निर्यात करें",
+  "toolCallLimit.invalid": "0 से बड़ी पूर्ण संख्या दर्ज करें।",
+  "toolCallLimit.label": "{{toolName}} की कॉल सीमा",
+  "toolCallLimit.maximum": "अधिकतम कॉल",
+  "toolCallLimit.notExecuted": "निष्पादित नहीं हुआ",
+  "toolCallLimit.reached": "कॉल सीमा पूरी हो गई (प्रति रन {{limit}})। यह अनुरोध निष्पादित नहीं हुआ।",
+  "toolCallLimit.reason": "कारण",
+  "toolCallLimit.set": "सीमा तय करें",
+  "toolCallLimit.summary_one": "{{count}} कॉल / रन",
+  "toolCallLimit.summary_other": "{{count}} कॉल / रन",
+  "toolCallLimit.title": "प्रति रन कॉल सीमा",
+  "toolCallLimit.used_one": "{{limit}} में से {{used}} कॉल उपयोग हुई",
+  "toolCallLimit.used_other": "{{limit}} में से {{used}} कॉल उपयोग हुईं"
 }

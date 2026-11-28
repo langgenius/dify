@@ -3,10 +3,11 @@ import type { consoleClient } from '@/service/console'
 import { useQuery } from '@tanstack/react-query'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { setupFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceCardTags } from '../knowledge-space-card-tags'
 
 type KnowledgeFsSpaceListItemResponse = Awaited<
@@ -86,6 +87,7 @@ async function setup(permissionKeys = editable) {
       <div className="w-80">
         <TagsOwner />
       </div>
+      <AppToaster />
     </QueryProvider>,
   )
   await expect.element(trigger()).toBeVisible()
@@ -218,4 +220,17 @@ it('persists an empty selection after every tag is removed', async () => {
   await trigger('common.tag.addTag: Public docs').click()
   await expect.element(option('Frontend')).toHaveAttribute('aria-selected', 'false')
   await expect.element(option('Backend')).toHaveAttribute('aria-selected', 'false')
+})
+
+it('shows its own text for a framework error code when the replacement fails', async () => {
+  await setup()
+  fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mockRejectedValueOnce(
+    apiError({ status: 400, code: 'bad_request', message: 'Server says why' }),
+  )
+  await trigger().click()
+  await option('Frontend').click()
+  await userEvent.keyboard('{Escape}')
+  await expect
+    .element(page.getByRole('dialog', { name: 'common.actionMsg.modifiedUnsuccessfully' }))
+    .toBeVisible()
 })

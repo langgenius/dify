@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -21,7 +21,6 @@ import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useSkillPermissions } from '../permissions'
 import { SkillBuilderPanel } from './builder/panel'
-import { setSkillDetailCache } from './cache'
 import { deriveSkillDetailFromDraftFiles } from './draft'
 import { SkillFileEditor } from './files/editor'
 import { isDirectory } from './files/file-format'
@@ -32,7 +31,6 @@ import { SkillVersionPanel } from './versions/panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation(['skill'])
-  const queryClient = useQueryClient()
   const { canEdit, canPublish, canDelete } = useSkillPermissions()
   const [selectedPath, setSelectedPath] = useState<string>()
   const [openFilePaths, setOpenFilePaths] = useState<string[]>([])
@@ -93,7 +91,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   })
   const publishMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const queriedDetail = detailQuery.data
@@ -206,7 +204,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
         body: {},
       },
       {
-        onSuccess: async (version) => {
+        onSuccess: (version) => {
           toast.success(t(($) => $['skillManagement.detail.publishSuccess']))
           setPublishedOverride({
             id: version.id,
@@ -214,24 +212,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             versionNumber: version.version_number,
           })
           setHasLocalUnpublishedChanges(false)
-          const detailQueryKey = consoleQuery.workspaces.current.skills.bySkillId.get.key({
-            type: 'query',
-            input: {
-              params: {
-                skill_id: skillId,
-              },
-            },
-          })
-          if (detail) {
-            setSkillDetailCache(queryClient, skillId, {
-              ...detail,
-              latest_published_at: version.created_at,
-              latest_published_version_id: version.id,
-              latest_published_version_number: version.version_number,
-            })
-          }
-          await queryClient.invalidateQueries({ queryKey: detailQueryKey })
-          await queryClient.refetchQueries({ queryKey: detailQueryKey, type: 'active' })
         },
         onError: (error) => {
           toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.detail.publishFailed']))

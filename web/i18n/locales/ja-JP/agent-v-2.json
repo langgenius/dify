@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "ツールはエージェントが行動できるようにします。例えばウェブを検索したりアプリを呼び出したりできます",
   "agentDetail.configure.tools.empty.title": "ツールはまだありません",
   "agentDetail.configure.tools.label": "ツール",
-  "agentDetail.configure.tools.moreActions": "{{name}} のその他の操作",
   "agentDetail.configure.tools.removeAction": "{{name}} を削除",
   "agentDetail.configure.tools.removeProvider": "すべてのツールを削除",
   "agentDetail.configure.tools.richTip": "ワークスペースの Dify ツールを追加します。<docLink>詳しく見る</docLink>\n\nエージェントがサンドボックス内にインストールしたツールはここには表示されませんが、引き続き利用できます。",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "復元",
   "agentDetail.versionHistory.versionName": "バージョン {{version}}",
   "agentDetail.versionHistory.viewOnly": "表示のみ",
-  "exportAgent": "エージェントをエクスポート"
+  "exportAgent": "エージェントをエクスポート",
+  "toolCallLimit.invalid": "0 より大きい整数を入力してください。",
+  "toolCallLimit.label": "{{toolName}} の呼び出し上限",
+  "toolCallLimit.maximum": "最大呼び出し回数",
+  "toolCallLimit.notExecuted": "未実行",
+  "toolCallLimit.reached": "呼び出し上限（1 回の実行あたり {{limit}} 回）に達しました。このリクエストは実行されませんでした。",
+  "toolCallLimit.reason": "理由",
+  "toolCallLimit.set": "上限を設定",
+  "toolCallLimit.summary_one": "{{count}} 回 / 実行",
+  "toolCallLimit.summary_other": "{{count}} 回 / 実行",
+  "toolCallLimit.title": "1 回の実行あたりの呼び出し上限",
+  "toolCallLimit.used_one": "{{limit}} 回中 {{used}} 回使用済み",
+  "toolCallLimit.used_other": "{{limit}} 回中 {{used}} 回使用済み"
 }
