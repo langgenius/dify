@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from dify_agent.protocol.tool_call_limits import AgentToolActivity
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from typing_extensions import TypedDict
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
@@ -94,6 +95,24 @@ class StreamEvent(StrEnum):
     HUMAN_INPUT_REQUIRED = "human_input_required"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
     HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
+
+
+class StreamTopicEvent(TypedDict, total=False, extra_items=JsonValue):
+    """One event object as it travels over the app stream topic.
+
+    Publishers serialise a ``StreamResponse`` to JSON before publishing it, so
+    subscribers decode this shape rather than the model: the fields model the
+    keywords the stream machinery reads, and every other keyword a response
+    carries stays readable as a JSON value. All fields are optional because an
+    event may be any response variant, and a topic may also carry payloads that
+    are not events at all.
+    """
+
+    event: str
+    task_id: str
+    message_id: str
+    answer: str
+    metadata: dict[str, JsonValue]
 
 
 class StreamResponse(BaseModel):

@@ -1,7 +1,7 @@
-from collections.abc import Callable, Generator, Iterable, Mapping
+from collections.abc import Callable, Generator, Iterable
 
 from core.app.apps.streaming_utils import stream_topic_events
-from core.app.entities.task_entities import StreamEvent
+from core.app.entities.task_entities import StreamEvent, StreamTopicEvent
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
 from models.model import AppMode
@@ -28,7 +28,7 @@ class MessageGenerator:
         ping_interval: float = 10.0,
         on_subscribe: Callable[[], None] | None = None,
         terminal_events: Iterable[str | StreamEvent] | None = None,
-    ) -> Generator[Mapping | str]:
+    ) -> Generator[StreamTopicEvent | str]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         subscriber = topic.as_subscriber()
         subscription = (

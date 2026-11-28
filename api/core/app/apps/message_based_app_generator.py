@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator
 from decimal import Decimal
 from typing import cast
 
@@ -26,6 +26,7 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
+    StreamTopicEvent,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -321,7 +322,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         workflow_run_id: str,
         idle_timeout=300,
         on_subscribe: Callable[[], None] | None = None,
-    ) -> Generator[Mapping | str]:
+    ) -> Generator[StreamTopicEvent | str]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         subscriber = topic.as_subscriber()
         subscription = (
