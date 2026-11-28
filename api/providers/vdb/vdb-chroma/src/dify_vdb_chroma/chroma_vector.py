@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from typing import Any, TypedDict, override
 
 import chromadb
@@ -14,6 +15,33 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+_HNSW_SPACE_METADATA_KEY = "hnsw:space"
+_HNSW_SPACE_COSINE = "cosine"
+_HNSW_SPACE_L2 = "l2"
+_COSINE_SPACE_METADATA: dict[str, str] = {_HNSW_SPACE_METADATA_KEY: _HNSW_SPACE_COSINE}
+
+
+def _distance_space(collection: Any) -> str:
+    """Return the HNSW space of ``collection``, defaulting to Chroma's ``l2`` when unset."""
+    metadata = getattr(collection, "metadata", None)
+    if isinstance(metadata, Mapping):
+        space = metadata.get(_HNSW_SPACE_METADATA_KEY)
+        if isinstance(space, str):
+            return space
+    return _HNSW_SPACE_L2
+
+
+def _distance_to_score(distance: float, space: str) -> float:
+    """Convert a Chroma distance into a similarity score.
+
+    The ``l2`` space stores squared Euclidean distance, which is ``2 - 2 * cosine`` for
+    unit vectors, so half of it subtracted from 1 recovers the cosine similarity; the
+    ``cosine`` and ``ip`` spaces already report ``1 - similarity``.
+    """
+    if space == _HNSW_SPACE_L2:
+        return 1 - distance / 2
+    return 1 - distance
 
 
 class ChromaParamsDict(TypedDict):
@@ -74,7 +102,7 @@ class ChromaVector(BaseVector):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
-            self._client.get_or_create_collection(collection_name)
+            self._client.get_or_create_collection(collection_name, metadata=_COSINE_SPACE_METADATA)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     @override
@@ -83,7 +111,7 @@ class ChromaVector(BaseVector):
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
-        collection = self._client.get_or_create_collection(self._collection_name)
+        collection = self._client.get_or_create_collection(self._collection_name, metadata=_COSINE_SPACE_METADATA)
         # FIXME: chromadb using numpy array, fix the type error later
         collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
         return uuids
@@ -134,12 +162,13 @@ class ChromaVector(BaseVector):
         documents = results["documents"][0]
         metadatas = results["metadatas"][0]
         distances = results["distances"][0]
+        space = _distance_space(collection)
 
         docs = []
         for index in range(len(ids)):
             distance = distances[index]
             metadata = dict(metadatas[index])
-            score = 1 - distance
+            score = _distance_to_score(distance, space)
             if score >= score_threshold:
                 metadata["score"] = score
                 doc = Document(
