@@ -6677,6 +6677,8 @@ export default interface Resources {
     'common.workflowAsToolReconfigure': 'Reconfigure'
     'common.workflowAsToolTip': 'The workflow changed. Reconfigure to apply the updates.'
     'common.workflowAsToolUpdateNeeded': 'Update Needed'
+    'common.workflowAsToolVersionOutdated': 'Tool update pending'
+    'common.workflowAsToolVersionOutdatedTip': 'The published workflow has changed. Reconfigure the tool to use the latest version.'
     'common.workflowProcess': 'Workflow Process'
     'common.workflowProcessFailed': 'Workflow Process failed'
     'common.workflowProcessPaused': 'Workflow Process paused'

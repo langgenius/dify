@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Reconfigurer",
   "common.workflowAsToolTip": "Reconfiguration de l'outil requise après la mise à jour du flux de travail.",
   "common.workflowAsToolUpdateNeeded": "Mise à jour requise",
+  "common.workflowAsToolVersionOutdated": "Mise à jour de l’outil en attente",
+  "common.workflowAsToolVersionOutdatedTip": "Le workflow publié a été modifié. Reconfigurez l’outil pour utiliser la dernière version.",
   "common.workflowProcess": "Processus de flux de travail",
   "common.workflowProcessFailed": "Processus de flux de travail échoué",
   "common.workflowProcessPaused": "Processus de flux de travail en pause",

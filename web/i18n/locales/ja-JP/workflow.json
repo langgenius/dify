@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "再設定",
   "common.workflowAsToolTip": "ワークフロー更新後はツールの再設定が必要です",
   "common.workflowAsToolUpdateNeeded": "更新が必要",
+  "common.workflowAsToolVersionOutdated": "ツールの更新待ち",
+  "common.workflowAsToolVersionOutdatedTip": "公開済みのワークフローが変更されました。最新バージョンを使用するには、ツールを再設定してください。",
   "common.workflowProcess": "ワークフロー処理",
   "common.workflowProcessFailed": "ワークフロー処理が失敗しました",
   "common.workflowProcessPaused": "ワークフロー処理は一時停止中です",

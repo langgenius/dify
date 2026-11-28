@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "پیکربندی مجدد",
   "common.workflowAsToolTip": "پس از به‌روزرسانی گردش کار، پیکربندی مجدد ابزار الزامی است.",
   "common.workflowAsToolUpdateNeeded": "نیاز به به‌روزرسانی",
+  "common.workflowAsToolVersionOutdated": "به‌روزرسانی ابزار در انتظار است",
+  "common.workflowAsToolVersionOutdatedTip": "گردش کار منتشرشده تغییر کرده است. برای استفاده از آخرین نسخه، ابزار را دوباره پیکربندی کنید.",
   "common.workflowProcess": "فرآیند گردش کار",
   "common.workflowProcessFailed": "فرآیند گردش کار ناموفق بود",
   "common.workflowProcessPaused": "فرآیند گردش کار متوقف شده است",

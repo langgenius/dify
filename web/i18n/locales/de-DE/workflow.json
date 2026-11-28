@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Neu konfigurieren",
   "common.workflowAsToolTip": "Nach dem Workflow-Update ist eine Neukonfiguration des Tools erforderlich.",
   "common.workflowAsToolUpdateNeeded": "Aktualisierung erforderlich",
+  "common.workflowAsToolVersionOutdated": "Tool-Aktualisierung ausstehend",
+  "common.workflowAsToolVersionOutdatedTip": "Der veröffentlichte Workflow wurde geändert. Konfigurieren Sie das Tool neu, um die neueste Version zu verwenden.",
   "common.workflowProcess": "Arbeitsablauf",
   "common.workflowProcessFailed": "Arbeitsablauf fehlgeschlagen",
   "common.workflowProcessPaused": "Arbeitsablauf pausiert",

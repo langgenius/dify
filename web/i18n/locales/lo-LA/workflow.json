@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "ຕັ້ງຄ່າໃໝ່",
   "common.workflowAsToolTip": "Workflow ມີການປ່ຽນແປງ. ຕັ້ງຄ່າໃໝ່ເພື່ອນຳໃຊ້ການອັບເດດ.",
   "common.workflowAsToolUpdateNeeded": "ຕ້ອງອັບເດດ",
+  "common.workflowAsToolVersionOutdated": "ລໍຖ້າອັບເດດເຄື່ອງມື",
+  "common.workflowAsToolVersionOutdatedTip": "ເວີກໂຟລທີ່ເຜີຍແຜ່ໄດ້ປ່ຽນແປງແລ້ວ. ກະລຸນາຕັ້ງຄ່າເຄື່ອງມືໃໝ່ເພື່ອໃຊ້ເວີຊັນຫຼ້າສຸດ.",
   "common.workflowProcess": "ຂະບວນການ Workflow",
   "common.workflowProcessFailed": "ຂະບວນການ Workflow ບໍ່ສຳເລັດ",
   "common.workflowProcessPaused": "ຂະບວນການ Workflow ຢຸດຊົ່ວຄາວ",

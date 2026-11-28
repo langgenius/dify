@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "重新設定",
   "common.workflowAsToolTip": "工作流更新後需要重新配置工具參數",
   "common.workflowAsToolUpdateNeeded": "需要更新",
+  "common.workflowAsToolVersionOutdated": "工具待更新",
+  "common.workflowAsToolVersionOutdatedTip": "已發布的工作流已變更。請重新設定工具以使用最新版本。",
   "common.workflowProcess": "工作流",
   "common.workflowProcessFailed": "工作流執行失敗",
   "common.workflowProcessPaused": "工作流執行已暫停",

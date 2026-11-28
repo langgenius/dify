@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "재구성",
   "common.workflowAsToolTip": "워크플로우 업데이트 후 도구 재구성이 필요합니다.",
   "common.workflowAsToolUpdateNeeded": "업데이트 필요",
+  "common.workflowAsToolVersionOutdated": "도구 업데이트 대기 중",
+  "common.workflowAsToolVersionOutdatedTip": "게시된 워크플로가 변경되었습니다. 최신 버전을 사용하려면 도구를 다시 설정하세요.",
   "common.workflowProcess": "워크플로우 과정",
   "common.workflowProcessFailed": "워크플로우 과정 실패",
   "common.workflowProcessPaused": "워크플로우 과정 일시 중지됨",

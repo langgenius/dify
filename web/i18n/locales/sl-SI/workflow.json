@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Ponovno konfiguriraj",
   "common.workflowAsToolTip": "Zaradi posodobitve delovnega poteka je potrebna ponovna konfiguracija orodja.",
   "common.workflowAsToolUpdateNeeded": "Potrebna je posodobitev",
+  "common.workflowAsToolVersionOutdated": "Posodobitev orodja čaka",
+  "common.workflowAsToolVersionOutdatedTip": "Objavljeni delovni tok se je spremenil. Znova konfigurirajte orodje za uporabo najnovejše različice.",
   "common.workflowProcess": "Delovni postopek",
   "common.workflowProcessFailed": "Delovni postopek ni uspel",
   "common.workflowProcessPaused": "Delovni postopek je začasno ustavljen",

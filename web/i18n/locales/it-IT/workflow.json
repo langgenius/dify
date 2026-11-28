@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Riconfigura",
   "common.workflowAsToolTip": "È richiesta una nuova configurazione dello strumento dopo l'aggiornamento del flusso di lavoro.",
   "common.workflowAsToolUpdateNeeded": "Aggiornamento necessario",
+  "common.workflowAsToolVersionOutdated": "Aggiornamento dello strumento in sospeso",
+  "common.workflowAsToolVersionOutdatedTip": "Il flusso di lavoro pubblicato è cambiato. Riconfigura lo strumento per usare la versione più recente.",
   "common.workflowProcess": "Processo di flusso di lavoro",
   "common.workflowProcessFailed": "Processo di flusso di lavoro non riuscito",
   "common.workflowProcessPaused": "Processo di flusso di lavoro in pausa",
