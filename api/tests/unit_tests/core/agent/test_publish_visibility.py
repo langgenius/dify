@@ -21,7 +21,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
-from repositories.agent_roster_repository import list_invite_options_in_session
+from repositories.agent.agent_roster_repository import list_invite_options_in_session
 
 
 def _agent_soul() -> AgentSoulConfig:

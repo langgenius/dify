@@ -23,6 +23,7 @@ import {
   triggerOAuthConfigQueryOptions,
   triggerProviderInfoQueryOptions,
 } from '@/service/trigger-queries'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
@@ -52,6 +53,7 @@ export const CreateSubscriptionButton = ({
   shape = 'square',
 }: Props) => {
   const { t } = useTranslation(['plugin', 'pluginTrigger'])
+  const describeRequestError = useRequestErrorDescriber()
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{
@@ -242,9 +244,12 @@ export const CreateSubscriptionButton = ({
               }
             })
           },
-          onError: () => {
+          onError: (error) => {
             toast.error(
-              t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+              describeRequestError(
+                error,
+                t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+              ),
             )
           },
         })

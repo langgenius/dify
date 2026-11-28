@@ -1,5 +1,6 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
@@ -20,36 +21,11 @@ const SYSTEM_MODEL_TYPES = [
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const { refetch: refetchLLMModelList } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textGeneration } },
-    }),
-  )
-  const { refetch: refetchEmbeddingModelList } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-    }),
-  )
-  const { refetch: refetchRerankModelList } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.rerank } },
-    }),
-  )
-  const { refetch: refetchSpeech2textModelList } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.speech2text } },
-    }),
-  )
-  const { refetch: refetchTTSModelList } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.tts } },
-    }),
-  )
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const queryClient = useQueryClient()
 
-  return {
-    refreshPluginList: (
+  const refreshPluginList = useCallback(
+    (
       manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
       refreshAllType?: boolean,
     ) => {
@@ -105,12 +81,14 @@ const useRefreshPluginList = () => {
         queryClient.invalidateQueries({
           queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
         })
-        refetchLLMModelList()
-        refetchEmbeddingModelList()
-        refetchRerankModelList()
-        refetchSpeech2textModelList()
-        refetchTTSModelList()
-        SYSTEM_MODEL_TYPES.forEach((type) => invalidateDefaultModel(type))
+        SYSTEM_MODEL_TYPES.forEach((type) => {
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+              input: { params: { model_type: type } },
+            }),
+          })
+          invalidateDefaultModel(type)
+        })
       }
 
       // agent select
@@ -123,7 +101,10 @@ const useRefreshPluginList = () => {
         })
       }
     },
-  }
+    [invalidateDefaultModel, invalidateInstalledPluginList, queryClient],
+  )
+
+  return { refreshPluginList }
 }
 
 export default useRefreshPluginList

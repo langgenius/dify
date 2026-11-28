@@ -4,9 +4,11 @@ import { useCallback } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowNodeLoopStarted = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
 
@@ -20,7 +22,7 @@ export const useWorkflowNodeLoopStarted = () => {
     ) => {
       const { data } = params
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
-      const { getNodes, setNodes, edges, setEdges, transform } = store.getState()
+      const { getNodes, edges, transform } = store.getState()
       const nodes = getNodes()
       setWorkflowRunningData(
         produce(workflowRunningData!, (draft) => {
@@ -51,7 +53,7 @@ export const useWorkflowNodeLoopStarted = () => {
         draft[currentNodeIndex]!.data._loopLength = data.metadata.loop_length
         draft[currentNodeIndex]!.data._waitingRun = false
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         const incomeEdges = draft.filter((edge) => edge.target === data.node_id)
 
@@ -65,9 +67,9 @@ export const useWorkflowNodeLoopStarted = () => {
           }
         })
       })
-      setEdges(newEdges)
+      collaborativeWorkflow.setEdges(newEdges, false)
     },
-    [workflowStore, store, reactflow],
+    [collaborativeWorkflow, workflowStore, store, reactflow],
   )
 
   return {

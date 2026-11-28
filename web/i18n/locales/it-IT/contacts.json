@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Impossibile rimuovere il contatto. Riprova.",
   "directory.removalSingleTitle": "Rimuovere {{name}}?",
   "directory.resultCount": "Risultati: {{count}}",
-  "imPlatform.action.configure": "Configura",
   "imPlatform.action.configureChannel": "Configura {{provider}}",
   "imPlatform.action.connect": "Connetti",
   "imPlatform.action.copied": "Copiato",

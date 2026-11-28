@@ -4,9 +4,11 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowStarted = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowStarted = useCallback(
@@ -14,7 +16,7 @@ export const useWorkflowStarted = () => {
       const { task_id, data } = params
       const { workflowRunningData, setWorkflowRunningData, setIterParallelLogMap } =
         workflowStore.getState()
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
+      const { getNodes, edges } = store.getState()
       if (workflowRunningData?.result?.status === WorkflowRunningStatus.Paused) {
         setWorkflowRunningData(
           produce(workflowRunningData!, (draft) => {
@@ -46,7 +48,7 @@ export const useWorkflowStarted = () => {
           node.data._runningBranchId = undefined
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         draft.forEach((edge) => {
           edge.data = {
@@ -57,9 +59,9 @@ export const useWorkflowStarted = () => {
           }
         })
       })
-      setEdges(newEdges)
+      collaborativeWorkflow.setEdges(newEdges, false)
     },
-    [workflowStore, store],
+    [collaborativeWorkflow, workflowStore, store],
   )
 
   return {

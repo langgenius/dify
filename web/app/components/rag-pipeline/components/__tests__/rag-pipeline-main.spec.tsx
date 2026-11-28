@@ -185,7 +185,6 @@ it.each([
             }),
           }),
         }),
-        expect.anything(),
       )
     } else {
       expect(api.saveDraft).not.toHaveBeenCalled()
@@ -272,10 +271,10 @@ it('exports the pipeline with secrets only after confirmation and downloads the 
   await user.click(screen.getByRole('checkbox'))
   await user.click(screen.getByRole('button', { name: 'workflow.env.export.export' }))
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  expect(api.exportPipeline).toHaveBeenCalledExactlyOnceWith(
-    { params: { pipeline_id: 'pipeline-1' }, query: { include_secret: 'true' } },
-    { context: { silent: true } },
-  )
+  expect(api.exportPipeline).toHaveBeenCalledExactlyOnceWith({
+    params: { pipeline_id: 'pipeline-1' },
+    query: { include_secret: 'true' },
+  })
   expect(downloads).toHaveLength(1)
   expect(downloads[0]!.filename).toBe('Documentation.pipeline')
   expect(await downloads[0]!.blob.text()).toBe('kind: rag_pipeline')

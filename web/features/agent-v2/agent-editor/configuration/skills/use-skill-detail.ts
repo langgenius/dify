@@ -317,7 +317,6 @@ export function useAgentSkillDetail({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const workflowDownloadQuery = useQuery({
@@ -335,7 +334,6 @@ export function useAgentSkillDetail({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const trialDownloadQuery = useQuery(
@@ -347,7 +345,6 @@ export function useAgentSkillDetail({
               query: { path: selectedPreviewPath, version_id: apiContext.versionId },
             }
           : skipToken,
-      staleTime: 0,
       refetchOnWindowFocus: false,
     }),
   )
@@ -401,14 +398,13 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
-                context: { silent: true },
+                meta: { errorToast: false },
                 input: {
                   params: { app_id: apiContext.trialAppId, name: skill.name },
                   query: { path, version_id: apiContext.versionId },
                 },
               },
             ),
-            staleTime: 0,
           })
           const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
@@ -418,7 +414,7 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
-                context: { silent: true },
+                meta: { errorToast: false },
                 input: {
                   params: {
                     app_id: apiContext.workflow.appId,
@@ -433,7 +429,6 @@ export function useAgentSkillDetail({
                 },
               },
             ),
-            staleTime: 0,
           })
           const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
@@ -442,7 +437,7 @@ export function useAgentSkillDetail({
 
         const result = await queryClient.query({
           ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
-            context: { silent: true },
+            meta: { errorToast: false },
             input: {
               params: {
                 agent_id: apiContext.agentId,
@@ -455,7 +450,6 @@ export function useAgentSkillDetail({
               },
             },
           }),
-          staleTime: 0,
         })
         const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
         downloadBlob({ data, fileName: file.name })

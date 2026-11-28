@@ -81,12 +81,7 @@ async function renderPanel(keywords = '', tagFilterValue: string[] = [], belowFo
   return screen
 }
 
-// Skipped: in CI the native IntersectionObserver occasionally never reports the catalog start
-// as visible after the scroll, although the failure screenshot shows it in view. Seen in 1 of 4
-// CI runs on https://github.com/langgenius/dify/pull/46951, and its rerun passed; it does not
-// reproduce locally, even at 8x CPU throttling. Re-enable once observer delivery is deterministic
-// in Browser Mode. The arrow test below still covers loading the catalog.
-it.skip('loads marketplace tools when native scrolling reveals the catalog', async () => {
+it('loads marketplace tools when native scrolling reveals the catalog', async () => {
   const screen = await renderPanel('', [], true)
   await expect.element(screen.getByText('Installed tools')).toBeVisible()
   expect(fake.console.workspaces.current.plugin.installedIds.get).not.toHaveBeenCalled()

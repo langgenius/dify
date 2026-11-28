@@ -1,11 +1,11 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ConsoleClient } from '@/service/console'
-import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import CustomWebAppBrand from '../index'
@@ -107,7 +107,7 @@ it('cancels an upload, accepts the same file again, then applies and restores th
   expect(upload).toHaveBeenCalledTimes(2)
   expect(upload).toHaveBeenLastCalledWith(
     { body: { file: expect.any(File) } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   const uploadedFile = upload.mock.lastCall?.[0].body.file
   expect(uploadedFile).toBeInstanceOf(File)
@@ -238,23 +238,43 @@ it.each([0, 100])(
 
 it.each([
   {
-    error: new ORPCError('forbidden', { message: 'Workspace upload denied' }),
-    message: 'Workspace upload denied',
+    error: createHttpError(new Response(null, { status: 403 }), {
+      code: 'bad_request',
+      message: 'Workspace upload denied',
+    }),
+    message: 'common.imageUploader.uploadFromComputerUploadError',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 415 }), {
+      code: 'unsupported_file_type',
+      message: 'File type not allowed.',
+    }),
+    message: 'requestErrors.code.unsupported_file_type',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 413 }), {
+      code: 'file_too_large',
+      message: 'File size exceeded.',
+    }),
+    message: 'File size exceeded.',
   },
   {
     error: new Error('Network unavailable'),
     message: 'common.imageUploader.uploadFromComputerUploadError',
   },
-])('shows $message and allows retry after an upload failure', async ({ error, message }) => {
-  upload.mockRejectedValueOnce(error)
-  const { user } = renderBrand()
-  const file = logoFile()
-  await user.upload(uploadInput(), file)
-  expect(await screen.findByText(message)).toBeVisible()
-  expect(screen.getByText('custom.uploadedFail')).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
-  expect(updateConfig).not.toHaveBeenCalled()
-  await user.upload(uploadInput(), file)
-  expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
-  expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
-})
+])(
+  'shows $message for $error.message and allows retry after an upload failure',
+  async ({ error, message }) => {
+    upload.mockRejectedValueOnce(error)
+    const { user } = renderBrand()
+    const file = logoFile()
+    await user.upload(uploadInput(), file)
+    expect(await screen.findByText(message)).toBeVisible()
+    expect(screen.getByText('custom.uploadedFail')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+    expect(updateConfig).not.toHaveBeenCalled()
+    await user.upload(uploadInput(), file)
+    expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
+    expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
+  },
+)

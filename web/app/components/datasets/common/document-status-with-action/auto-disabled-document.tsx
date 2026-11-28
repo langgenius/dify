@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -12,7 +12,6 @@ type Props = Readonly<{
 
 const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
   const { t } = useTranslation(['common', 'dataset'])
-  const queryClient = useQueryClient()
   const autoDisableLogsQuery = consoleQuery.datasets.byDatasetId.autoDisableLogs.get.queryOptions({
     input: { params: { dataset_id: datasetId } },
   })
@@ -28,7 +27,6 @@ const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
       params: { dataset_id: datasetId, action: 'enable' },
       query: { document_id: documentIds },
     })
-    queryClient.invalidateQueries({ queryKey: autoDisableLogsQuery.queryKey })
   }
 
   return (

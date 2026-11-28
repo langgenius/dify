@@ -25,6 +25,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import (
     AgentAppServices,
+    build_agent_app_repository,
     build_agent_app_services,
     build_agent_invite_options_service,
     build_agent_observability,
@@ -70,7 +71,6 @@ from repositories.annotation_import_job_repository import RedisAnnotationImportJ
 from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
 from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
-from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -121,11 +121,12 @@ from services.account.forgot_password_service import (
 from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
+from services.agent.agent_tracing_config_service import AgentTracingConfigService
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.observability_contracts import AgentObservability
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.version_service import AgentVersionService
-from services.agent_tracing_config_service import AgentTracingConfigService
+from services.agent.workflow_composer_gateway import WorkflowComposerGateway
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
 from services.annotation_query import AnnotationQuery
@@ -163,7 +164,6 @@ from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
-from services.evaluation_service import EvaluationService
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -323,6 +323,7 @@ class ApplicationServices:
     annotation_reply: AnnotationReplyService
     rbac: RBACServices
     agent_apps: AgentAppServices
+    workflow_composer: WorkflowComposerGateway
     agent_versions: AgentVersionService
     agent_invite_options: AgentInviteOptionsService
     agent_observability: AgentObservability
@@ -549,6 +550,7 @@ def build_application_services(
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     console_apps = ConsoleAppRepository(session_factory=database_client)
+    agent_app_repository = build_agent_app_repository(database_client=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
         workspace_members=workspace_members,
@@ -699,7 +701,10 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
-        agent_apps=build_agent_app_services(database_client=database_client, rbac_members=rbac.members),
+        workflow_composer=WorkflowComposerGateway(session_factory=database_client),
+        agent_apps=build_agent_app_services(
+            database_client=database_client, rbac_members=rbac.members, apps=agent_app_repository
+        ),
         agent_versions=build_agent_version_service(database_client=database_client),
         agent_invite_options=build_agent_invite_options_service(
             database_client=database_client, rbac_members=rbac.members
@@ -735,10 +740,7 @@ def build_application_services(
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=tracing_configs,
         agent_tracing_configs=AgentTracingConfigService(
-            owners=AgentAppRepository(
-                session_factory=database_client,
-                stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
-            ),
+            owners=agent_app_repository,
             settings=apps.console,
             configs=tracing_configs,
         ),
@@ -894,7 +896,7 @@ def build_application_services(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
-        app_audio=AppAudioRuntime(session_factory=database_client),
+        app_audio=AppAudioRuntime(session_factory=database_client, agent_audio=agent_app_repository),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),

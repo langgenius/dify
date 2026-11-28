@@ -38,7 +38,7 @@ type DocumentTableRowProps = {
   embeddingAvailable: boolean
   renameDialog: DialogHandle<DocumentToRename>
   onDelete: (row: HTMLTableRowElement | null) => void
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
 }
 
 const renderCount = (count?: number | null) => {

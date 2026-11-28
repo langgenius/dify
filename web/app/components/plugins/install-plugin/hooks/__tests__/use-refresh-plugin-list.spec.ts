@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -131,13 +131,16 @@ describe('plugin installation refresh', () => {
 
     act(() => result.current.refreshPluginList({ category: PluginCategoryEnum.model }, all))
 
-    await waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(modelTypes.length))
-    for (const modelType of modelTypes) {
+    for (const model_type of modelTypes) {
       expect(
-        mocks.request.mock.calls.some(([url]) => url.endsWith(`/model-types/${modelType}`)),
+        client.getQueryState(
+          current.models.modelTypes.byModelType.get.queryKey({ input: { params: { model_type } } }),
+        )?.isInvalidated,
       ).toBe(true)
-      expect(mocks.defaultModel).toHaveBeenCalledWith(modelType)
+      expect(mocks.defaultModel).toHaveBeenCalledWith(model_type)
     }
+    // Unobserved model lists are marked stale and load when a model picker mounts.
+    expect(mocks.request).not.toHaveBeenCalled()
     for (const key of providerKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
     for (const key of strategyKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(all)
     expect(client.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
@@ -149,6 +152,42 @@ describe('plugin installation refresh', () => {
       expect(client.getQueryState(dataSourceAuthKey)?.isInvalidated).toBe(true)
       expect(client.getQueryState(triggerPluginsKey)?.isInvalidated).toBe(true)
     }
+  })
+
+  it('does not load model lists on mount', () => {
+    client.clear()
+    renderHook(useRefreshPluginList, { wrapper })
+
+    expect(mocks.request).not.toHaveBeenCalled()
+    expect(client.getQueryCache().getAll()).toHaveLength(0)
+  })
+
+  it('refetches a model list that is on screen after a model plugin changes', async () => {
+    const { result } = renderHook(
+      () => {
+        useQuery(
+          current.models.modelTypes.byModelType.get.queryOptions({
+            input: { params: { model_type: 'llm' } },
+          }),
+        )
+        return useRefreshPluginList()
+      },
+      { wrapper },
+    )
+
+    act(() => result.current.refreshPluginList({ category: PluginCategoryEnum.model }))
+
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(1))
+    expect(mocks.request.mock.calls[0]![0]).toMatch(/\/model-types\/llm$/)
+  })
+
+  it('keeps the same refresh function across renders', () => {
+    const { result, rerender } = renderHook(useRefreshPluginList, { wrapper })
+    const first = result.current.refreshPluginList
+
+    rerender()
+
+    expect(result.current.refreshPluginList).toBe(first)
   })
 
   it('only refreshes installation caches without a manifest', () => {

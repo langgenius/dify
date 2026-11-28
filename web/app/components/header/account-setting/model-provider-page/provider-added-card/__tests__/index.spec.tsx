@@ -28,12 +28,12 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.uninstall.post': api.uninstall,
+      'workspaces.current.modelProviders.byProvider.models.disable.patch': api.disable,
       'workspaces.current.modelProviders.byProvider.models.get': api.models,
       'workspaces.current.modelProviders.get': api.providers,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
@@ -50,9 +50,6 @@ vi.mock('@/service/console', async (importOriginal) => {
           exclude_plugins: [],
         },
       }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.modelProviders.byProvider.models.disable.patch': api.disable,
     }),
   }
 })
@@ -155,6 +152,15 @@ it.each([false, true])(
     expect(api.models).not.toHaveBeenCalled()
   },
 )
+
+it('keeps the model list closed for a role that can only configure auto updates', async () => {
+  const { user } = setup({}, { workspacePermissionKeys: ['plugin.plugin_preferences'] })
+  expect(
+    screen.queryByRole('button', { name: /modelProvider.modelProvider.showModels/ }),
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Expand OpenAI' }))
+  expect(api.models).not.toHaveBeenCalled()
+})
 
 it('opens the real model list, refreshes it after a model change, and restores focus after collapsing', async () => {
   const { user } = setup()

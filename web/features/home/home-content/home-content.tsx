@@ -380,10 +380,9 @@ export function HomeContent() {
       try {
         const appDetail = await queryClient.query({
           ...consoleQuery.explore.apps.byAppId.get.queryOptions({
-            context: { silent: true },
+            meta: { errorToast: false },
             input: { params: { app_id: appId } },
           }),
-          staleTime: 0,
         })
         if (!canCreateTemplate(appDetail.mode))
           throw new Error('Template creation is not permitted')

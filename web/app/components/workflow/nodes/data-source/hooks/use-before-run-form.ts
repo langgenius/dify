@@ -9,6 +9,7 @@ import {
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
+import { reportRequestError } from '@/app/query-error-toast'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { fetchNodeInspectVars } from '@/service/workflow'
@@ -103,7 +104,13 @@ const useBeforeRunForm = ({
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(resource, nodeId)
+    let vars: Awaited<ReturnType<typeof fetchNodeInspectVars>>
+    try {
+      vars = await fetchNodeInspectVars(resource, nodeId)
+    } catch (error) {
+      reportRequestError(error)
+      return
+    }
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)

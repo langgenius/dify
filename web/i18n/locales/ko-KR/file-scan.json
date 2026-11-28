@@ -50,7 +50,7 @@
   "scanner.lastTested": "마지막 테스트: {{time}}",
   "scanner.loadFailed": "스캐너를 불러오지 못했습니다.",
   "scanner.neverTested": "아직 테스트되지 않음",
-  "scanner.readOnly": "작업 공간 소유자와 관리자만 스캐너를 관리할 수 있습니다.",
+  "scanner.readOnly": "스캐너를 관리할 권한이 없습니다.",
   "scanner.status.active": "정상",
   "scanner.status.error": "오류",
   "scanner.test": "테스트",

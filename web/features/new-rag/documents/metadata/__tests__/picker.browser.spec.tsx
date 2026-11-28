@@ -2,6 +2,7 @@ import type { DocumentMetadataField } from '../editor-model'
 import { expect, it, vi } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createHttpError } from '@/service/http-error'
 import { DocumentMetadataPicker } from '../picker'
 
 const fields: DocumentMetadataField[] = [
@@ -27,7 +28,6 @@ const fields: DocumentMetadataField[] = [
 const props = {
   fields,
   creating: false,
-  error: false,
   loading: false,
   onCreate: vi.fn(),
   onManage: vi.fn(),
@@ -91,4 +91,27 @@ it('does not submit the enclosing form when Enter has no matching field', async 
   await userEvent.keyboard('{Enter}')
   expect(onSubmit).not.toHaveBeenCalled()
   await expect.element(page.getByRole('combobox')).toBeVisible()
+})
+
+it.each([
+  [
+    'the translated error code',
+    { code: 'invalid_input', message: 'Server says why' },
+    'requestErrors.code.invalid_input',
+  ],
+  ['the fallback text without one', undefined, 'knowledgeCitation.documentLoadErrorDescription'],
+])('shows %s when the fields fail to load', async (_, body, expected) => {
+  const onRetry = vi.fn()
+  const screen = await render(
+    <DocumentMetadataPicker
+      {...props}
+      error={createHttpError(new Response(null, { status: 503 }), body)}
+      onRetry={onRetry}
+      onSelect={vi.fn()}
+    />,
+  )
+  await screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }).click()
+  await expect.element(page.getByRole('status')).toHaveTextContent(expected)
+  await page.getByRole('button', { name: 'common.operation.retry' }).click()
+  expect(onRetry).toHaveBeenCalledOnce()
 })

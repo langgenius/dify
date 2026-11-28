@@ -9,7 +9,7 @@ from core.agent.workspace import AgentWorkspaceNotFoundError, WorkspaceOwnerScop
 from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, Conversation
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 
 logger = logging.getLogger(__name__)
 

@@ -31,14 +31,11 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': api.credentials,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtin,
       'workspaces.current.toolProvider.api.tools.get': api.custom,
       'workspaces.current.toolProvider.workflow.tools.get': api.workflow,

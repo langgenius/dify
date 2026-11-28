@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentAppDetailWithSite,
-  AgentSoulConfig,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from './data'
 import type { AgentPreviewChatController } from './preview/chat-conversation'
 import type { AgentConfigureRightPanelMode } from './state'
@@ -140,7 +137,6 @@ function AgentRosterEditorSession({
   onSelectVersion: (versionId: string | null) => void
 }) {
   const { agentQuery, agentSoulConfig } = configureData
-  const queryClient = useQueryClient()
   const sessionController = useAgentConfigureSessionController({
     buildDraftAgentSoulConfig: buildDraft.buildDraftAgentSoulConfig,
     hasActiveBuildDraft: buildDraft.hasActiveBuildDraft,
@@ -151,26 +147,7 @@ function AgentRosterEditorSession({
   })
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
-      context: { silent: true },
-      onSuccess: ({
-        debug_conversation_id,
-        debug_conversation_has_messages,
-        debug_conversation_message_count,
-      }) => {
-        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-          consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-          (agentDetail) => {
-            if (!agentDetail) return agentDetail
-
-            return {
-              ...agentDetail,
-              debug_conversation_id,
-              debug_conversation_has_messages: debug_conversation_has_messages ?? false,
-              debug_conversation_message_count: debug_conversation_message_count ?? 0,
-            }
-          },
-        )
-      },
+      meta: { errorToast: false },
     }),
   )
   const {
@@ -521,10 +498,8 @@ function AgentRosterEditorContent({
             setShowPreviewVersions(true)
           }}
           onExitVersions={() => selectVersion(null)}
-          onVersionRestored={async () => {
-            await composerQuery.refetch()
-            onComposerRebase()
-          }}
+          // The restore mutation has already refreshed the composer.
+          onVersionRestored={onComposerRebase}
         />
         <div className="flex min-w-105 flex-1 gap-1 overflow-hidden max-xl:w-full max-xl:min-w-0 max-xl:flex-none max-xl:flex-col max-xl:overflow-visible">
           <AgentConfigurePreviewSurface className="min-w-105 flex-1 max-xl:h-100 max-xl:w-full max-xl:min-w-0 max-xl:flex-none">
@@ -603,10 +578,8 @@ function AgentRosterEditorContent({
                   await saveDraft()
                 }
               }}
-              onVersionRestored={async () => {
-                await composerQuery.refetch()
-                onComposerRebase()
-              }}
+              // The restore mutation has already refreshed the composer.
+              onVersionRestored={onComposerRebase}
               onClose={() => setShowPreviewVersions(false)}
             />
           )}

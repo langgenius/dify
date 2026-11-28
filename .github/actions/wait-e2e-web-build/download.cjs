@@ -36,7 +36,13 @@ async function downloadWebBuild({
       maxBuffer: 32 * 1024 * 1024,
     })
   const list = async (endpoint) => {
-    const { stdout } = await run('gh', ['api', endpoint, '--paginate', '--slurp'])
+    const args = ['api', endpoint, '--paginate', '--slurp']
+    const { stdout } = await run('gh', args).catch((error) => {
+      if (error.code !== 1 || error.stderr?.trim() !== 'unexpected end of JSON input') throw error
+      // An incomplete page makes gh exit before it can return a usable listing.
+      console.log(`Retrying GitHub Actions metadata request after incomplete JSON: ${endpoint}`)
+      return run('gh', args)
+    })
     return JSON.parse(stdout)
   }
   const prefix = `repos/${repository}/actions`

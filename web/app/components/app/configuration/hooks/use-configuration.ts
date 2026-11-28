@@ -26,6 +26,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { reportRequestError } from '@/app/query-error-toast'
 import { PromptMode } from '@/models/debug'
 import { consoleQuery } from '@/service/console'
 import { ModelModeType } from '@/types/app'
@@ -197,7 +198,12 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const handlePromptModeChange = useCallback(
     async (nextMode: PromptMode) => {
       if (nextMode === PromptMode.advanced) {
-        await migrateToDefaultPrompt()
+        try {
+          await migrateToDefaultPrompt()
+        } catch (error) {
+          reportRequestError(error)
+          return
+        }
         setCanReturnToSimpleMode(true)
       }
       setPromptMode(nextMode)

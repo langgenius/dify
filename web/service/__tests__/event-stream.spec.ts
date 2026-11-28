@@ -144,7 +144,7 @@ describe('streamEvents', () => {
     expect(onCompleted).toHaveBeenCalledWith()
   })
 
-  it('passes an abort signal and silent context to the request and exposes the controller', async () => {
+  it('passes an abort signal and stream context to the request and exposes the controller', async () => {
     const request = vi.fn((_options: StreamRequestOptions) => Promise.resolve(framesOf()))
     let controller: AbortController | undefined
     const onCompleted = run(request, { getAbortController: (c) => (controller = c) })
@@ -153,7 +153,7 @@ describe('streamEvents', () => {
     expect(controller).toBeInstanceOf(AbortController)
     expect(request).toHaveBeenCalledWith({
       signal: controller!.signal,
-      context: { silent: true, stream: true },
+      context: { stream: true },
     })
   })
 
@@ -202,7 +202,10 @@ describe('streamEvents', () => {
 
   it('reports non-object frames as invalid data', async () => {
     const onError = vi.fn()
-    const onCompleted = run(() => Promise.resolve(framesOf('oops')), { onError, silent: true })
+    const onCompleted = run(() => Promise.resolve(framesOf('oops')), {
+      onError,
+      onNotifyError: vi.fn(),
+    })
 
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledWith(true, 'Invalid response data'))
     expect(onError).toHaveBeenCalledWith('Invalid response data', 'invalid_data', expect.anything())
@@ -215,7 +218,7 @@ describe('streamEvents', () => {
       () => Promise.resolve(framesOf({ event: 'custom' }, { event: 'node_started' })),
       {
         onError,
-        silent: true,
+        onNotifyError: vi.fn(),
         onUnhandledEvent: () => ({
           errorMessage: 'Unsupported',
           errorCode: 'unsupported',
@@ -286,11 +289,11 @@ describe('streamEvents', () => {
     expect(onNotifyError).toHaveBeenCalledWith('Invalid inputs', 'invalid_param')
   })
 
-  it('falls back to Server Error and respects silent', async () => {
+  it('falls back to Server Error and lets onNotifyError replace the toast', async () => {
     const onError = vi.fn()
     streamEvents(() => Promise.reject(new ORPCError('HTTP_ERROR', { status: 502 })), {
       onError,
-      silent: true,
+      onNotifyError: vi.fn(),
     })
 
     await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('Server Error', undefined))

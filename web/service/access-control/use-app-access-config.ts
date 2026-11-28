@@ -91,19 +91,11 @@ export const useUpdateAppUserAccessSettings = (appId: string) => {
           access_policy_ids: payload.accessPolicyIds,
         },
       }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.userAccessPolicies.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.accessPolicy.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.whitelist.get.key({ type: 'query' }),
-        }),
-      ])
-    },
+    // Every access setting of this app can change with membership.
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: appRbacContract.key({ input: { params: { app_id: appId } } }),
+      }),
   })
 }
 
@@ -126,19 +118,11 @@ export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
           }),
         ),
       ),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.userAccessPolicies.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.accessPolicy.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.whitelist.get.key({ type: 'query' }),
-        }),
-      ])
-    },
+    // Every access setting of this app can change with membership.
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: appRbacContract.key({ input: { params: { app_id: appId } } }),
+      }),
   })
 }
 
@@ -156,18 +140,10 @@ export const useUpdateAppAutomaticIncludeWorkspaceMembers = (appId: string) => {
           automatic_include_workspace_members: automaticIncludeWorkspaceMembers,
         },
       }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.userAccessPolicies.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.whitelist.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: appRbacContract.whitelistConfig.get.key({ type: 'query' }),
-        }),
-      ])
-    },
+    // Every access setting of this app can change with membership.
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: appRbacContract.key({ input: { params: { app_id: appId } } }),
+      }),
   })
 }

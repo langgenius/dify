@@ -12,7 +12,7 @@ import type {
   UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -71,20 +71,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     setSettingsDestination('provider')
   }, [setSettingsDestination])
 
-  const queryClient = useQueryClient()
-  const invalidDocumentList = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-        input: { params: { dataset_id: datasetId } },
-      }),
-    })
-  const invalidDocumentDetail = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
-    })
   const saveHandler = () => {
-    invalidDocumentList()
-    invalidDocumentDetail()
     router.push(`/datasets/${datasetId}/documents/${documentId}`)
   }
 

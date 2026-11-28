@@ -1,10 +1,12 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Shape } from '@/app/components/workflow/store/workflow'
+import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedAppDetail } from '@/test/console/query-data'
@@ -91,12 +93,19 @@ vi.mock('@/service/workflow', () => ({
   fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
+// The client marks documented codes as defined errors; see `validateDefinedErrors`.
+const definedError = (code: string, status: number, message: string) =>
+  new ORPCError(code, { defined: true, status, message, data: { code, message, status } })
+
 const notExistError = () =>
-  createHttpError(new Response(null, { status: 404 }), {
-    code: 'draft_workflow_not_exist',
-    message: 'Draft workflow not exist.',
-    status: 404,
-  })
+  definedError('draft_workflow_not_exist', 404, 'Draft workflow not exist.')
+
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
 
 const draftResponse = {
   id: 'draft-id',
@@ -223,6 +232,41 @@ describe('useWorkflowInit', () => {
     })
   })
 
+  it('should show the server message when the draft fails to load', async () => {
+    mockFetchWorkflowDraft.mockReset().mockRejectedValue(draftUnavailableError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should report a missing-draft code the contract does not document as a failure', async () => {
+    mockFetchWorkflowDraft.mockReset().mockRejectedValue(
+      createHttpError(new Response(null, { status: 404 }), {
+        code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 404,
+      }),
+    )
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
+    expect(result.current.isLoading).toBe(true)
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should show the server message when creating the first draft fails', async () => {
+    mockSyncWorkflowDraft.mockRejectedValue(draftUnavailableError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+  })
+
   it('should keep readonly users local when the first workflow draft does not exist', async () => {
     appDetail = createAppDetailFixture({
       id: 'app-1',
@@ -253,6 +297,19 @@ describe('useWorkflowInit', () => {
       syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
+  })
+
+  it('should load the draft created by another editor during initialization', async () => {
+    mockFetchWorkflowDraft.mockResolvedValueOnce(draftResponse)
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      definedError('draft_workflow_not_sync', 409, 'Draft already saved.'),
+    )
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.data?.hash).toBe(draftResponse.hash)
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {

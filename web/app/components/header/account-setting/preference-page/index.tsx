@@ -28,8 +28,6 @@ const languageItems = languages
   .filter((item) => item.supported)
   .map((item) => ({ value: item.value, label: item.name }))
 
-const profileMutationOptions = consoleQuery.account.profile.patch.mutationOptions()
-
 export default function PreferencePage() {
   const locale = useLocale()
   const { data: userProfile } = useSuspenseQuery({
@@ -41,23 +39,19 @@ export default function PreferencePage() {
   const { preference, setPreference } = useThemePreference()
   const updateProfile = useMutation(
     consoleQuery.account.profile.patch.mutationOptions({
-      onSuccess: async (data, variables, onMutateResult, context) => {
+      onSuccess: async (_data, variables) => {
         const language = variables.body.interface_language
-        await Promise.all([
-          profileMutationOptions.onSuccess?.(data, variables, onMutateResult, context),
-          language
-            ? setLocaleOnClient(language).then(
-                () => router.refresh(),
-                (error: unknown) => {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : t(($) => $['api.actionFailed'], { ns: 'common' }),
-                  )
-                },
-              )
-            : undefined,
-        ])
+        if (!language) return
+        await setLocaleOnClient(language).then(
+          () => router.refresh(),
+          (error: unknown) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : t(($) => $['api.actionFailed'], { ns: 'common' }),
+            )
+          },
+        )
       },
     }),
   )

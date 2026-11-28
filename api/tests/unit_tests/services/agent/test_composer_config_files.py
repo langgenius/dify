@@ -22,11 +22,11 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import CreatorUserRole
 from models.model import AppMode, UploadFile
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
+from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.composer_service import AgentComposerService
-from services.agent_config_service import (
+from services.agent.config_service import (
     AgentConfigService,
-    AgentConfigVersionKind,
     ConfigPushFileItem,
     ConfigPushPayload,
 )

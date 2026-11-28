@@ -1,10 +1,9 @@
-import type { ConsoleClientContext } from '@/service/console'
 import { consoleClient } from '@/service/console'
 import { marketplaceClient } from '@/service/marketplace'
 
 export const uploadFile = async (file: File, isBundle: boolean): Promise<unknown> => {
   // Packages can be large: the upload transport keeps the legacy XHR behavior of no client timeout.
-  const options = { context: { silent: true, onUploadProgress: () => {} } }
+  const options = { context: { onUploadProgress: () => {} } }
   return isBundle
     ? consoleClient.workspaces.current.plugin.upload.bundle.post(
         { body: { bundle: file } },
@@ -35,18 +34,14 @@ export const uploadGitHub = async (
   repoUrl: string,
   selectedVersion: string,
   selectedPackage: string,
-  context?: ConsoleClientContext,
 ) => {
-  return consoleClient.workspaces.current.plugin.upload.github.post(
-    {
-      body: {
-        repo: repoUrl,
-        version: selectedVersion,
-        package: selectedPackage,
-      },
+  return consoleClient.workspaces.current.plugin.upload.github.post({
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
     },
-    { context },
-  )
+  })
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {

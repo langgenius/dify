@@ -203,7 +203,6 @@ describe('knowledge-retrieval path', () => {
           datasetId: TEST_DATASET_ID,
           body: expect.objectContaining({ name: 'Updated Dataset' }),
         }),
-        { silent: true },
       )
     })
 

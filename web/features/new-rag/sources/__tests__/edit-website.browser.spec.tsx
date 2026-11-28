@@ -1,9 +1,11 @@
 import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
-import { firecrawlDatasourcePlugin, source } from './source-fixtures'
+import { firecrawlDatasourcePlugin, source, sourceConnectionResponse } from './source-fixtures'
 import {
+  connectionResponses,
   pluginResponses,
   resetSourceServer,
   serveWebsitePreview,
@@ -21,6 +23,47 @@ afterEach(() => {
 })
 
 describe('Sources: edit-website', () => {
+  it('shows a failed connection lookup inline and retries it', async () => {
+    pluginResponses.data = [firecrawlDatasourcePlugin]
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                parameters: { url: 'https://docs.example.com/' },
+                providerId: 'plugin-daemon-website',
+                providerName: 'Firecrawl',
+              },
+              uri: 'https://docs.example.com/',
+            }),
+          ],
+        },
+      ],
+    }
+    connectionResponses.error = apiError({ status: 503, message: 'Connections unavailable' })
+    connectionResponses.refresh.mockImplementation(() => {
+      connectionResponses.error = null
+      connectionResponses.data = { pages: [{ items: [sourceConnectionResponse] }] }
+    })
+
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      })
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
+
+    // A message without a cataloged code gives way to the editor's own text.
+    const failure = page.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' })
+    await expect.element(failure).toBeVisible()
+    await page.getByRole('button', { name: 'common.operation.retry' }).click()
+    await expect.element(failure).not.toBeInTheDocument()
+    expect(connectionResponses.refresh).toHaveBeenCalledOnce()
+  })
+
   it('edits website source parameters from the row menu', async () => {
     pluginResponses.data = [firecrawlDatasourcePlugin]
     serveWebsitePreview([

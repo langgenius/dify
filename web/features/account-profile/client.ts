@@ -15,11 +15,12 @@ export type UserProfileWithMeta = {
 export const userProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
     queryKey: consoleQuery.account.profile.get.queryKey(),
+    // Suspense consumers fail into the layout's error boundary, which shows the failure.
+    meta: { errorToast: false },
     queryFn: async () => {
       let responseHeaders: Headers | undefined
       const profile = await consoleClient.account.profile.get(undefined, {
         context: {
-          silent: true,
           onResponseHeaders: (headers) => {
             responseHeaders = headers
           },

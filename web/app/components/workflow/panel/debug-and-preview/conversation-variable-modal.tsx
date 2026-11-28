@@ -37,7 +37,6 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
         varList.length > 0 && appID && conversationID
           ? { params: { app_id: appID }, query: { conversation_id: conversationID } }
           : skipToken,
-      staleTime: 0,
     }),
   )
   const latestVariable = latestValues?.data.find((variable) => variable.id === currentVar.id)

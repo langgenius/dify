@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { useEvaluationStore } from '../../store'
 import ConditionGroup from '../conditions-section/condition-group'
 import EvaluationConfigActions from '../config-actions'
@@ -92,5 +93,44 @@ describe('EvaluationConfigActions', () => {
 
     expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.reset' })).toBeDisabled()
+  })
+
+  it.each([
+    [
+      'the localized failure over a generic server message',
+      createHttpError(
+        { status: 400, statusText: '', headers: new Headers() },
+        { code: 'bad_request', message: 'Metric answer_correctness needs expected_output' },
+      ),
+      'evaluation.config.saveFailed',
+    ],
+    [
+      'the reason the configuration was rejected',
+      createHttpError(
+        { status: 400, statusText: '', headers: new Headers() },
+        {
+          code: 'evaluation_config_invalid',
+          message: 'answer_relevancy needs a default embedding model.',
+        },
+      ),
+      'answer_relevancy needs a default embedding model.',
+    ],
+    [
+      'the generic message without one',
+      new TypeError('Failed to fetch'),
+      'evaluation.config.saveFailed',
+    ],
+  ])('reports a failed save with %s', async (_case, error, message) => {
+    const user = userEvent.setup()
+    saveConfig.mockRejectedValueOnce(error)
+    setup()
+    await user.type(
+      screen.getByRole('spinbutton', { name: 'evaluation.conditions.valuePlaceholder' }),
+      '0.7',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith(message))
   })
 })

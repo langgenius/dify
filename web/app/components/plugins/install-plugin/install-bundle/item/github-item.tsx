@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { GitHubItemAndMarketPlaceDependency, Plugin, VersionProps } from '../../../types'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { consoleQuery } from '@/service/console'
 import Loading from '../../base/loading'
 import { pluginDeclarationToCardPluginProps } from '../../utils'
@@ -39,16 +39,18 @@ const Item: FC<Props> = ({
       retry: 0,
     }),
   )
-  const [payload, setPayload] = React.useState<Plugin | null>(null)
+  const fetchedPayload = useMemo<Plugin | null>(
+    () => (data ? pluginDeclarationToCardPluginProps(data.manifest, data.unique_identifier) : null),
+    [data],
+  )
+  const payload = useMemo<Plugin | null>(
+    () => fetchedPayload && { ...fetchedPayload, from: dependency.type },
+    [fetchedPayload, dependency.type],
+  )
+  // The bundle installer collects each resolved package.
   useEffect(() => {
-    if (data) {
-      const payload = {
-        ...pluginDeclarationToCardPluginProps(data.manifest, data.unique_identifier),
-      }
-      onFetchedPayload(payload)
-      setPayload({ ...payload, from: dependency.type })
-    }
-  }, [data])
+    if (fetchedPayload) onFetchedPayload(fetchedPayload)
+  }, [fetchedPayload])
   useEffect(() => {
     if (error) onFetchError()
   }, [error])

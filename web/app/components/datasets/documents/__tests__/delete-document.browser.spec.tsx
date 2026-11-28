@@ -149,7 +149,9 @@ describe('Classic document deletion', () => {
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
-    await expect.element(screen.getByRole('alert')).toBeVisible()
+    await expect
+      .element(screen.getByRole('alert'))
+      .toHaveTextContent('common.actionMsg.modifiedUnsuccessfully')
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('region')).toHaveFocus()

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import partial
 from typing import Any, Final, Literal, Protocol
 
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolProviderType, DifyCoreToolsLayerConfig
@@ -15,17 +16,19 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolsLayerConfig,
 )
 from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.__base.tool import Tool
+from core.tools.entities.common_entities import I18nObjectDict
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from extensions.ext_database import db
 from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulDifyToolConfig, AgentSoulToolsConfig
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
@@ -77,8 +80,16 @@ class MCPProviderIDResolver(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class WorkflowAgentToolLayers:
+    """Prepared transports and detached, credential-free display labels.
+
+    Labels are keyed by the exact exposed native tool name, including generated
+    aliases. Empty labels support native-only and older internal constructors.
+    """
+
     plugin_tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
+    # API-owned display snapshots; never sent in credential-bearing runtime configs.
+    tool_labels: Mapping[str, I18nObjectDict] = field(default_factory=dict)
 
     def exposed_tool_names(self) -> list[str]:
         names: list[str] = []
@@ -104,11 +115,21 @@ class WorkflowAgentDifyToolLayersBuilder(Protocol):
 
 def _list_provider_tool_names(
     *,
+    session_maker: sessionmaker[Session],
     tenant_id: str,
     provider_type: ToolProviderType,
     provider_id: str,
 ) -> list[str]:
-    """Tool names a provider currently declares for provider-level Agent entries."""
+    """Tool names a provider currently declares for provider-level Agent entries.
+
+    Preconditions: ``session_maker`` is bound to the application database. Only the
+    workflow branch uses it, to read the ``WorkflowToolProvider`` row in a short-lived
+    read-only session that is closed before the provider controller is built.
+
+    Postconditions: returns the declared tool names and writes nothing. Raises
+    ``ToolProviderNotFoundError`` when the provider type is unsupported or the
+    workflow provider row does not exist for ``tenant_id``.
+    """
     match provider_type:
         case ToolProviderType.PLUGIN:
             plugin_provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
@@ -120,14 +141,17 @@ def _list_provider_tool_names(
             api_provider, _ = ToolManager.get_api_provider_controller(tenant_id, provider_id)
             return [tool.entity.identity.name for tool in api_provider.get_tools(tenant_id) or []]
         case ToolProviderType.WORKFLOW:
-            db_provider = db.session.scalar(
-                select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.id == provider_id,
-                    WorkflowToolProvider.tenant_id == tenant_id,
+            with session_maker() as session:
+                db_provider = session.scalar(
+                    select(WorkflowToolProvider)
+                    .where(
+                        WorkflowToolProvider.id == provider_id,
+                        WorkflowToolProvider.tenant_id == tenant_id,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
+            # The controller reads only loaded column attributes and opens its own
+            # sessions, so the detached row is safe to hand over.
             if db_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
             workflow_provider = WorkflowToolProviderController.from_db(db_provider)
@@ -139,15 +163,24 @@ def _list_provider_tool_names(
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
 
-def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
-    """Normalize a persisted MCP provider reference to the runtime-facing server identifier."""
-    service = MCPToolManageService(session=db.session())
-    try:
-        return service.get_provider_entity_by_persisted_reference(
-            id_or_server_identifier=provider_id, tenant_id=tenant_id
-        ).server_identifier
-    except ValueError as exc:
-        raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
+def _resolve_mcp_provider_id(*, session_maker: sessionmaker[Session], tenant_id: str, provider_id: str) -> str:
+    """Normalize a persisted MCP provider reference to the runtime-facing server identifier.
+
+    Preconditions: ``session_maker`` is bound to the application database;
+    ``provider_id`` is either the provider row id or its server identifier.
+
+    Postconditions: returns the server identifier of the tenant's matching provider.
+    The lookup runs in a short-lived read-only session that is closed on return, and
+    nothing is written. Raises ``ToolProviderNotFoundError`` when no provider matches.
+    """
+    with session_maker() as session:
+        service = MCPToolManageService(session=session)
+        try:
+            return service.get_provider_entity_by_persisted_reference(
+                id_or_server_identifier=provider_id, tenant_id=tenant_id
+            ).server_identifier
+        except ValueError as exc:
+            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
 
 
 class WorkflowAgentDifyToolsBuilder:
@@ -163,10 +196,22 @@ class WorkflowAgentDifyToolsBuilder:
         tool_runtime_provider: AgentToolRuntimeProvider | None = None,
         provider_tools_lister: ProviderToolsLister | None = None,
         mcp_provider_id_resolver: MCPProviderIDResolver | None = None,
+        session_maker: sessionmaker[Session] | None = None,
     ) -> None:
+        """Wire the tool runtime and the provider lookups.
+
+        ``session_maker`` opens the read-only sessions of the default provider-tools
+        lister and MCP provider-id resolver. ``None`` means the process-wide session
+        factory, which must already be configured; the builder is only constructed
+        while serving a request. Custom ``provider_tools_lister`` and
+        ``mcp_provider_id_resolver`` callables are used as given.
+        """
+        maker = session_maker or session_factory.get_session_maker()
         self._tool_runtime_provider = tool_runtime_provider or ToolManager
-        self._provider_tools_lister = provider_tools_lister or _list_provider_tool_names
-        self._mcp_provider_id_resolver = mcp_provider_id_resolver or _resolve_mcp_provider_id
+        self._provider_tools_lister = provider_tools_lister or partial(_list_provider_tool_names, session_maker=maker)
+        self._mcp_provider_id_resolver = mcp_provider_id_resolver or partial(
+            _resolve_mcp_provider_id, session_maker=maker
+        )
 
     def build_layers(
         self,
@@ -184,6 +229,13 @@ class WorkflowAgentDifyToolsBuilder:
         Composer test run, SERVICE_API / WEB_APP for a published run). It must
         be threaded through to `ToolManager` so credential quotas, rate limits,
         and audit tags match the actual call site.
+
+        Requires validated Agent Soul tools. Preserves each concrete
+        operation's call limit on either transport, including generated
+        Knowledge Base variants, so exposing another name cannot add quota.
+        Declaration or credential failures abort request preparation.
+        Display labels are detached from the resolved runtime and stay outside
+        the backend layer configs, so consumers can freeze them in process logs.
         """
         enabled_tools = [tool for tool in tools.dify_tools if tool.enabled]
         if not enabled_tools:
@@ -191,6 +243,7 @@ class WorkflowAgentDifyToolsBuilder:
 
         prepared_plugin: list[DifyPluginToolConfig] = []
         prepared_core: list[DifyCoreToolConfig] = []
+        tool_labels: dict[str, I18nObjectDict] = {}
         seen_names: set[str] = set()
 
         for tool_config in self._expand_provider_entries(tenant_id=tenant_id, enabled_tools=enabled_tools):
@@ -220,6 +273,7 @@ class WorkflowAgentDifyToolsBuilder:
                     invoke_from=invoke_from,
                     tool_config=normalized_tool_config,
                 )
+                tool_labels[exposed_name] = tool_runtime.entity.identity.label.to_dict()
 
                 if destination == "plugin":
                     prepared_plugin.append(
@@ -243,6 +297,7 @@ class WorkflowAgentDifyToolsBuilder:
         return WorkflowAgentToolLayers(
             plugin_tools=DifyPluginToolsLayerConfig(tools=prepared_plugin) if prepared_plugin else None,
             core_tools=DifyCoreToolsLayerConfig(tools=prepared_core) if prepared_core else None,
+            tool_labels=tool_labels,
         )
 
     def _expand_provider_entries(
@@ -461,6 +516,7 @@ class WorkflowAgentDifyToolsBuilder:
             runtime_parameters=runtime_parameters,
             parameters=parameters,
             parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters),
+            max_calls_per_run=tool_config.max_calls_per_run,
         )
 
     def _to_core_backend_tool_config(
@@ -481,6 +537,7 @@ class WorkflowAgentDifyToolsBuilder:
             runtime_parameters=self._runtime_parameters(tool_runtime, parameters),
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            max_calls_per_run=tool_config.max_calls_per_run,
         )
 
     @staticmethod

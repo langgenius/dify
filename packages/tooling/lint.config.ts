@@ -359,6 +359,19 @@ export const stylingContractRules = {
             '"{{className}}" duplicates or overrides the {{component}} focus indicator. The visible field owns focus; an input inside a styled group stays bare. Use ring-inset for clipped edges. A custom composite that moves the indicator needs a documented local exception.',
         },
         {
+          pattern: '^(TabsTab|TabsPanel)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. Keep its width and color; callers may use ring-inset to avoid clipping. A different focus owner requires a documented local exception.',
+        },
+        {
+          pattern: '^TabsIndicator$',
+          allow: [],
+          message:
+            '"{{className}}" changes the tab indicator. TabsIndicator owns the active underline, its position and its motion. A different active-tab surface requires a documented local exception.',
+        },
+        {
           pattern: '^TooltipContent$',
           allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
           // `flex` also names a shadcn class group; allow display flex without flex sizing.
@@ -424,6 +437,25 @@ export const stylingContractRules = {
           allow: [],
           message:
             '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and position.',
+        },
+        {
+          pattern: '^CoachmarkPopup$',
+          allow: ['min-h-*'],
+          message:
+            '"{{className}}" is outside the CoachmarkPopup styling contract. The popup owns its surface, width, spacing and focus ring; callers may only reserve a minimum height.',
+        },
+        {
+          pattern: '^CoachmarkActions$',
+          allow: ['items-*'],
+          message:
+            '"{{className}}" is outside the CoachmarkActions styling contract. The row owns its spacing and wrapping; callers may only change the cross-axis alignment.',
+        },
+        {
+          pattern:
+            '^(CoachmarkPortal|CoachmarkSpotlight|CoachmarkPositioner|CoachmarkArrow|CoachmarkTitle|CoachmarkStepLabel|CoachmarkDescription|CoachmarkClose)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its appearance and position.',
         },
         {
           pattern: '^(Dialog|AlertDialog)Content$',
@@ -1936,6 +1968,20 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'dify/no-module-scope-clock': 'error',
+        'dify/no-mutation-policy-bypass': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      files: ['web/app/components/{workflow,workflow-app}/**/*.{ts,tsx}'],
+      excludeFiles: [
+        ...handwrittenApiScope.excludeFiles,
+        'web/app/components/workflow/collaboration/**',
+        'web/app/components/workflow/hooks/use-collaborative-workflow.ts',
+        'web/app/components/workflow/workflow-preview/**',
+      ],
+      rules: {
+        'dify/no-raw-reactflow-graph-write': 'error',
       },
     },
   ],

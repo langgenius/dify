@@ -14,8 +14,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
@@ -34,7 +34,6 @@ type Props = Readonly<{
   searchText: string
   contentInset?: ToolsContentInset
   createdProviderId?: string
-  onRefresh?: () => Promise<unknown>
   onCreatedProviderHandled?: () => void
   showCreateCard?: boolean
 }>
@@ -51,7 +50,6 @@ const MCPList = ({
   searchText,
   contentInset = 'default',
   createdProviderId,
-  onRefresh,
   onCreatedProviderHandled,
   showCreateCard = true,
 }: Props) => {
@@ -65,7 +63,20 @@ const MCPList = ({
   )
   const list = providers ?? fallbackMCPToolsQuery.data ?? EMPTY_MCP_TOOLS
   const isLoading = isLoadingProviders ?? fallbackMCPToolsQuery.isLoading
-  const refetch = onRefresh ?? fallbackMCPToolsQuery.refetch
+  const queryClient = useQueryClient()
+  // Refreshes the catalogs after a provider is opened from elsewhere or its tools are fetched.
+  const refreshProviders = useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.toolProviders.get.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.tools.mcp.get.key(),
+        }),
+      ]),
+    [queryClient],
+  )
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
@@ -91,10 +102,9 @@ const MCPList = ({
     consoleQuery.workspaces.current.toolProvider.mcp.delete.mutationOptions(),
   )
 
-  const handleCreate = async (provider: ToolWithProvider) => {
+  const handleCreate = (provider: ToolWithProvider) => {
     if (!canManageMCP) return
 
-    await refetch() // update list
     setCurrentProviderID(provider.id)
     setIsTriggerAuthorize(true)
   }
@@ -106,7 +116,7 @@ const MCPList = ({
 
     const openCreatedProvider = async () => {
       try {
-        await refetch()
+        await refreshProviders()
         if (!isActive) return
 
         setCurrentProviderID(createdProviderId)
@@ -121,7 +131,7 @@ const MCPList = ({
     return () => {
       isActive = false
     }
-  }, [canManageMCP, createdProviderId, onCreatedProviderHandled, refetch])
+  }, [canManageMCP, createdProviderId, onCreatedProviderHandled, refreshProviders])
 
   const handleEdit = (providerID: string) => {
     if (!canManageMCP) return
@@ -137,7 +147,6 @@ const MCPList = ({
     })) as MutationResult
     if (res.result !== 'success') return
 
-    await refetch() // update list
     setCurrentProviderID(editingProvider.id)
     setIsTriggerAuthorize(true)
     setEditingProviderID(undefined)
@@ -157,7 +166,6 @@ const MCPList = ({
     })) as MutationResult
     if (res.result !== 'success') return
 
-    await refetch()
     setCurrentProviderID(undefined)
     setDeletingProviderID(undefined)
   }
@@ -198,7 +206,7 @@ const MCPList = ({
         <MCPDetailPanel
           detail={detailProvider as ToolWithProvider}
           onHide={() => setCurrentProviderID(undefined)}
-          onUpdate={refetch}
+          onUpdate={refreshProviders}
           onEdit={handleEdit}
           onDelete={handleDelete}
           isTriggerAuthorize={isTriggerAuthorize}

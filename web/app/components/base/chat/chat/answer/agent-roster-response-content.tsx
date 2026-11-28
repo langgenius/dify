@@ -47,6 +47,28 @@ function getToolActivities(
   language: string,
   responding?: boolean,
 ): ToolActivity[] {
+  const activity = thought.tool_activity
+  if (activity) {
+    const languageKey = getPluginLanguage(language as Locale)
+    const active = activity.status === 'started' || activity.status === 'running'
+    return [
+      {
+        kind: SHELL_TOOL_NAMES.has(activity.tool_name) ? 'shell' : 'tool',
+        key: activity.id,
+        name: activity.tool_name,
+        label:
+          renderI18nObject(thought.tool_labels?.[activity.tool_name] ?? {}, languageKey) ||
+          activity.tool_name,
+        input: thought.tool_input,
+        output: thought.observation,
+        isFinished: !active || !responding,
+        status: active && !responding ? 'interrupted' : activity.status,
+        error: activity.error,
+        callLimit: activity.call_limit,
+      },
+    ]
+  }
+
   let toolNames = [thought.tool]
   let isArray = false
 

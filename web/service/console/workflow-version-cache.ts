@@ -105,7 +105,9 @@ function syncEnvironmentDeployments(
   return changed ? { ...data, environment_deployments: environmentDeployments } : data
 }
 
-export function syncAppWorkflowVersionCaches(
+// Reads running for the written queries are stopped first, so none started before the write
+// lands over it.
+export async function syncAppWorkflowVersionCaches(
   queryClient: QueryClient,
   consoleQuery: RouterUtils<ConsoleClient>,
   appId: string,
@@ -114,22 +116,31 @@ export function syncAppWorkflowVersionCaches(
   const publishedWorkflowQuery = consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
     input: { params: { app_id: appId } },
   })
+  const versionListKey = consoleQuery.apps.byAppId.workflows.get.key({
+    type: 'infinite',
+    input: { params: { app_id: appId } },
+  })
 
+  if (
+    queryClient.isFetching({ queryKey: publishedWorkflowQuery.queryKey, exact: true }) ||
+    queryClient.isFetching({ queryKey: versionListKey })
+  )
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: publishedWorkflowQuery.queryKey, exact: true }),
+      queryClient.cancelQueries({ queryKey: versionListKey }),
+    ])
   queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey, (workflow) =>
     workflow?.id === updatedWorkflow.id ? updatedWorkflow : workflow,
   )
   queryClient.setQueriesData<InfiniteData<WorkflowPaginationResponse>>(
-    {
-      queryKey: consoleQuery.apps.byAppId.workflows.get.key({
-        type: 'infinite',
-        input: { params: { app_id: appId } },
-      }),
-    },
+    { queryKey: versionListKey },
     (data) => syncWorkflowVersionPages(data, updatedWorkflow),
   )
 }
 
-export function syncWorkflowDeploymentCaches(
+// Reads running for the written queries are stopped first, so none started before the write
+// lands over it.
+export async function syncWorkflowDeploymentCaches(
   queryClient: QueryClient,
   consoleQuery: RouterUtils<ConsoleClient>,
   appId: string,
@@ -143,18 +154,26 @@ export function syncWorkflowDeploymentCaches(
         },
       },
     })
+  const deploymentDetailKey =
+    consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.key({
+      type: 'query',
+      input: { params: { app_id: appId } },
+    })
 
+  if (
+    queryClient.isFetching({ queryKey: environmentDeploymentsQuery.queryKey, exact: true }) ||
+    queryClient.isFetching({ queryKey: deploymentDetailKey })
+  )
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: environmentDeploymentsQuery.queryKey, exact: true }),
+      queryClient.cancelQueries({ queryKey: deploymentDetailKey }),
+    ])
   queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(
     environmentDeploymentsQuery.queryKey,
     (data) => syncEnvironmentDeployments(data, updatedWorkflow),
   )
   queryClient.setQueriesData<GetEnvironmentDeploymentResponse>(
-    {
-      queryKey: consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.key({
-        type: 'query',
-        input: { params: { app_id: appId } },
-      }),
-    },
+    { queryKey: deploymentDetailKey },
     (data) => {
       if (!data) return data
 

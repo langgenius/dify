@@ -12,6 +12,7 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import useOneStepRun from '../use-one-step-run'
 
 const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
@@ -197,6 +198,27 @@ describe('useOneStepRun single-run input vars', () => {
       expect(await screen.findByText('Trigger rejected')).toBeInTheDocument()
       expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger rejected')
       expect(store.getState().isListening).toBe(false)
+    },
+  )
+
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'reports a %s request failure once',
+    async (type) => {
+      runTrigger.mockRejectedValueOnce(
+        createHttpError(
+          { status: 400, statusText: '', headers: new Headers() },
+          { message: 'Trigger misconfigured' },
+        ),
+      )
+      const notifyError = vi.spyOn(toast, 'error')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { result } = renderUseOneStepRun(type)
+
+      await act(async () => {
+        expect(await result.current.handleRun({})).toBe(false)
+      })
+
+      expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger misconfigured')
     },
   )
 

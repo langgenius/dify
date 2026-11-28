@@ -2,6 +2,7 @@ import type { AccountWithRoleResponse } from '@dify/contracts/api/console/worksp
 import type { Role } from '@/models/access-control'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { MemberMenu } from '../member-menu'
 
@@ -124,8 +125,15 @@ describe('MemberMenu', () => {
     expect(second).toHaveAttribute('aria-selected', 'true')
     expect(mockUpdateRolesOfMember).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
-    await act(async () => rejectSave(new Error('Save failed')))
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    await act(async () =>
+      rejectSave(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_role',
+          message: 'Server says why',
+        }),
+      ),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_role')
     expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
     expect(second).toHaveAttribute('aria-selected', 'true')
     await user.click(confirm)

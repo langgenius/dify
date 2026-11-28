@@ -1,16 +1,16 @@
 import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n'
-import type { AppData, ConversationItem } from '@/models/share'
+import type { AppData } from '@/models/share'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConversationSelection } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { changeLanguage } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
@@ -30,6 +30,7 @@ import {
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
+  writeGeneratedConversation,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -146,13 +147,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       limit: 100,
     }),
   )
+  const conversationListQueryOptions = shareConversationsQueryOptions({
+    appSourceType,
+    appId,
+    pinned: false,
+    limit: 100,
+  })
   const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
-    shareConversationsQueryOptions({
-      appSourceType,
-      appId,
-      pinned: false,
-      limit: 100,
-    }),
+    conversationListQueryOptions,
   )
   const { data: appChatListData, isLoading: appChatListDataLoading } = useQuery(
     shareChatListQueryOptions({
@@ -282,27 +284,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation } = useQuery(
-    shareConversationNameQueryOptions(
-      {
-        conversationId: newConversationId,
-        appSourceType,
-        appId,
-      },
-      {
-        refetchOnWindowFocus: false,
-        enabled: !isTryApp,
-      },
-    ),
-  )
-  const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
-  useEffect(() => {
-    if (appConversationData?.data && !appConversationDataLoading)
-      // oxlint-disable-next-line eslint-react/set-state-in-effect
-      setOriginConversationList(appConversationData?.data)
-  }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
-    const data = originConversationList.slice()
+    const data = (appConversationData?.data ?? []).slice()
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
@@ -312,18 +295,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       })
     }
     return data
-  }, [originConversationList, showNewConversationItemInList, t])
-  useEffect(() => {
-    if (newConversation) {
-      setOriginConversationList(
-        produce((draft) => {
-          const index = draft.findIndex((item) => item.id === newConversation.id)
-          if (index > -1) draft[index] = newConversation
-          else draft.unshift(newConversation)
-        }),
-      )
-    }
-  }, [newConversation])
+  }, [appConversationData, showNewConversationItemInList, t])
   const currentConversationItem = useMemo(() => {
     let conversationItem = conversationList.find((item) => item.id === currentConversationId)
     if (!conversationItem && pinnedConversationList.length)
@@ -406,9 +378,21 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const currentChatInstanceRef = useRef<{
     handleStop: () => void
   }>({ handleStop: noop })
+  // The conversation whose generated name is still loading. Leaving it drops the late name,
+  // so a conversation pinned or deleted meanwhile does not come back to this list.
+  const pendingNameConversationIdRef = useRef('')
+  useEffect(
+    () => () => {
+      // A name that arrives after this chat unmounts must not edit the shared list cache.
+      pendingNameConversationIdRef.current = ''
+    },
+    [],
+  )
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
       currentChatInstanceRef.current.handleStop()
+      if (conversationId !== pendingNameConversationIdRef.current)
+        pendingNameConversationIdRef.current = ''
       setNewConversationId('')
       handleConversationIdInfoChange(conversationId)
       if (conversationId) setClearChatList(false)
@@ -443,19 +427,55 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       handleConversationIdInfoChange(newConversationId)
       setShowNewConversationItemInList(false)
       invalidateShareConversations()
+      if (isTryApp) return
+      // The generated name stays in the list cache until the list is loaded again after it.
+      pendingNameConversationIdRef.current = newConversationId
+      queryClient
+        .query({
+          ...shareConversationNameQueryOptions({
+            conversationId: newConversationId,
+            appSourceType,
+            appId,
+          }),
+          // Imperative queries do not retry by default; keep the retries the name query observer had.
+          retry: 3,
+        })
+        .then((conversation) => {
+          if (pendingNameConversationIdRef.current !== newConversationId) return
+          pendingNameConversationIdRef.current = ''
+          writeGeneratedConversation(
+            queryClient,
+            conversationListQueryOptions.queryKey,
+            conversation,
+          )
+        })
+        .catch(noop)
     },
-    [handleConversationIdInfoChange, invalidateShareConversations],
+    [
+      handleConversationIdInfoChange,
+      invalidateShareConversations,
+      isTryApp,
+      queryClient,
+      appSourceType,
+      appId,
+      conversationListQueryOptions.queryKey,
+    ],
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {
-      await updateFeedback(
-        {
-          messageId,
-          body: { rating: feedback.rating, content: feedback.content },
-        },
-        appSourceType,
-        appId,
-      )
+      try {
+        await updateFeedback(
+          {
+            messageId,
+            body: { rating: feedback.rating, content: feedback.content },
+          },
+          appSourceType,
+          appId,
+        )
+      } catch (error) {
+        reportRequestError(error)
+        throw error
+      }
     },
     [appSourceType, appId],
   )

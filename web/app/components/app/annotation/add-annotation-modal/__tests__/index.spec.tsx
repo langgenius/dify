@@ -2,7 +2,13 @@ import type { consoleClient } from '@/service/console'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createHttpError } from '@/service/http-error'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import AddAnnotationDialog from '../index'
 
@@ -38,6 +44,8 @@ async function setup(quota = { size: 0, limit: 10 }) {
   const user = userEvent.setup()
   const onAdded = vi.fn()
   const view = renderWithConsoleQuery(<AddAnnotationDialog appId="app-id" onAdded={onAdded} />, {
+    // Like the app's client: an annotation write refreshes the app's annotation reads and quota.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     features: { annotation_quota_limit: quota },
   })
   const features = seedFeatures(view.queryClient, { annotation_quota_limit: quota })
@@ -159,6 +167,20 @@ it.each([
   await setup(quota)
   if (disabled) expect(submit()).toBeDisabled()
   else expect(submit()).toBeEnabled()
+})
+
+it('shows the translated reason when creation fails', async () => {
+  api.add.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'app_unavailable',
+      message: 'Server says why',
+    }),
+  )
+  const { user, onAdded } = await setup()
+  await fill(user)
+  await user.click(submit())
+  expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.app_unavailable')
+  expect(onAdded).not.toHaveBeenCalled()
 })
 
 it('blocks saving until quota loads and lets a failed quota request retry', async () => {

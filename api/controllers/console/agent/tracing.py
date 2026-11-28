@@ -35,7 +35,7 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_tracing_config_service import (
     AppTraceSettings,

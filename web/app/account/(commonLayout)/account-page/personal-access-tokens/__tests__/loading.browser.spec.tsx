@@ -467,3 +467,19 @@ it('returns to the previous page after deleting the last token on a deep-linked 
     .element(screen.getByRole('button', { name: 'Previous', exact: true }))
     .not.toBeInTheDocument()
 })
+
+it('reports that the token list could not load', async () => {
+  installAccountApi({
+    personalAccessTokens: {
+      get: () => {
+        throw apiError({
+          status: 503,
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Token list unavailable',
+        })
+      },
+    },
+  })
+  const screen = await renderTokens()
+  await expect.element(screen.getByRole('alert')).toMatchTextContent(/Could not load access tokens/)
+})

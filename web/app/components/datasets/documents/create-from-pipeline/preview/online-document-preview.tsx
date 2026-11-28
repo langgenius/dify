@@ -31,7 +31,7 @@ const OnlineDocumentPreview = ({
   const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
   const { mutate: getOnlineDocumentContent, isPending } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const dataSourceStore = useDataSourceStore()

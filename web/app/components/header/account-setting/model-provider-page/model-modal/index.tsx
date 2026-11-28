@@ -40,7 +40,6 @@ import ModelIcon from '@/app/components/header/account-setting/model-provider-pa
 import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { getHttpErrorBodyMessage } from '@/service/http-error'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { isAbortError } from '@/utils/is-abort-error'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../declarations'
@@ -124,12 +123,9 @@ const ModelModal: FC<ModelModalProps> = ({
       try {
         await request
       } catch (error) {
-        if (isAbortError(error)) return
-        if (
-          error instanceof ORPCError &&
-          (error.status === 401 || getHttpErrorBodyMessage(error.data))
-        )
-          return
+        // The mutation cache reports failed requests; only a request that never got a response
+        // is reported here.
+        if (isAbortError(error) || error instanceof ORPCError) return
         toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
         return
       }

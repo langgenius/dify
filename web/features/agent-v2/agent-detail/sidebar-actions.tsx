@@ -22,6 +22,7 @@ import { DuplicateAgentDialogContent } from '@/features/agent-v2/roster/componen
 import { EditAgentDialogContent } from '@/features/agent-v2/roster/components/edit-agent-dialog'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type AgentDetailSidebarActionAgent = AgentFormSource &
   Pick<AgentAppPartial, 'app_id' | 'permission_keys'>
@@ -30,11 +31,14 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const { t } = useTranslation(['agentRoster', 'agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tApp } = useTranslation(['app'])
+  const describeRequestError = useRequestErrorDescriber()
   const [editDialog] = useState(() => createDialogHandle())
   const [duplicateDialog] = useState(() => createDialogHandle())
   const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const agentUpdate = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
   const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
@@ -186,7 +190,14 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             <DeleteAgentForm
               agentName={agent.name}
               isPending={deletion.isPending}
-              error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+              error={
+                deletion.isError
+                  ? describeRequestError(
+                      deletion.error,
+                      t(($) => $['roster.deleteFailed']),
+                    )
+                  : undefined
+              }
               onSubmit={() => {
                 if (deletion.isPending) return
                 deletion.mutate(

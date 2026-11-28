@@ -99,7 +99,6 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
       select: selectToolsWithProvider,
     }),
   )
-  const { refetch: refetchMcpTools } = allToolProvidersQuery
   const activeToolsQuery =
     activeTab === 'api'
       ? customToolsQuery
@@ -109,9 +108,6 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const collectionList = activeToolsQuery.data ?? EMPTY_COLLECTIONS
   const isCollectionListLoading = activeToolsQuery.isLoading
   const refetch = activeToolsQuery.refetch
-  const refreshMcpTools = useCallback(async () => {
-    await refetchMcpTools()
-  }, [refetchMcpTools])
   const activeTabCollectionList = useMemo(() => {
     return collectionList.filter((collection) => collection.type === activeTab)
   }, [activeTab, collectionList])
@@ -245,7 +241,6 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               contentInset={contentInset}
               createdProviderId={createdMCPProviderId}
               showCreateCard={shouldShowMCPCreateCard}
-              onRefresh={refreshMcpTools}
               onCreatedProviderHandled={handleCreatedMCPProviderHandled}
             />
           )}

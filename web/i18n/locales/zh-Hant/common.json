@@ -110,7 +110,6 @@
   "feedback.placeholder": "請描述發生了什麼問題或我們可以如何改進...",
   "feedback.subtitle": "請告訴我們這個回應出了什麼問題",
   "feedback.title": "提供反饋",
-  "fileUploader.fileExtensionBlocked": "出於安全原因，此檔案類型被阻止",
   "fileUploader.fileExtensionNotSupport": "不支援檔擴展名",
   "fileUploader.pasteFileLink": "貼上文件連結",
   "fileUploader.pasteFileLinkInputPlaceholder": "輸入網址...",

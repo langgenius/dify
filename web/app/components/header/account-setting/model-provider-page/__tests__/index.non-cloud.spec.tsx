@@ -109,7 +109,11 @@ const renderPage: typeof renderWithConsoleQuery = (ui, options) => {
     data: [{ ...providerSummaryFixture } satisfies ModelProviderSummaryResponse],
     plugins: {},
   })
-  return renderWithConsoleQuery(ui, { ...options, queryClient })
+  return renderWithConsoleQuery(ui, {
+    workspacePermissionKeys: ['plugin.model_config'],
+    ...options,
+    queryClient,
+  })
 }
 
 describe('ModelProviderPage non-cloud branch', () => {

@@ -31,6 +31,7 @@ vi.mock('@/service/base', () => ({
 
 vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
+  PlanLoading: () => null,
 }))
 
 const renderBilling = () => {

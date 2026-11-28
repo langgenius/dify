@@ -13,7 +13,7 @@ import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-stat
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { isDefinedError } from '@orpc/client'
+import { ORPCError } from '@orpc/client'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -240,6 +240,27 @@ export function AgentWorkingDirectoryPanel({
   )
 }
 
+// The sandbox operations document `no_active_binding` (404): the directory is empty, not failed.
+const isNoActiveBindingError = (error: unknown) =>
+  error instanceof ORPCError && error.defined && error.code === 'no_active_binding'
+
+// An expanded folder is reported through the query cache, which must not see the empty case.
+function withNoActiveBindingAsEmpty<TContext, TData, TOptions extends object>(
+  options: TOptions & { queryFn: (context: TContext) => TData | Promise<TData> },
+) {
+  return {
+    ...options,
+    queryFn: async (context: TContext): Promise<TData | { entries: [] }> => {
+      try {
+        return await options.queryFn(context)
+      } catch (error) {
+        if (isNoActiveBindingError(error)) return { entries: [] }
+        throw error
+      }
+    },
+  }
+}
+
 function AgentWorkingDirectoryContent({
   source,
   open,
@@ -279,9 +300,8 @@ function AgentWorkingDirectoryContent({
               path: toSandboxApiPath(path),
             },
           },
-          context: {
-            silent: true,
-          },
+          // `no_active_binding` renders as an empty directory, not a failure.
+          meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions(
           {
@@ -296,9 +316,7 @@ function AgentWorkingDirectoryContent({
                 path: toSandboxApiPath(path),
               },
             },
-            context: {
-              silent: true,
-            },
+            meta: { errorToast: false },
           },
         )
   const handleDirectoryPathChange = (path: AgentWorkingDirectoryPath) => {
@@ -310,20 +328,19 @@ function AgentWorkingDirectoryContent({
   }
   const fileListQueryOptions = getFileListQueryOptions(directoryPath)
   const fileListQuery = useQuery({ ...fileListQueryOptions, retry: false })
-  // The sandbox operations document `no_active_binding` (404): the directory is empty, not failed.
-  const hasNoActiveBinding =
-    isDefinedError(fileListQuery.error) && fileListQuery.error.code === 'no_active_binding'
+  const hasNoActiveBinding = isNoActiveBindingError(fileListQuery.error)
   const expandedFolderQueries = useQueries({
-    queries: loadedFolderPaths.map((path) => ({ ...getFileListQueryOptions(path), retry: false })),
+    queries: loadedFolderPaths.map((path) => ({
+      ...withNoActiveBindingAsEmpty(getFileListQueryOptions(path)),
+      retry: false,
+      // A folder that fails to expand has no error slot in the tree, so the query cache reports it.
+      meta: undefined,
+    })),
   })
-  const expandedFolders = expandedFolderQueries.map((query) => {
-    const noActiveBinding = isDefinedError(query.error) && query.error.code === 'no_active_binding'
-
-    return {
-      entries: noActiveBinding ? [] : query.data?.entries,
-      isLoaded: query.isSuccess || noActiveBinding,
-    }
-  })
+  const expandedFolders = expandedFolderQueries.map((query) => ({
+    entries: query.data?.entries,
+    isLoaded: query.isSuccess,
+  }))
   const workingDirectoryFiles = expandedFolders.reduce(
     (files, folder, index) => {
       return mergeSandboxFileTree(
@@ -359,9 +376,7 @@ function AgentWorkingDirectoryContent({
                 },
               }
             : skipToken,
-          context: {
-            silent: true,
-          },
+          meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
@@ -378,9 +393,7 @@ function AgentWorkingDirectoryContent({
                   },
                 }
               : skipToken,
-            context: {
-              silent: true,
-            },
+            meta: { errorToast: false },
           },
         )
   const isFileDataPreview = hasFileDataPreview(selectedWorkingDirectoryFile?.icon)
@@ -485,7 +498,7 @@ function AgentWorkingDirectoryContent({
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
         } catch {
-          // The generated client reports the mutation failure through its shared error handler.
+          // The request failure is already reported.
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -508,7 +521,7 @@ function AgentWorkingDirectoryContent({
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
       } catch {
-        // The generated client reports the mutation failure through its shared error handler.
+        // The request failure is already reported.
       } finally {
         setDownloadActionLoadingTarget(null)
       }
@@ -541,11 +554,11 @@ function AgentWorkingDirectoryContent({
               value={selectedRootPath}
               onValueChange={(path) => handleDirectoryPathChange(path as AgentWorkingDirectoryPath)}
             >
-              <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
+              <TabsList className="h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
                 <div className="flex h-full items-center gap-0.5">
                   <TabsTab
                     value={AGENT_SAVED_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold"
                   >
                     <span id={persistentFilesLabelId}>
                       {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
@@ -564,7 +577,7 @@ function AgentWorkingDirectoryContent({
                 <div className="flex h-full items-center gap-0.5">
                   <TabsTab
                     value={AGENT_TEMPORARY_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold"
                   >
                     <span id={temporaryFilesLabelId}>
                       {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
@@ -580,13 +593,7 @@ function AgentWorkingDirectoryContent({
                     </InfotipContent>
                   </Infotip>
                 </div>
-                <TabsIndicator
-                  className="pointer-events-none absolute inset-s-0 bottom-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
-                  style={{
-                    translate: 'var(--active-tab-left)',
-                    width: 'var(--active-tab-width)',
-                  }}
-                />
+                <TabsIndicator />
               </TabsList>
               <TabsPanel value={AGENT_SAVED_FILES_ROOT_PATH} tabIndex={-1}>
                 <AgentWorkingDirectoryBreadcrumb

@@ -12,6 +12,7 @@ import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixt
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
@@ -164,6 +165,13 @@ const startEmptySave = async (
   })
   return { syncPromise }
 }
+
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
 
 const draftNotSyncError = () =>
   createHttpError(new Response(null, { status: 409 }), {
@@ -982,6 +990,35 @@ describe('useNodesSyncDraft', () => {
       },
     )
 
+    it('shows the server message when an autosave fails', async () => {
+      mockSyncWorkflowDraft.mockRejectedValue(draftUnavailableError())
+      const { result } = renderUseNodesSyncDraft()
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft()).resolves.toBeNull()
+      })
+
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable')
+    })
+
+    it.each([
+      { scenario: 'an out-of-date draft', error: draftNotSyncError, callbacks: undefined },
+      {
+        scenario: 'a caller that handles the failure',
+        error: draftUnavailableError,
+        callbacks: { onError: vi.fn() },
+      },
+    ])('does not show a toast for $scenario', async ({ error, callbacks }) => {
+      mockSyncWorkflowDraft.mockRejectedValue(error())
+      const { result } = renderUseNodesSyncDraft()
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, callbacks)
+      })
+
+      expect(toastError).not.toHaveBeenCalled()
+    })
+
     it.each([
       {
         scenario: 'workflow data is not loaded',
@@ -1214,6 +1251,23 @@ describe('useNodesSyncDraft', () => {
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
     })
 
+    it('shows the server message when an empty autosave cannot refresh the persisted draft', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      mockFetchWorkflowDraft.mockRejectedValue(draftUnavailableError())
+      const { result } = renderUseNodesSyncDraft({
+        nodes: [],
+        isCollaborationEnabled: true,
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft()).resolves.toBeNull()
+      })
+
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable')
+    })
+
     it('keeps a newer successful save when another hook finishes an older metadata refresh', async () => {
       useCollaborationSession({ connected: true, leader: false })
       const olderRefresh = createDeferred<WorkflowResponse>()
@@ -1321,8 +1375,22 @@ describe('useNodesSyncDraft', () => {
 
       expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
       expect(callbacks.onSuccess).not.toHaveBeenCalled()
-      expect(callbacks.onError).toHaveBeenCalledOnce()
+      expect(callbacks.onError).toHaveBeenCalledExactlyOnceWith(new Error('sync timeout'))
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
+      // The caller owns the failure.
+      expect(toastError).not.toHaveBeenCalled()
+    })
+
+    it('reports a failed leader save of a follower autosave', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      mockCollaborationRequestWorkflowSync.mockRejectedValue(new Error('sync timeout'))
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.unknown')
     })
 
     it('saves a directed sync request locally even before leader status arrives', async () => {

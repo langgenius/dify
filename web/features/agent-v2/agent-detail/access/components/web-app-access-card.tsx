@@ -6,7 +6,7 @@ import type { SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +43,6 @@ export function WebAppAccessCard({
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tApp } = useTranslation(['app'])
-  const queryClient = useQueryClient()
   const appId = agent?.app_id
   const apiBaseUrl = agent?.api_base_url
   const site = agent?.site
@@ -76,28 +75,11 @@ export function WebAppAccessCard({
       : null
   const [showAccessControl, setShowAccessControl] = useState(false)
   const accessControl = useWebAppAccessControl(agent, isLoading)
-  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
-    input: { params: { agent_id: agentId } },
-  })
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `agent-web-app-toggle:${agentId}`,
-      },
-      onSuccess: (updatedApp) => {
-        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-          agentDetailQueryKey,
-          (agentDetail) =>
-            agentDetail
-              ? {
-                  ...agentDetail,
-                  enable_site: updatedApp.enable_site,
-                  updated_at: updatedApp.updated_at,
-                  updated_by: updatedApp.updated_by,
-                }
-              : agentDetail,
-        )
       },
       onError: (error) => {
         toast.error(getErrorMessage(error) ?? tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
@@ -106,24 +88,7 @@ export function WebAppAccessCard({
   )
   const resetAccessTokenMutation = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      context: { silent: true },
-      onSuccess: (site) => {
-        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-          agentDetailQueryKey,
-          (agentDetail) => {
-            if (!agentDetail || !agentDetail.site) return agentDetail
-
-            return {
-              ...agentDetail,
-              site: {
-                ...agentDetail.site,
-                code: site.code ?? agentDetail.site.code,
-                access_token: site.code ?? agentDetail.site.access_token,
-              },
-            }
-          },
-        )
-      },
+      meta: { errorToast: false },
       onError: (error) => {
         toast.error(
           getErrorMessage(error) ?? tCommon(($) => $['actionMsg.generatedUnsuccessfully']),
@@ -132,7 +97,9 @@ export function WebAppAccessCard({
     }),
   )
   const updateSiteMutation = useMutation(
-    consoleQuery.apps.byAppId.site.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.site.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
   const optimisticEnabled =
@@ -200,7 +167,6 @@ export function WebAppAccessCard({
         },
         body: sitePayload,
       })
-      void queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       return true
     } catch (error) {

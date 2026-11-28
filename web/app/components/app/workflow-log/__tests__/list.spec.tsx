@@ -286,13 +286,7 @@ describe('WorkflowAppLogList', () => {
         const dialog = await screen.findByRole('dialog')
         await user.click(within(dialog).getByRole('tab', { name: 'runLog.tracing' }))
         expect(await within(dialog).findByText('Execution for run-1')).toBeInTheDocument()
-        expect(fetchRunDetail).toHaveBeenCalledWith(
-          { kind: 'app', appId: 'test-app-id' },
-          'run-1',
-          {
-            silent: true,
-          },
-        )
+        expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'test-app-id' }, 'run-1')
         rerender(
           <WorkflowAppLogList
             logs={createMockLogsResponse(logs.data.map((log) => ({ ...log, read_at: 300 })))}

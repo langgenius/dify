@@ -9,7 +9,6 @@ export const usePanelInteractions = () => {
   const workflowStore = useWorkflowStore()
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
-      staleTime: Infinity,
       select: (data) => data.app_dsl_version,
     }),
   )

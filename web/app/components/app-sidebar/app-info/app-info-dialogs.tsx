@@ -39,13 +39,19 @@ export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
     select: (data) => data.rbac_enabled,
   })
   const edit = useMutation(
-    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const copy = useMutation(
-    consoleQuery.apps.byAppId.copy.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.copy.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const switching = useSwitchAppMutation()
   const secretExport = useExportAppDsl()

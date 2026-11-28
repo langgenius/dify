@@ -40,21 +40,22 @@ from models.agent_config_entities import (
 )
 from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
+from models.model import App, AppMode, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
-from repositories.agent_drafts import agent_soul_matches_active_config
-from repositories.agent_roster_queries import load_reference_counts_by_agent_id
-from repositories.agent_roster_repository import list_invite_options_in_session
-from repositories.agent_version_queries import visible_version_operations
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.agent.agent_drafts import agent_soul_matches_active_config
+from repositories.agent.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent.agent_roster_repository import list_invite_options_in_session
+from repositories.agent.agent_version_queries import visible_version_operations
+from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent import composer_service, roster_service
 from services.agent.composer_service import AgentComposerService
+from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
-    AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionConflictError,
@@ -886,30 +887,6 @@ def test_load_agent_composer_does_not_select_personal_build_draft(sqlite_session
     assert not sqlite_session.dirty
 
 
-def test_prepare_agent_composer_draft_creates_only_for_explicit_write(sqlite_session: Session) -> None:
-    agent = _agent()
-    snapshot = _snapshot()
-    agent.active_config_snapshot_id = snapshot.id
-    sqlite_session.add_all([agent, snapshot])
-    sqlite_session.commit()
-    result = AgentComposerService.load_agent_composer(
-        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id
-    )
-    assert result["draft"] is None
-    draft = AgentComposerService.prepare_agent_composer_draft(
-        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
-    )
-    sqlite_session.commit()
-    assert draft.config_snapshot_dict == snapshot.config_snapshot_dict
-    assert draft.created_by == "account-2"
-    assert (
-        AgentComposerService.prepare_agent_composer_draft(
-            session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
-        ).id
-        == draft.id
-    )
-
-
 def test_save_agent_app_composer_rejects_version_save_strategy(sqlite_session: Session):
     session = sqlite_session
     payload = ComposerSavePayload.model_validate(
@@ -1058,265 +1035,8 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     assert result["active_config_is_published"] is True
 
 
-def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-        app_id="app-1",
-        active_config_snapshot_id="version-1",
-        active_config_is_published=False,
-    )
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=AgentConfigDraftType.DRAFT,
-        draft_owner_key="",
-        base_snapshot_id="version-1",
-        config_snapshot=AgentSoulConfig(),
-    )
-    session.add_all([agent, draft])
-    session.commit()
-
-    def fail_create_config_version(**_kwargs):
-        raise AssertionError("config version must not be created when Agent Soul has no model")
-
-    def fail_validate_knowledge_datasets(**_kwargs):
-        raise AssertionError("knowledge datasets must not be validated when Agent Soul has no model")
-
-    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
-    monkeypatch.setattr(composer_service, "agent_has_workflow_callable_active_snapshot", lambda **_kwargs: False)
-    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", fail_validate_knowledge_datasets)
-    monkeypatch.setattr(AgentComposerService, "_create_config_version", fail_create_config_version)
-
-    with pytest.raises(AgentModelNotConfiguredError) as exc_info:
-        AgentComposerService.publish_agent_app_draft(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            account_id="account-1",
-            version_note="ship it",
-            session=session,
-        )
-
-    assert exc_info.value.error_code == "agent_model_not_configured"
-    assert agent.active_config_snapshot_id == "version-1"
-    assert agent.active_config_is_published is False
-    assert draft.base_snapshot_id == "version-1"
-    assert not session.new
-    assert not session.dirty
-
-
-def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-        app_id="app-1",
-        active_config_snapshot_id="version-1",
-    )
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=AgentConfigDraftType.DRAFT,
-        draft_owner_key="",
-        base_snapshot_id="version-1",
-        home_snapshot_id=None,
-        config_snapshot=_agent_soul_with_model(),
-    )
-    version = _snapshot(snapshot_id="version-2")
-    app = _app(mode=AppMode.AGENT)
-    app.enable_site = False
-    app.enable_api = False
-    session.add_all([agent, draft, app])
-    session.commit()
-    created: dict[str, object] = {}
-    calls: list[str] = []
-
-    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
-    monkeypatch.setattr(composer_service, "agent_has_workflow_callable_active_snapshot", lambda **_kwargs: False)
-    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **kwargs: None)
-    monkeypatch.setattr(
-        composer_service,
-        "validate_home_snapshot_binding",
-        lambda **kwargs: calls.append("validate_home"),
-    )
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_create_config_version",
-        lambda **kwargs: calls.append("create_version") or created.update(kwargs) or version,
-    )
-    monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda _version: {"id": _version.id})
-
-    result = AgentComposerService.publish_agent_app_draft(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-        version_note="ship it",
-    )
-
-    assert result["result"] == "success"
-    assert result["active_config_snapshot_id"] == "version-2"
-    assert result["draft"]["base_snapshot_id"] == "version-2"
-    assert created["operation"] == AgentConfigRevisionOperation.PUBLISH_DRAFT
-    assert created["previous_snapshot_id"] == "version-1"
-    assert created["home_snapshot_id"] is None
-    assert calls == ["validate_home", "create_version"]
-    assert agent.active_config_snapshot_id == "version-2"
-    assert agent.active_config_has_model is True
-    assert agent.active_config_is_published is True
-    assert app.enable_site is True
-    assert app.enable_api is True
-    assert app.updated_by == "account-1"
-
-
-def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-) -> None:
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-        app_id="app-1",
-        active_config_snapshot_id="version-1",
-    )
-    draft = AgentConfigDraft(
-        id="draft-1",
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=AgentConfigDraftType.DRAFT,
-        draft_owner_key="",
-        home_snapshot_id="home-1",
-        config_snapshot=_agent_soul_with_model(),
-    )
-    app = _app(mode=AppMode.AGENT)
-    app.enable_site = False
-    app.enable_api = False
-    session.add_all([agent, draft, app])
-    session.commit()
-    published_homes: list[str] = []
-    versions = iter([_snapshot(snapshot_id="version-2"), _snapshot(snapshot_id="version-3")])
-    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
-    publish_visibility = iter([False, True])
-    monkeypatch.setattr(
-        composer_service,
-        "agent_has_workflow_callable_active_snapshot",
-        lambda **_kwargs: next(publish_visibility),
-    )
-    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **_kwargs: None)
-    monkeypatch.setattr(composer_service, "validate_home_snapshot_binding", lambda **_kwargs: None)
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_create_config_version",
-        lambda **kwargs: published_homes.append(kwargs["home_snapshot_id"]) or next(versions),
-    )
-    monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda version: {"id": version.id})
-    monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda value: {"id": value.id})
-
-    first = AgentComposerService.publish_agent_app_draft(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-    )
-    app.enable_site = False
-    app.enable_api = False
-    second = AgentComposerService.publish_agent_app_draft(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-    )
-
-    assert first["publication_kind"] == "first"
-    assert second["publication_kind"] == "update"
-    assert first["active_config_snapshot_id"] == "version-2"
-    assert second["active_config_snapshot_id"] == "version-3"
-    assert published_homes == ["home-1", "home-1"]
-    assert draft.home_snapshot_id == "home-1"
-    assert app.enable_site is False
-    assert app.enable_api is False
-
-
-@pytest.mark.parametrize(
-    ("draft_type", "account_id"),
-    [
-        (AgentConfigDraftType.DRAFT, None),
-        (AgentConfigDraftType.DEBUG_BUILD, "account-1"),
-    ],
-)
-def test_load_agent_soul_for_debug_selects_requested_draft(
-    draft_type: AgentConfigDraftType,
-    account_id: str | None,
-    sqlite_session: Session,
-):
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
-    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=draft_type,
-        account_id=account_id,
-        draft_owner_key=account_id or "",
-        config_snapshot=agent_soul,
-    )
-    session.add_all([agent, draft])
-    session.commit()
-
-    result = AgentComposerService.load_agent_soul_for_debug(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-        draft_type=draft_type,
-        session=session,
-    )
-
-    assert result == agent_soul
-
-
-def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session: Session):
-    session = sqlite_session
-
-    with pytest.raises(AgentVersionNotFoundError):
-        AgentComposerService.load_agent_soul_for_debug(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            account_id="account-1",
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            session=session,
-        )
-
-
-def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_workflow_composer_impact_includes_roster_agent_references(sqlite_session: Session) -> None:
+    """Count direct snapshot references and roster bindings to the same Agent."""
     session = sqlite_session
     bindings = [
         WorkflowAgentNodeBinding(
@@ -1333,37 +1053,17 @@ def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch
         for node_id in ("node-1", "node-2")
     ]
     session.add_all(bindings)
+    session.add(_snapshot(snapshot_id="older-version"))
     session.commit()
 
-    # Candidates assembly is covered in test_composer_candidates.py; here we stub
-    # the IO loaders and assert the response envelope per variant (ENG-615).
-    def _no_draft_workflow(**kwargs):
-        raise ValueError("draft workflow not found")
-
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
-    monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
-
-    workflow_candidates = AgentComposerService.get_workflow_candidates(
-        session=session,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        node_id="node-1",
-        user_id="account-1",
-    )
-    impact = AgentComposerService.calculate_impact(
-        session=session, tenant_id="tenant-1", current_snapshot_id="version-1"
-    )
-
-    assert workflow_candidates["variant"] == "workflow"
-    assert workflow_candidates["allowed_node_job_candidates"]["previous_node_outputs"] == []
-    assert workflow_candidates["truncated"] is False
-    assert impact["workflow_node_count"] == 2
-    assert impact["bindings"][1]["node_id"] == "node-2"
+    for snapshot_id in ("version-1", "older-version"):
+        impact = read_workflow_agent_impact(session, tenant_id="tenant-1", current_snapshot_id=snapshot_id)
+        assert impact["current_snapshot_id"] == snapshot_id
+        assert impact["workflow_node_count"] == 2
+        assert {binding["node_id"] for binding in impact["bindings"]} == {"node-1", "node-2"}
 
 
-def test_serialize_workflow_state_changes_lock_and_save_options(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+def test_serialize_workflow_state_changes_lock_and_save_options(sqlite_session: Session):
     session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         app_id="app-1",
@@ -1397,8 +1097,6 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"x"}}',
     )
-    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
-
     state = AgentComposerService._serialize_workflow_state(
         session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
@@ -1414,9 +1112,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     assert effective_names == ["text"]
 
 
-def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(sqlite_session: Session):
     session = sqlite_session
     binding = WorkflowAgentNodeBinding(
         app_id="app-1",
@@ -1448,8 +1144,6 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"x"}}',
     )
-    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
-
     state = AgentComposerService._serialize_workflow_state(
         session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
@@ -1495,7 +1189,6 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"x"}}',
     )
-    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
     monkeypatch.setattr(
         AgentComposerService,
         "_workflow_inline_debug_conversation_id",
@@ -4041,301 +3734,6 @@ class TestAgentAppBackingAgent:
         assert session.get(AgentDebugConversation, mapping.id).conversation_id == "old-conversation"
         assert collection_calls == []
 
-    def test_duplicate_agent_app_copies_app_config_and_active_soul(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ):
-        source_config = AppModelConfig(
-            app_id="source-app",
-            opening_statement="hello",
-            suggested_questions='["q1"]',
-            suggested_questions_after_answer='{"enabled": true}',
-            speech_to_text='{"enabled": false}',
-            text_to_speech='{"enabled": false}',
-            more_like_this='{"enabled": false}',
-            model=None,
-            user_input_form=None,
-            dataset_query_variable=None,
-            pre_prompt=None,
-            agent_mode=None,
-            sensitive_word_avoidance=None,
-            retriever_resource='{"enabled": true}',
-            prompt_type="simple",
-            chat_prompt_config=None,
-            completion_prompt_config=None,
-            dataset_configs=None,
-            external_data_tools=None,
-            file_upload='{"image": {"enabled": true}}',
-        )
-        target_config = AppModelConfig(
-            app_id="target-app", **dict.fromkeys(AgentRosterService._APP_MODEL_CONFIG_COPY_FIELDS)
-        )
-        source_app = _app(app_id="source-app", name="Iris")
-        source_app.description = "source desc"
-        source_app.icon = "robot"
-        source_app.api_rph = 1
-        source_app.api_rpm = 2
-        source_app.max_active_requests = 3
-        source_app.enable_api = True
-        source_app.use_icon_as_answer_icon = True
-        source_app.tracing = "{}"
-        source_app.app_model_config_id = source_config.id
-        target_app = _app(app_id="target-app")
-        target_app.app_model_config_id = target_config.id
-        source_agent = Agent(
-            id="source-agent",
-            tenant_id="tenant-1",
-            name="Iris",
-            description="source desc",
-            role="Analyst",
-            agent_kind=AgentKind.DIFY_AGENT,
-            scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
-            status=AgentStatus.ACTIVE,
-            app_id="source-app",
-            active_config_snapshot_id="source-version",
-            active_config_has_model=True,
-            active_config_is_published=True,
-        )
-        source_version = AgentConfigSnapshot(
-            id="source-version",
-            tenant_id="tenant-1",
-            agent_id="source-agent",
-            version=1,
-            home_snapshot_id="home-source",
-            config_snapshot=_agent_soul_with_model(),
-            summary="configured",
-            version_note="v1",
-            created_by="account-1",
-        )
-        session = sqlite_session
-        service = AgentRosterService(session)
-        captured: dict[str, object] = {}
-
-        class FakeAppService:
-            def create_app(self, tenant_id: str, params, account: object, *, session) -> object:
-                captured["tenant_id"] = tenant_id
-                captured["params"] = params
-                captured["account"] = account
-                target_agent = AgentRosterService(session).create_backing_agent_for_app(
-                    tenant_id=tenant_id,
-                    account_id="account-1",
-                    app_id=target_app.id,
-                    name=params.name,
-                    description=params.description,
-                    role=params.agent_role,
-                )
-                target_version = session.scalar(
-                    select(AgentConfigSnapshot).where(AgentConfigSnapshot.agent_id == target_agent.id)
-                )
-                assert target_version is not None
-                captured["target_agent"] = target_agent
-                captured["target_version"] = target_version
-                return target_app
-
-        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
-        monkeypatch.setattr(
-            AgentRosterService,
-            "_get_or_create_agent_app_debug_conversation",
-            lambda _self, **_kwargs: None,
-        )
-        monkeypatch.setattr(service, "get_agent_app_model", lambda **_kwargs: source_app)
-        monkeypatch.setattr(
-            service,
-            "get_app_backing_agent",
-            lambda *, tenant_id, app_id: (
-                source_agent
-                if app_id == source_app.id
-                else session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.app_id == app_id))
-            ),
-        )
-        monkeypatch.setattr(
-            service,
-            "_get_version",
-            lambda *, version_id, **_kwargs: (
-                source_version if version_id == source_version.id else session.get(AgentConfigSnapshot, version_id)
-            ),
-        )
-        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_kwargs: "Iris copy")
-        monkeypatch.setattr(
-            roster_service.SystemFeatureService,
-            "is_webapp_auth_enabled",
-            lambda: False,
-        )
-
-        session.add_all([source_config, target_config, source_app, target_app])
-        session.commit()
-        account = _account()
-        duplicated = service.duplicate_agent_app(
-            tenant_id="tenant-1",
-            agent_id="source-agent",
-            account=account,
-        )
-
-        assert duplicated is target_app
-        params = captured["params"]
-        assert params.name == "Iris copy"
-        assert params.mode == "agent"
-        assert params.agent_role == "Analyst"
-        assert target_app.enable_site is False
-        assert target_app.enable_api is False
-        assert target_app.use_icon_as_answer_icon is True
-        assert target_app.tracing == "{}"
-        assert target_config.opening_statement == "hello"
-        assert target_config.file_upload == '{"image": {"enabled": true}}'
-        assert target_config.updated_by == "account-1"
-        target_agent = captured["target_agent"]
-        target_version = captured["target_version"]
-        assert target_version.config_snapshot.model.model == "gpt-4o"
-        assert source_version.home_snapshot_id == "home-source"
-        assert target_version.home_snapshot_id is None
-        assert target_version.summary == "configured"
-        assert target_version.version_note == "v1"
-        assert target_agent.active_config_has_model is True
-        assert target_agent.active_config_is_published is False
-        assert target_agent.updated_by == "account-1"
-        assert session.get(Agent, target_agent.id) is target_agent
-
-    def test_duplicate_agent_app_inherits_webapp_access_mode(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ):
-        source_app = _app(app_id="source-app", name="Iris")
-        source_app.description = "source desc"
-        source_app.icon_type = None
-        source_app.icon = "robot"
-        source_app.icon_background = "#fff"
-        source_app.api_rph = 1
-        source_app.api_rpm = 2
-        source_app.max_active_requests = 3
-        source_app.enable_site = True
-        source_app.enable_api = True
-        source_app.use_icon_as_answer_icon = False
-        source_app.tracing = None
-        source_agent = Agent(
-            tenant_id="tenant-1",
-            name="Agent",
-            scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
-            id="source-agent",
-            role="Analyst",
-            active_config_snapshot_id="source-snapshot",
-            active_config_is_published=True,
-        )
-        target_app = _app(app_id="target-app")
-        session = sqlite_session
-        service = AgentRosterService(session)
-        monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
-        monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
-        monkeypatch.setattr(service, "_copy_app_model_config", lambda **_: None)
-        monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
-        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
-
-        captured: dict[str, object] = {}
-
-        class FakeAppService:
-            def create_app(self, tenant_id: str, params, account: object, *, session) -> object:
-                captured["params"] = params
-                return target_app
-
-        access_mode_updates = []
-
-        class FakeWebAppAuth:
-            @classmethod
-            def get_app_access_mode_by_id(cls, app_id: str) -> object:
-                return SimpleNamespace(access_mode="private")
-
-            @classmethod
-            def update_app_access_mode(cls, app_id: str, access_mode: str) -> None:
-                access_mode_updates.append((app_id, access_mode))
-
-        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
-        monkeypatch.setattr(
-            roster_service.SystemFeatureService,
-            "is_webapp_auth_enabled",
-            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
-        )
-        monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
-
-        duplicated = service.duplicate_agent_app(
-            tenant_id="tenant-1",
-            agent_id="source-agent",
-            account=_account(),
-            role="Custom Analyst",
-        )
-
-        assert duplicated is target_app
-        assert captured["params"].agent_role == "Custom Analyst"
-        assert access_mode_updates == [("target-app", "private")]
-
-    def test_duplicate_agent_app_falls_back_to_public_access_mode(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ):
-        source_app = _app(app_id="source-app", name="Iris")
-        source_app.description = "source desc"
-        source_app.icon_type = IconType.EMOJI
-        source_app.icon = "robot"
-        source_app.icon_background = "#fff"
-        source_app.api_rph = 1
-        source_app.api_rpm = 2
-        source_app.max_active_requests = 3
-        source_app.enable_site = True
-        source_app.enable_api = True
-        source_app.use_icon_as_answer_icon = False
-        source_app.tracing = None
-        source_agent = Agent(
-            tenant_id="tenant-1",
-            name="Agent",
-            scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
-            id="source-agent",
-            role="Analyst",
-            active_config_snapshot_id="source-snapshot",
-            active_config_is_published=True,
-        )
-        target_app = _app(app_id="target-app")
-        session = sqlite_session
-        service = AgentRosterService(session)
-        monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
-        monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
-        monkeypatch.setattr(service, "_copy_app_model_config", lambda **_: None)
-        monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
-        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
-
-        class FakeAppService:
-            def create_app(self, tenant_id: str, params, account: object, *, session) -> object:
-                return target_app
-
-        access_mode_updates = []
-
-        class FakeWebAppAuth:
-            @classmethod
-            def get_app_access_mode_by_id(cls, app_id: str) -> object:
-                raise ValueError("not found")
-
-            @classmethod
-            def update_app_access_mode(cls, app_id: str, access_mode: str) -> None:
-                access_mode_updates.append((app_id, access_mode))
-
-        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
-        monkeypatch.setattr(
-            roster_service.SystemFeatureService,
-            "is_webapp_auth_enabled",
-            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
-        )
-        monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
-
-        service.duplicate_agent_app(
-            tenant_id="tenant-1",
-            agent_id="source-agent",
-            account=_account(),
-        )
-
-        assert access_mode_updates == [("target-app", "public")]
-
-    def test_normalize_app_icon_type(self):
-        assert AgentRosterService._normalize_app_icon_type(None) is None
-        assert AgentRosterService._normalize_app_icon_type(IconType.EMOJI) == "emoji"
-        assert AgentRosterService._normalize_app_icon_type("image") == "image"
-
 
 class TestListWorkflowsReferencingAppAgent:
     def test_groups_bindings_by_workflow_app_and_sorts_by_name(self, sqlite_session: Session):
@@ -5824,7 +5222,6 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     """The slash-menu Tools tab needs both selection granularities: a provider
     hosts many tools (like an MCP server), so candidates return one
     provider-level entry (id = <provider>/*, = all tools) plus one per tool."""
-    from types import SimpleNamespace
 
     provider = SimpleNamespace(
         name="duckduckgo",
@@ -5845,7 +5242,7 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
         staticmethod(lambda user_id, tenant_id: [provider]),
     )
 
-    entries = AgentComposerService._workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
+    entries = list_workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
 
     assert entries[0] == {
         "id": "duckduckgo/*",
@@ -5858,51 +5255,6 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     }
     assert [entry["id"] for entry in entries[1:]] == ["duckduckgo/ddg_search", "duckduckgo/ddg_news"]
     assert {entry["granularity"] for entry in entries[1:]} == {"tool"}
-
-
-def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    session = sqlite_session
-
-    def boom(cls, **kwargs):
-        raise ValueError("no draft workflow")
-
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", classmethod(boom))
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        is None
-    )
-
-    monkeypatch.setattr(
-        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: _workflow(workflow_id="wf-1"))
-    )
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: None))
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        is None
-    )
-
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_workflow_binding",
-        classmethod(
-            lambda cls, **kwargs: WorkflowAgentNodeBinding(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                workflow_id="workflow-1",
-                workflow_version="draft",
-                node_id="node-1",
-                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-                node_job_config=WorkflowNodeJobConfig(),
-                agent_id="agent-7",
-            )
-        ),
-    )
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        == "agent-7"
-    )
 
 
 def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):

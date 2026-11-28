@@ -22,19 +22,3 @@ export function useSendDeleteAccountEmail() {
     },
   })
 }
-
-export function useConfirmDeleteAccount() {
-  return useMutation({
-    mutationKey: ['confirm-delete-account'],
-    mutationFn: (body: { code: string; token: string }) =>
-      consoleClient.account.delete.post({ body }),
-  })
-}
-
-export function useDeleteAccountFeedback() {
-  return useMutation({
-    mutationKey: ['delete-account-feedback'],
-    mutationFn: (body: { feedback: string; email: string }) =>
-      consoleClient.account.delete.feedback.post({ body }),
-  })
-}

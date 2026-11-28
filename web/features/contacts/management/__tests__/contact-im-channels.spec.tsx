@@ -7,6 +7,7 @@ import type { ContactsFeatureContextValue, ContactView } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { ContactsManagementProvider } from '../composition'
 import { ContactDetailsPanel } from '../contact-details-panel'
 import { alice, managerContext } from './fixtures/data'
@@ -165,4 +166,37 @@ it('restores an override with the override delete operation instead of unbinding
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(api.reset).toHaveBeenCalledWith({ params: { contact_id: alice.id } })
   expect(api.unbind).not.toHaveBeenCalled()
+})
+
+it.each([
+  { name: 'a mapped code', code: 'im_binding_not_found', expected: 'contacts.imBinding.notFound' },
+  { name: 'an unmapped code', code: 'unbind_failed', expected: 'contacts.imBinding.failed' },
+  {
+    name: 'a cataloged code',
+    code: 'access_denied',
+    expected: 'requestErrors.code.access_denied',
+  },
+])('explains an unbind failure with $name', async ({ code, expected }) => {
+  api.unbind.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 400 }), { code, message: 'Server says why' }),
+  )
+  const user = userEvent.setup()
+  setup()
+  await user.click(screen.getByRole('button', { name: /imBinding.changeTitle.*Feishu/ }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.remove' }))
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(expected)
+})
+
+it('reports that the configured channels could not load', async () => {
+  api.channels.mockRejectedValue(
+    createHttpError(new Response(null, { status: 503 }), {
+      code: 'service_unavailable',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'contacts.imBinding.channelsLoadFailed',
+  )
 })

@@ -4,11 +4,13 @@ import { DialogBody, DialogFooter } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Countdown from '@/app/components/signin/countdown'
 import Link from '@/next/link'
-import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
+import { consoleQuery } from '@/service/console'
+import { useAccountDeleteStore, useSendDeleteAccountEmail } from '../state'
 
 type DeleteAccountProps = {
   onCancel: () => void
@@ -23,14 +25,18 @@ export default function VerifyEmail(props: DeleteAccountProps) {
   const { t } = useTranslation(['common', 'accountSettings'])
   const emailToken = useAccountDeleteStore((state) => state.sendEmailToken)
   const { mutate: sendEmail } = useSendDeleteAccountEmail()
-  const { isPending: isDeleting, mutateAsync: confirmDeleteAccount } = useConfirmDeleteAccount()
+  const { isPending: isDeleting, mutateAsync: confirmDeleteAccount } = useMutation(
+    consoleQuery.account.delete.post.mutationOptions(),
+  )
 
   const handleConfirm = useCallback(
     async (verificationCode: string) => {
       if (isDeleting) return
 
       try {
-        const ret = await confirmDeleteAccount({ code: verificationCode, token: emailToken })
+        const ret = await confirmDeleteAccount({
+          body: { code: verificationCode, token: emailToken },
+        })
         if (ret.result === 'success') props.onConfirm()
       } catch (error) {
         console.error(error)

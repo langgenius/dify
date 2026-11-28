@@ -7,6 +7,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import UsageInfo from '@/app/components/billing/usage-info'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -27,6 +28,12 @@ const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatu
   isEducationAccount: is_student,
 })
 
+export function PlanLoading() {
+  return (
+    <LoadingPlaceholder className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn" />
+  )
+}
+
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation(['billing', 'education'])
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -36,6 +43,11 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { data: features } = useSuspenseQuery(consoleQuery.features.get.queryOptions())
+  const {
+    data: vectorSpace,
+    isPending: isVectorSpacePending,
+    isFetched: hasFetchedVectorSpace,
+  } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }))
   const enableEducationPlan = features.education.enabled
   const { data: educationStatus } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -48,6 +60,8 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const appRunsQuota = getAppRunsQuota(features.api_rate_limit, type)
 
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
+  if (isVectorSpacePending && !hasFetchedVectorSpace) return <PlanLoading />
+
   return (
     <div className="@container/plan relative min-w-0 rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
@@ -127,7 +141,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
           name={t(($) => $['usagePage.documentsUploadQuota'], { ns: 'billing' })}
           quota={getCountQuota(features.documents_upload_quota)}
         />
-        <VectorSpaceInfo />
+        <VectorSpaceInfo isSandboxPlan={type === 'sandbox'} vectorSpace={vectorSpace} />
         <UsageInfo
           iconClassName="i-ri-file-edit-line"
           name={t(($) => $['usagePage.annotationQuota'], { ns: 'billing' })}

@@ -23,9 +23,10 @@ from clients.agent_backend import (
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import ModelRuntimeProfile
+from core.tools.entities.common_entities import I18nObject, I18nObjectDict
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent.agent_node import AgentNode as LegacyAgentNode
-from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder, WorkflowAgentToolLayers
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -123,6 +124,7 @@ class CapturingPluginLayerBuilder:
         # hard-coded to a placeholder like ``VALIDATION``.
         self.last_invoke_from: InvokeFrom | None = None
         self.knowledge_fs_spaces = ()
+        self.tool_labels: dict[str, I18nObjectDict] = {}
 
     def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces=()):
         assert tenant_id == "tenant-1"
@@ -131,8 +133,8 @@ class CapturingPluginLayerBuilder:
         self.last_invoke_from = invoke_from
         self.knowledge_fs_spaces = knowledge_fs_spaces
         if not tools.dify_tools:
-            return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
-        return SimpleNamespace(
+            return WorkflowAgentToolLayers()
+        return WorkflowAgentToolLayers(
             plugin_tools=DifyPluginToolsLayerConfig(
                 tools=[
                     DifyPluginToolConfig(
@@ -150,7 +152,7 @@ class CapturingPluginLayerBuilder:
                 ]
             ),
             core_tools=None,
-            exposed_tool_names=lambda: ["current_time"],
+            tool_labels=self.tool_labels,
         )
 
 
@@ -160,7 +162,7 @@ class FakeCoreLayerBuilder:
         assert app_id == "app-1"
         assert user_id == "user-1"
         del tools, invoke_from
-        return SimpleNamespace(
+        return WorkflowAgentToolLayers(
             plugin_tools=None,
             core_tools=DifyCoreToolsLayerConfig(
                 tools=[
@@ -176,7 +178,6 @@ class FakeCoreLayerBuilder:
                     )
                 ]
             ),
-            exposed_tool_names=lambda: ["transcribe"],
         )
 
 
@@ -594,6 +595,7 @@ def test_build_captures_credential_free_tool_snapshot_only_for_evaluation(
 ) -> None:
     apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False)
     tools_builder = CapturingPluginLayerBuilder()
+    tools_builder.tool_labels["current_time"] = I18nObject(en_US="Friendly clock", zh_Hans="当前时间").to_dict()
     context = _context()
     context.snapshot.config_snapshot.tools = AgentSoulToolsConfig.model_validate(
         {
@@ -620,12 +622,19 @@ def test_build_captures_credential_free_tool_snapshot_only_for_evaluation(
     )
 
     assert normal_result.available_tools == ()
+    assert normal_result.tool_labels["current_time"]["zh_Hans"] == "当前时间"
+    assert "Friendly clock" not in normal_result.request.model_dump_json()
+    assert "tool_labels" not in normal_result.request.metadata
     assert len(evaluation_result.available_tools) == 1
     tool = evaluation_result.available_tools[0]
     assert tool.tool_ref == "plugin:langgenius/time/time/current_time"
     assert tool.name == "current_time"
+    assert tool.display_name == "Friendly clock"
     assert tool.description == "Get current time."
     assert tool.input_schema == {"type": "object", "properties": {}, "required": []}
+    tools_builder.tool_labels["current_time"]["en_US"] = "Changed after prepare"
+    assert normal_result.tool_labels["current_time"]["en_US"] == "Friendly clock"
+    assert evaluation_result.tool_labels["current_time"]["en_US"] == "Friendly clock"
 
 
 def test_build_forwards_service_api_invoke_from_to_injected_plugin_layer_builder():

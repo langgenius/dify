@@ -994,6 +994,8 @@ export type AgentSoulDifyToolConfig = {
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
   description?: string | null
   enabled?: boolean
+  last_max_calls_per_run?: number | null
+  max_calls_per_run?: number | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null

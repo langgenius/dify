@@ -17,8 +17,6 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
       input: { query: { appId } },
     }),
     enabled: !!appId && enabled,
-    staleTime: 0,
-    gcTime: 0,
     select: ({ groups, members }) => ({
       groups: (groups ?? []).flatMap((group) => {
         if (!group.id || !group.name || group.groupSize === undefined) return []
@@ -102,8 +100,6 @@ export const useSearchForWhiteListCandidates = (
           subjects: (page.subjects ?? []).flatMap(selectCandidate),
         })),
       }),
-      gcTime: 0,
-      staleTime: 0,
       enabled,
     }),
   )

@@ -16,7 +16,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { logoutMutationOptions } from '@/service/common-queries'
-import { useDeleteAccountFeedback } from '../state'
+import { consoleQuery } from '@/service/console'
 
 type DeleteAccountProps = {
   onCancel: () => void
@@ -33,7 +33,9 @@ export default function FeedBack(props: DeleteAccountProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
   })
-  const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
+  const { isPending, mutateAsync: sendFeedback } = useMutation(
+    consoleQuery.account.delete.feedback.post.mutationOptions(),
+  )
 
   const { mutateAsync: logout } = useMutation(
     logoutMutationOptions({ redirectTo: '/signin?account_deleted=true' }),
@@ -49,7 +51,7 @@ export default function FeedBack(props: DeleteAccountProps) {
   const handleSubmit = useCallback(
     async (feedback: string) => {
       try {
-        await sendFeedback({ feedback, email: userProfileEmail })
+        await sendFeedback({ body: { feedback, email: userProfileEmail } })
         props.onConfirm()
         await handleSuccess()
       } catch (error) {

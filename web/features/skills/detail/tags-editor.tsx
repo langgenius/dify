@@ -21,7 +21,7 @@ import { isCreateTagOption } from '@/features/tag-management/tag-option'
 import { TagSearchContentView } from '@/features/tag-management/tag-search-content'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { invalidateSkillDetail, setSkillDetailCache } from './cache'
+import { invalidateSkillDetail } from './cache'
 import { runSkillDraftMutation } from './mutations'
 
 const SKILL_TAG_CREATE_OPTION_PREFIX = '\u0000skill-tag-create:'
@@ -52,7 +52,7 @@ export function SkillTagsEditor({
   const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
@@ -118,21 +118,13 @@ export function SkillTagsEditor({
         },
       }),
     )
-      .then((nextDetail) => {
-        setSkillDetailCache(queryClient, skillId, nextDetail)
+      .then(() => {
         const addedTag = nextTags.some((tag) => !tags.includes(tag))
         toast.success(
           addedTag
             ? t(($) => $['skillManagement.detail.addTagSuccess'])
             : t(($) => $['skillManagement.detail.removeTagSuccess']),
         )
-        invalidateSkillDetail(queryClient, skillId)
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-        })
       })
       .catch((error) => {
         invalidateSkillDetail(queryClient, skillId)
@@ -261,15 +253,6 @@ export function SkillTagsEditor({
         type="skill"
         show={showTagManagement}
         onClose={() => setShowTagManagement(false)}
-        onTagsChange={() => {
-          invalidateSkillDetail(queryClient, skillId)
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-          })
-        }}
       />
     </>
   )

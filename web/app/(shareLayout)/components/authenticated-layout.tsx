@@ -1,11 +1,11 @@
 'use client'
-
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
@@ -72,7 +72,12 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   }, [searchParams, pathname])
 
   const backToHome = useCallback(async () => {
-    await webAppLogout(resolveWebAppAddress())
+    try {
+      await webAppLogout(resolveWebAppAddress())
+    } catch (error) {
+      reportRequestError(error)
+      return
+    }
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router])
