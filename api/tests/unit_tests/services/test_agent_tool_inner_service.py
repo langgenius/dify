@@ -335,6 +335,48 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
     mock_invoke.assert_called_once()
 
 
+def test_invoke_forwards_caller_request_headers_to_tool_runtime(sqlite_session: Session) -> None:
+    fake_tool = _FakeTool()
+    _persist_app(sqlite_session)
+
+    with (
+        patch(
+            "services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime",
+            return_value=fake_tool,
+        ),
+        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=_messages()),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        request = _request()
+        request.caller.request_headers = {"X-User-Id": "user-1"}
+        AgentToolInnerService().invoke(request, session=sqlite_session)
+
+    assert fake_tool.runtime.request_header_context == {"X-User-Id": "user-1"}
+
+
+def test_invoke_without_caller_request_headers_leaves_runtime_context_empty(sqlite_session: Session) -> None:
+    fake_tool = _FakeTool()
+    _persist_app(sqlite_session)
+
+    with (
+        patch(
+            "services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime",
+            return_value=fake_tool,
+        ),
+        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=_messages()),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        AgentToolInnerService().invoke(_request(), session=sqlite_session)
+
+    assert fake_tool.runtime.request_header_context is None
+
+
 def test_invoke_raises_app_not_found_when_session_has_no_app(sqlite_session: Session) -> None:
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
         AgentToolInnerService().invoke(_request(), session=sqlite_session)

@@ -589,7 +589,7 @@ class AgentBackendRunRequestBuilder:
         )
 
 
-_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key", "base64_data")
+_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key", "base64_data", "request_headers")
 
 
 def redact_for_agent_backend_log(value: object) -> object:

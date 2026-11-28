@@ -51,6 +51,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm import model_access
+from core.mcp.request_headers import capture_request_header_context
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.entities.common_entities import I18nObjectDict
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
@@ -284,6 +285,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     trace_id=context.dify_context.trace_session_id,
+                    request_headers=capture_request_header_context(),
                     tracing=(
                         tracing_hooks.prepare_workflow_agent(
                             context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)

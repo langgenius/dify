@@ -40,6 +40,7 @@ class MCPClientWithAuthRetry(MCPClient):
         provider_entity: MCPProviderEntity | None = None,
         authorization_code: str | None = None,
         forward_identity_active: bool = False,
+        header_context: dict[str, str] | None = None,
     ):
         """
         Initialize the MCP client with auth retry capability.
@@ -53,8 +54,11 @@ class MCPClientWithAuthRetry(MCPClient):
             authorization_code: Optional authorization code for initial auth
             forward_identity_active: If True, suppress the static-OAuth retry
                 on 401 — the forwarded identity must propagate as-is.
+            header_context: Optional inbound request headers forwarded from the
+                original caller, used to resolve `{{request.headers.*}}`
+                placeholders when no live user request context exists.
         """
-        super().__init__(server_url, headers, timeout, sse_read_timeout)
+        super().__init__(server_url, headers, timeout, sse_read_timeout, header_context=header_context)
 
         self.provider_entity = provider_entity
         self.authorization_code = authorization_code

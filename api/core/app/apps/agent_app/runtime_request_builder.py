@@ -39,6 +39,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm import model_access
+from core.mcp.request_headers import capture_request_header_context
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.entities.common_entities import I18nObjectDict
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
@@ -224,6 +225,7 @@ class AgentAppRuntimeRequestBuilder:
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
                     trace_id=context.dify_context.trace_session_id,
+                    request_headers=capture_request_header_context(),
                     tracing=tracing_hooks.prepare_agent_app(context) if tracing_hooks is not None else None,
                 ),
                 backend_binding_ref=context.backend_binding_ref,

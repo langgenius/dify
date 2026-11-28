@@ -598,6 +598,28 @@ def test_agent_backend_log_redacts_multimodal_file_transport() -> None:
     assert redacted["metadata"]["source_url"] == "https://example.com/docs"
 
 
+def test_agent_backend_log_redacts_forwarded_request_headers() -> None:
+    redacted = cast(
+        dict[str, Any],
+        redact_for_agent_backend_log(
+            {
+                "composition": {
+                    "layers": [
+                        {
+                            "name": "execution_context",
+                            "config": {"tenant_id": "tenant-1", "request_headers": {"X-User-Id": "user-1"}},
+                        }
+                    ]
+                }
+            }
+        ),
+    )
+
+    config = redacted["composition"]["layers"][0]["config"]
+    assert config["request_headers"] == "[REDACTED]"
+    assert config["tenant_id"] == "tenant-1"
+
+
 def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank() -> None:
     run_input = _agent_app_input().model_copy(
         update={"agent_soul_prompt": "   ", "agent_config_version_kind": "build_draft"}
