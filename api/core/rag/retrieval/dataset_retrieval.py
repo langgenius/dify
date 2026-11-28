@@ -99,7 +99,7 @@ from repositories.knowledge.retrieval_source_repository import get_retrieval_sou
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.feature_service import FeatureService
 from services.knowledge.external.service import ExternalDatasetService
-from services.knowledge.retrieval.attachments import authorize_retrieved_segment
+from services.knowledge.retrieval.attachments import RetrievedSegmentAccess
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -328,17 +328,15 @@ class DatasetRetrieval:
                 dataset_map = {i.id: i for i in datasets}
                 document_map = {i.id: i for i in documents}
 
+                segment_access = RetrievedSegmentAccess(
+                    [record.segment for record in records],
+                    tenant_id=request.tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    session=retrieval_session,
+                )
                 for record in records:
                     segment = record.segment
-                    if (
-                        authorize_retrieved_segment(
-                            segment,
-                            tenant_id=request.tenant_id,
-                            dataset_ids=available_datasets_ids,
-                            session=retrieval_session,
-                        )
-                        is None
-                    ):
+                    if segment_access.authorize(segment) is None:
                         continue
                     dataset = dataset_map.get(segment.dataset_id)
                     document = document_map.get(segment.document_id)
@@ -547,11 +545,15 @@ class DatasetRetrieval:
                 records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
             if records:
                 authorized_records = []
+                segment_access = RetrievedSegmentAccess(
+                    [record.segment for record in records],
+                    tenant_id=tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    session=session,
+                )
                 for record in records:
                     segment = record.segment
-                    attachments = authorize_retrieved_segment(
-                        segment, tenant_id=tenant_id, dataset_ids=available_datasets_ids, session=session
-                    )
+                    attachments = segment_access.authorize(segment)
                     if attachments is None:
                         continue
                     authorized_records.append(record)

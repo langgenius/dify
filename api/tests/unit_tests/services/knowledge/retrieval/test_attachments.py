@@ -20,7 +20,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
 from models.model import UploadFile
-from services.knowledge.retrieval.attachments import authorize_retrieved_segment
+from services.knowledge.retrieval.attachments import RetrievedSegmentAccess
 
 
 @pytest.fixture
@@ -205,16 +205,211 @@ def test_invalid_segment_owner_chain_grants_no_access(
         invoke_from=InvokeFrom.WEB_APP,
     )
     with bind_file_access_scope(scope):
-        assert (
-            authorize_retrieved_segment(
-                segment, tenant_id=dataset.tenant_id, dataset_ids=[dataset.id], session=sqlite_session
-            )
-            is None
+        access = RetrievedSegmentAccess(
+            [segment], tenant_id=dataset.tenant_id, dataset_ids=[dataset.id], session=sqlite_session
         )
+        assert access.authorize(segment) is None
         current_scope = get_current_file_access_scope()
         assert current_scope is not None
         assert current_scope.granted_upload_file_ids == frozenset()
         assert current_scope.granted_retriever_segment_ids == frozenset()
+
+
+def test_workflow_retrieval_leaves_out_a_segment_of_an_archived_document(
+    graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A retrieved segment whose owner chain is no longer valid is not cited and grants nothing."""
+    dataset, document, segment, _ = graph
+    document.archived = True
+    sqlite_session.commit()
+    retrieved = RagDocument(
+        page_content=segment.content,
+        provider="dify",
+        metadata={"doc_id": segment.index_node_id, "document_id": document.id, "dataset_id": dataset.id},
+    )
+    retrieval = DatasetRetrieval()
+    monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(retrieval, "_get_available_datasets", lambda *_args, **_kwargs: [dataset])
+    monkeypatch.setattr(retrieval, "multiple_retrieve", lambda *_args, **_kwargs: [retrieved])
+    request = KnowledgeRetrievalRequest(
+        tenant_id=dataset.tenant_id,
+        user_id="visitor",
+        app_id=str(uuid4()),
+        user_from=UserFrom.END_USER.value,
+        dataset_ids=[dataset.id],
+        query="picture",
+        retrieval_mode="multiple",
+    )
+
+    with bind_file_access_scope(_visitor_scope(dataset.tenant_id)):
+        sources = retrieval.knowledge_retrieval(sqlite_session, request)
+
+        assert sources == []
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        assert current_scope.granted_retriever_segment_ids == frozenset()
+        assert current_scope.granted_upload_file_ids == frozenset()
+
+
+def _segment(dataset: Dataset, document: Document, *, position: int, enabled: bool = True) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        position=position,
+        content="",
+        word_count=1,
+        tokens=1,
+        created_by="admin",
+        index_node_id=str(uuid4()),
+        index_node_hash="hash",
+        status=SegmentStatus.COMPLETED,
+    )
+    segment.enabled = enabled
+    return segment
+
+
+def _visitor_scope(tenant_id: str) -> FileAccessScope:
+    return FileAccessScope(
+        tenant_id=tenant_id,
+        user_id=str(uuid4()),
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+
+def test_access_authorizes_each_segment_of_a_mixed_retrieval_on_its_own(
+    graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
+    sqlite_session: Session,
+) -> None:
+    """One retrieval can return valid and invalid segments; only the valid ones are granted."""
+    dataset, document, segment, file_ids = graph
+    plain = _segment(dataset, document, position=2)
+    disabled = _segment(dataset, document, position=3, enabled=False)
+    other_dataset = Dataset(id=str(uuid4()), tenant_id=dataset.tenant_id, name="Other", created_by="admin")
+    outside = _segment(other_dataset, document, position=4)
+    sqlite_session.add_all([plain, disabled, other_dataset, outside])
+    sqlite_session.commit()
+    # A retrieved segment that names another document than the stored row with its id does.
+    moved = _segment(dataset, document, position=2)
+    moved.id = plain.id
+    moved.document_id = str(uuid4())
+
+    with bind_file_access_scope(_visitor_scope(dataset.tenant_id)):
+        access = RetrievedSegmentAccess(
+            [segment, disabled, outside, moved],
+            tenant_id=dataset.tenant_id,
+            dataset_ids=[dataset.id],
+            session=sqlite_session,
+        )
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        # Reading grants nothing.
+        assert current_scope.granted_retriever_segment_ids == frozenset()
+        assert current_scope.granted_upload_file_ids == frozenset()
+
+        assert access.authorize(disabled) is None
+        assert access.authorize(outside) is None
+        assert access.authorize(moved) is None
+        attachments = access.authorize(segment)
+
+        assert attachments is not None
+        assert [file.id for file in attachments] == [file_ids["valid"]]
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        assert current_scope.granted_retriever_segment_ids == frozenset({segment.id})
+        assert current_scope.granted_upload_file_ids == frozenset({file_ids["valid"]})
+
+    with bind_file_access_scope(_visitor_scope(dataset.tenant_id)):
+        access = RetrievedSegmentAccess(
+            [plain], tenant_id=dataset.tenant_id, dataset_ids=[dataset.id], session=sqlite_session
+        )
+        # A valid segment without attachments is authorized with an empty sequence.
+        assert access.authorize(plain) == []
+
+
+def test_access_reads_nothing_when_no_segment_can_be_owned(
+    graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
+    sqlite_session: Session,
+) -> None:
+    """Segments that name another tenant or dataset are refused from what they say, without a query."""
+    dataset, _, segment, _ = graph
+    engine = sqlite_session.get_bind()
+    assert isinstance(engine, Engine)
+    statements: list[str] = []
+
+    def record(_conn: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        with bind_file_access_scope(_visitor_scope(dataset.tenant_id)):
+            other_tenant = RetrievedSegmentAccess(
+                [segment], tenant_id=str(uuid4()), dataset_ids=[dataset.id], session=sqlite_session
+            )
+            other_dataset = RetrievedSegmentAccess(
+                [segment], tenant_id=dataset.tenant_id, dataset_ids=[str(uuid4())], session=sqlite_session
+            )
+            empty = RetrievedSegmentAccess(
+                [], tenant_id=dataset.tenant_id, dataset_ids=[dataset.id], session=sqlite_session
+            )
+            assert other_tenant.authorize(segment) is None
+            assert other_dataset.authorize(segment) is None
+            assert empty.authorize(segment) is None
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    assert statements == []
+
+
+def test_access_of_another_tenant_scope_authorizes_nothing(
+    graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
+    sqlite_session: Session,
+) -> None:
+    dataset, _, segment, _ = graph
+    with bind_file_access_scope(_visitor_scope(str(uuid4()))):
+        access = RetrievedSegmentAccess(
+            [segment], tenant_id=dataset.tenant_id, dataset_ids=[dataset.id], session=sqlite_session
+        )
+        assert access.authorize(segment) is None
+        current_scope = get_current_file_access_scope()
+        assert current_scope is not None
+        assert current_scope.granted_retriever_segment_ids == frozenset()
+
+
+@pytest.mark.parametrize("extra_segments", [0, 5])
+def test_access_reads_do_not_grow_with_the_number_of_segments(
+    graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
+    sqlite_session: Session,
+    extra_segments: int,
+) -> None:
+    """Owner chains are read once and attachments once, however many segments a retrieval returns."""
+    dataset, document, segment, _ = graph
+    more = [_segment(dataset, document, position=position + 2) for position in range(extra_segments)]
+    sqlite_session.add_all(more)
+    sqlite_session.commit()
+    segments = [segment, *more]
+    engine = sqlite_session.get_bind()
+    assert isinstance(engine, Engine)
+    statements: list[str] = []
+
+    def record(_conn: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        with bind_file_access_scope(_visitor_scope(dataset.tenant_id)):
+            access = RetrievedSegmentAccess(
+                segments, tenant_id=dataset.tenant_id, dataset_ids=[dataset.id], session=sqlite_session
+            )
+            authorized = [access.authorize(item) for item in segments]
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    assert all(attachments is not None for attachments in authorized)
+    assert len([statement for statement in statements if statement.lstrip().startswith("SELECT")]) == 2
 
 
 @pytest.mark.parametrize("with_image", [False, True])

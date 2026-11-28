@@ -239,46 +239,74 @@ def get_segment_content_file_ids(
 
 
 def get_segment_attachment_files(segment: DocumentSegment, *, session: Session) -> Sequence[UploadFile]:
-    return session.scalars(
-        select(UploadFile)
-        .join(SegmentAttachmentBinding, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+    return get_attachment_files_by_segment([segment], session=session)[segment.id]
+
+
+def get_attachment_files_by_segment(
+    segments: Sequence[DocumentSegment], *, session: Session
+) -> dict[str, list[UploadFile]]:
+    """Read the attachments of many segments at once, keyed by segment id.
+
+    A file belongs to a segment when a binding names the segment's own tenant, dataset and document
+    and the file is the same tenant's. Every given segment has an entry, empty when it has none.
+    """
+    segments_by_id = {segment.id: segment for segment in segments}
+    files: dict[str, list[UploadFile]] = {segment_id: [] for segment_id in segments_by_id}
+    if not segments_by_id:
+        return files
+    rows = session.execute(
+        select(
+            SegmentAttachmentBinding.segment_id,
+            SegmentAttachmentBinding.tenant_id,
+            SegmentAttachmentBinding.dataset_id,
+            SegmentAttachmentBinding.document_id,
+            UploadFile,
+        )
+        .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
         .where(
-            SegmentAttachmentBinding.tenant_id == segment.tenant_id,
-            SegmentAttachmentBinding.dataset_id == segment.dataset_id,
-            SegmentAttachmentBinding.document_id == segment.document_id,
-            SegmentAttachmentBinding.segment_id == segment.id,
-            UploadFile.tenant_id == segment.tenant_id,
+            SegmentAttachmentBinding.segment_id.in_(list(segments_by_id)),
+            UploadFile.tenant_id == SegmentAttachmentBinding.tenant_id,
         )
     ).all()
+    for segment_id, tenant_id, dataset_id, document_id, upload_file in rows:
+        segment = segments_by_id[segment_id]
+        if (tenant_id, dataset_id, document_id) == (segment.tenant_id, segment.dataset_id, segment.document_id):
+            files[segment_id].append(upload_file)
+    return files
 
 
-def is_retrieved_segment_owned(
-    segment: DocumentSegment, *, tenant_id: str, dataset_ids: Sequence[str], session: Session
-) -> bool:
-    """Validate retrieved identifiers against the complete persisted owner chain."""
-    if segment.tenant_id != tenant_id or segment.dataset_id not in dataset_ids:
-        return False
-    return (
-        session.scalar(
-            select(DocumentSegment.id)
-            .join(Document, Document.id == DocumentSegment.document_id)
-            .join(Dataset, Dataset.id == Document.dataset_id)
-            .where(
-                Dataset.tenant_id == tenant_id,
-                Dataset.id == segment.dataset_id,
-                Document.tenant_id == tenant_id,
-                Document.dataset_id == segment.dataset_id,
-                Document.id == segment.document_id,
-                Document.enabled.is_(True),
-                Document.archived.is_(False),
-                DocumentSegment.tenant_id == tenant_id,
-                DocumentSegment.dataset_id == segment.dataset_id,
-                DocumentSegment.id == segment.id,
-                DocumentSegment.enabled.is_(True),
-            )
+def get_owned_retrieved_segment_ids(
+    segments: Sequence[DocumentSegment], *, tenant_id: str, dataset_ids: Sequence[str], session: Session
+) -> set[str]:
+    """Validate many retrieved segments against the complete persisted owner chain with one read.
+
+    A segment is owned when it names the tenant and one of the datasets, and the stored segment,
+    its document and that document's dataset all belong to the tenant, are the ones the segment
+    names, and the document and the segment are enabled and the document is not archived.
+    """
+    candidates = [
+        segment for segment in segments if segment.tenant_id == tenant_id and segment.dataset_id in dataset_ids
+    ]
+    if not candidates:
+        return set()
+    rows = session.execute(
+        select(DocumentSegment.id, DocumentSegment.dataset_id, DocumentSegment.document_id)
+        .join(Document, Document.id == DocumentSegment.document_id)
+        .join(Dataset, Dataset.id == Document.dataset_id)
+        .where(
+            Dataset.tenant_id == tenant_id,
+            Document.tenant_id == tenant_id,
+            Document.enabled.is_(True),
+            Document.archived.is_(False),
+            DocumentSegment.tenant_id == tenant_id,
+            DocumentSegment.dataset_id == Document.dataset_id,
+            DocumentSegment.id.in_({segment.id for segment in candidates}),
+            DocumentSegment.enabled.is_(True),
         )
-        is not None
-    )
+    ).all()
+    # The stored row must name the same dataset and document as the retrieved segment does.
+    stored = {row.id: (row.dataset_id, row.document_id) for row in rows}
+    return {segment.id for segment in candidates if stored.get(segment.id) == (segment.dataset_id, segment.document_id)}
 
 
 def get_document_upload_file(document: Document, *, session: Session) -> UploadFile | None:
