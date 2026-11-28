@@ -1,10 +1,96 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createHttpClientWithSpies } from '../../tests/test-utils'
+import { createHttpClient, createHttpClientWithSpies } from '../../tests/test-utils'
 import { WorkflowClient } from './workflow'
 
 describe('WorkflowClient', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+  })
+
+  describe.each(['blocking', 'streaming'] as const)('object requests in %s mode', (mode) => {
+    it.each([
+      ['omitted', {}, {}],
+      ['undefined', { inputs: undefined }, {}],
+      ['provided', { inputs: { topic: 'science' } }, { topic: 'science' }],
+    ] as const)(
+      'run() sends an inputs object when inputs are %s',
+      async (_case, fields, expectedInputs) => {
+        const { client, fetchMock } = createHttpClient()
+        fetchMock.mockResolvedValueOnce(
+          new Response(
+            mode === 'streaming' ? 'data: {"event":"workflow_finished"}\n\n' : '{"workflow_run_id":"run-1"}',
+            { status: 200 },
+          ),
+        )
+        const workflow = new WorkflowClient(client)
+        const request = Object.freeze({
+          ...fields,
+          user: 'user',
+          response_mode: mode,
+        })
+
+        const result = await workflow.run(request)
+
+        if (Symbol.asyncIterator in result) {
+          const events = []
+          for await (const event of result) {
+            events.push(event)
+          }
+          expect(events).toHaveLength(1)
+        } else {
+          expect(result.data).toEqual({ workflow_run_id: 'run-1' })
+        }
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+        expect(new URL(url).pathname).toBe('/v1/workflows/run')
+        expect(JSON.parse(init.body as string)).toEqual({
+          user: 'user',
+          response_mode: mode,
+          inputs: expectedInputs,
+        })
+      },
+    )
+
+    it.each([
+      ['omitted', {}, {}],
+      ['undefined', { inputs: undefined }, {}],
+      ['provided', { inputs: { topic: 'science' } }, { topic: 'science' }],
+    ] as const)(
+      'runById() sends an inputs object when inputs are %s',
+      async (_case, fields, expectedInputs) => {
+        const { client, fetchMock } = createHttpClient()
+        fetchMock.mockResolvedValueOnce(
+          new Response(
+            mode === 'streaming' ? 'data: {"event":"workflow_finished"}\n\n' : '{"workflow_run_id":"run-1"}',
+            { status: 200 },
+          ),
+        )
+        const workflow = new WorkflowClient(client)
+        const request = Object.freeze({
+          ...fields,
+          user: 'user',
+          response_mode: mode,
+        })
+
+        const result = await workflow.runById('wf-1', request)
+
+        if (Symbol.asyncIterator in result) {
+          const events = []
+          for await (const event of result) {
+            events.push(event)
+          }
+          expect(events).toHaveLength(1)
+        } else {
+          expect(result.data).toEqual({ workflow_run_id: 'run-1' })
+        }
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+        expect(new URL(url).pathname).toBe('/v1/workflows/wf-1/run')
+        expect(JSON.parse(init.body as string)).toEqual({
+          user: 'user',
+          response_mode: mode,
+          inputs: expectedInputs,
+        })
+      },
+    )
   })
 
   it('runs workflows with blocking and streaming modes', async () => {
