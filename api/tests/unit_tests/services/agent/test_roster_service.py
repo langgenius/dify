@@ -44,11 +44,11 @@ from models.model import App, AppMode, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
-from repositories.agent_drafts import agent_soul_matches_active_config
-from repositories.agent_roster_queries import load_reference_counts_by_agent_id
-from repositories.agent_roster_repository import list_invite_options_in_session
-from repositories.agent_version_queries import visible_version_operations
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.agent.agent_drafts import agent_soul_matches_active_config
+from repositories.agent.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent.agent_roster_repository import list_invite_options_in_session
+from repositories.agent.agent_version_queries import visible_version_operations
+from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent import composer_service, roster_service

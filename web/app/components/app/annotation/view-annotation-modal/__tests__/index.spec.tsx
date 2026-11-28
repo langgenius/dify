@@ -76,17 +76,17 @@ it('reports history failures and retries without presenting them as an empty his
   expect(await screen.findByText('appAnnotation.viewModal.noHitHistory')).toBeVisible()
 })
 
-it('shows the server message when history cannot load', async () => {
+it('shows the translated reason when history cannot load', async () => {
   api.history.mockRejectedValueOnce(
     createHttpError(new Response(null, { status: 400 }), {
-      code: 'invalid_param',
+      code: 'app_unavailable',
       message: 'Server says why',
     }),
   )
   const { user } = setup()
   await user.click(screen.getByRole('button', { name: 'Question a' }))
   await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.app_unavailable')
 })
 
 it('does not show a previous annotation response when its request completes late', async () => {

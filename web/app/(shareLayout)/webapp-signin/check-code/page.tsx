@@ -12,7 +12,7 @@ import {
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
@@ -73,7 +73,7 @@ export default function CheckCode() {
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     } finally {
       setLoading(false)
     }
@@ -99,7 +99,7 @@ export default function CheckCode() {
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }
 

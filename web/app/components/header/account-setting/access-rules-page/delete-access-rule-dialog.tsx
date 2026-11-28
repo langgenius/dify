@@ -25,12 +25,10 @@ export function DeleteAccessRuleDialog({
   handle,
   canDeleteRule,
   fallbackFocusRef,
-  onDeleted,
 }: {
   handle: AlertDialogHandle<AccessPolicy>
   canDeleteRule: (id: string) => boolean
   fallbackFocusRef: RefObject<HTMLButtonElement | null>
-  onDeleted: (id: string) => void
 }) {
   const { t } = useTranslation(['common', 'permission'])
   const client = useQueryClient()
@@ -46,8 +44,7 @@ export function DeleteAccessRuleDialog({
       onError: (error) => {
         if (!handle.isOpen) toast.error(deletionErrorMessage(error))
       },
-      onSuccess: (_result, { params }) => {
-        onDeleted(params.policy_id)
+      onSuccess: () => {
         handle.close()
       },
     }),

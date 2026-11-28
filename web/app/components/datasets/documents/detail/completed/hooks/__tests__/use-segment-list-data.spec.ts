@@ -103,12 +103,6 @@ let mockQueryClient = { invalidateQueries: vi.spyOn(queryClient, 'invalidateQuer
 const expectSegmentListsRefetched = () =>
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: segmentListsKey })
 
-const expectOtherStatusListsMarkedStale = () =>
-  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({
-    queryKey: segmentListsKey,
-    refetchType: 'none',
-  })
-
 const createWrapper = () => {
   queryClient.setQueryDefaults(segmentListsKey, { initialData: mockSegmentListData.current })
   return createConsoleQueryWrapper({ queryClient }).wrapper
@@ -322,8 +316,8 @@ describe('useSegmentListData', () => {
     })
   })
 
-  describe('refreshChunkListWithStatusChanged', () => {
-    it('should invalidate segment list when status is not all', async () => {
+  describe('after a toggle', () => {
+    it('leaves a filtered segment list to the invalidation fallback', async () => {
       mockEnableSegment.mockResolvedValue({ result: 'success' })
 
       const { result } = renderHook(
@@ -342,7 +336,7 @@ describe('useSegmentListData', () => {
         await result.current.onChangeSwitch(true, 'seg-1')
       })
 
-      expectSegmentListsRefetched()
+      expect(mockQueryClient.invalidateQueries).not.toHaveBeenCalled()
     })
   })
 
@@ -616,7 +610,11 @@ describe('useSegmentListData', () => {
           summary: '',
         },
       })
-      expectOtherStatusListsMarkedStale()
+      // The other status views refresh with the invalidation fallback.
+      expect(mockQueryClient.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: segmentListsKey,
+        refetchType: 'none',
+      })
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
@@ -804,7 +802,7 @@ describe('useSegmentListData', () => {
   })
 
   describe('cache updates', () => {
-    it('updates only selected cached segments and marks other status views stale', async () => {
+    it('updates only selected cached segments', async () => {
       mockSegmentListData.current = {
         data: [
           createMockSegment({ id: 'seg-1', enabled: false }),
@@ -834,7 +832,8 @@ describe('useSegmentListData', () => {
         true,
         false,
       ])
-      expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(true)
+      // The other status views refresh with the invalidation fallback.
+      expect(queryClient.getQueryState(otherKey)?.isInvalidated).toBe(false)
       await waitFor(() => expect(result.current.segments[0]?.enabled).toBe(true))
     })
 

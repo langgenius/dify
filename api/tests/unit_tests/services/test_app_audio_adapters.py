@@ -19,7 +19,7 @@ from models.enums import ConversationFromSource, MessageStatus
 from models.model import AccountTrialAppRecord
 from models.workflow import Workflow, WorkflowType
 from services import audio_provider_gateway
-from services.agent_config_contracts import AgentConfigVersionMissingError
+from services.agent.agent_config_contracts import AgentConfigVersionMissingError
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload

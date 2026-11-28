@@ -9,13 +9,11 @@ import { lazy, Suspense, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { useMarketplace } from '@/features/marketplace/client'
@@ -26,6 +24,7 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
 import ContactSupport from './components/contact-support'
+import { EnvironmentBadge } from './components/environment-badge'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
@@ -63,10 +62,6 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const marketplaceEnabled = useMarketplace() !== null
-  const { data: currentEnv } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.meta.currentEnv,
-  })
   const agentV2Enabled = isAgentV2Enabled()
   const contactsEnabled = isContactsManagementEnabled()
   const canViewSkills = useCanViewSkills()
@@ -75,7 +70,6 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
       select: (features) => features.enable_skill,
     }),
   )
-  const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
@@ -148,11 +142,7 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
           <WebAppsSection />
         </Suspense>
       )}
-      {showEnvTag && (
-        <div className="mt-auto shrink-0 px-3 pb-2">
-          <EnvNav />
-        </div>
-      )}
+      <EnvironmentBadge />
     </div>
   )
 }

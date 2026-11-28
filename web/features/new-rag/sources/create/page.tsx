@@ -20,14 +20,14 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
 import {
@@ -271,12 +271,13 @@ function ConnectionForm({
   credentialId?: string
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider, credentialId)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
   const [credentials, setCredentials] = useState<Record<string, string>>({})
-  const [error, setError] = useState<{ message?: string } | false>(false)
+  const [error, setError] = useState<{ error?: unknown } | false>(false)
   const [pending, setPending] = useState(false)
   const { mutateAsync: createConnection } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions({
@@ -353,7 +354,7 @@ function ConnectionForm({
       } catch {
         reconciledConnection = undefined
       }
-      if (!reconciledConnection) setError({ message: getRequestErrorMessage(connectionError) })
+      if (!reconciledConnection) setError({ error: connectionError })
     } finally {
       setPending(false)
     }
@@ -395,8 +396,10 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {error.message ??
-            t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
+          {describeRequestError(
+            error.error,
+            t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName }),
+          )}
         </p>
       )}
       <Button
@@ -435,8 +438,15 @@ function ManagedProviderConnection({
 }) {
   const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const [attempt, setAttempt] = useState(0)
-  const [error, setError] = useState<{ message?: string } | false>(false)
+  const [error, setError] = useState<{ error?: unknown } | false>(false)
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions({
+      // A failed connection is reconciled first and then shown in this panel.
+      meta: { errorToast: false },
+    }),
+  )
   const requestRef = useRef<
     | {
         key: string
@@ -453,7 +463,7 @@ function ManagedProviderConnection({
         promise: (async () => {
           try {
             return sourceConnectionFromApi(
-              await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+              await createConnection({
                 body: {
                   authKind: 'endpoint',
                   configuration: {
@@ -484,12 +494,13 @@ function ManagedProviderConnection({
         else setError({})
       })
       .catch((error: unknown) => {
-        if (subscribed) setError({ message: getRequestErrorMessage(error) })
+        if (subscribed) setError({ error })
       })
     return () => {
       subscribed = false
     }
   }, [
+    createConnection,
     credentialId,
     datasourceProvider,
     knowledgeSpaceId,
@@ -506,8 +517,10 @@ function ManagedProviderConnection({
         <>
           <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
           <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
-            {error.message ??
-              t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
+            {describeRequestError(
+              error.error,
+              t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName }),
+            )}
           </p>
           <Button
             className="mt-3"
@@ -628,9 +641,10 @@ function ConnectionProblem({
 }) {
   const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<{ message?: string } | false>(false)
+  const [error, setError] = useState<{ error?: unknown } | false>(false)
   const { mutateAsync: refreshConnection } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.byConnectionId.refresh.post.mutationOptions(
       // A failed refresh is reconciled first and then shown next to the retry button.
@@ -657,7 +671,7 @@ function ConnectionProblem({
       // Reconciling picks up a refresh whose response was lost; a connection that recovered
       // replaces this panel, so the failure stays visible only while it still needs attention.
       await onReconcile().catch(() => undefined)
-      setError({ message: getRequestErrorMessage(refreshError) })
+      setError({ error: refreshError })
     } finally {
       setPending(false)
     }
@@ -673,7 +687,10 @@ function ConnectionProblem({
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {error.message ?? t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' })}
+          {describeRequestError(
+            error.error,
+            t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' }),
+          )}
         </p>
       )}
       <Button
@@ -700,8 +717,9 @@ function ProvisioningConnection({
   providerName: string
 }) {
   const { t } = useTranslation(['knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<{ message: string | undefined }>()
+  const [error, setError] = useState<{ error?: unknown }>()
 
   const refresh = async () => {
     if (pending) return
@@ -709,9 +727,9 @@ function ProvisioningConnection({
     setError(undefined)
     try {
       const reconciledConnection = await onReconcile()
-      if (!reconciledConnection) setError({ message: undefined })
+      if (!reconciledConnection) setError({})
     } catch (error) {
-      setError({ message: getRequestErrorMessage(error) })
+      setError({ error })
     } finally {
       setPending(false)
     }
@@ -724,7 +742,10 @@ function ProvisioningConnection({
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {error.message ?? t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' })}
+          {describeRequestError(
+            error.error,
+            t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' }),
+          )}
         </p>
       )}
       <Button className="mt-3" loading={pending} onClick={() => void refresh()}>
@@ -769,8 +790,8 @@ function AddSourcePageContent({
   sourceDraftKey,
 }: AddSourcePageProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
     () =>
       initialSourceDraft ??
@@ -995,15 +1016,9 @@ function AddSourcePageContent({
     websiteSourceSelected,
   ])
 
-  const rememberConnection = useCallback(
-    (updatedConnection: Connection) => {
-      setConnectionOverride(updatedConnection)
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.key(),
-      })
-    },
-    [queryClient],
-  )
+  const rememberConnection = useCallback((updatedConnection: Connection) => {
+    setConnectionOverride(updatedConnection)
+  }, [])
 
   const reconcileConnection = useCallback(async () => {
     if (connection) setConnectionOverride(connection)
@@ -1100,9 +1115,10 @@ function AddSourcePageContent({
               {queryError ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">
-                    {getRequestErrorMessage(
+                    {describeRequestError(
                       queryError === true ? connectionsQuery.error : queryError,
-                    ) ?? t(($) => $.providerLoadFailed)}
+                      t(($) => $.providerLoadFailed),
+                    )}
                   </p>
                   <Button
                     className="mt-3"

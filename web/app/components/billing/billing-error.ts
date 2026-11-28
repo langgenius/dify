@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/api/console/compliance/types.gen'
 import type { TFunction } from 'i18next'
 import { isDefinedError, ORPCError } from '@orpc/client'
-import { getRequestErrorMessage } from '@/service/http-error'
 
 type BillingErrorCode = (
   | AnnualDiscountActiveError
@@ -27,16 +26,20 @@ function isBillingErrorCode(code: string): code is BillingErrorCode {
 }
 
 /**
- * Declared billing failures get their localized text. Anything else shows the server's message,
- * and the generic billing failure only when the server returned none.
+ * Declared billing failures get their billing text. Anything else is described by its request
+ * error code, with the generic billing failure as the fallback.
  */
-export function getBillingErrorMessage(error: unknown, t: TFunction<['billing']>) {
+export function getBillingErrorMessage(
+  error: unknown,
+  t: TFunction<['billing']>,
+  describeRequestError: (error: unknown, fallback?: string) => string,
+) {
   if (error instanceof ORPCError && isDefinedError(error) && isBillingErrorCode(error.code)) {
     const key = billingErrorMessageKeyByCode[error.code]
     return t(($) => $[key], { ns: 'billing' })
   }
-  return (
-    getRequestErrorMessage(error) ??
-    t(($) => $[billingErrorMessageKeyByCode.billing_operation_failed], { ns: 'billing' })
+  return describeRequestError(
+    error,
+    t(($) => $[billingErrorMessageKeyByCode.billing_operation_failed], { ns: 'billing' }),
   )
 }

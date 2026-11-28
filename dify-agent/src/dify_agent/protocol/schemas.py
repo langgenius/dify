@@ -27,6 +27,7 @@ from pydantic import (
 from pydantic_ai.messages import AgentStreamEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
@@ -247,6 +248,8 @@ class RunSucceededEvent(BaseRunEvent):
 
     type: Literal["run_succeeded"] = "run_succeeded"
     data: RunSucceededEventData
+    # Empty summaries are omitted so legacy terminal event bytes remain unchanged.
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
 
 class RunFailedEvent(BaseRunEvent):
@@ -254,6 +257,8 @@ class RunFailedEvent(BaseRunEvent):
 
     type: Literal["run_failed"] = "run_failed"
     data: RunFailedEventData
+    # Empty summaries are omitted so legacy terminal event bytes remain unchanged.
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
 
 class RunCancelledEvent(BaseRunEvent):
@@ -261,6 +266,8 @@ class RunCancelledEvent(BaseRunEvent):
 
     type: Literal["run_cancelled"] = "run_cancelled"
     data: RunCancelledEventData = Field(default_factory=RunCancelledEventData)
+    # Empty summaries are omitted so legacy terminal event bytes remain unchanged.
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
 
 RunEvent: TypeAlias = Annotated[

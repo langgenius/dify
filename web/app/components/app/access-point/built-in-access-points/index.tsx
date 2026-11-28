@@ -151,7 +151,6 @@ export function BuiltInAccessPoints({
           canDeploy={canDeploy}
           canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onRefreshApp={actions.refreshAppDetail}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}

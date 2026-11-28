@@ -1,11 +1,15 @@
-from collections.abc import Callable, Generator
+import json
+from collections.abc import Callable, Generator, Iterable
 from inspect import signature
 
+import httpx
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.app.llm.quota import ModelQuotaReservationState
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
+from core.helper import ssrf_proxy as ssrf_module
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_manager
@@ -14,7 +18,7 @@ from enums import DeploymentEdition
 from extensions.application_services.moderation import (
     build_llm_moderation_guard,
     build_moderation_service,
-    platform_moderation_credentials,
+    build_platform_moderation_service,
 )
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import (
@@ -24,13 +28,19 @@ from graphon.model_runtime.entities.llm_entities import (
     LLMResultWithStructuredOutput,
     LLMUsage,
 )
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import AppRequestContext
 from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 from services.moderation_adapters import ChainedLLMModerationPolicy, LLMModerationGuard
+from services.moderation_invocation_errors import PlatformModerationRejectedInvocationError
 from services.moderation_service import ModerationRejectedError, ModerationRule, ModerationService
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
@@ -349,7 +359,6 @@ def test_platform_binding_respects_switch_and_edition_eligibility(
     config_overrides(
         DEPLOYMENT_EDITION=edition,
         HOSTED_MODERATION_ENABLED=enabled,
-        HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/openai:1.0.0@checksum",
     )
     config = make_model_config(provider="test-provider", model="test-model", mode="chat")
     bundle = config.provider_model_bundle
@@ -375,7 +384,6 @@ def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
     config_overrides(
         DEPLOYMENT_EDITION=edition,
         HOSTED_MODERATION_ENABLED=enabled,
-        HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/openai:1.0.0@checksum",
     )
     config = make_model_config(provider="test-provider", model="test-model", mode="chat")
     bundle = config.provider_model_bundle
@@ -400,7 +408,7 @@ def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
     )
     assert moderation_model.moderation is None
 
-    def allow(_text: str, _phase: str) -> None:
+    def allow(_segments: Iterable[str], _phase: str) -> None:
         return None
 
     disabled = LLMModerationGuard(
@@ -422,12 +430,72 @@ def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
     assert isinstance(unlimited.moderation, LLMModerationGuard) is expected
 
 
-def test_missing_sre_pinned_plugin_identifier_still_binds_tenant_first_policy(
-    config_overrides: Callable[..., None],
+def test_platform_moderation_applies_the_configured_segment_and_batch_limits(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
-    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
-    bundle = config.provider_model_bundle
+    config_overrides(
+        HOSTED_OPENAI_API_KEY="server-key",
+        HOSTED_MODERATION_CACHE_TTL=0,
+        MODERATION_NON_STREAM_SEGMENT_SIZE=4,
+        HOSTED_MODERATION_BATCH_MAX_ITEMS=2,
+        HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES=6,
+    )
+    batches: list[list[str]] = []
+
+    def moderate(request: httpx.Request) -> httpx.Response:
+        texts: list[str] = json.loads(request.content)["input"]
+        batches.append(texts)
+        return httpx.Response(200, json={"results": [{"flagged": False} for _ in texts]})
+
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="test-tenant-id", app_id=""),
+        service=build_platform_moderation_service(),
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}},
+        ),
+        platform=True,
+    )
+    messages = [UserPromptMessage(content=text) for text in ["a", "b", "abcdXY", "\u754c\u754c", "d"]]
+    with httpx.Client(transport=httpx.MockTransport(moderate)) as transport:
+        monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: transport)
+        guard.check_inputs(messages)
+
+    assert batches == [["a", "b"], ["abcd", "XY"], ["\u754c\u754c"], ["d"]]
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "approved",
+        "input_rejected",
+        "output_rejected",
+        "incomplete",
+        "api_error",
+        "rate_limit",
+        "timeout",
+        "missing_key",
+    ],
+)
+def test_platform_guard_uses_openai_and_preserves_quota_and_failure_contracts(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    caplog: pytest.LogCaptureFixture,
+    scenario: str,
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        HOSTED_MODERATION_ENABLED=True,
+        HOSTED_MODERATION_CACHE_TTL=0,
+        HOSTED_OPENAI_API_KEY=None if scenario == "missing_key" else "server-key",
+        HOSTED_OPENAI_API_BASE="https://moderation.example/internal",
+        HOSTED_OPENAI_API_ORGANIZATION="server-org",
+        HOSTED_OPENAI_TRIAL_ENABLED=False,
+        HOSTED_OPENAI_PAID_ENABLED=False,
+        MODERATION_NON_STREAM_SEGMENT_SIZE=5,
+    )
+    unbound, provider = make_moderated_model(quota=False, parts=["safe"])
+    bundle = unbound.provider_model_bundle
     bundle.configuration.using_provider_type = ProviderType.SYSTEM
     bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
     bundle.configuration.system_configuration.quota_configurations = [
@@ -439,38 +507,51 @@ def test_missing_sre_pinned_plugin_identifier_still_binds_tenant_first_policy(
             is_valid=True,
         )
     ]
+    batches: list[list[str]] = []
 
-    def allow(_text: str, _phase: str) -> None:
-        return None
+    def moderate(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer server-key"
+        assert request.headers["OpenAI-Organization"] == "server-org"
+        assert str(request.url) == "https://moderation.example/internal/v1/moderations"
+        texts: list[str] = json.loads(request.content)["input"]
+        batches.append(texts)
+        if scenario in {"api_error", "rate_limit"}:
+            return httpx.Response(429 if scenario == "rate_limit" else 503, text="private-provider-error")
+        if scenario == "timeout":
+            raise httpx.ReadTimeout("read timed out", request=request)
+        flagged_text = {"input_rejected": "prior", "output_rejected": "safe"}.get(scenario)
+        classified = texts[:-1] if scenario == "incomplete" else texts
+        return httpx.Response(200, json={"results": [{"flagged": text == flagged_text} for text in classified]})
 
-    explicit = LLMModerationGuard(
-        tenant_id="test-tenant-id",
-        check=allow,
-        check_input=False,
-        check_output=False,
-        non_stream_segment_size=2000,
-        stream_segment_size=300,
-    )
-    guarded = ModelInstance(bundle, "test-model", credentials={})
-    explicitly_guarded = ModelInstance(bundle, "test-model", credentials={}, moderation=explicit)
+    instance = RecordingQuotaModelInstance(bundle, commit_before_delivery=True, moderation=None)
+    messages: list[PromptMessage] = [
+        SystemPromptMessage(content="setup"),
+        UserPromptMessage(content="prior"),
+        AssistantPromptMessage(content="reply"),
+        UserPromptMessage(content="abcdef"),
+    ]
+    with httpx.Client(transport=httpx.MockTransport(moderate)) as http_client:
+        monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: http_client)
+        if scenario in {"input_rejected", "output_rejected"}:
+            with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
+                instance.invoke_llm(messages, stream=False)
+            assert rejected.value.phase == ("input" if scenario == "input_rejected" else "output")
+        else:
+            assert instance.invoke_llm(messages, stream=False).message.content == "safe"
 
-    assert isinstance(guarded.moderation, LLMModerationGuard)
-    assert isinstance(explicitly_guarded.moderation, ChainedLLMModerationPolicy)
-
-
-def test_platform_credentials_do_not_depend_on_cloud_provider_enablement(
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-        HOSTED_OPENAI_TRIAL_ENABLED=False,
-        HOSTED_OPENAI_PAID_ENABLED=False,
-        HOSTED_OPENAI_API_KEY="server-key",
-        HOSTED_OPENAI_API_BASE="https://example.com/v1",
-        HOSTED_OPENAI_API_ORGANIZATION="server-org",
-    )
-    assert platform_moderation_credentials() == {
-        "openai_api_key": "server-key",
-        "openai_api_base": "https://example.com/v1",
-        "openai_organization": "server-org",
-    }
+    generated = scenario != "input_rejected"
+    expected_input = ["setup", "prior", "reply", "abcde", "f"]
+    expected_batches = [] if scenario == "missing_key" else [expected_input]
+    if generated and scenario != "missing_key":
+        expected_batches.append(["safe"])
+    if generated:
+        (reservation,) = instance.reservations
+        assert reservation.state == ModelQuotaReservationState.COMMITTED
+        assert len(reservation.commits) == 1
+    assert batches == expected_batches
+    assert provider.invocations == int(generated)
+    assert len(instance.reservations) == int(generated)
+    skipped = scenario in {"incomplete", "api_error", "rate_limit", "timeout", "missing_key"}
+    assert ("Platform moderation unavailable; skipping unchecked segments" in caplog.text) is skipped
+    assert "private-provider-error" not in caplog.text
+    assert "server-key" not in caplog.text

@@ -33,7 +33,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from repositories.agent_workspace_repository import (
+from repositories.agent.agent_workspace_repository import (
     AgentWorkspaceRepository,
     validate_binding_generation,
     workflow_tool_workspace_owned_by_app,

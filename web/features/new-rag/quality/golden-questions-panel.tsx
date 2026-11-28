@@ -25,9 +25,9 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
@@ -191,6 +191,7 @@ function GoldenQuestionEditorDialog({
 export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) {
   const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeQuality'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { space } = useKnowledgeSpace()
   const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = space.control_space_id
@@ -251,7 +252,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
           params: { control_space_id: knowledgeSpaceId },
         })
         .catch((error) => {
-          toastRequestError(error)
+          reportRequestError(error)
           return undefined
         })
     setDialog((current) => {
@@ -292,7 +293,10 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         setDeleteIds(failedIds)
         const rejection = results.find((result) => result.status === 'rejected')
         toast.error(
-          getRequestErrorMessage(rejection?.reason) ?? t(($) => $.unknownError, { ns: 'dataset' }),
+          describeRequestError(
+            rejection?.reason,
+            t(($) => $.unknownError, { ns: 'dataset' }),
+          ),
         )
         return false
       }

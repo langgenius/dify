@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
+from core.entities.provider_configuration import configuration_for_model
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.plugin.entities.request import InvokeCredentials
@@ -337,6 +338,7 @@ class AgentRuntimeSupport:
         user_id: str,
         value: dict[str, Any],
     ) -> tuple[ModelInstance, AIModelEntity | None]:
+        """Resolve the configured model and its schema with the same credential route, propagating lookup errors."""
         assembly = create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id)
         provider_model_bundle = assembly.provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id,
@@ -344,7 +346,8 @@ class AgentRuntimeSupport:
             model_type=ModelType.LLM,
         )
         model_name = value.get("model", "")
-        model_credentials = provider_model_bundle.configuration.get_current_credentials(
+        configuration = configuration_for_model(provider_model_bundle.configuration, ModelType.LLM, model_name)
+        model_credentials = configuration.get_current_credentials(
             model_type=ModelType.LLM,
             model=model_name,
         )

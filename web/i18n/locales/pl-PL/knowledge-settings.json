@@ -16,6 +16,8 @@
   "settings.membersRequired": "Wybierz co najmniej jednego członka zespołu.",
   "settings.nameRequired": "Nazwa bazy wiedzy Agent jest wymagana.",
   "settings.pageDescription": "Zarządzaj podstawowymi informacjami, dostępem do API i pobieraniem.",
+  "settings.personalAgentDescription": "Członkowie mogą pozwolić własnym agentom (Claude Code, Codex, klienci MCP) odczytywać tę bazę wiedzy z ich uprawnieniami.",
+  "settings.personalAgentLabel": "Osobiste agenty",
   "settings.reloadLatest": "Wczytaj aktualne ustawienia",
   "settings.rerankModelRequired": "Wybierz model ponownego rankingu.",
   "settings.retrievalDepth": "Głębokość wyszukiwania",

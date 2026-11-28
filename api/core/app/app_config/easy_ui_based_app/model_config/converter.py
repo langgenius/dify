@@ -3,6 +3,7 @@ from typing import cast
 from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
+from core.entities.provider_configuration import bind_model_route
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -14,7 +15,7 @@ class ModelConfigConverter:
     @classmethod
     def convert(cls, app_config: EasyUIBasedAppConfig) -> ModelConfigWithCredentialsEntity:
         """
-        Convert app model config dict to entity.
+        Convert app model config to an entity with credentials and status from the same model route.
         :param app_config: app config
         :raises ProviderTokenNotInitError: provider token not init error
         :return: app orchestration config entity
@@ -25,6 +26,7 @@ class ModelConfigConverter:
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id=app_config.tenant_id, provider=model_config.provider, model_type=ModelType.LLM
         )
+        provider_model_bundle = bind_model_route(provider_model_bundle, model_config.model)
 
         provider_name = provider_model_bundle.configuration.provider.provider
         model_name = model_config.model

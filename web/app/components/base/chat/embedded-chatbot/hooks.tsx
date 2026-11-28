@@ -10,7 +10,7 @@ import { useConversationSelection } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { changeLanguage } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
@@ -473,7 +473,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
           appId,
         )
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         throw error
       }
     },

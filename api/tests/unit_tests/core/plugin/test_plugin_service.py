@@ -8,7 +8,7 @@ import pytest
 import zstandard
 from pydantic import TypeAdapter
 from redis import RedisError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
@@ -275,7 +275,9 @@ class TestPluginModelProviderCache:
         redis_client.get.assert_called_once_with(generation_key)
         redis_client.mget.assert_called_once_with([cache_key])
 
-    def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(self) -> None:
+    def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """A cached package source remains available to the system configuration guard."""
         cached_provider = _build_provider_entity(installation_source=PluginInstallationSource.Package)
         cached_payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json([cached_provider])
@@ -293,7 +295,7 @@ class TestPluginModelProviderCache:
 
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
         assert result[0].installation_source == PluginInstallationSource.Package
-        provider_manager = ProviderManager(model_runtime=Mock())
+        provider_manager = ProviderManager(model_runtime=Mock(), session_maker=sqlite_session_factory)
         with (
             patch(
                 "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",

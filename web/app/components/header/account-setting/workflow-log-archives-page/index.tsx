@@ -35,7 +35,7 @@ import { API_PREFIX } from '@/config'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 
 const numberFormatter = new Intl.NumberFormat()
@@ -353,6 +353,10 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       meta: { errorToast: false },
     }),
   )
+  const deleteErrorMessage = useRequestErrorMessage(
+    deleteArchiveMutation.error,
+    t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' }),
+  )
   const isDeletionActive = isDeletingStatus(archive.deletion_status)
   const isDeleting = deleteArchiveMutation.isPending || isDeletionActive
   const isDownloadUnavailable = deleteArchiveMutation.isPending || archive.deletion_status != null
@@ -576,8 +580,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                   {deleteArchiveMutation.isError && (
                     <AlertDialogBody>
                       <div role="alert" className="system-sm-regular text-text-destructive">
-                        {getRequestErrorMessage(deleteArchiveMutation.error) ??
-                          t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
+                        {deleteErrorMessage}
                       </div>
                     </AlertDialogBody>
                   )}

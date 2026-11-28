@@ -47,6 +47,8 @@
   "noMatchingDocuments": "没有符合此搜索条件的文档。",
   "parentChildChunkCount": "{{parentCount}} 个父分段 / {{childCount}} 个子分段",
   "partialDocumentResults": "可能还有匹配的文档。加载更多以继续搜索。",
+  "reindexConfirmDescription": "重新索引会按源文件重新生成全部段落和索引。之前在知识库中对段落所做的修改（例如处理冲突时采用另一篇的说法）会被源文件的内容覆盖。重新索引完成前，检索仍使用当前索引。",
+  "reindexConfirmTitle": "确认按源文件重新索引？",
   "reindexDocument": "重新索引",
   "retrievalCountValue": "过去 7 天内 {{value}} 次",
   "retryReindexDocument": "重新索引",

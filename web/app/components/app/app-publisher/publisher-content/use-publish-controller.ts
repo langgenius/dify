@@ -7,7 +7,7 @@ import type {
 } from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { use, useCallback, useEffect, useRef, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
@@ -29,6 +29,7 @@ type UsePublishControllerParams = Pick<
   onClose: () => void
 }
 
+// A collaborator's publish lands here as an event, not as this tab's mutation.
 function refreshAppDeploymentData(queryClient: QueryClient, appId: string) {
   const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(appId)
   const environmentDeploymentsQuery =
@@ -64,13 +65,6 @@ export function usePublishController({
   const publishingRef = useRef(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
-  const invalidateAppWorkflow = useCallback(
-    (workflowAppId: string) =>
-      queryClient.invalidateQueries({
-        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
-      }),
-    [queryClient],
-  )
   const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
   const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
@@ -96,12 +90,7 @@ export function usePublishController({
     setPublished(true)
 
     const socket = appId ? webSocketClient.getSocket(appId) : null
-    if (appId) {
-      invalidateAppWorkflow(appId)
-      if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
-    } else {
-      console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-    }
+    if (!appId) console.warn('[app-publisher] missing appId, skip socket emit')
     if (socket) {
       const timestamp = Date.now()
       socket.emit('collaboration_event', {

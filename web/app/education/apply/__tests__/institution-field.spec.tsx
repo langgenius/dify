@@ -244,11 +244,11 @@ describe('InstitutionField', () => {
     ).toBe(true)
   })
 
-  it('shows the server message when the search fails', async () => {
+  it('shows the translated reason when the search fails', async () => {
     const user = userEvent.setup()
     mockAutocomplete.mockRejectedValue(
-      createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+      createHttpError(new Response(null, { status: 502 }), {
+        code: 'billing_operation_failed',
         message: 'Server says why',
       }),
     )
@@ -260,7 +260,9 @@ describe('InstitutionField', () => {
       'A',
     )
 
-    expect((await screen.findAllByText('Server says why')).length).toBeGreaterThan(0)
+    expect(
+      (await screen.findAllByText('requestErrors.code.billing_operation_failed')).length,
+    ).toBeGreaterThan(0)
   })
 
   it('asks to try again later while the search service is unavailable', async () => {

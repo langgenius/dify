@@ -59,10 +59,10 @@ from models import Account
 from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.console_runtime import AgentConsoleConversationMissingError, AgentConsolePreviewDisabledError
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError

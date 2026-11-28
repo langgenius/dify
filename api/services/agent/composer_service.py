@@ -30,8 +30,8 @@ from models.agent_config_entities import (
 )
 from models.agent_soul_state import agent_soul_has_model, backfill_cli_tool_ids
 from models.workflow import Workflow
-from repositories.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
-from repositories.agent_drafts import (
+from repositories.agent.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
+from repositories.agent.agent_drafts import (
     agent_soul_matches_active_config,
     create_composer_snapshot,
     get_or_create_agent_draft,
@@ -40,7 +40,7 @@ from repositories.agent_drafts import (
     rebase_workflow_only_normal_draft,
     save_agent_draft,
 )
-from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from repositories.agent.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent.app_composer import composer_validation_findings
 from services.agent.app_composer_store import AgentComposerSnapshotMissingError

@@ -20,7 +20,7 @@ import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -231,7 +231,7 @@ function AgentFileItem({
   )
   const downloadFileAction = useCallback(
     (targetFile: AgentFileNode) => {
-      void downloadFile(targetFile).catch((error: unknown) => toastRequestError(error))
+      void downloadFile(targetFile).catch((error: unknown) => reportRequestError(error))
     },
     [downloadFile],
   )

@@ -4,6 +4,7 @@ import type { EvaluationResourceProps } from './types'
 import { useEffect } from 'react'
 import EvaluationLayout from './components/layout/evaluation-layout'
 import EvaluationNodeNameNotice from './evaluation-node-name-notice'
+import EvaluationTargetWorkflowGuard from './evaluation-target-workflow-guard'
 import { useEvaluationConfigQuery } from './queries'
 import { useEvaluationStore } from './store'
 
@@ -28,13 +29,15 @@ const EvaluationContent = ({ resourceType, resourceId }: EvaluationResourceProps
 const Evaluation = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   if (resourceType === 'apps' || resourceType === 'snippets') {
     return (
-      <EvaluationNodeNameNotice
+      <EvaluationTargetWorkflowGuard
         key={`${resourceType}:${resourceId}`}
         resourceType={resourceType}
         resourceId={resourceId}
       >
-        <EvaluationContent resourceType={resourceType} resourceId={resourceId} />
-      </EvaluationNodeNameNotice>
+        <EvaluationNodeNameNotice resourceType={resourceType} resourceId={resourceId}>
+          <EvaluationContent resourceType={resourceType} resourceId={resourceId} />
+        </EvaluationNodeNameNotice>
+      </EvaluationTargetWorkflowGuard>
     )
   }
 

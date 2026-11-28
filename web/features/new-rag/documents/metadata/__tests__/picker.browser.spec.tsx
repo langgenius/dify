@@ -94,7 +94,11 @@ it('does not submit the enclosing form when Enter has no matching field', async 
 })
 
 it.each([
-  ['the server message', { message: 'Server says why' }, 'Server says why'],
+  [
+    'the translated error code',
+    { code: 'invalid_input', message: 'Server says why' },
+    'requestErrors.code.invalid_input',
+  ],
   ['the fallback text without one', undefined, 'knowledgeCitation.documentLoadErrorDescription'],
 ])('shows %s when the fields fail to load', async (_, body, expected) => {
   const onRetry = vi.fn()

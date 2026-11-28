@@ -80,12 +80,12 @@ it.each([
     error: () => apiError({ status: 502, code: 'BAD_GATEWAY', message: 'Bad gateway' }),
     toast: 'Bad gateway',
   },
-  // Without a backend message only the mutation cache's default is shown; the dialog adds none.
+  // Without a backend message only the mutation cache's generic server text is shown; the dialog
+  // adds none.
   {
     failure: 'a 502 response without a message',
     error: () => apiError({ status: 502, code: 'BAD_GATEWAY', message: ' ' }),
-    // The cache reads its default through the global i18n instance, mocked without namespaces.
-    toast: 'api.actionFailed',
+    toast: 'requestErrors.generic.server',
   },
 ])('retains the draft and allows retry after $failure', async ({ error, toast }) => {
   const failed = createDeferred<{ result: string }>()

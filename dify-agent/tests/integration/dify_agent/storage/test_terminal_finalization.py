@@ -14,6 +14,7 @@ import pytest
 from redis.asyncio import Redis
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
@@ -469,6 +470,13 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
         @property
         def terminal_usage(self) -> None:
             return None
+
+        @property
+        def terminal_tool_call_limits(self) -> dict[str, ToolCallLimitSnapshot]:
+            return {}
+
+        def close_tool_admission(self) -> None:
+            pass
 
         async def run(self) -> None:
             self.started.set()

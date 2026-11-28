@@ -17,7 +17,7 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { updateConversationVariables } from '@/service/workflow'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -90,7 +90,7 @@ const ChatVariablePanel = () => {
         invalidateConversationVarValues()
       } catch (error) {
         console.error('Failed to update conversation variables:', error)
-        toastRequestError(error)
+        reportRequestError(error)
         // Revert local state on error
         updateChatVarList(varList)
       }
@@ -134,7 +134,7 @@ const ChatVariablePanel = () => {
           invalidateConversationVarValues()
         } catch (error) {
           console.error('Failed to update conversation variables:', error)
-          toastRequestError(error)
+          reportRequestError(error)
           // Revert local state on error
           updateChatVarList(varList)
         }
@@ -177,7 +177,7 @@ const ChatVariablePanel = () => {
         invalidateConversationVarValues()
       } catch (error) {
         console.error('Failed to update conversation variables:', error)
-        toastRequestError(error)
+        reportRequestError(error)
         // Revert local state on error
         updateChatVarList(varList)
       }

@@ -8,6 +8,7 @@ from dify_agent.layers.dify_plugin import DifyModelModality
 
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelWithProviderEntity
+from core.entities.provider_configuration import configuration_for_model
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -64,6 +65,7 @@ class DifyCredentialsProvider:
         return provider_model.model_copy(deep=True)
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
+        """Cache credentials from the active model route, or propagate its status or credential error."""
         if (provider_name, model_name) in self.credentials_cache:
             return deepcopy(self.credentials_cache[(provider_name, model_name)])
 
@@ -73,6 +75,7 @@ class DifyCredentialsProvider:
         if not provider_configuration:
             raise ValueError(f"Provider {provider_name} does not exist.")
 
+        provider_configuration = configuration_for_model(provider_configuration, ModelType.LLM, model_name)
         provider_model = provider_configuration.get_provider_model(model_type=ModelType.LLM, model=model_name)
         if provider_model is None:
             raise ModelNotExistError(f"Model {model_name} not exist.")

@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 from http import HTTPStatus
 from inspect import unwrap
 from unittest.mock import patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
@@ -42,9 +42,10 @@ from models import Account
 from models import App as _audio_App
 from models import AppMode as _audio_AppMode
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
+from models.enums import ConversationFromSource
 from models.model import App as _agent_audio_readonly_App
 from models.model import AppMode as _agent_audio_readonly_AppMode
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.audio_types import AudioAppRef
@@ -57,7 +58,7 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 from tests.helpers.unit.audio_runtime_fixtures import AudioRuntimeObservations
-from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
@@ -103,6 +104,60 @@ def test_agent_asr_rejects_rebound_app_after_admission(sqlite_session: Session, 
         application_services().app_audio.transcript_agent_asr(
             app=admitted, agent_id=str(AGENT_ID), account_id=harness.account_id, build=True, audio=None
         )
+
+
+def test_agent_tts_keeps_same_account_messages_within_their_app(
+    harness: Harness, audio_runtime: AudioRuntimeObservations
+) -> None:
+    """Return JSON null without resolving a provider for an owned message from a different App."""
+    target_agent_id, _ = harness.create_agent()
+    source_app = make_app(tenant_id=harness.tenant_id, app_id=str(uuid4()), mode=_audio_AppMode.AGENT)
+    source_agent = Agent(
+        tenant_id=harness.tenant_id,
+        name="Source Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id=source_app.id,
+        created_by=harness.account_id,
+    )
+    conversation = make_conversation(
+        conversation_id=None,
+        app_id=source_app.id,
+        mode=_audio_AppMode.AGENT,
+        from_source=ConversationFromSource.CONSOLE,
+        from_account_id=harness.account_id,
+    )
+    message = make_message(
+        message_id=None,
+        app_id=source_app.id,
+        conversation_id=conversation.id,
+        query="What did the source Agent say?",
+        message=[],
+        answer="An answer from the source Agent.",
+        from_source=ConversationFromSource.CONSOLE,
+        from_account_id=harness.account_id,
+    )
+    with harness.sessions.begin() as session:
+        session.add_all([source_app, source_agent, conversation, message])
+    payload = {"message_id": message.id, "text": "Fallback text", "voice": "echo"}
+
+    response = harness.client.post(
+        f"/console/api/agent/{target_agent_id}/text-to-audio", headers=harness.headers, json=payload
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.mimetype == "application/json"
+    assert response.get_data().strip() == b"null"
+    assert audio_runtime.resolutions == []
+    assert audio_runtime.daemon_calls == []
+
+    audio_runtime.tts_result = b"ID3audio"
+    source_response = harness.client.post(
+        f"/console/api/agent/{source_agent.id}/text-to-audio", headers=harness.headers, json=payload, buffered=True
+    )
+    assert source_response.status_code == HTTPStatus.OK
+    assert source_response.get_data() == b"ID3audio"
+    assert audio_runtime.tts_calls == [{"content_text": message.answer, "voice": "echo"}]
 
 
 class TestAgentAudioReadonlyCases:

@@ -52,9 +52,9 @@ from models import App, AppMode
 from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
+from services.agent.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_config_contracts import AgentConfigVersionMissingError
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
-from services.agent_config_contracts import AgentConfigVersionMissingError
-from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService, create_tts_response
 from services.audio_types import AudioAppRef, AudioUpload

@@ -2,8 +2,13 @@ import type { consoleClient } from '@/service/console'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { List } from '../../list'
 import EditAnnotationDialog from '../index'
@@ -66,6 +71,8 @@ async function setup(source: 'chat' | 'list', onlyEditResponse = false) {
         onBatchDelete={vi.fn()}
       />
     ),
+    // Like the app's client: an annotation write refreshes the app's annotation reads and quota.
+    { queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }) },
   )
   const user = userEvent.setup()
   const trigger = screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' })
@@ -191,23 +198,23 @@ describe.each(['chat', 'list'] as const)('%s annotation editor', (source) => {
     })
   })
 
-  it('shows the server message when saving fails', async () => {
+  it('shows the translated reason when saving fails', async () => {
     api.edit.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'app_unavailable',
         message: 'Server says why',
       }),
     )
     const { user } = await setup(source)
     const { save } = await editField(user, 'answerName', 'Corrected answer')
     await user.click(save)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.app_unavailable')
   })
 
-  it('shows the server message when deletion fails', async () => {
+  it('shows the translated reason when deletion fails', async () => {
     api.remove.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'app_unavailable',
         message: 'Server says why',
       }),
     )
@@ -217,7 +224,9 @@ describe.each(['chat', 'list'] as const)('%s annotation editor', (source) => {
     )
     const confirmation = screen.getByRole('alertdialog')
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
-    expect(await within(confirmation).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(confirmation).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.app_unavailable',
+    )
   })
 })
 

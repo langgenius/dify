@@ -22,7 +22,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 const EDUCATION_AUTOCOMPLETE_PAGE_SIZE = 40
 
@@ -33,6 +33,7 @@ type InstitutionFieldProps = {
 
 const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const { t } = useTranslation(['billing', 'common', 'education'])
+  const describeRequestError = useRequestErrorDescriber()
   const inputId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const [isPopupOpen, setIsPopupOpen] = useState(false)
@@ -68,7 +69,10 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const errorMessage =
     isDefinedError(error) && error.code === 'billing_unavailable'
       ? t(($) => $['errors.unavailable'], { ns: 'billing' })
-      : (getRequestErrorMessage(error) ?? t(($) => $['dynamicSelect.error'], { ns: 'common' }))
+      : describeRequestError(
+          error,
+          t(($) => $['dynamicSelect.error'], { ns: 'common' }),
+        )
   const shouldShowEmpty = shouldOpenPopup && footerState === null && suggestions.length === 0
   const canLoadMore = shouldOpenPopup && hasNextPage && !isLoading && !isError
 
