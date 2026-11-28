@@ -26,6 +26,8 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums import DeploymentEdition
+from extensions.ext_mail import mail
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
@@ -55,7 +57,11 @@ from repositories.human_input_v2.email_channel.ports import EmailProviderOperati
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
-from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    WorkspaceIMChannelReader,
+    WorkspaceIMChannelWriter,
+)
+from services.human_input_v2 import message_template_test_composition
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService
 from services.human_input_v2.message_template_test_service import (
     MessageTemplateSendError,
@@ -134,6 +140,11 @@ class _Context:
         return match.group()
 
 
+@dataclass(frozen=True)
+class _DatabaseEngine:
+    engine: Engine
+
+
 @pytest.fixture
 def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     engine = sqlite_engine
@@ -157,6 +168,8 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
         email_repository_factory=SQLAlchemyEmailChannelRepository,
         email_gateway=gateway,
         im_adapter_factory=adapter_factory,
+        discovery_im_reader=lambda session: WorkspaceIMChannelReader(session, _TENANT).get(),
+        discovery_email_available=lambda session: SQLAlchemyEmailChannelRepository(session).load(_TENANT) is not None,
         form_service=HumanInputDeliveryTestFormService(
             session_factory=sessions,
             tenant_id=_TENANT,
@@ -242,6 +255,48 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     result = _Context(service, sessions, gateway, adapter, adapter_errors, requested_channels)
     result.template("Review {{#start.name#}}", "Please review {{#url#}}")
     return result
+
+
+def test_discovery_uses_injected_workspace_readers_without_deployment_globals(context: _Context) -> None:
+    assert context.service.list_channels() == (DebugChannel.EMAIL, DebugChannel.SLACK)
+    context.gateway.send_message.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("edition", "expected"),
+    [
+        (DeploymentEdition.COMMUNITY, (DebugChannel.SLACK,)),
+        (DeploymentEdition.CLOUD, (DebugChannel.EMAIL, DebugChannel.SLACK)),
+        (DeploymentEdition.ENTERPRISE, (DebugChannel.EMAIL, DebugChannel.FEISHU)),
+    ],
+)
+def test_discovery_composition_selects_sources_for_each_edition(
+    context: _Context,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    expected: tuple[DebugChannel, ...],
+) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
+    monkeypatch.setattr(mail, "is_inited", lambda: True)
+    monkeypatch.setattr(message_template_test_composition, "db", _DatabaseEngine(sqlite_engine))
+    with context.sessions.begin() as session:
+        session.add(
+            HumanInputIMChannel(
+                owner_key="deployment",
+                provider=IMProvider.FEISHU,
+                provider_tenant_id="enterprise-feishu",
+                app_identifier="enterprise-app",
+                webhook_id="enterprise-webhook",
+                encrypted_credentials=ChannelEncryptedCredentials(ciphertext="not-decryptable"),
+                status=IMChannelStatus.CONNECTED,
+            )
+        )
+
+    service = message_template_test_composition.build_message_template_test_service(
+        tenant_id=str(_TENANT), account_id=str(_ACCOUNT), account_email="editor@example.com"
+    )
+    assert service.list_channels() == expected
 
 
 def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(
