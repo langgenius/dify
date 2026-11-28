@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Mapping, Sequence
 from typing import Literal
-from warnings import deprecated
 
 from pydantic import ValidationError
 
@@ -137,10 +136,15 @@ class BillingService:
         )
 
     @classmethod
-    @deprecated("Only used by the deprecated model-provider checkout endpoint.")
     def get_model_provider_payment_link(
         cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str
     ) -> billing.GetModelProviderPaymentLinkReply:
+        """Payment link for the deprecated model-provider checkout route.
+
+        The route keeps the deprecation itself (``console_openapi`` marks the endpoint deprecated); this
+        forwarding helper does not need a second marker, which would only make callers suppress a warning
+        about a route they cannot stop using.
+        """
         return billing.model_provider_get_model_provider_payment_link(
             provider_name=provider_name, tenant_id=tenant_id, account_id=account_id, prefilled_email=prefilled_email
         )

@@ -278,3 +278,81 @@ def test_committed_snapshots_keep_only_the_reasons_of_called_services() -> None:
 
 def test_committed_client_matches_snapshots() -> None:
     assert generator.check(generator.expected_files({s: generator.load_snapshot(s) for s in generator.SERVICES})) == 0
+
+
+def test_open_enum_field_renders_as_str_instead_of_the_declared_enum() -> None:
+    schema = {"type": "string", "enum": ["", "freeze"]}
+
+    assert generator.field_type(schema, True, "Reply.value", open_enum=True) == "str"
+    assert generator.field_type(schema, True, "Reply.value", open_enum=False) == 'Literal["", "freeze"]'
+
+
+def test_open_enum_field_keeps_nullability_and_presence_rules() -> None:
+    schema = {"type": "string", "enum": ["", "freeze"], "nullable": True}
+
+    assert generator.field_type(schema, True, "Reply.value", open_enum=True) == "str | None"
+    assert generator.field_type(schema, False, "Reply.value", open_enum=True) == "str | None"
+
+
+def test_committed_snapshots_satisfy_the_open_enum_allowlist() -> None:
+    snapshots = {service: generator.load_snapshot(service) for service in generator.SERVICES}
+
+    generator.check_open_enum_fields(snapshots)
+
+    reply_schema = generator.parse_snapshot_schemas(snapshots["saas"])["CheckAccountInFreezeReply"]
+    assert reply_schema.properties["freezeType"].enum is not None
+    assert 'freeze_type: str = Field(alias="freezeType")' in generator.render_module("saas", snapshots["saas"])
+
+
+def test_open_enum_entries_must_still_name_an_enum_field() -> None:
+    snapshots: dict[generator.Service, generator.JsonObject] = {
+        "billing": {"components": {"schemas": {"Reply": {"properties": {"value": {"type": "string"}}}}}}
+    }
+
+    with pytest.raises(generator.GenerationError, match="which is no longer an enum"):
+        generator.check_open_enum_fields(snapshots, open_enum_fields=frozenset({("Reply", "value")}))
+
+
+def test_open_enum_entries_must_exist_in_a_snapshot() -> None:
+    snapshots: dict[generator.Service, generator.JsonObject] = {
+        "billing": {"components": {"schemas": {"Reply": {"properties": {"value": {"type": "string", "enum": ["a"]}}}}}}
+    }
+
+    with pytest.raises(generator.GenerationError, match="missing from the snapshots"):
+        generator.check_open_enum_fields(snapshots, open_enum_fields=frozenset({("Reply", "value"), ("Reply", "gone")}))
+
+
+@pytest.mark.parametrize(
+    "snapshot",
+    [
+        {},
+        {"components": []},
+        {"components": {}},
+        {"components": {"schemas": []}},
+        {"components": {"schemas": {"Reply": []}}},
+        {"components": {"schemas": {"Reply": {"properties": {"value": []}}}}},
+    ],
+    ids=["missing-components", "invalid-components", "missing-schemas", "invalid-schemas", "schema", "property"],
+)
+def test_generation_rejects_malformed_snapshot_schemas(snapshot: generator.JsonObject) -> None:
+    with pytest.raises(generator.GenerationError, match="snapshot schemas do not match the expected OpenAPI shape"):
+        generator.expected_files({"billing": snapshot})
+
+
+def test_parse_snapshot_schemas_preserves_raw_rendering_input() -> None:
+    snapshot: generator.JsonObject = {
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Second": {"properties": {"kind": {"type": "string", "enum": ["x", "y"]}}},
+                "First": {"$ref": "#/components/schemas/Second"},
+            }
+        },
+    }
+    original = generator.render_snapshot(snapshot)
+
+    schemas = generator.parse_snapshot_schemas(snapshot)
+
+    assert list(schemas) == ["Second", "First"]
+    assert schemas["Second"].properties["kind"].enum == ["x", "y"]
+    assert generator.render_snapshot(snapshot) == original

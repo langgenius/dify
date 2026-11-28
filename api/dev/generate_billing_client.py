@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 API_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = API_ROOT.parent
@@ -65,6 +65,13 @@ BASE_MODEL_ATTRIBUTES = frozenset(dir(BaseModel))
 ERROR_SCHEMA = "Error"
 ERROR_REASON_SUFFIX = "ErrorReason"
 ERROR_CLASS_SUFFIXES = ("UpstreamError", "UpstreamUnavailableError", "UpstreamInvalidResponseError")
+
+# A proto enum is open: a dify-saas deployment older or newer than this snapshot can send a value the
+# committed spec never listed, and a `Literal[...]` would then reject a reply the subject can still
+# read. Fields named here render as `str` instead, keyed by (schema, wire property name). Keep the set
+# minimal: only add a field whose consumer already handles unknown values, and delete the entry once
+# the upstream spec drops the enum.
+OPEN_ENUM_FIELDS: frozenset[tuple[str, str]] = frozenset({("CheckAccountInFreezeReply", "freezeType")})
 
 
 @dataclass(frozen=True)
@@ -121,6 +128,53 @@ ALLOWED_OPERATIONS: dict[Service, tuple[AllowedOperation, ...]] = {
 
 class GenerationError(Exception):
     pass
+
+
+class SnapshotProperty(BaseModel):
+    """One `properties` entry of a snapshot schema, parsed once at the snapshot boundary.
+
+    Only `enum` is modelled: it is the sole key the open-enum allowlist reads. Every other OpenAPI
+    key stays reachable through `extra="allow"`, so the snapshot remains the rendering input while
+    the check receives a typed value instead of probing dictionary keys.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    enum: list[str] | None = None
+
+
+class SnapshotSchema(BaseModel):
+    """One named schema of a snapshot, with `properties` parsed into `SnapshotProperty`."""
+
+    model_config = ConfigDict(extra="allow")
+
+    properties: dict[str, SnapshotProperty] = Field(default_factory=dict)
+
+
+type SnapshotSchemas = dict[str, SnapshotSchema]
+
+
+class SnapshotComponents(BaseModel):
+    """The named schemas under the snapshot's OpenAPI components."""
+
+    schemas: SnapshotSchemas
+
+
+class SnapshotSchemaEnvelope(BaseModel):
+    """The portion of the raw snapshot needed by the schema allowlist check."""
+
+    components: SnapshotComponents
+
+
+def parse_snapshot_schemas(snapshot: JsonObject) -> SnapshotSchemas:
+    """Parse the schema envelope without changing the raw rendering input.
+
+    Raise `GenerationError` when required sections or their schemas have an invalid shape.
+    """
+    try:
+        return SnapshotSchemaEnvelope.model_validate(snapshot).components.schemas
+    except ValidationError as error:
+        raise GenerationError(f"snapshot schemas do not match the expected OpenAPI shape: {error}") from error
 
 
 def snapshot_path(service: Service) -> Path:
@@ -347,8 +401,14 @@ def python_type(schema: JsonObject, context: str) -> str:
     raise GenerationError(f"{context}: unsupported schema {json.dumps(schema)}; give it a named message type")
 
 
-def field_type(schema: JsonObject, required: bool, context: str) -> str:
-    annotation = python_type(schema, context)
+def field_type(schema: JsonObject, required: bool, context: str, *, open_enum: bool) -> str:
+    """Render a field annotation.
+
+    Precondition: `open_enum` is true only for a `(schema, wire name)` in `OPEN_ENUM_FIELDS`.
+    Postcondition: the declared enum is replaced by `str` when `open_enum`, so an upstream value the
+    snapshot does not list still validates; nullability and presence rules are unaffected.
+    """
+    annotation = "str" if open_enum else python_type(schema, context)
     if schema.get("nullable") or not required:
         annotation = f"{annotation} | None"
     return annotation
@@ -406,7 +466,8 @@ def render_model(name: str, schema: JsonObject) -> list[str]:
     properties: dict[str, JsonObject] = schema.get("properties", {})
     for wire_name, field in properties.items():
         attribute = python_name(wire_name)
-        annotation = field_type(field, wire_name in required, f"{name}.{wire_name}")
+        open_enum = (name, wire_name) in OPEN_ENUM_FIELDS
+        annotation = field_type(field, wire_name in required, f"{name}.{wire_name}", open_enum=open_enum)
         default = "" if wire_name in required else "None"
         if attribute != wire_name:
             arguments = ", ".join([*([default] if default else []), f"alias={json.dumps(wire_name)}"])
@@ -590,7 +651,40 @@ def format_python(source: str, path: Path) -> str:
 # --- entry point ----------------------------------------------------------------------------------
 
 
+def check_open_enum_fields(
+    snapshots: dict[Service, JsonObject],
+    *,
+    open_enum_fields: frozenset[tuple[str, str]] = OPEN_ENUM_FIELDS,
+) -> None:
+    """Check that every `open_enum_fields` entry still names a string enum field of a snapshot.
+
+    Precondition: `snapshots` holds the parsed snapshot JSON; `open_enum_fields` is the allowlist to
+    verify, defaulting to the module-level one that generation uses.
+
+    Postcondition: a stale entry fails generation instead of silently doing nothing, which would
+    quietly narrow the field back to the enum. Entries are dropped only together with the upstream
+    enum, and that is a deliberate edit here.
+
+    The allowlist is a parameter so the tests hand in their own instead of patching the module
+    global, and the snapshots are parsed into `SnapshotSchema` here so the check reads typed fields
+    rather than probing nested dictionaries.
+    """
+    found: set[tuple[str, str]] = set()
+    for snapshot in snapshots.values():
+        schemas = parse_snapshot_schemas(snapshot)
+        for name, wire_name in open_enum_fields:
+            schema = schemas.get(name)
+            property_schema = schema.properties.get(wire_name) if schema is not None else None
+            if property_schema is not None and property_schema.enum is None:
+                raise GenerationError(f"OPEN_ENUM_FIELDS lists {name}.{wire_name}, which is no longer an enum")
+            if property_schema is not None:
+                found.add((name, wire_name))
+    if stale := sorted(open_enum_fields - found):
+        raise GenerationError(f"OPEN_ENUM_FIELDS lists fields missing from the snapshots: {stale}")
+
+
 def expected_files(snapshots: dict[Service, JsonObject]) -> dict[Path, str]:
+    check_open_enum_fields(snapshots)
     files: dict[Path, str] = {}
     for service, snapshot in snapshots.items():
         files[snapshot_path(service)] = render_snapshot(snapshot)

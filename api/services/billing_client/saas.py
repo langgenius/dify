@@ -42,7 +42,7 @@ class AppNetworkAccessGroupBinding(BillingModel):
 
 class CheckAccountInFreezeReply(BillingModel):
     data: bool
-    freeze_type: Literal["", "freeze", "email_domain_suspended"] = Field(alias="freezeType")
+    freeze_type: str = Field(alias="freezeType")
 
 
 class CleanupAppNetworkAccessGroupBindingReply(BillingModel):
