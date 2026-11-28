@@ -833,6 +833,47 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest
     }
 
 
+def test_build_redacts_inline_secret_env_values_from_logged_request(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            prompt={"system_prompt": "You are careful."},
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            tools={
+                "cli_tools": [
+                    {
+                        "name": "gh",
+                        "install_commands": ["apt-get install -y gh"],
+                        "env": {"secret_refs": [{"name": "GITHUB_TOKEN", "value": "tool-secret-value"}]},
+                    }
+                ]
+            },
+            env={"secret_refs": [{"name": "DEMO_SECRET", "value": "dummy-value-123"}]},
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID]["config"]
+    assert shell_config["env"] == [{"name": "DEMO_SECRET", "value": "dummy-value-123"}]
+    assert shell_config["cli_tools"][0]["env"] == [{"name": "GITHUB_TOKEN", "value": "tool-secret-value"}]
+    redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
+    redacted_shell_config = redacted_layers[DIFY_SHELL_LAYER_ID]["config"]
+    assert redacted_shell_config["env"] == [{"name": "DEMO_SECRET", "value": "[REDACTED]"}]
+    assert redacted_shell_config["cli_tools"][0]["env"] == [{"name": "GITHUB_TOKEN", "value": "[REDACTED]"}]
+
+
 def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     agent_soul = AgentSoulConfig.model_validate(
         {

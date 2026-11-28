@@ -607,6 +607,11 @@ def redact_for_agent_backend_log(value: object) -> object:
                 or (key_text == "tracing" and item is not None)
             ):
                 redacted[key] = "[REDACTED]"
+            elif key_text == "env" and isinstance(item, list):
+                redacted[key] = [
+                    {**entry, "value": "[REDACTED]"} if isinstance(entry, dict) and "value" in entry else entry
+                    for entry in item
+                ]
             else:
                 redacted[key] = redact_for_agent_backend_log(item)
         return redacted
