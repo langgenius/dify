@@ -15,6 +15,20 @@ import FormItem from './form-item'
 import InputModeSelect from './input-mode-selec'
 import VariableTypeSelect from './variable-type-select'
 
+// The same empty value each field reports when cleared, never `undefined`: the draft is synced
+// as JSON, which drops undefined keys, and the backend requires `value` on every loop variable.
+const getDefaultValue = (varType: VarType, valueType: ValueType) => {
+  if (valueType === ValueType.variable) return []
+  switch (varType) {
+    case VarType.boolean:
+      return false
+    case VarType.arrayBoolean:
+      return [false]
+    default:
+      return ''
+  }
+}
+
 type ItemProps = {
   item: LoopVariable
 } & LoopVariablesComponentShape
@@ -44,18 +58,6 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
     [item.id, handleUpdateLoopVariable],
   )
 
-  const getDefaultValue = useCallback((varType: VarType, valueType: ValueType) => {
-    if (valueType === ValueType.variable) return undefined
-    switch (varType) {
-      case VarType.boolean:
-        return false
-      case VarType.arrayBoolean:
-        return [false]
-      default:
-        return undefined
-    }
-  }, [])
-
   const handleUpdateItemVarType = useCallback(
     (value: VarType) => {
       handleUpdateLoopVariable(item.id, {
@@ -63,7 +65,7 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
         value: getDefaultValue(value, item.value_type),
       })
     },
-    [item.id, handleUpdateLoopVariable],
+    [item.id, item.value_type, handleUpdateLoopVariable],
   )
 
   const handleUpdateItemValueType = useCallback(
@@ -73,7 +75,7 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
         value: getDefaultValue(item.var_type, value),
       })
     },
-    [item.id, handleUpdateLoopVariable],
+    [item.id, item.var_type, handleUpdateLoopVariable],
   )
 
   const handleUpdateItemValue = useCallback(
