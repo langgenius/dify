@@ -6,7 +6,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
 
 from flask import current_app
-from pydantic import JsonValue
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -78,6 +78,7 @@ from graphon.nodes.tool_runtime_entities import (
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
+from models.tools import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .human_input_adapter import (
@@ -129,6 +130,7 @@ if TYPE_CHECKING:
 
 
 _file_access_controller = DatabaseFileAccessController()
+_file_mapping_adapter = TypeAdapter(file_factory.FileMapping)
 
 
 def resolve_dify_run_context(run_context: Mapping[str, Any] | DifyRunContext) -> DifyRunContext:
@@ -169,15 +171,41 @@ def apply_dify_debug_email_recipient(
 
 
 class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
-    def __init__(self, run_context: Mapping[str, Any] | DifyRunContext) -> None:
+    def __init__(
+        self,
+        run_context: Mapping[str, Any] | DifyRunContext,
+        *,
+        signed_file_url_generator: file_factory.SignedFileUrlGenerator | None = None,
+    ) -> None:
+        """Create a tenant-scoped factory with the default or injected URL generator.
+
+        Preconditions: ``run_context`` contains a valid Dify context. A supplied
+        signed URL generator returns an absolute URL for persisted upload files.
+        Postconditions: subsequent mappings are validated against ``FileMapping``
+        and resolved for the context tenant; no state is mutated by construction.
+        """
         self._run_context = resolve_dify_run_context(run_context)
+        self._signed_file_url_generator = signed_file_url_generator
 
     @override
-    def build_from_mapping(self, *, mapping: Mapping[str, Any]):
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
+        """Resolve a workflow file mapping into the graph-layer ``File``.
+
+        Preconditions: ``mapping`` is a mapping payload and
+        ``self._run_context.tenant_id`` names the owning tenant. The payload is
+        validated against the product ``FileMapping`` union before file resolution.
+        Postconditions: the result is a ``File`` rebuilt from the persisted record
+        for that tenant, so callers never receive the raw mapping back.
+        Failure behavior: an invalid mapping raises ``ValidationError``; a valid
+        mapping with an unknown or inaccessible record raises ``ValueError``. No
+        state is mutated on either path.
+        """
+        parsed_mapping = _file_mapping_adapter.validate_python(mapping)
         return file_factory.build_from_mapping(
-            mapping=mapping,
+            mapping=parsed_mapping,
             tenant_id=self._run_context.tenant_id,
             access_controller=_file_access_controller,
+            signed_file_url_generator=self._signed_file_url_generator,
         )
 
 
@@ -506,6 +534,28 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
         ]
 
 
+class ToolFileStore(Protocol):
+    """Tool-file storage capabilities required by :class:`DifyToolFileManager`.
+
+    Production passes the storage owner (:class:`core.tools.tool_file_manager.ToolFileManager`).
+    Tests pass an in-memory implementation of this protocol instead of patching
+    the production class, so the adapter is exercised through its real seam.
+    """
+
+    def create_file_by_raw(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> ToolFile: ...
+
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator[bytes] | None, File | None]: ...
+
+
 class DifyToolFileManager(ToolFileManagerProtocol):
     """Workflow adapter that resolves conversation scope outside `graphon`."""
 
@@ -516,9 +566,10 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
         conversation_id_getter: Callable[[], str | None] | None = None,
+        tool_file_store: ToolFileStore | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
-        self._manager = ToolFileManager()
+        self._store: ToolFileStore = tool_file_store if tool_file_store is not None else ToolFileManager()
         self._conversation_id_getter = conversation_id_getter
 
     @override
@@ -530,7 +581,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         filename: str | None = None,
     ) -> Any:
         conversation_id = self._conversation_id_getter() if self._conversation_id_getter is not None else None
-        return self._manager.create_file_by_raw(
+        return self._store.create_file_by_raw(
             user_id=self._run_context.user_id,
             tenant_id=self._run_context.tenant_id,
             conversation_id=conversation_id,
@@ -540,8 +591,8 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         )
 
     @override
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str):
-        return self._manager.get_file_generator_by_tool_file_id(tool_file_id)
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator[bytes] | None, File | None]:
+        return self._store.get_file_generator_by_tool_file_id(tool_file_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -574,9 +625,20 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         session_maker: sessionmaker[Session] | None = None,
         execution_driver: WorkflowRunDriver | None = None,
         workflow_tools: Mapping[str, WorkflowTool] | None = None,
+        signed_file_url_generator: file_factory.SignedFileUrlGenerator | None = None,
     ) -> None:
+        """Build a tool runtime with its tenant-scoped file-reference factory.
+
+        Preconditions: ``run_context`` is a valid Dify run context; an optional
+        signed URL generator returns an absolute URL for persisted upload files.
+        Postconditions: file mappings validate and resolve within the run tenant;
+        existing runtime dependencies retain their default behavior when omitted.
+        """
         self._run_context = resolve_dify_run_context(run_context)
-        self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
+        self._file_reference_factory = DifyFileReferenceFactory(
+            self._run_context,
+            signed_file_url_generator=signed_file_url_generator,
+        )
         self._session_maker = session_maker
         self._execution_driver = execution_driver
         self._workflow_tools = workflow_tools if workflow_tools is not None else {}
@@ -586,7 +648,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         return self._file_reference_factory
 
     @override
-    def build_file_reference(self, *, mapping: Mapping[str, Any]):
+    def build_file_reference(self, *, mapping: Mapping[str, Any]) -> File:
+        """Delegate a tool-produced file mapping to the file reference factory.
+
+        Preconditions and postconditions are those of
+        ``DifyFileReferenceFactory.build_from_mapping``: the returned value is a
+        ``File``, never the mapping itself; invalid mapping shapes raise
+        ``ValidationError`` and unresolved records raise ``ValueError``.
+        """
         return self._file_reference_factory.build_from_mapping(mapping=mapping)
 
     @override

@@ -1,12 +1,14 @@
 """Unit tests for ``ToolFileManager`` behavior.
 
-File metadata is persisted through real SQLite-backed sessions. Storage and
-remote HTTP remain mocked because they are external I/O boundaries.
+File metadata is persisted through real SQLite-backed sessions. Most storage and
+remote HTTP interactions remain mocked; one focused local-filesystem test exercises
+injected storage reads and writes without replacing the global storage facade.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
@@ -16,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import core.tools.tool_file_manager as tool_file_manager_module
 from core.tools.tool_file_manager import ToolFileManager
+from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.file import FileTransferMethod, FileType
 from models.enums import CreatorUserRole
 from models.model import MessageFile
@@ -61,8 +64,39 @@ def test_tool_file_manager_sign_file_builds_url() -> None:
     assert "/files/tools/tf-1.png" in url
 
 
+def test_injected_storage_service_round_trips_file_bytes(sqlite_tool_file_session: Session, tmp_path: Path) -> None:
+    """Exercise manager save and one-shot load through a real local backend.
+
+    Preconditions: ``sqlite_tool_file_session`` binds manager queries to the test
+    database and ``tmp_path`` is writable. Postconditions: the persisted row points
+    to bytes written/read by the injected backend, which remains unchanged by reads;
+    cleanup removes the temporary storage key. Storage and database errors propagate.
+    """
+    backend = OpenDALStorage(scheme="fs", root=str(tmp_path))
+    manager = ToolFileManager(storage_service=backend)
+    file_binary = b"real local storage payload"
+    tool_file: ToolFile | None = None
+    try:
+        tool_file = manager.create_file_by_raw(
+            user_id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            conversation_id=None,
+            file_binary=file_binary,
+            mimetype="text/plain",
+            filename="readme.txt",
+        )
+        persisted = sqlite_tool_file_session.get(ToolFile, tool_file.id)
+
+        assert persisted is not None
+        assert persisted.file_key == tool_file.file_key
+        assert manager.get_file_binary(tool_file.id) == (file_binary, "text/plain")
+        assert backend.exists(tool_file.file_key)
+    finally:
+        if tool_file is not None:
+            backend.delete(tool_file.file_key)
+
+
 def test_create_file_by_raw_stores_file_and_persists_record(sqlite_tool_file_session: Session) -> None:
-    manager = ToolFileManager()
     user_id = str(uuid4())
     tenant_id = str(uuid4())
     conversation_id = str(uuid4())
@@ -72,6 +106,7 @@ def test_create_file_by_raw_stores_file_and_persists_record(sqlite_tool_file_ses
         patch("core.tools.tool_file_manager.guess_extension", return_value=".txt"),
         patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xABC)),
     ):
+        manager = ToolFileManager()
         file_model = manager.create_file_by_raw(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -91,13 +126,13 @@ def test_create_file_by_raw_stores_file_and_persists_record(sqlite_tool_file_ses
 def test_create_file_by_raw_prefers_filename_extension_over_mimetype(
     sqlite_tool_file_session: Session,
 ) -> None:
-    manager = ToolFileManager()
     tenant_id = str(uuid4())
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
         patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xABC)),
     ):
+        manager = ToolFileManager()
         file_model = manager.create_file_by_raw(
             user_id=str(uuid4()),
             tenant_id=tenant_id,
@@ -115,7 +150,6 @@ def test_create_file_by_raw_prefers_filename_extension_over_mimetype(
 
 
 def test_create_file_by_url_downloads_and_persists_record(sqlite_tool_file_session: Session) -> None:
-    manager = ToolFileManager()
     tenant_id = str(uuid4())
     response = httpx.Response(
         200,
@@ -129,6 +163,7 @@ def test_create_file_by_url_downloads_and_persists_record(sqlite_tool_file_sessi
         patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xDEF)),
         patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
     ):
+        manager = ToolFileManager()
         file_model = manager.create_file_by_url(str(uuid4()), tenant_id, "https://example.com/f.bin", str(uuid4()))
 
     persisted = sqlite_tool_file_session.get(ToolFile, file_model.id)
@@ -141,7 +176,6 @@ def test_create_file_by_url_downloads_and_persists_record(sqlite_tool_file_sessi
 def test_create_file_by_url_prefers_url_extension_over_mimetype(
     sqlite_tool_file_session: Session,
 ) -> None:
-    manager = ToolFileManager()
     tenant_id = str(uuid4())
     response = httpx.Response(
         200,
@@ -155,6 +189,7 @@ def test_create_file_by_url_prefers_url_extension_over_mimetype(
         patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xABC)),
         patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
     ):
+        manager = ToolFileManager()
         file_model = manager.create_file_by_url(
             str(uuid4()), tenant_id, "https://example.com/report.docx?download=1", str(uuid4())
         )

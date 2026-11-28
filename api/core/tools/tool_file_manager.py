@@ -7,6 +7,7 @@ import time
 import urllib.parse
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
+from typing import Protocol
 from uuid import uuid4
 
 import httpx
@@ -27,7 +28,52 @@ from models.tools import ToolFile
 logger = logging.getLogger(__name__)
 
 
+class ToolFileStorage(Protocol):
+    """Storage operations required by ``ToolFileManager``."""
+
+    def save(self, filename: str, data: bytes) -> None:
+        """Persist ``data`` under a writable ``filename`` key.
+
+        Preconditions: ``filename`` names a key accepted by the backend and
+        ``data`` is the complete byte payload. Postconditions: successful calls
+        make the payload available under that key. Side effects: writes storage.
+        Failure invariant: backend errors propagate, and this protocol makes no
+        atomic-write guarantee; a failed write may leave partial stored data.
+        """
+        ...
+
+    def load_once(self, filename: str) -> bytes:
+        """Read the complete payload stored under ``filename``.
+
+        Preconditions: ``filename`` names an existing key accepted by the backend.
+        Postconditions: successful calls return the stored bytes without mutation.
+        Side effects: reads storage only. Failure invariant: missing-key/backend
+        errors propagate and do not modify the stored object.
+        """
+        ...
+
+    def load_stream(self, filename: str) -> Generator:
+        """Read the payload under ``filename`` as a lazy byte stream.
+
+        Preconditions: ``filename`` names an existing key accepted by the backend.
+        Postconditions: successful iteration yields the stored bytes without mutation.
+        Side effects: reads storage only. Failure invariant: backend errors propagate
+        during iteration and do not modify the stored object.
+        """
+        ...
+
+
 class ToolFileManager:
+    def __init__(self, *, storage_service: ToolFileStorage | None = None) -> None:
+        """Bind a storage service for all file operations.
+
+        Preconditions: an explicitly supplied service implements ``ToolFileStorage``.
+        Postconditions: this manager uses that service, or the configured global
+        storage when no service is supplied. Construction performs no I/O.
+        Failure behavior: construction does not catch or transform errors.
+        """
+        self._storage_service: ToolFileStorage = storage_service if storage_service is not None else storage
+
     @staticmethod
     def _build_graph_file_reference(tool_file: ToolFile) -> File:
         extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
@@ -74,6 +120,13 @@ class ToolFileManager:
         mimetype: str,
         filename: str | None = None,
     ) -> ToolFile:
+        """Persist raw file bytes and return the committed tool-file row.
+
+        Preconditions: the identifiers describe the file owner and ``file_binary``
+        contains the complete payload. Postconditions: bytes are written through
+        this manager's storage service and the matching row is persisted. Failures
+        propagate; a database failure after storage succeeds can leave orphaned bytes.
+        """
         extension = resolve_extension(filename=filename, mimetype=mimetype)
         unique_name = uuid4().hex
         unique_filename = f"{unique_name}{extension}"
@@ -84,7 +137,7 @@ class ToolFileManager:
             # Add extension flexibly
             present_filename = filename if has_extension else f"{filename}{extension}"
         filepath = f"tools/{tenant_id}/{unique_filename}"
-        storage.save(filepath, file_binary)
+        self._storage_service.save(filepath, file_binary)
 
         with session_factory.create_session() as session:
             tool_file = ToolFile(
@@ -111,6 +164,14 @@ class ToolFileManager:
         file_url: str,
         conversation_id: str | None = None,
     ) -> ToolFile:
+        """Download a remote file, persist its bytes, and return its row.
+
+        Preconditions: ``file_url`` is an input accepted by the existing remote
+        fetcher. Postconditions: downloaded bytes and their metadata row are stored
+        using this manager's storage service. Fetch, storage, and database failures
+        propagate (timeouts retain the existing ``ValueError`` behavior); a database
+        failure after storage succeeds can leave orphaned bytes.
+        """
         # try to download image
         try:
             response = remote_fetcher.make_request("GET", file_url)
@@ -129,7 +190,7 @@ class ToolFileManager:
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
-        storage.save(filepath, blob)
+        self._storage_service.save(filepath, blob)
         with session_factory.create_session() as session:
             tool_file = ToolFile(
                 user_id=user_id,
@@ -149,12 +210,14 @@ class ToolFileManager:
         return tool_file
 
     def get_file_binary(self, id: str) -> tuple[bytes, str] | None:
-        """
-        get file binary
+        """Read bytes and MIME type using any string ``id`` as a lookup key.
 
-        :param id: the id of the file
-
-        :return: the binary of the file, mime type
+        Preconditions: ``id`` is a string; the referenced row need not exist.
+        Postconditions: a missing tool-file row returns ``None``; otherwise the
+        stored bytes and row MIME type are returned. Side effects: database and
+        storage access are read-only; persistent state is unchanged on success.
+        Failure behavior: database or storage errors propagate unchanged without
+        changing persistent state.
         """
         with session_factory.create_session() as session:
             tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == id).limit(1))
@@ -162,17 +225,19 @@ class ToolFileManager:
         if not tool_file:
             return None
 
-        blob = storage.load_once(tool_file.file_key)
+        blob = self._storage_service.load_once(tool_file.file_key)
 
         return blob, tool_file.mimetype
 
     def get_file_binary_by_message_file_id(self, id: str) -> tuple[bytes, str] | None:
-        """
-        get file binary
+        """Read bytes and MIME type using any string ``id`` as a message lookup key.
 
-        :param id: the id of the file
-
-        :return: the binary of the file, mime type
+        Preconditions: ``id`` is a string; the referenced message need not exist.
+        Postconditions: a missing message, a message without a URL, or a missing
+        referenced tool-file row returns ``None``; otherwise its bytes and MIME type
+        are returned. Side effects: database and storage access are read-only;
+        persistent state is unchanged on success. Failure behavior: database or
+        storage errors propagate unchanged without changing persistent state.
         """
         with session_factory.create_session() as session:
             message_file: MessageFile | None = session.scalar(select(MessageFile).where(MessageFile.id == id).limit(1))
@@ -194,17 +259,20 @@ class ToolFileManager:
         if not tool_file:
             return None
 
-        blob = storage.load_once(tool_file.file_key)
+        blob = self._storage_service.load_once(tool_file.file_key)
 
         return blob, tool_file.mimetype
 
     def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
-        """
-        get file binary
+        """Return a file stream and graph reference using any string key.
 
-        :param tool_file_id: the id of the tool file
-
-        :return: the binary of the file, mime type
+        Preconditions: ``tool_file_id`` is a string; the referenced row need not
+        exist. Postconditions: a missing tool-file row returns ``(None, None)``;
+        otherwise a lazy stream and metadata built from the persisted row are
+        returned. Side effects: database and storage access are read-only; persistent
+        state is unchanged on success. Failure behavior: database errors propagate,
+        and storage errors may propagate while opening or consuming the stream;
+        failures do not change persistent state.
         """
         with session_factory.create_session() as session:
             tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
@@ -212,7 +280,7 @@ class ToolFileManager:
         if not tool_file:
             return None, None
 
-        stream = storage.load_stream(tool_file.file_key)
+        stream = self._storage_service.load_stream(tool_file.file_key)
 
         return stream, self._build_graph_file_reference(tool_file)
 

@@ -6,7 +6,7 @@ import mimetypes
 import os
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal, NotRequired, TypedDict, assert_never, cast
+from typing import Any, Literal, NotRequired, Protocol, TypedDict, assert_never, cast
 
 from sqlalchemy import select
 
@@ -69,6 +69,20 @@ type FileMapping = LocalFileMapping | RemoteUrlMapping | ToolFileMapping | Datas
 type FileMappingInput = FileMapping | Mapping[str, Any]
 
 
+class SignedFileUrlGenerator(Protocol):
+    """Generate an absolute signed URL for a persisted upload file."""
+
+    def __call__(self, *, upload_file_id: str) -> str:
+        """Return a signed URL for the supplied persisted upload file.
+
+        Preconditions: ``upload_file_id`` identifies a file available to the
+        current request context.
+        Postconditions: returns an absolute URL suitable for a graph ``File``.
+        Failure behavior: URL-generation or signing errors propagate to the caller.
+        """
+        ...
+
+
 def build_from_mapping(
     *,
     mapping: FileMappingInput,
@@ -76,7 +90,19 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    signed_file_url_generator: SignedFileUrlGenerator | None = None,
 ) -> File:
+    """Build a graph-layer file from a tenant-scoped workflow mapping.
+
+    Preconditions: ``mapping`` identifies a supported transfer method and the
+    access controller enforces the requested tenant's persisted-file scope. If
+    provided, ``signed_file_url_generator`` returns an absolute URL for the
+    persisted upload file id.
+    Postconditions: returns the resolved graph ``File`` and applies ``config``
+    validation when configured; no persistence is mutated.
+    Failure behavior: malformed mappings, inaccessible records, or failed file
+    validation raise ``ValueError`` or the underlying validation error.
+    """
     transfer_method_value = mapping.get("transfer_method")
     if not transfer_method_value:
         raise ValueError("transfer_method is required in file mapping")
@@ -98,6 +124,7 @@ def build_from_mapping(
                 transfer_method=transfer_method,
                 strict_type_validation=strict_type_validation,
                 access_controller=access_controller,
+                signed_file_url_generator=signed_file_url_generator,
             )
         case FileTransferMethod.TOOL_FILE:
             file = _build_from_tool_file(
@@ -136,7 +163,18 @@ def build_from_mappings(
     tenant_id: str,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    signed_file_url_generator: SignedFileUrlGenerator | None = None,
 ) -> Sequence[File]:
+    """Build files for a sequence of mappings using one tenant and URL provider.
+
+    Preconditions: ``mappings`` contains supported file mappings and the access
+    controller enforces the requested tenant's persisted-file scope. A supplied
+    signed URL generator returns absolute URLs for persisted upload files.
+    Postconditions: valid mappings become graph ``File`` values in input order;
+    configured file-count limits are enforced and no persistence is mutated.
+    Failure behavior: invalid records or config violations raise without returning
+    a partial result; the existing invalid-mapping filtering is preserved.
+    """
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
     valid_mappings = [mapping for mapping in mappings if _is_valid_mapping(mapping)]
@@ -147,6 +185,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
             access_controller=access_controller,
+            signed_file_url_generator=signed_file_url_generator,
         )
         for mapping in valid_mappings
     ]
@@ -244,7 +283,17 @@ def _build_from_remote_url(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    signed_file_url_generator: SignedFileUrlGenerator | None,
 ) -> File:
+    """Resolve an external URL or persisted upload file for remote transfer.
+
+    Preconditions: an upload-file id resolves to an authorized record, or a remote
+    URL is present. The signed URL generator must return an absolute URL for a
+    persisted upload file.
+    Postconditions: returns a remote-transfer graph ``File`` referencing the
+    resolved record or URL; no persistence is mutated.
+    Failure behavior: invalid, missing, or inaccessible file data raises an error.
+    """
     upload_file_id = resolve_mapping_file_id(mapping, "upload_file_id")
     if upload_file_id:
         try:
@@ -271,6 +320,11 @@ def _build_from_remote_url(
                 strict_type_validation=strict_type_validation,
             )
 
+            signed_file_url = (
+                helpers.get_signed_file_url(upload_file_id=str(upload_file_id))
+                if signed_file_url_generator is None
+                else signed_file_url_generator(upload_file_id=str(upload_file_id))
+            )
             return File(
                 file_id=mapping.get("id"),
                 filename=upload_file.name,
@@ -278,7 +332,7 @@ def _build_from_remote_url(
                 mime_type=upload_file.mime_type,
                 file_type=file_type,
                 transfer_method=transfer_method,
-                remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
+                remote_url=signed_file_url,
                 reference=build_file_reference(record_id=str(upload_file.id)),
                 size=upload_file.size,
                 storage_key=upload_file.key,

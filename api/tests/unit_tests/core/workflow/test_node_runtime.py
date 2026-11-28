@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1548,20 +1549,17 @@ class TestNodeRuntimeCases:
         assert apply_dify_debug_email_recipient(method, enabled=enabled, actor_id="actor-id") is method
 
     @staticmethod
-    def test_dify_file_reference_factory_passes_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
-        build_from_mapping = MagicMock(return_value=sentinel.file)
-        monkeypatch.setattr(node_runtime.file_factory, "build_from_mapping", build_from_mapping)
+    def test_dify_file_reference_factory_rejects_mapping_without_transfer_method() -> None:
+        """Reject an untagged raw mapping at the production file-factory boundary.
 
+        Preconditions: the supplied payload lacks its transfer-method discriminator.
+        Postconditions: the product FileMapping adapter raises ValidationError before
+        any file lookup or resolution can occur.
+        """
         factory = DifyFileReferenceFactory(_build_run_context())
 
-        result = factory.build_from_mapping(mapping={"id": "upload-file"})
-
-        assert result is sentinel.file
-        build_from_mapping.assert_called_once_with(
-            mapping={"id": "upload-file"},
-            tenant_id="tenant-id",
-            access_controller=node_runtime._file_access_controller,
-        )
+        with pytest.raises(ValidationError):
+            factory.build_from_mapping(mapping={"upload_file_id": "upload-file"})
 
     @staticmethod
     def test_dify_prepared_llm_wraps_model_instance_calls() -> None:

@@ -8,7 +8,7 @@ import pytest
 from httpx import Response
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.file_access import (
     DatabaseFileAccessController,
     FileAccessScope,
@@ -16,8 +16,10 @@ from core.app.file_access import (
     grant_tool_file_access,
 )
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
+from core.workflow.node_runtime import DifyToolNodeRuntime
 from extensions.storage.storage_type import StorageType
-from factories.file_factory.builders import FileMappingInput, _resolve_file_type
+from factories.file_factory import FileMapping, SignedFileUrlGenerator, ToolFileMapping
+from factories.file_factory.builders import FileMappingInput, FileTypeValue, _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
@@ -56,6 +58,7 @@ def build_from_mapping(
     tenant_id: str,
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
+    signed_file_url_generator: SignedFileUrlGenerator | None = None,
 ) -> File:
     return _build_from_mapping(
         mapping=mapping,
@@ -63,6 +66,7 @@ def build_from_mapping(
         config=config,
         strict_type_validation=strict_type_validation,
         access_controller=TEST_ACCESS_CONTROLLER,
+        signed_file_url_generator=signed_file_url_generator,
     )
 
 
@@ -72,6 +76,7 @@ def build_from_mappings(
     tenant_id: str,
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
+    signed_file_url_generator: SignedFileUrlGenerator | None = None,
 ) -> Sequence[File]:
     return _build_from_mappings(
         mappings=mappings,
@@ -79,6 +84,7 @@ def build_from_mappings(
         config=config,
         strict_type_validation=strict_type_validation,
         access_controller=TEST_ACCESS_CONTROLLER,
+        signed_file_url_generator=signed_file_url_generator,
     )
 
 
@@ -151,12 +157,17 @@ def local_file_mapping(file_type: str = "image") -> dict[str, str]:
     }
 
 
-def tool_file_mapping(file_type: str = "document") -> dict[str, str]:
+def tool_file_mapping(file_type: FileTypeValue = "document") -> ToolFileMapping:
     return {
         "transfer_method": "tool_file",
         "tool_file_id": TEST_TOOL_FILE_ID,
         "type": file_type,
     }
+
+
+def _test_signed_file_url_generator(*, upload_file_id: str) -> str:
+    """Return a valid absolute URL for tests exercising persisted remote files."""
+    return f"https://example.com/signed/{upload_file_id}"
 
 
 # Tests
@@ -171,6 +182,58 @@ def test_build_from_mapping_backward_compatibility() -> None:
     assert reference is not None
     assert reference.storage_key is None
     assert file.storage_key == "test_key"
+
+
+@pytest.mark.parametrize(
+    ("mapping", "expected_transfer_method", "expected_file_record_id"),
+    [
+        pytest.param(local_file_mapping(), FileTransferMethod.LOCAL_FILE, TEST_UPLOAD_FILE_ID, id="local_file"),
+        pytest.param(
+            {"transfer_method": "remote_url", "upload_file_id": TEST_UPLOAD_FILE_ID, "type": "image"},
+            FileTransferMethod.REMOTE_URL,
+            TEST_UPLOAD_FILE_ID,
+            id="remote_url",
+        ),
+        pytest.param(tool_file_mapping(), FileTransferMethod.TOOL_FILE, TEST_TOOL_FILE_ID, id="tool_file"),
+        pytest.param(
+            {"transfer_method": "datasource_file", "datasource_file_id": TEST_UPLOAD_FILE_ID, "type": "image"},
+            FileTransferMethod.DATASOURCE_FILE,
+            TEST_UPLOAD_FILE_ID,
+            id="datasource_file",
+        ),
+    ],
+)
+def test_dify_tool_node_runtime_builds_all_supported_file_mappings(
+    mapping: FileMapping,
+    expected_transfer_method: FileTransferMethod,
+    expected_file_record_id: str,
+    file_records: FileRecords,
+) -> None:
+    """Resolve every supported mapping through the production runtime and builder."""
+    run_context = DifyRunContext(
+        tenant_id=TEST_TENANT_ID,
+        app_id="test-app-id",
+        user_id=TEST_END_USER_ID,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    runtime = DifyToolNodeRuntime(run_context, signed_file_url_generator=_test_signed_file_url_generator)
+    access_scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id=TEST_END_USER_ID,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(access_scope):
+        file = runtime.build_file_reference(mapping=mapping)
+
+    assert file_records.upload_file.id == TEST_UPLOAD_FILE_ID
+    assert file_records.tool_file.id == TEST_TOOL_FILE_ID
+    assert file.transfer_method == expected_transfer_method
+    if expected_transfer_method == FileTransferMethod.REMOTE_URL:
+        assert file.remote_url == _test_signed_file_url_generator(upload_file_id=TEST_UPLOAD_FILE_ID)
+    assert resolve_file_record_id(file.reference) == expected_file_record_id
 
 
 def test_build_from_mapping_accepts_opaque_reference_for_local_file() -> None:
@@ -246,7 +309,11 @@ def test_build_from_local_file_strict_validation(file_type: str, should_pass: bo
         ("image", False, "Detected file type does not match"),
     ],
 )
-def test_build_from_tool_file_strict_validation(file_type: str, should_pass: bool, expected_error: str) -> None:
+def test_build_from_tool_file_strict_validation(
+    file_type: FileTypeValue,
+    should_pass: bool,
+    expected_error: str,
+) -> None:
     """Strict type validation for tool_file."""
     mapping = tool_file_mapping(file_type=file_type)
     if should_pass:
@@ -270,21 +337,22 @@ def test_build_from_remote_url(mock_http_head: MagicMock) -> None:
     assert file.size == 2048
 
 
-def test_build_from_mappings_accepts_remote_url_with_upload_file_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "factories.file_factory.builders.helpers.get_signed_file_url",
-        lambda **_kwargs: "https://example.com/signed-upload-file",
-    )
+def test_build_from_mappings_accepts_remote_url_with_upload_file_id() -> None:
     mapping = {
         "transfer_method": "remote_url",
         "upload_file_id": TEST_UPLOAD_FILE_ID,
         "type": "image",
     }
 
-    files = build_from_mappings(mappings=[mapping], tenant_id=TEST_TENANT_ID)
+    files = build_from_mappings(
+        mappings=[mapping],
+        tenant_id=TEST_TENANT_ID,
+        signed_file_url_generator=_test_signed_file_url_generator,
+    )
 
     assert len(files) == 1
     assert files[0].transfer_method == FileTransferMethod.REMOTE_URL
+    assert files[0].remote_url == _test_signed_file_url_generator(upload_file_id=TEST_UPLOAD_FILE_ID)
     assert resolve_file_record_id(files[0].reference) == TEST_UPLOAD_FILE_ID
     assert files[0].storage_key == "test_key"
 
