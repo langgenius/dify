@@ -1,26 +1,36 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from typing import override
 from unittest.mock import MagicMock, call
 
 import pytest
+from pydantic_core import PydanticSerializationError
 from pytest_mock import MockerFixture
 
 from core.callback_handler.workflow_tool_callback_handler import (
     DifyWorkflowCallbackHandler,
 )
+from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
-class DummyToolInvokeMessage:
-    """Lightweight dummy to simulate ToolInvokeMessage behavior."""
+class DummyToolInvokeMessage(ToolInvokeMessage):
+    """Dummy whose serialized form is exactly the JSON the test passes in."""
 
-    def __init__(self, json_value: str):
-        self._json_value = json_value
+    @override
+    def model_dump_json(self, **kwargs: object) -> str:
+        message = self.message
+        assert isinstance(message, ToolInvokeMessage.TextMessage)
+        return message.text
 
-    def model_dump_json(self):
-        return self._json_value
+
+def _dummy_message(json_value: str) -> DummyToolInvokeMessage:
+    return DummyToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.TEXT,
+        message=ToolInvokeMessage.TextMessage(text=json_value),
+    )
 
 
 @pytest.fixture
-def handler():
+def handler() -> DifyWorkflowCallbackHandler:
     """Fixture to create handler instance with deterministic color."""
     instance = DifyWorkflowCallbackHandler()
     instance.color = "blue"
@@ -28,25 +38,35 @@ def handler():
 
 
 @pytest.fixture
-def mock_print_text(mocker: MockerFixture):
+def mock_print_text(mocker: MockerFixture) -> MagicMock:
     """Mock print_text to avoid real stdout printing."""
     return mocker.patch("core.callback_handler.workflow_tool_callback_handler.print_text")
 
 
 @pytest.fixture
-def enable_debug(config_overrides: Callable[..., None]):
+def enable_debug(config_overrides: Callable[..., None]) -> None:
     """Force DEBUG on so the handler emits its verbose stdout traces."""
     config_overrides(DEBUG=True)
 
 
+@pytest.fixture
+def unserializable_message() -> ToolInvokeMessage:
+    """Build a valid message whose metadata cannot be encoded as JSON."""
+    return ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.TEXT,
+        message=ToolInvokeMessage.TextMessage(text="tool output"),
+        meta={"test_value": object()},
+    )
+
+
 class TestDifyWorkflowCallbackHandler:
     def test_on_tool_execution_single_output_success(
-        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
-    ):
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text: MagicMock, enable_debug: None
+    ) -> None:
         # Arrange
         tool_name = "test_tool"
         tool_inputs = {"a": 1}
-        message = DummyToolInvokeMessage('{"key": "value"}')
+        message = _dummy_message('{"key": "value"}')
 
         # Act
         results = list(
@@ -73,13 +93,13 @@ class TestDifyWorkflowCallbackHandler:
         )
 
     def test_on_tool_execution_multiple_outputs(
-        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
-    ):
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text: MagicMock, enable_debug: None
+    ) -> None:
         # Arrange
         tool_name = "multi_tool"
         outputs = [
-            DummyToolInvokeMessage('{"id": 1}'),
-            DummyToolInvokeMessage('{"id": 2}'),
+            _dummy_message('{"id": 1}'),
+            _dummy_message('{"id": 2}'),
         ]
 
         # Act
@@ -95,7 +115,9 @@ class TestDifyWorkflowCallbackHandler:
         assert results == outputs
         assert mock_print_text.call_count == 4 * len(outputs)
 
-    def test_on_tool_execution_empty_iterable(self, handler: DifyWorkflowCallbackHandler, mock_print_text):
+    def test_on_tool_execution_empty_iterable(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text: MagicMock
+    ) -> None:
         # Arrange
         tool_name = "empty_tool"
 
@@ -115,28 +137,26 @@ class TestDifyWorkflowCallbackHandler:
     def test_on_tool_execution_skips_print_when_debug_disabled(
         self,
         handler: DifyWorkflowCallbackHandler,
-        mock_print_text,
+        mock_print_text: MagicMock,
         config_overrides: Callable[..., None],
-    ):
-        """When DEBUG is off, outputs are still yielded but nothing is printed
-        and model_dump_json() is never invoked."""
-        # Arrange
+        unserializable_message: ToolInvokeMessage,
+    ) -> None:
+        """When DEBUG is off, yield even a non-JSON-serializable message without logging."""
         config_overrides(DEBUG=False)
-        message = MagicMock()
 
         # Act
         results = list(
             handler.on_tool_execution(
                 tool_name="quiet_tool",
                 tool_inputs={},
-                tool_outputs=[message],
+                tool_outputs=[unserializable_message],
             )
         )
 
         # Assert
-        assert results == [message]
+        assert len(results) == 1
+        assert results[0] is unserializable_message
         mock_print_text.assert_not_called()
-        message.model_dump_json.assert_not_called()
 
     @pytest.mark.parametrize(
         ("invalid_outputs", "expected_exception"),
@@ -147,8 +167,12 @@ class TestDifyWorkflowCallbackHandler:
         ],
     )
     def test_on_tool_execution_invalid_outputs_type(
-        self, handler: DifyWorkflowCallbackHandler, invalid_outputs, expected_exception, enable_debug
-    ):
+        self,
+        handler: DifyWorkflowCallbackHandler,
+        invalid_outputs: Iterable[ToolInvokeMessage],
+        expected_exception: type[BaseException],
+        enable_debug: None,
+    ) -> None:
         # Arrange
         tool_name = "invalid_tool"
 
@@ -163,12 +187,12 @@ class TestDifyWorkflowCallbackHandler:
             )
 
     def test_on_tool_execution_long_json_truncation(
-        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
-    ):
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text: MagicMock, enable_debug: None
+    ) -> None:
         # Arrange
         tool_name = "long_json_tool"
         long_json = "x" * 1500
-        message = DummyToolInvokeMessage(long_json)
+        message = _dummy_message(long_json)
 
         # Act
         list(
@@ -187,22 +211,22 @@ class TestDifyWorkflowCallbackHandler:
         )
 
     def test_on_tool_execution_model_dump_json_exception(
-        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
-    ):
-        # Arrange
-        tool_name = "exception_tool"
-        bad_message = MagicMock()
-        bad_message.model_dump_json.side_effect = ValueError("JSON error")
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="JSON error"):
+        self,
+        handler: DifyWorkflowCallbackHandler,
+        mock_print_text: MagicMock,
+        enable_debug: None,
+        unserializable_message: ToolInvokeMessage,
+    ) -> None:
+        with pytest.raises(PydanticSerializationError, match="Unable to serialize unknown type"):
             list(
                 handler.on_tool_execution(
-                    tool_name=tool_name,
+                    tool_name="exception_tool",
                     tool_inputs={},
-                    tool_outputs=[bad_message],
+                    tool_outputs=[unserializable_message],
                 )
             )
 
-        # Ensure first two prints happened before failure
-        assert mock_print_text.call_count >= 2
+        assert mock_print_text.call_args_list == [
+            call("\n[on_tool_execution]\n", color="blue"),
+            call("Tool: exception_tool\n", color="blue"),
+        ]
