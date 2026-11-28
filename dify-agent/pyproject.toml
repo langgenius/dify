@@ -31,6 +31,11 @@ server = [
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
     "openshell>=0.1.3,<0.2.0",
     "pydantic-ai-slim[anthropic,google,openai]==2.53.0",
+    "pydantic-ai-harness[browser-use]>=0.20.0,<0.21.0",
+    # The harness extra allows the open browser-use 0.13.x range; 0.13.10 moves
+    # to a pydantic 2.13 pin, so keep the resolver on pydantic 2.12-compatible
+    # releases.
+    "browser-use>=0.13.6,<0.13.10",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
     "referencing>=0.37.0,<0.38.0",
@@ -70,7 +75,24 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 # unstructured caps filelock<4; Agent FileLock/WeakFileLock compatibility was verified with 4.2.1.
 # Override the stale upper bound to take the required security fixes.
 # TODO: Remove this override once unstructured permits filelock>=4.2.1.
-override-dependencies = ["filelock==4.2.1"]
+# browser-use 0.13.6-0.13.9 hard-pin anthropic==0.76.0, google-auth==2.48.0,
+# google-genai==1.65.0 and openai==2.26.0, contradicting
+# pydantic-ai-slim[anthropic,google,openai] 2.53.0's floors (anthropic>=1.9.0,
+# google-genai>=2.25.0, openai>=3.19.0) and google-genai 2.x's google-auth>=2.56.0.
+# The browser layer always passes the host Pydantic AI model (llm=ctx.model), so
+# browser-use never instantiates its own provider clients; the pinned SDKs are
+# import-surface only. Lift each pin to the environment's real lower bound.
+# 0.13.10+ pins pydantic 2.13, so the browser-use range stays below it (pydantic<2.13).
+# Every 0.13.x release also pins pillow 12.x, which the server extra cannot accept
+# (pillow>=13.0.0 CVE floor); browser-use only uses stable Pillow image APIs.
+override-dependencies = [
+    "anthropic>=1.9.0",
+    "filelock==4.2.1",
+    "google-auth>=2.56.0",
+    "google-genai>=2.25.0",
+    "openai>=3.19.0",
+    "pillow>=13.0.0",
+]
 
 [dependency-groups]
 dev = [

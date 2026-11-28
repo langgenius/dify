@@ -16,6 +16,7 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
 }
 
 SERVER_RUNTIME_DEPENDENCIES = {
+    "browser-use>=0.13.6,<0.13.10",
     "e2b>=2.55.1,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.8.0",
@@ -26,6 +27,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "openshell>=0.1.3,<0.2.0",
     "pillow>=13.0.0,<14",
     "pydantic-ai-slim[anthropic,google,openai]==2.53.0",
+    "pydantic-ai-harness[browser-use]>=0.20.0,<0.21.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
     "referencing>=0.37.0,<0.38.0",
@@ -44,6 +46,19 @@ DEV_DEPENDENCIES = {
     "types-protobuf>=4.25.0",
 }
 
+# browser-use 0.13.x hard-pins LLM SDKs and pillow 12.x that contradict the
+# pydantic-ai-slim[anthropic,google,openai] 2.53.0 floors and the pillow CVE
+# floor; these overrides lift the pins (see pyproject [tool.uv] comments).
+# Dropping any of them makes the server extra unresolvable.
+UV_OVERRIDE_DEPENDENCIES = {
+    "anthropic>=1.9.0",
+    "filelock==4.2.1",
+    "google-auth>=2.56.0",
+    "google-genai>=2.25.0",
+    "openai>=3.19.0",
+    "pillow>=13.0.0",
+}
+
 
 def _read_pyproject():
     return tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
@@ -56,6 +71,7 @@ def test_project_dependencies_split_client_and_server_requirements() -> None:
     assert set(project["dependencies"]) == CLIENT_SHARED_DTO_DEPENDENCIES
     assert set(project["optional-dependencies"]["server"]) == SERVER_RUNTIME_DEPENDENCIES
     assert set(pyproject["dependency-groups"]["dev"]) == DEV_DEPENDENCIES
+    assert set(pyproject["tool"]["uv"]["override-dependencies"]) == UV_OVERRIDE_DEPENDENCIES
 
 
 def test_default_package_discovery_excludes_example_packages() -> None:

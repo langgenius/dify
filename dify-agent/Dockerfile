@@ -44,10 +44,14 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app/api
 
-# Create non-root user (uid matches the dify-api image convention)
+# Create non-root user (uid matches the dify-api image convention).
+# The home must exist: browser-use's import chain instantiates a default
+# BrowserProfile, which mkdirs $HOME/.config at module load; without a
+# writable home the server crashes at startup.
 ARG dify_uid=1001
 RUN groupadd -r -g ${dify_uid} dify && \
-    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify
+    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
+    mkdir -p /home/dify && chown -R dify:dify /home/dify
 
 # Copy the resolved virtualenv. The dify-agent package is installed
 # non-editable, so the source is already baked into site-packages.

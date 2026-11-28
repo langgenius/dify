@@ -5,6 +5,7 @@ from typing import Any, cast
 import httpx
 import pytest
 from dify_agent.adapters.llm.model import _get_stop_sequences, _map_model_settings_to_parameters
+from dify_agent.layers.browser import DifyBrowserLayerConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
@@ -38,7 +39,12 @@ from clients.agent_backend import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID, _agent_model_settings
+from clients.agent_backend.request_builder import (
+    DIFY_BROWSER_LAYER_ID,
+    DIFY_RUNTIME_LAYER_ID,
+    DIFY_SHELL_LAYER_ID,
+    _agent_model_settings,
+)
 from models.agent_config_entities import AgentSoulModelSettings
 
 
@@ -623,6 +629,51 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell() -> None
     assert layers[DIFY_SHELL_LAYER_ID].config["runtime"] == "runtime"
     shell_config = DifyShellLayerConfig.model_validate(layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"
+
+
+def test_workflow_request_builder_omits_browser_layer_by_default() -> None:
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
+    names = {layer.name for layer in request.composition.layers}
+    assert DIFY_BROWSER_LAYER_ID not in names
+    assert DIFY_RUNTIME_LAYER_ID not in names
+
+
+def test_workflow_request_builder_adds_browser_layer_without_shell() -> None:
+    run_input = _run_input()
+    run_input.include_browser = True
+    run_input.browser_config = DifyBrowserLayerConfig(max_steps=12, allowed_domains=["*.example.com"])
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    assert DIFY_BROWSER_LAYER_ID in layers
+    assert DIFY_SHELL_LAYER_ID not in layers
+    assert DIFY_RUNTIME_LAYER_ID in layers
+    browser_config = DifyBrowserLayerConfig.model_validate(layers[DIFY_BROWSER_LAYER_ID].config)
+    assert browser_config.max_steps == 12
+    assert browser_config.allowed_domains == ["*.example.com"]
+
+
+def test_agent_app_request_builder_omits_browser_layer_by_default() -> None:
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
+    names = {layer.name for layer in request.composition.layers}
+    assert DIFY_BROWSER_LAYER_ID not in names
+    assert DIFY_RUNTIME_LAYER_ID not in names
+
+
+def test_agent_app_request_builder_adds_browser_layer_with_default_config() -> None:
+    run_input = _agent_app_input()
+    run_input.include_browser = True
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    assert DIFY_BROWSER_LAYER_ID in layers
+    assert DIFY_SHELL_LAYER_ID not in layers
+    assert DIFY_RUNTIME_LAYER_ID in layers
+    browser_config = DifyBrowserLayerConfig.model_validate(layers[DIFY_BROWSER_LAYER_ID].config)
+    assert browser_config.max_steps == 30
+    assert browser_config.session_scope == "call"
 
 
 def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> None:

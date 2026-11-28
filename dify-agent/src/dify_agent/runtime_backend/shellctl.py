@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 import logging
 from typing import Protocol
@@ -13,7 +14,8 @@ from dify_agent.adapters.shell.shellctl import (
     ShellctlCommands,
     create_default_shellctl_client_factory,
 )
-from dify_agent.runtime_backend.protocols import RuntimeLayout
+from dify_agent.runtime_backend.errors import PortEntrypointUnsupportedError
+from dify_agent.runtime_backend.protocols import PortEntrypoint, RuntimeLayout
 
 _CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
 logger = logging.getLogger(__name__)
@@ -32,7 +34,13 @@ class ShellctlRuntimeLease:
     client: ShellctlClientProtocol
     commands: ShellCommandProtocol
     owned_transport: AsyncCloseable | None = None
+    port_entrypoint_factory: Callable[[int], PortEntrypoint] | None = None
     _closed: bool = field(default=False, init=False)
+
+    def port_entrypoint(self, port: int) -> PortEntrypoint:
+        if self.port_entrypoint_factory is None:
+            raise PortEntrypointUnsupportedError("This RuntimeLease cannot expose sandbox ports.")
+        return self.port_entrypoint_factory(port)
 
     async def close(self) -> None:
         if self._closed:
@@ -62,6 +70,7 @@ def create_shellctl_lease(
     token: str,
     client_factory: ShellctlClientFactory | None = None,
     owned_transport: AsyncCloseable | None = None,
+    port_entrypoint_factory: Callable[[int], PortEntrypoint] | None = None,
 ) -> ShellctlRuntimeLease:
     """Create adapters around one new shellctl client without owning control-plane lifecycle."""
     factory = client_factory or create_default_shellctl_client_factory(entrypoint=entrypoint, token=token)
@@ -76,6 +85,7 @@ def create_shellctl_lease(
             workspace_dir=layout.workspace_dir,
         ),
         owned_transport=owned_transport,
+        port_entrypoint_factory=port_entrypoint_factory,
     )
 
 
@@ -87,6 +97,7 @@ async def create_owned_shellctl_lease(
     token: str,
     client_factory: ShellctlClientFactory,
     owned_transport: AsyncCloseable,
+    port_entrypoint_factory: Callable[[int], PortEntrypoint] | None = None,
 ) -> ShellctlRuntimeLease:
     """Create a lease that owns an injected transport, closing it if construction fails."""
     try:
@@ -97,6 +108,7 @@ async def create_owned_shellctl_lease(
             token=token,
             client_factory=client_factory,
             owned_transport=owned_transport,
+            port_entrypoint_factory=port_entrypoint_factory,
         )
     except BaseException:
         try:

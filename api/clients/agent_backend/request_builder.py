@@ -14,6 +14,7 @@ import re
 from collections.abc import Mapping
 from typing import ClassVar, Literal
 
+from dify_agent.layers.browser import DifyBrowserLayerConfig
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
@@ -61,6 +62,7 @@ DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_KNOWLEDGE_FS_LAYER_ID = "knowledge_fs"
 DIFY_SHELL_LAYER_ID = "shell"
 DIFY_READ_MEDIA_LAYER_ID = "read_media"
+DIFY_BROWSER_LAYER_ID = "browser"
 type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
 
 
@@ -234,6 +236,8 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     config_layer_config: DifyConfigLayerConfig | None = None
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
+    include_browser: bool = False
+    browser_config: DifyBrowserLayerConfig | None = None
     session_snapshot: SessionSnapshot | None = None
     include_history: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -273,6 +277,8 @@ class AgentBackendAgentAppRunInput(BaseModel):
     config_layer_config: DifyConfigLayerConfig | None = None
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
+    include_browser: bool = False
+    browser_config: DifyBrowserLayerConfig | None = None
     session_snapshot: SessionSnapshot | None = None
     include_history: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -331,22 +337,33 @@ class AgentBackendRunRequestBuilder:
         )
 
         include_shell = run_input.include_shell or run_input.config_layer_config is not None
-        if include_shell:
-            layers.extend(
-                [
-                    RunLayerSpec(
-                        name=DIFY_RUNTIME_LAYER_ID,
-                        config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
-                            mode="json"
-                        ),
+        include_browser = run_input.include_browser
+        if include_shell or include_browser:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_RUNTIME_LAYER_ID,
+                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                        mode="json"
                     ),
-                    # Sandboxed bash workspace (dify.shell). It enters before config so
-                    # eager pulls materialize content in the same filesystem used by model commands.
+                )
+            )
+            if include_shell:
+                # Sandboxed bash workspace (dify.shell). It enters before config so
+                # eager pulls materialize content in the same filesystem used by model commands.
+                layers.append(
                     RunLayerSpec(
                         name=DIFY_SHELL_LAYER_ID,
                         config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
-                    ),
-                ]
+                    )
+                )
+        if include_browser:
+            # Sandbox-hosted Chromium (dify.browser). Needs only the runtime layer;
+            # the browser capability declares its runtime dependency itself.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_BROWSER_LAYER_ID,
+                    config=(run_input.browser_config or DifyBrowserLayerConfig()).model_dump(mode="json"),
+                )
             )
 
         if run_input.config_layer_config is not None:
@@ -482,22 +499,33 @@ class AgentBackendRunRequestBuilder:
         )
 
         include_shell = run_input.include_shell or run_input.config_layer_config is not None
-        if include_shell:
-            layers.extend(
-                [
-                    RunLayerSpec(
-                        name=DIFY_RUNTIME_LAYER_ID,
-                        config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
-                            mode="json"
-                        ),
+        include_browser = run_input.include_browser
+        if include_shell or include_browser:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_RUNTIME_LAYER_ID,
+                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                        mode="json"
                     ),
-                    # Sandboxed bash workspace (dify.shell). It enters before config so
-                    # eager pulls materialize content in the same filesystem used by model commands.
+                )
+            )
+            if include_shell:
+                # Sandboxed bash workspace (dify.shell). It enters before config so
+                # eager pulls materialize content in the same filesystem used by model commands.
+                layers.append(
                     RunLayerSpec(
                         name=DIFY_SHELL_LAYER_ID,
                         config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
-                    ),
-                ]
+                    )
+                )
+        if include_browser:
+            # Sandbox-hosted Chromium (dify.browser). Needs only the runtime layer;
+            # the browser capability declares its runtime dependency itself.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_BROWSER_LAYER_ID,
+                    config=(run_input.browser_config or DifyBrowserLayerConfig()).model_dump(mode="json"),
+                )
             )
 
         if run_input.config_layer_config is not None:

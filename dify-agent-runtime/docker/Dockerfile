@@ -32,8 +32,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bash \
         ca-certificates \
+        chromium \
         curl \
         file \
+        fonts-liberation \
+        fonts-noto-cjk \
+        fonts-noto-color-emoji \
         git \
         iproute2 \
         jq \

@@ -49,6 +49,10 @@ class WorkspaceUnavailableError(RuntimeBackendError):
     pass
 
 
+class PortEntrypointUnsupportedError(RuntimeBackendError):
+    """The backend cannot expose sandbox ports to the agent process."""
+
+
 __all__ = [
     "BindingAcquireError",
     "BindingCapacityExhaustedError",
@@ -58,6 +62,7 @@ __all__ = [
     "HomeSnapshotCreateError",
     "HomeSnapshotNotFoundError",
     "HomeSnapshotTooLargeError",
+    "PortEntrypointUnsupportedError",
     "RuntimeBackendError",
     "SharedWorkspaceUnsupportedError",
     "WorkspacePreservationUnsupportedError",

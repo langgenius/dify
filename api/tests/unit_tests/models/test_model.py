@@ -1330,6 +1330,51 @@ class TestAppModelsCases:
 
             assert message.retriever_resources == []
 
+        def test_retriever_resources_defaults_to_empty_list_when_key_missing(self) -> None:
+            """Metadata that omits the key (e.g. usage-only metadata) yields []."""
+            # Arrange
+            message = Message(
+                app_id=str(uuid4()),
+                conversation_id=str(uuid4()),
+                query="Test query",
+                message={"role": "user", "content": "Test"},
+                answer="Test answer",
+                message_unit_price=Decimal("0.0001"),
+                answer_unit_price=Decimal("0.0002"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                message_metadata=json.dumps({"usage": {"prompt_tokens": 100}}),
+            )
+
+            # Act
+            result = message.retriever_resources
+
+            # Assert
+            assert result == []
+
+        def test_retriever_resources_returns_stored_value(self) -> None:
+            """A stored retriever_resources list is returned unchanged."""
+            # Arrange
+            resources = [{"dataset_id": "ds-1", "position": 1}]
+            message = Message(
+                app_id=str(uuid4()),
+                conversation_id=str(uuid4()),
+                query="Test query",
+                message={"role": "user", "content": "Test"},
+                answer="Test answer",
+                message_unit_price=Decimal("0.0001"),
+                answer_unit_price=Decimal("0.0002"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                message_metadata=json.dumps({"retriever_resources": resources, "usage": {"prompt_tokens": 100}}),
+            )
+
+            # Act
+            result = message.retriever_resources
+
+            # Assert
+            assert result == resources
+
         @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
         def test_message_to_dict_serialization(self, sqlite_session: Session) -> None:
             """Test message to_dict method."""

@@ -7,10 +7,24 @@ only invocation-local object and must never be serialized or persisted.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
+
+
+@dataclass(frozen=True, slots=True)
+class PortEntrypoint:
+    """Invocation-local reachability of one sandbox port from the agent process.
+
+    ``base_url`` is scheme-qualified (``http://host:port`` or
+    ``https://host:port``); ``headers`` carries the per-lease credentials a
+    gateway-style backend requires for port traffic (for example E2B's
+    traffic access token).
+    """
+
+    base_url: str
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +50,15 @@ class RuntimeLease(Protocol):
 
     @property
     def commands(self) -> ShellCommandProtocol: ...
+
+    def port_entrypoint(self, port: int) -> PortEntrypoint:
+        """Return how the agent process reaches one port listening in the runtime.
+
+        Implementations without port exposure (no host mapping or tunneling)
+        must raise ``PortEntrypointUnsupportedError`` rather than guess a
+        reachable address.
+        """
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +187,7 @@ __all__ = [
     "ExecutionBindingDestroySpec",
     "HomeSnapshotBackend",
     "HomeSnapshotCreateSpec",
+    "PortEntrypoint",
     "RuntimeBackendProfile",
     "RuntimeLayout",
     "RuntimeLease",

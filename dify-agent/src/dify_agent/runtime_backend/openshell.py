@@ -53,6 +53,7 @@ from dify_agent.runtime_backend.errors import (
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
+    PortEntrypointUnsupportedError,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
@@ -60,6 +61,7 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
+    PortEntrypoint,
     RuntimeLayout,
     RuntimeLease,
 )
@@ -612,6 +614,12 @@ class OpenShellRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
+
+    def port_entrypoint(self, port: int) -> PortEntrypoint:
+        # The ForwardTcp tunnel is minted per (sandbox, port) at acquire
+        # time and is not re-openable from the lease alone, so port
+        # exposure is unavailable rather than guessed.
+        raise PortEntrypointUnsupportedError("OpenShell RuntimeLease cannot expose sandbox ports")
 
 
 def _rpc_status_code(exc: BaseException) -> object:

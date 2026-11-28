@@ -18,6 +18,7 @@ nav:
           - Prompt Module: dify-agent/user-manual/prompt-layer/index.md
           - Execution Context Module: dify-agent/user-manual/execution-context-layer/index.md
           - Shell Module: dify-agent/user-manual/shell-layer/index.md
+          - Browser Module: dify-agent/user-manual/browser-layer/index.md
           - Plugin LLM Module: dify-agent/user-manual/plugin-llm-layer/index.md
           - Plugin Tool Module: dify-agent/user-manual/plugin-tool-layer/index.md
           - History Module: dify-agent/user-manual/history-layer/index.md

@@ -59,6 +59,7 @@ class WorkflowAgentNodeValidator:
             "environment",
             "sandbox",
             "sandbox_provider",
+            "browser",
             "memory",
             "memory_strategy",
             "model",

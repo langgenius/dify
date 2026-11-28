@@ -12,6 +12,7 @@ import posixpath
 import re
 import shlex
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientFactory
@@ -27,6 +28,7 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
+    PortEntrypoint,
     RuntimeLayout,
     RuntimeLease,
 )
@@ -251,7 +253,14 @@ class LocalExecutionBindingBackend:
             entrypoint=self.endpoint,
             token=self.auth_token,
             client_factory=self.client_factory,
+            port_entrypoint_factory=self._port_entrypoint,
         )
+
+    def _port_entrypoint(self, port: int) -> PortEntrypoint:
+        # The sandbox and agent share one network, so any port the daemon
+        # host listens on is reachable; reuse the endpoint's host.
+        host = urlsplit(self.endpoint).hostname
+        return PortEntrypoint(base_url=f"http://{host}:{port}")
 
     def _control_lease(self, handle: str) -> ShellctlRuntimeLease:
         control_root = _control_root((self.materialized_home_root, self.workspace_root, self.snapshot_root))
