@@ -175,11 +175,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   }, [])
 
   const toggleFullscreen = useCallback(() => {
-    const video = videoRef.current
-    /* v8 ignore next -- defensive null-check so fullscreen calls are skipped if video ref is detached. @preserve */
-    if (video) {
+    const container = containerRef.current
+    /* v8 ignore next -- defensive null-check so fullscreen calls are skipped if container ref is detached. @preserve */
+    if (container) {
       if (document.fullscreenElement) document.exitFullscreen()
-      else video.requestFullscreen()
+      else container.requestFullscreen()
     }
   }, [])
 
