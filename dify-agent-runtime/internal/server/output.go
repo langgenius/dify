@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"os"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -61,19 +62,13 @@ func ReadOutputWindow(path string, offset, limit int) (*OutputWindow, error) {
 		budget = 0
 	}
 
-	// Find the longest valid UTF-8 prefix within budget
-	consumed := validUTF8PrefixLen(data, budget)
-	if consumed == 0 && len(data) > 0 {
-		// At least consume one complete rune
-		consumed = firstCompleteRuneLen(data)
-	}
-
-	outputBytes := data[:consumed]
+	hasMoreBytes := offset+readSize < size
+	output, consumed := decodeUTF8Window(data, budget, startShift > 0, hasMoreBytes)
 	newOffset := offset + startShift + consumed
 	truncated := newOffset < size
 
 	return &OutputWindow{
-		Output:    string(outputBytes),
+		Output:    output,
 		Offset:    newOffset,
 		Truncated: truncated,
 	}, nil
@@ -118,12 +113,11 @@ func TailOutputWindow(path string, limit int) (*OutputWindow, error) {
 
 	relativeStart := advanceToUTF8Boundary(buf, start-paddedStart)
 	payload := buf[relativeStart:]
-	consumed := validUTF8PrefixLen(payload, len(payload))
-	outputBytes := payload[:consumed]
+	output := decodeUTF8All(payload)
 
 	return &OutputWindow{
-		Output:    string(outputBytes),
-		Offset:    paddedStart + relativeStart + consumed,
+		Output:    output,
+		Offset:    paddedStart + relativeStart + len(payload),
 		Truncated: false,
 	}, nil
 }
@@ -141,27 +135,72 @@ func isUTF8Continuation(b byte) bool {
 	return (b & 0xC0) == 0x80
 }
 
-// validUTF8PrefixLen returns the length of the longest valid UTF-8 prefix up to maxLen.
-func validUTF8PrefixLen(data []byte, maxLen int) int {
-	if maxLen > len(data) {
-		maxLen = len(data)
+// decodeUTF8Window decodes a valid UTF-8 prefix of data whose encoded UTF-8
+// length stays within maxOutputBytes, replacing genuinely invalid UTF-8 bytes
+// with U+FFFD while preserving complete multi-byte runes across page boundaries.
+// When data is non-empty and shiftedStart is false, at least one rune or invalid
+// byte is consumed so callers always make forward offset progress.
+func decodeUTF8Window(data []byte, maxOutputBytes int, shiftedStart, hasMoreBytes bool) (string, int) {
+	if len(data) == 0 {
+		return "", 0
 	}
-	end := maxLen
-	for end > 0 {
-		if utf8.Valid(data[:end]) {
-			return end
+	if len(data) <= maxOutputBytes && utf8.Valid(data) {
+		return string(data), len(data)
+	}
+	if maxOutputBytes > 0 && maxOutputBytes <= len(data) && utf8.Valid(data[:maxOutputBytes]) {
+		return string(data[:maxOutputBytes]), maxOutputBytes
+	}
+
+	var b strings.Builder
+	if maxOutputBytes > 0 {
+		b.Grow(min(len(data), maxOutputBytes))
+	}
+	pos := 0
+	for pos < len(data) {
+		// If startShift skipped past limit, the remaining buffer slice can hold
+		// fewer than utf8.UTFMax bytes even though more bytes follow in the file.
+		// Stop before an incomplete rune so the next read decodes it intact.
+		if hasMoreBytes && shiftedStart && !utf8.FullRune(data[pos:]) {
+			break
 		}
-		end--
+		r, width := utf8.DecodeRune(data[pos:])
+		invalid := r == utf8.RuneError && width == 1
+		encodedWidth := width
+		if invalid {
+			encodedWidth = utf8.RuneLen(utf8.RuneError)
+		}
+		if b.Len() > 0 && b.Len()+encodedWidth > maxOutputBytes {
+			break
+		}
+		if invalid {
+			b.WriteRune(utf8.RuneError)
+		} else {
+			b.Write(data[pos : pos+width])
+		}
+		pos += width
+		if b.Len() >= maxOutputBytes {
+			break
+		}
 	}
-	return 0
+	return b.String(), pos
 }
 
-// firstCompleteRuneLen returns the byte length of the first complete rune in data.
-func firstCompleteRuneLen(data []byte) int {
-	for end := 1; end <= len(data) && end <= 4; end++ {
-		if utf8.Valid(data[:end]) {
-			return end
-		}
+// decodeUTF8All decodes all bytes in data into a valid UTF-8 string, replacing
+// each invalid UTF-8 byte with U+FFFD.
+func decodeUTF8All(data []byte) string {
+	if utf8.Valid(data) {
+		return string(data)
 	}
-	return 0
+	var b strings.Builder
+	b.Grow(len(data))
+	for len(data) > 0 {
+		r, width := utf8.DecodeRune(data)
+		if r == utf8.RuneError && width == 1 {
+			b.WriteRune(utf8.RuneError)
+		} else {
+			b.Write(data[:width])
+		}
+		data = data[width:]
+	}
+	return b.String()
 }
