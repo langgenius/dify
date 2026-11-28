@@ -97,6 +97,21 @@ class TestRedisStreamsBroadcastChannelIntegration:
         finally:
             subscription.close()
 
+    def test_publish_many_delivers_messages_in_order(self, broadcast_channel: BroadcastChannel) -> None:
+        """Messages sent together arrive as separate messages, in the order given."""
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        subscription = topic.subscribe()
+        messages = [f"message {index}".encode() for index in range(5)]
+
+        try:
+            self._start_subscription(subscription)
+            topic.as_producer().publish_many(messages)
+
+            assert [self._receive_message(subscription) for _ in messages] == messages
+            assert subscription.receive(timeout=0.1) is None
+        finally:
+            subscription.close()
+
     def test_multiple_subscriptions_each_receive_each_new_message(self, broadcast_channel: BroadcastChannel) -> None:
         """Each active subscription should receive the same newly published message."""
         topic = broadcast_channel.topic(self._get_test_topic_name())

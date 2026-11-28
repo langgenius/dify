@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import queue
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Sequence
 
 import httpx
 import pytest
@@ -110,6 +110,10 @@ class FakeTopic:
 
     def publish(self, payload: bytes) -> None:
         self._queue.put(payload)
+
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        for payload in payloads:
+            self._queue.put(payload)
 
     @property
     def subscribed(self) -> bool:

@@ -4,7 +4,7 @@ import json
 import logging
 import queue
 import uuid
-from collections.abc import Callable, Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
@@ -19,6 +19,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.base_app_queue_manager import queued_events_hint
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -95,6 +96,11 @@ class _ResponsePublisher(queue.Queue[bytes]):
         """Enqueue the payload unchanged for inspection by the consumer."""
         self.put(payload)
 
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        """Enqueue the payloads unchanged, in the order given."""
+        for payload in payloads:
+            self.put(payload)
+
 
 @pytest.fixture
 def response_publisher(monkeypatch: pytest.MonkeyPatch) -> _ResponsePublisher:
@@ -135,6 +141,72 @@ def _build_workflow_generate_entity(stream: bool) -> WorkflowAppGenerateEntity:
 
 def _single_event_generator(payload):
     yield payload
+
+
+class _RecordingTopic:
+    """Record what the publisher hands to the transport, one entry per round trip."""
+
+    def __init__(self) -> None:
+        self.round_trips: list[list[bytes]] = []
+        self.failures: list[Exception] = []
+
+    def publish(self, payload: bytes) -> None:
+        self._send([payload])
+
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        self._send(list(payloads))
+
+    def _send(self, payloads: list[bytes]) -> None:
+        if self.failures:
+            raise self.failures.pop(0)
+        self.round_trips.append(payloads)
+
+    def events(self) -> list[list[object]]:
+        return [[json.loads(payload)["event"] for payload in round_trip] for round_trip in self.round_trips]
+
+
+@pytest.fixture
+def recording_topic(monkeypatch: pytest.MonkeyPatch) -> _RecordingTopic:
+    topic = _RecordingTopic()
+    monkeypatch.setattr(
+        workflow_execute_task_module.MessageBasedAppGenerator,
+        "get_response_topic",
+        lambda *_args, **_kwargs: topic,
+    )
+    return topic
+
+
+def _queued_bursts(
+    bursts: Sequence[Sequence[Mapping[str, object]]], *, sent_before_each_wait: list[int], topic: _RecordingTopic
+) -> Generator[Mapping[str, object]]:
+    """Yield events the way `AppQueueManager.listen` does: bursts that are queued together, a wait between bursts."""
+    hint = queued_events_hint.get()
+    assert hint is not None
+    for burst in bursts:
+        hint.before_wait()
+        sent_before_each_wait.append(sum(len(round_trip) for round_trip in topic.round_trips))
+        for index, event in enumerate(burst):
+            hint.more_queued = index < len(burst) - 1
+            yield event
+
+
+def _publish_workflow_stream(response_stream: Generator[Mapping[str, object]]) -> None:
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.WORKFLOW,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+
+def _chunk(index: int) -> dict[str, object]:
+    return {"event": f"text_chunk_{index}", "task_id": "task-id"}
+
+
+_STARTED: dict[str, object] = {"event": "workflow_started", "task_id": "task-id"}
+_FINISHED: dict[str, object] = {"event": "workflow_finished", "task_id": "task-id", "data": {"status": "succeeded"}}
 
 
 def _decode_published_payload(payload: bytes) -> dict[str, object] | str:
@@ -459,6 +531,149 @@ def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
 
     payloads = _published_payloads(mock_topic)
     assert [payload["event"] for payload in payloads] == ["workflow_paused"]
+
+
+def test_publish_streaming_response_sends_events_that_are_queued_together_in_one_round_trip(
+    recording_topic: _RecordingTopic,
+) -> None:
+    sent_before_each_wait: list[int] = []
+    bursts = [[_STARTED], [_chunk(1), _chunk(2), _chunk(3)], [_chunk(4)], [_chunk(5), _FINISHED]]
+
+    _publish_workflow_stream(_queued_bursts(bursts, sent_before_each_wait=sent_before_each_wait, topic=recording_topic))
+
+    assert recording_topic.events() == [
+        ["workflow_started"],
+        ["text_chunk_1", "text_chunk_2", "text_chunk_3"],
+        ["text_chunk_4"],
+        ["text_chunk_5", "workflow_finished"],
+    ]
+    # Whenever the listener waited, everything it had yielded before was already sent.
+    assert sent_before_each_wait == [0, 1, 4, 5]
+    assert queued_events_hint.get() is None
+
+
+def test_publish_streaming_response_sends_what_it_holds_before_the_listener_waits(
+    recording_topic: _RecordingTopic,
+) -> None:
+    sent_before_the_wait: list[int] = []
+
+    def _response_stream() -> Generator[Mapping[str, object]]:
+        hint = queued_events_hint.get()
+        assert hint is not None
+        hint.more_queued = True
+        yield _chunk(1)
+        # The event that was queued behind the chunk produced nothing for the stream, and the queue is empty now.
+        hint.before_wait()
+        sent_before_the_wait.append(len(recording_topic.round_trips))
+        hint.more_queued = False
+        yield _FINISHED
+
+    _publish_workflow_stream(_response_stream())
+
+    assert sent_before_the_wait == [1]
+    assert recording_topic.events() == [["text_chunk_1"], ["workflow_finished"]]
+
+
+def test_publish_streaming_response_sends_state_events_at_once_even_when_more_are_queued(
+    recording_topic: _RecordingTopic,
+) -> None:
+    sent_before_each_wait: list[int] = []
+    bursts = [[_STARTED, _chunk(1), {"event": "error", "task_id": "task-id", "message": "boom"}, _chunk(2), _FINISHED]]
+
+    _publish_workflow_stream(_queued_bursts(bursts, sent_before_each_wait=sent_before_each_wait, topic=recording_topic))
+
+    assert recording_topic.events() == [
+        ["workflow_started"],
+        ["text_chunk_1", "error"],
+        ["text_chunk_2", "workflow_finished"],
+    ]
+
+
+def test_publish_streaming_response_stops_holding_events_at_the_limit(recording_topic: _RecordingTopic) -> None:
+    limit = workflow_execute_task_module._MAX_PENDING_STREAM_EVENTS
+    bursts = [[_STARTED], [*[_chunk(index) for index in range(limit + 8)], _FINISHED]]
+
+    _publish_workflow_stream(_queued_bursts(bursts, sent_before_each_wait=[], topic=recording_topic))
+
+    assert [len(round_trip) for round_trip in recording_topic.round_trips] == [1, limit, 9]
+    assert [name for round_trip in recording_topic.events() for name in round_trip][1:-1] == [
+        f"text_chunk_{index}" for index in range(limit + 8)
+    ]
+
+
+def test_publish_streaming_response_publishes_every_event_as_it_arrives_when_the_source_says_nothing(
+    recording_topic: _RecordingTopic,
+) -> None:
+    _publish_workflow_stream(event for event in (_STARTED, _chunk(1), _chunk(2), _FINISHED))
+
+    assert recording_topic.events() == [["workflow_started"], ["text_chunk_1"], ["text_chunk_2"], ["workflow_finished"]]
+
+
+@pytest.mark.parametrize("events_after_the_failed_send", [[_chunk(2)], []])
+def test_publish_streaming_response_falls_back_when_sending_held_events_fails_while_the_listener_waits(
+    recording_topic: _RecordingTopic, events_after_the_failed_send: list[dict[str, object]]
+) -> None:
+    recording_topic.failures.append(RuntimeError("redis went away"))
+    events_seen_by_the_listener: list[int] = []
+
+    def _response_stream() -> Generator[Mapping[str, object]]:
+        hint = queued_events_hint.get()
+        assert hint is not None
+        hint.more_queued = True
+        yield _chunk(1)
+        # Sending the held chunk fails here, inside the listener, which must not see the error.
+        hint.before_wait()
+        events_seen_by_the_listener.append(1)
+        yield from events_after_the_failed_send
+
+    with pytest.raises(RuntimeError, match="redis went away"):
+        _publish_workflow_stream(_response_stream())
+
+    assert events_seen_by_the_listener == [1]
+    assert recording_topic.events() == [["workflow_started"], ["workflow_finished"]]
+    failed = json.loads(recording_topic.round_trips[-1][0])
+    assert failed["data"]["status"] == WorkflowExecutionStatus.FAILED
+    assert failed["data"]["error"] == "redis went away"
+
+
+def test_publish_streaming_response_adds_no_fallback_when_the_stream_breaks_after_its_terminal_event(
+    recording_topic: _RecordingTopic,
+) -> None:
+    def _response_stream() -> Generator[Mapping[str, object] | BaseModel]:
+        yield _STARTED
+        yield _StreamEventModel(event="text_chunk", task_id="task-id")
+        yield _FINISHED
+        raise RuntimeError("stream exploded")
+
+    with pytest.raises(RuntimeError, match="stream exploded"):
+        _publish_streaming_response(
+            _response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    assert recording_topic.events() == [["workflow_started"], ["text_chunk"], ["workflow_finished"]]
+
+
+def test_publish_streaming_response_sends_held_events_before_the_fallback_when_the_stream_breaks(
+    recording_topic: _RecordingTopic,
+) -> None:
+    def _response_stream() -> Generator[Mapping[str, object]]:
+        hint = queued_events_hint.get()
+        assert hint is not None
+        yield _STARTED
+        hint.more_queued = True
+        yield _chunk(1)
+        raise RuntimeError("stream exploded")
+
+    with pytest.raises(RuntimeError, match="stream exploded"):
+        _publish_workflow_stream(_response_stream())
+
+    assert recording_topic.events() == [["workflow_started"], ["text_chunk_1"], ["workflow_finished"]]
+    assert queued_events_hint.get() is None
 
 
 def test_publish_streaming_response_publishes_started_then_failed_terminal_when_iteration_raises(
