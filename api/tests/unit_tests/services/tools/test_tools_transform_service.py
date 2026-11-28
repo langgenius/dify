@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -659,7 +659,9 @@ class TestToolsTransformServiceCases:
     class TestWorkflowProviderToUserProvider:
         """Test cases for ToolTransformService.workflow_provider_to_user_provider method"""
 
-        def test_workflow_provider_to_user_provider_with_workflow_app_id(self) -> None:
+        def test_workflow_provider_to_user_provider_with_workflow_app_id(
+            self, unbound_session_factory: sessionmaker[Session]
+        ) -> None:
             """Test that workflow_provider_to_user_provider correctly sets workflow_app_id."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
@@ -667,6 +669,7 @@ class TestToolsTransformServiceCases:
             provider_id = "provider_123"
             controller = WorkflowToolProviderController(
                 provider_id=provider_id,
+                session_maker=unbound_session_factory,
                 entity=ToolProviderEntity(
                     # Retain legacy emoji mappings accepted by the API transformation.
                     identity=ToolProviderIdentity.model_construct(
@@ -700,13 +703,16 @@ class TestToolsTransformServiceCases:
             assert result.plugin_unique_identifier is None
             assert result.tools == []
 
-        def test_workflow_provider_to_user_provider_without_workflow_app_id(self) -> None:
+        def test_workflow_provider_to_user_provider_without_workflow_app_id(
+            self, unbound_session_factory: sessionmaker[Session]
+        ) -> None:
             """Test that workflow_provider_to_user_provider works when workflow_app_id is not provided."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
             provider_id = "provider_123"
             controller = WorkflowToolProviderController(
                 provider_id=provider_id,
+                session_maker=unbound_session_factory,
                 entity=ToolProviderEntity(
                     # Retain legacy emoji mappings accepted by the API transformation.
                     identity=ToolProviderIdentity.model_construct(
@@ -732,13 +738,16 @@ class TestToolsTransformServiceCases:
             assert result.workflow_app_id is None
             assert result.labels == ["label1"]
 
-        def test_workflow_provider_to_user_provider_workflow_app_id_none(self) -> None:
+        def test_workflow_provider_to_user_provider_workflow_app_id_none(
+            self, unbound_session_factory: sessionmaker[Session]
+        ) -> None:
             """Test that workflow_provider_to_user_provider handles None workflow_app_id explicitly."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
             provider_id = "provider_123"
             controller = WorkflowToolProviderController(
                 provider_id=provider_id,
+                session_maker=unbound_session_factory,
                 entity=ToolProviderEntity(
                     # Retain legacy emoji mappings accepted by the API transformation.
                     identity=ToolProviderIdentity.model_construct(
@@ -765,7 +774,9 @@ class TestToolsTransformServiceCases:
             assert result.workflow_app_id is None
             assert result.labels == []
 
-        def test_workflow_provider_to_user_provider_preserves_other_fields(self) -> None:
+        def test_workflow_provider_to_user_provider_preserves_other_fields(
+            self, unbound_session_factory: sessionmaker[Session]
+        ) -> None:
             """Test that workflow_provider_to_user_provider preserves all other entity fields."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
@@ -773,6 +784,7 @@ class TestToolsTransformServiceCases:
             provider_id = "provider_456"
             controller = WorkflowToolProviderController(
                 provider_id=provider_id,
+                session_maker=unbound_session_factory,
                 entity=ToolProviderEntity(
                     # Retain legacy emoji mappings accepted by the API transformation.
                     identity=ToolProviderIdentity.model_construct(

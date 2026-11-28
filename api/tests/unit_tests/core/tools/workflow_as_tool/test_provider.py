@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import Engine
@@ -25,7 +25,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.base import TypeBase
@@ -42,15 +41,14 @@ def database_session(sqlite_engine: Engine) -> Iterator[Session]:
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
-    with (
-        patch.object(session_factory, "create_session", session_maker),
-        patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
-    ):
+    with patch.object(session_factory, "create_session", session_maker):
         with session_maker() as session:
             yield session
 
 
-def _controller(provider_id: str = "provider-1") -> WorkflowToolProviderController:
+def _controller(
+    provider_id: str = "provider-1", *, session_maker: sessionmaker[Session]
+) -> WorkflowToolProviderController:
     entity = ToolProviderEntity(
         identity=ToolProviderIdentity(
             author="author",
@@ -61,7 +59,7 @@ def _controller(provider_id: str = "provider-1") -> WorkflowToolProviderControll
         ),
         credentials_schema=[],
     )
-    return WorkflowToolProviderController(entity=entity, provider_id=provider_id)
+    return WorkflowToolProviderController(entity=entity, provider_id=provider_id, session_maker=session_maker)
 
 
 def _app(*, tenant_id: str | None = None) -> App:
@@ -152,7 +150,9 @@ def _persist_provider_graph(
     return db_provider, app, account, workflow
 
 
-def test_get_db_provider_tool_builds_entity(database_session: Session) -> None:
+def test_get_db_provider_tool_builds_entity(
+    database_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     db_provider, app, user, _ = _persist_provider_graph(
         database_session,
         parameter_configuration=json.dumps(
@@ -162,7 +162,7 @@ def test_get_db_provider_tool_builds_entity(database_session: Session) -> None:
             ]
         ),
     )
-    controller = _controller(db_provider.id)
+    controller = _controller(db_provider.id, session_maker=sqlite_session_factory)
     variables = [
         VariableEntity(
             variable="country",
@@ -204,8 +204,8 @@ def test_get_db_provider_tool_builds_entity(database_session: Session) -> None:
     assert controller.provider_type == ToolProviderType.WORKFLOW
 
 
-def test_get_tool_returns_hit_or_none() -> None:
-    controller = _controller()
+def test_get_tool_returns_hit_or_none(unbound_session_factory: sessionmaker[Session]) -> None:
+    controller = _controller(session_maker=unbound_session_factory)
     tool = _workflow_tool()
     controller.tools = [tool]
 
@@ -213,12 +213,29 @@ def test_get_tool_returns_hit_or_none() -> None:
     assert controller.get_tool("missing") is None
 
 
-def test_get_tools_returns_cached() -> None:
-    controller = _controller()
+def test_get_tools_returns_cached_without_database_access(unbound_session_factory: sessionmaker[Session]) -> None:
+    # The unbound maker fails on any query, so a pass proves the cached path opens no session.
+    controller = _controller(session_maker=unbound_session_factory)
     cached_tools = [_workflow_tool("wf-cached", tenant_id="tenant-1")]
     controller.tools = cached_tools
 
-    assert controller.get_tools("tenant-1") == cached_tools
+    assert controller.get_tools("tenant-1") is cached_tools
+
+
+def test_get_tools_loads_tool_through_injected_session_maker(
+    database_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    db_provider, app, user, workflow = _persist_provider_graph(database_session)
+    controller = _controller(db_provider.id, session_maker=sqlite_session_factory)
+
+    tools = controller.get_tools(db_provider.tenant_id)
+
+    assert len(tools) == 1
+    assert tools[0].workflow_as_tool_id == db_provider.id
+    assert tools[0].workflow_app_id == app.id
+    assert tools[0].workflow_id == workflow.id
+    assert tools[0].entity.identity.author == user.name
+    assert controller.tools is tools
 
 
 def test_from_db_builds_controller(database_session: Session) -> None:
@@ -247,23 +264,41 @@ def test_from_db_builds_controller(database_session: Session) -> None:
     assert built.tools[0].workflow_app_id == app.id
     assert built.tools[0].workflow_id == workflow.id
 
+    # from_db hands the controller a maker on its own session's bind, so a reload
+    # reads the same database.
+    built.tools = None
+    assert [tool.workflow_id for tool in built.get_tools(db_provider.tenant_id)] == [workflow.id]
 
-def test_get_tools_returns_empty_when_provider_missing(database_session: Session) -> None:
+
+def test_get_tools_returns_empty_for_other_tenant(
+    database_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     db_provider, _, _, _ = _persist_provider_graph(database_session)
-    controller = _controller(db_provider.id)
-    controller.tools = None
+    other_provider, _, _, _ = _persist_provider_graph(database_session)
+    controller = _controller(db_provider.id, session_maker=sqlite_session_factory)
+
+    assert controller.get_tools(other_provider.tenant_id) == []
+    assert controller.tools is None
+
+
+def test_get_tools_returns_empty_when_provider_missing(sqlite_session_factory: sessionmaker[Session]) -> None:
+    controller = _controller(str(uuid.uuid4()), session_maker=sqlite_session_factory)
 
     assert controller.get_tools(str(uuid.uuid4())) == []
+    assert controller.tools is None
 
 
-def test_get_tools_raises_when_app_missing(database_session: Session) -> None:
+def test_get_tools_raises_when_app_missing(
+    database_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     db_provider, _, _, _ = _persist_provider_graph(
         database_session,
         include_app=False,
         include_workflow=False,
     )
-    controller = _controller(db_provider.id)
+    controller = _controller(db_provider.id, session_maker=sqlite_session_factory)
     controller.tools = None
 
     with pytest.raises(ValueError, match="app not found"):
         controller.get_tools(db_provider.tenant_id)
+    assert controller.tools is None

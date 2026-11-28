@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.plugin_service import PluginService
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -823,7 +823,8 @@ class TestWorkflowProviderToUserProvider:
         defaults.update(identity_overrides)
         identity = ToolProviderIdentity(**defaults)
         entity = ToolProviderEntity(identity=identity)
-        return WorkflowToolProviderController(entity=entity, provider_id=provider_id)
+        # These tests never load tools from the database, so the maker stays unbound.
+        return WorkflowToolProviderController(entity=entity, provider_id=provider_id, session_maker=sessionmaker())
 
     def test_with_workflow_app_id(self):
         ctrl = self._make_controller()
