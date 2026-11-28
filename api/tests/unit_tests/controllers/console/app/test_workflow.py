@@ -2,55 +2,59 @@ from __future__ import annotations
 
 import inspect
 import json
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import NoReturn
-from unittest.mock import ANY, MagicMock, Mock
+from typing import Final, NoReturn, Protocol, override
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
-from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
-from controllers.console.app import wraps as app_wraps
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync, TriggerNodeLimitExceededError
 from controllers.console.app.workflow import (
     ConvertToWorkflowApi,
     EvaluationPublishedWorkflowApi,
+    HumanInputDeliveryTestPayload,
+    HumanInputFormPreviewPayload,
+    HumanInputFormPreviewSubmitPayload,
     WorkflowKindConvertApi,
 )
+from controllers.console.wraps import validate_request
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
-from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables import SecretVariable, StringVariable
+from graphon.variables import SecretVariable, StringVariable, VariableBase
 from graphon.variables.variables import RAGPipelineVariable
-from libs import login as login_lib
 from models import Account as _workflow_convert_api_Account
 from models import App as _workflow_convert_api_App
 from models import App as _workflow_human_input_debug_api_App
-from models import Tenant
 from models.account import Account as _workflow_Account
 from models.account import Account as _workflow_human_input_debug_api_Account
-from models.account import AccountStatus, TenantAccountRole
+from models.account import TenantAccountRole
+from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, WorkflowNodeJobConfig
 from models.model import App as _workflow_App
 from models.model import AppMode, IconType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import EnvironmentVariableMappingDict, Workflow, WorkflowType
+from repositories.workflow_collaboration_repository import WorkflowOnlineUsersHash
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
+from services.workflow_service import WorkflowService
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
 
 def _account() -> _workflow_Account:
@@ -72,12 +76,28 @@ def _workflow_app(*, app_id: str = "app", tenant_id: str = "t1") -> _workflow_Ap
     )
 
 
-def _make_workflow(**overrides) -> Workflow:
-    graph = overrides.pop("graph_dict", {"nodes": [], "edges": []})
-    features = overrides.pop("features_dict", {"file_upload": {"enabled": False}})
-    environment_variables = overrides.pop(
-        "environment_variables",
-        [
+_DEFAULT_CREATED_AT: Final = datetime(2024, 1, 1, 12, 0, 0)
+_DEFAULT_UPDATED_AT: Final = datetime(2024, 1, 1, 12, 1, 0)
+
+
+def _make_workflow(
+    *,
+    graph_dict: dict[str, object] | None = None,
+    features_dict: dict[str, object] | None = None,
+    environment_variables: Sequence[VariableBase] | None = None,
+    conversation_variables: Sequence[VariableBase] | None = None,
+    rag_pipeline_variables: Sequence[Mapping[str, object] | RAGPipelineVariable] | None = None,
+    created_at: datetime = _DEFAULT_CREATED_AT,
+    updated_at: datetime | None = _DEFAULT_UPDATED_AT,
+) -> Workflow:
+    """Build a persisted-looking workflow with the values the console controller tests expect.
+
+    Every keyword is optional; omitting one keeps the historical default.
+    """
+    graph: dict[str, object] = {"nodes": [], "edges": []} if graph_dict is None else graph_dict
+    features: dict[str, object] = {"file_upload": {"enabled": False}} if features_dict is None else features_dict
+    if environment_variables is None:
+        environment_variables = [
             SecretVariable(
                 id="env-1",
                 name="API_KEY",
@@ -85,11 +105,9 @@ def _make_workflow(**overrides) -> Workflow:
                 selector=["env", "API_KEY"],
                 description="API key",
             )
-        ],
-    )
-    conversation_variables = overrides.pop(
-        "conversation_variables",
-        [
+        ]
+    if conversation_variables is None:
+        conversation_variables = [
             StringVariable(
                 id="conv-1",
                 name="topic",
@@ -97,11 +115,9 @@ def _make_workflow(**overrides) -> Workflow:
                 selector=["conversation", "topic"],
                 description="Topic",
             )
-        ],
-    )
-    rag_pipeline_variables = overrides.pop(
-        "rag_pipeline_variables",
-        [
+        ]
+    if rag_pipeline_variables is None:
+        rag_pipeline_variables = [
             RAGPipelineVariable.model_validate(
                 {
                     "variable": "query",
@@ -120,8 +136,7 @@ def _make_workflow(**overrides) -> Workflow:
                     "allowed_file_upload_methods": ["local_file"],
                 }
             )
-        ],
-    )
+        ]
     workflow = Workflow(
         id="workflow-1",
         tenant_id="t1",
@@ -134,22 +149,18 @@ def _make_workflow(**overrides) -> Workflow:
         marked_comment="Initial release",
         created_by="user-1",
         updated_by=None,
-        _environment_variables=[],
-        _conversation_variables=[],
-        _rag_pipeline_variables=[],
     )
-    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
-    if environment_variables and isinstance(environment_variables[0], dict):
-        workflow._environment_variables = json.dumps(
-            {str(index): value for index, value in enumerate(environment_variables)}
-        )
+    workflow.created_at = created_at
+    if updated_at is None:
+        # The controllers serialise `workflow.updated_at or workflow.created_at`, because a draft that
+        # was never persisted has no `updated_at` yet. Dropping the attribute leaves the mapped column
+        # unset, which reads back as `None` without inventing a value for a non-nullable column.
+        del workflow.updated_at
     else:
-        workflow.environment_variables = environment_variables
+        workflow.updated_at = updated_at
+    workflow.environment_variables = environment_variables
     workflow.conversation_variables = conversation_variables
     workflow.rag_pipeline_variables = rag_pipeline_variables
-    for key, value in overrides.items():
-        setattr(workflow, key, value)
     return workflow
 
 
@@ -320,7 +331,7 @@ class TestWorkflowCases:
         )
 
         @contextmanager
-        def transaction():
+        def transaction() -> Generator[Session]:
             events.append("transaction-enter")
             yield session
             events.append("transaction-exit")
@@ -690,14 +701,83 @@ class TestWorkflowCases:
                 handler(api, _account(), app_model=_workflow_app())
 
     @staticmethod
-    def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
-            raise workflow_module.VariableError("description too long")
+    def test_sync_draft_workflow_hash_mismatch(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+    ) -> None:
+        """A stale client hash must abort the real sync before the persisted draft is touched.
 
-        monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
-        monkeypatch.setattr(
-            workflow_module, "WorkflowService", lambda: SimpleNamespace(sync_draft_workflow=lambda **_kwargs: None)
-        )
+        The endpoint builds its own ``WorkflowService()``, which binds its sessions to ``db.engine``
+        and its request session to ``db.session``; both are pointed at the test SQLite database so the
+        real ``get_draft_workflow_for_update`` / hash comparison run against a real draft row.
+        Postcondition: ``DraftWorkflowNotSync`` (409) caused by the service's own
+        ``WorkflowHashNotEqualError``, and the stored graph still equals what was persisted.
+        """
+        app_model = _workflow_app()
+        draft = _make_workflow()
+        draft.version = Workflow.VERSION_DRAFT
+        persisted_graph = draft.graph
+        sqlite_session.add_all([make_tenant(tenant_id=app_model.tenant_id), app_model, _account(), draft])
+        sqlite_session.commit()
+        monkeypatch.setattr(type(workflow_module.db), "engine", property(lambda _self: sqlite_engine))
+        monkeypatch.setattr(workflow_module.db, "session", lambda: sqlite_session)
+
+        api = workflow_module.DraftWorkflowApi()
+        handler = inspect.unwrap(api.post)
+        incoming_graph: dict[str, object] = {
+            "nodes": [{"id": "start", "data": {"type": "start"}}],
+            "edges": [],
+        }
+
+        with app.test_request_context(
+            "/apps/app/workflows/draft",
+            method="POST",
+            json={"graph": incoming_graph, "features": {}, "hash": "stale-hash"},
+        ):
+            with pytest.raises(DraftWorkflowNotSync) as exc:
+                handler(api, _account(), app_model=app_model)
+
+        assert exc.value.code == 409
+        assert isinstance(exc.value.__cause__, workflow_module.WorkflowHashNotEqualError)
+        sqlite_session.expire_all()
+        persisted_draft = sqlite_session.get(Workflow, draft.id)
+        assert persisted_draft is not None
+        assert persisted_draft.graph == persisted_graph
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("variable_mapping", "description"),
+        [
+            (
+                {"name": "topic", "description": "x" * 256},
+                "description of variable 'topic' is too long (max 255 characters)",
+            ),
+            ({"name": "topic"}, "missing value type"),
+            ({"name": "topic", "value_type": "string"}, "missing value"),
+        ],
+        ids=["description-too-long", "missing-value-type", "missing-value"],
+    )
+    def test_sync_draft_workflow_variable_validation_error(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        variable_mapping: dict[str, str],
+        description: str,
+    ) -> None:
+        """Real conversation-variable validation must reject the payload before any draft write.
+
+        ``DraftWorkflowApi.post`` builds the variables with the real ``variable_factory``, which raises
+        ``VariableError`` for an over-long description or an incomplete mapping; the endpoint maps that
+        to ``InvalidArgumentError``. The real ``WorkflowService()`` is still constructed against the test
+        database, so nothing about the service or the factory is substituted.
+        Postcondition: HTTP 400 whose description is the factory's own message, caused by ``VariableError``,
+        and no draft row exists because validation runs ahead of ``sync_draft_workflow``.
+        """
+        app_model = _workflow_app()
+        sqlite_session.add_all([make_tenant(tenant_id=app_model.tenant_id), app_model, _account()])
+        sqlite_session.commit()
+        monkeypatch.setattr(type(workflow_module.db), "engine", property(lambda _self: sqlite_engine))
+        monkeypatch.setattr(workflow_module.db, "session", lambda: sqlite_session)
 
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
@@ -705,12 +785,17 @@ class TestWorkflowCases:
         with app.test_request_context(
             "/apps/app/workflows/draft",
             method="POST",
-            json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+            json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [variable_mapping]},
         ):
             with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), app_model=app_model)
 
-        assert exc.value.description == "description too long"
+        assert exc.value.code == 400
+        assert exc.value.description == description
+        assert isinstance(exc.value.__cause__, workflow_module.VariableError)
+        assert sqlite_session.scalar(select(Workflow).where(Workflow.app_id == app_model.id)) is None, (
+            "variable validation must run before the service writes a draft"
+        )
 
     @staticmethod
     def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -843,7 +928,7 @@ class TestWorkflowCases:
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
 
-        def get_all_published_workflow(*, session: Session, **_kwargs):
+        def get_all_published_workflow(*, session: Session, **_kwargs: object) -> tuple[list[object], bool]:
             assert session is sqlite_session
             return [workflow], False
 
@@ -1069,15 +1154,21 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_workflow_response_rejects_invalid_environment_variable_dict(sqlite_session: Session) -> None:
-        workflow = _make_workflow(environment_variables=[{"value_type": "not-a-segment-type"}])
+        workflow = _make_workflow(environment_variables=[])
+        invalid_variable: EnvironmentVariableMappingDict = {"value_type": "not-a-segment-type"}
+        # Store an undecoded payload to exercise the response's read-time validation.
+        workflow._environment_variables = json.dumps({"0": invalid_variable})
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
+        sqlite_session.refresh(workflow, ["_environment_variables"])
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc:
             workflow_module.WorkflowResponse.model_validate(
                 workflow_module.WorkflowResponseSource(workflow, session=sqlite_session),
                 from_attributes=True,
             )
+
+        assert [error["loc"] for error in exc.value.errors()] == [("environment_variables",)]
 
     @staticmethod
     def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
@@ -1112,21 +1203,25 @@ class TestWorkflowCases:
         )
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
-        projected_graph = {
-            "nodes": [
-                {
-                    "id": "agent-node",
-                    "data": {
-                        "type": "agent",
-                        "version": "2",
-                        "agent_node_kind": "dify_agent",
-                        "agent_task": "Summarize it.",
-                        "agent_declared_outputs": [{"name": "summary", "type": "string"}],
-                    },
-                }
-            ],
-            "edges": [],
-        }
+
+        # Seed a real binding row and let the production projection run. The node-job shape is
+        # defined by product models (`WorkflowNodeJobConfig` / `DeclaredOutputConfig`), so the
+        # expected projection is derived from those models rather than an ad hoc dict.
+        job_config = WorkflowNodeJobConfig(
+            workflow_prompt="Summarize it.",
+            declared_outputs=[DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)],
+        )
+        binding = WorkflowAgentNodeBinding(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            node_job_config=job_config,
+        )
+        sqlite_session.add(binding)
+        sqlite_session.commit()
 
         monkeypatch.setattr(
             workflow_module,
@@ -1134,20 +1229,38 @@ class TestWorkflowCases:
             lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
         )
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
-
-        monkeypatch.setattr(
-            WorkflowAgentPublishService,
-            "project_draft_bindings_to_graph",
-            lambda **_k: projected_graph,
-        )
-
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.get)
 
         response = handler(api, sqlite_session, app_model=_workflow_app())
 
-        assert response["graph"] == projected_graph
+        expected_graph: dict[str, object] = {
+            "nodes": [
+                {
+                    "id": "agent-node",
+                    "data": {
+                        "type": "agent",
+                        "version": "2",
+                        "agent_node_kind": "dify_agent",
+                        "agent_binding": {
+                            "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
+                            "agent_id": None,
+                            "current_snapshot_id": None,
+                        },
+                        "agent_task": job_config.workflow_prompt,
+                        # Session policy fields are projected by the production projection as well.
+                        "continue_agent_session": job_config.continue_agent_session,
+                        "agent_session_generation": job_config.session_generation,
+                        "agent_output_routes": job_config.output_routes.model_dump(mode="json"),
+                        "agent_declared_outputs": [
+                            output.model_dump(mode="json") for output in job_config.declared_outputs
+                        ],
+                    },
+                }
+            ],
+            "edges": [],  # the projected graph keeps the same shape as the stored one
+        }
+        assert response["graph"] == expected_graph
 
     @staticmethod
     def test_advanced_chat_run_conversation_not_exists(
@@ -1362,12 +1475,12 @@ class TestWorkflowCases:
         apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
+        batch_size = workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+        empty_entry: WorkflowOnlineUsersHash = {}
         first_pipeline = Mock()
-        first_pipeline.execute.return_value = [
-            {} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)
-        ]
+        first_pipeline.execute.return_value = [empty_entry for _ in range(batch_size)]
         second_pipeline = Mock()
-        second_pipeline.execute.return_value = [{}]
+        second_pipeline.execute.return_value = [empty_entry]
         redis_pipeline_factory = Mock(side_effect=[first_pipeline, second_pipeline])
         monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
@@ -1488,7 +1601,7 @@ def _workflow_convert_api_app(app_id: str) -> _workflow_convert_api_App:
 class TestWorkflowConvertApiCases:
     class TestConvertToWorkflowApi:
         @pytest.fixture
-        def api(self):
+        def api(self) -> workflow_module.ConvertToWorkflowApi:
             return workflow_module.ConvertToWorkflowApi()
 
         def test_convert_to_workflow_attaches_permission_keys_when_rbac_enabled(
@@ -1527,11 +1640,23 @@ class TestWorkflowConvertApiCases:
             assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
+class _CommunityMutationResource(Protocol):
+    """Minimal shape shared by the evaluation-gated mutation resources.
+
+    The concrete ``post`` methods declare decorator-injected parameters (``app_model``,
+    ``current_user``) that the auth/edition guards supply at runtime. This protocol exposes only
+    the zero-argument call the test exercises, so the intentional guard-rejection call type-checks
+    without naming injected arguments.
+    """
+
+    def post(self) -> object: ...
+
+
 @pytest.mark.parametrize("resource_class", [EvaluationPublishedWorkflowApi, WorkflowKindConvertApi])
 def test_evaluation_workflow_mutations_reject_community(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
+    resource_class: type[_CommunityMutationResource],
 ) -> None:
     monkeypatch.setattr("controllers.console.wraps.FeatureService.is_evaluation_supported", lambda: False)
 
@@ -1542,15 +1667,13 @@ def test_evaluation_workflow_mutations_reject_community(
 
 
 def _make_account() -> _workflow_human_input_debug_api_Account:
-    account = _workflow_human_input_debug_api_Account(name="tester", email="tester@example.com")
-    account.status = AccountStatus.ACTIVE
-    account.role = TenantAccountRole.OWNER
-    account.id = "account-123"  # type: ignore[assignment]
-    tenant = Tenant(name="Test tenant")
-    tenant.id = "tenant-123"
-    account._current_tenant = tenant
-    account._get_current_object = lambda: account  # type: ignore[attr-defined]
-    return account
+    return make_account(
+        account_id="account-123",
+        name="tester",
+        email="tester@example.com",
+        role=TenantAccountRole.OWNER,
+        tenant=make_tenant(tenant_id="tenant-123", name="Test tenant"),
+    )
 
 
 def _make_app(mode: AppMode) -> _workflow_human_input_debug_api_App:
@@ -1569,26 +1692,85 @@ def _make_app(mode: AppMode) -> _workflow_human_input_debug_api_App:
     )
 
 
-def _patch_console_guards(
-    monkeypatch: pytest.MonkeyPatch,
-    account: _workflow_human_input_debug_api_Account,
-    app_model: _workflow_human_input_debug_api_App,
-) -> None:
-    # Skip setup and auth guardrails
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-        LOGIN_DISABLED=True,
-        INIT_PASSWORD="",
-    )
-    monkeypatch.setattr(login_lib, "current_user", account)
-    monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
-    monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
+class _RecordingHumanInputService(WorkflowService):
+    """Named fake that records human-input calls without touching the database.
 
-    # Avoid hitting the database when resolving the app model
-    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
+    Subclassing the real service (rather than patching it) lets the endpoint receive a genuine
+    object through its injectable ``workflow_service`` parameter. Only the three human-input
+    methods are overridden; ``__init__`` skips the repository wiring the base constructor needs.
+    """
+
+    def __init__(self) -> None:
+        self.preview_calls: list[dict[str, object]] = []
+        self.submit_calls: list[dict[str, object]] = []
+        self.delivery_calls: list[dict[str, object]] = []
+        self.preview_result: Mapping[str, object] = {}
+        self.submit_result: Mapping[str, object] = {}
+        self.delivery_error: Exception | None = None
+
+    @override
+    def get_human_input_form_preview(
+        self,
+        *,
+        app_model: _workflow_human_input_debug_api_App,
+        account: _workflow_human_input_debug_api_Account,
+        node_id: str,
+        inputs: Mapping[str, object] | None = None,
+        session: Session,
+    ) -> Mapping[str, object]:
+        self.preview_calls.append(
+            {"app_model": app_model, "account": account, "node_id": node_id, "inputs": inputs, "session": session}
+        )
+        return self.preview_result
+
+    @override
+    def submit_human_input_form_preview(
+        self,
+        *,
+        app_model: _workflow_human_input_debug_api_App,
+        account: _workflow_human_input_debug_api_Account,
+        node_id: str,
+        form_inputs: Mapping[str, object],
+        inputs: Mapping[str, object] | None = None,
+        action: str,
+        session: Session,
+    ) -> Mapping[str, object]:
+        self.submit_calls.append(
+            {
+                "app_model": app_model,
+                "account": account,
+                "node_id": node_id,
+                "form_inputs": form_inputs,
+                "inputs": inputs,
+                "action": action,
+                "session": session,
+            }
+        )
+        return self.submit_result
+
+    @override
+    def test_human_input_delivery(
+        self,
+        *,
+        app_model: _workflow_human_input_debug_api_App,
+        account: _workflow_human_input_debug_api_Account,
+        node_id: str,
+        delivery_method_id: str,
+        inputs: Mapping[str, object] | None = None,
+        session: Session,
+    ) -> None:
+        self.delivery_calls.append(
+            {
+                "app_model": app_model,
+                "account": account,
+                "node_id": node_id,
+                "delivery_method_id": delivery_method_id,
+                "inputs": inputs,
+                "session": session,
+            }
+        )
+        if self.delivery_error is not None:
+            raise self.delivery_error
 
 
 @dataclass
@@ -1629,12 +1811,9 @@ class TestWorkflowHumanInputDebugApiCases:
             ),
         ],
     )
-    def test_human_input_preview_delegates_to_service(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, case: PreviewCase
-    ) -> None:
+    def test_human_input_preview_delegates_to_service(app: Flask, case: PreviewCase, sqlite_session: Session) -> None:
         account = _make_account()
         app_model = _make_app(case.mode)
-        _patch_console_guards(monkeypatch, account, app_model)
 
         preview_payload = {
             "form_id": "node-42",
@@ -1667,12 +1846,21 @@ class TestWorkflowHumanInputDebugApiCases:
             "actions": [{"id": "continue", "title": "Continue", "button_style": "default"}],
             "resolved_default_values": {"topic": ""},
         }
-        service_instance = MagicMock()
-        service_instance.get_human_input_form_preview.return_value = preview_payload
-        monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
+        service = _RecordingHumanInputService()
+        service.preview_result = preview_payload
 
         with app.test_request_context(case.path, method="POST", json={"inputs": {"topic": "tech"}}):
-            response = case.resource_cls().post(app_id=app_model.id, node_id="node-42")
+            args = HumanInputFormPreviewPayload.model_validate({"inputs": {"topic": "tech"}})
+            handler: Callable[..., object] = inspect.unwrap(case.resource_cls().post)
+            response = handler(
+                case.resource_cls(),
+                args,
+                account,
+                app_model,
+                "node-42",
+                session=sqlite_session,
+                workflow_service=service,
+            )
 
         assert response == {
             **preview_payload,
@@ -1680,13 +1868,15 @@ class TestWorkflowHumanInputDebugApiCases:
             "form_token": None,
             "expiration_time": None,
         }
-        service_instance.get_human_input_form_preview.assert_called_once_with(
-            app_model=app_model,
-            account=account,
-            node_id="node-42",
-            inputs={"topic": "tech"},
-            session=ANY,
-        )
+        assert service.preview_calls == [
+            {
+                "app_model": app_model,
+                "account": account,
+                "node_id": "node-42",
+                "inputs": {"topic": "tech"},
+                "session": sqlite_session,
+            }
+        ]
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1704,33 +1894,45 @@ class TestWorkflowHumanInputDebugApiCases:
             ),
         ],
     )
-    def test_human_input_submit_forwards_payload(app: Flask, monkeypatch: pytest.MonkeyPatch, case: SubmitCase) -> None:
+    def test_human_input_submit_forwards_payload(app: Flask, case: SubmitCase, sqlite_session: Session) -> None:
         account = _make_account()
         app_model = _make_app(case.mode)
-        _patch_console_guards(monkeypatch, account, app_model)
 
         result_payload = {"node_id": "node-99", "outputs": {"__rendered_content": "<p>done</p>"}, "action": "approve"}
-        service_instance = MagicMock()
-        service_instance.submit_human_input_form_preview.return_value = result_payload
-        monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
+        service = _RecordingHumanInputService()
+        service.submit_result = result_payload
 
         with app.test_request_context(
             case.path,
             method="POST",
             json={"form_inputs": {"answer": "42"}, "inputs": {"#node-1.result#": "LLM output"}, "action": "approve"},
         ):
-            response = case.resource_cls().post(app_id=app_model.id, node_id="node-99")
+            args = HumanInputFormPreviewSubmitPayload.model_validate(
+                {"form_inputs": {"answer": "42"}, "inputs": {"#node-1.result#": "LLM output"}, "action": "approve"}
+            )
+            handler: Callable[..., object] = inspect.unwrap(case.resource_cls().post)
+            response = handler(
+                case.resource_cls(),
+                args,
+                account,
+                app_model,
+                "node-99",
+                session=sqlite_session,
+                workflow_service=service,
+            )
 
         assert response == result_payload
-        service_instance.submit_human_input_form_preview.assert_called_once_with(
-            app_model=app_model,
-            account=account,
-            node_id="node-99",
-            form_inputs={"answer": "42"},
-            inputs={"#node-1.result#": "LLM output"},
-            action="approve",
-            session=ANY,
-        )
+        assert service.submit_calls == [
+            {
+                "app_model": app_model,
+                "account": account,
+                "node_id": "node-99",
+                "form_inputs": {"answer": "42"},
+                "inputs": {"#node-1.result#": "LLM output"},
+                "action": "approve",
+                "session": sqlite_session,
+            }
+        ]
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1749,60 +1951,77 @@ class TestWorkflowHumanInputDebugApiCases:
         ],
     )
     def test_human_input_delivery_test_calls_service(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, case: DeliveryTestCase
+        app: Flask, case: DeliveryTestCase, sqlite_session: Session
     ) -> None:
         account = _make_account()
         app_model = _make_app(case.mode)
-        _patch_console_guards(monkeypatch, account, app_model)
 
-        service_instance = MagicMock()
-        monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
+        service = _RecordingHumanInputService()
 
         with app.test_request_context(
             case.path,
             method="POST",
             json={"delivery_method_id": "delivery-123"},
         ):
-            response = case.resource_cls().post(app_id=app_model.id, node_id="node-7")
+            args = HumanInputDeliveryTestPayload.model_validate({"delivery_method_id": "delivery-123"})
+            handler: Callable[..., object] = inspect.unwrap(case.resource_cls().post)
+            response = handler(
+                case.resource_cls(),
+                args,
+                account,
+                app_model,
+                "node-7",
+                session=sqlite_session,
+                workflow_service=service,
+            )
 
         assert response == {}
-        service_instance.test_human_input_delivery.assert_called_once_with(
-            app_model=app_model,
-            account=account,
-            node_id="node-7",
-            delivery_method_id="delivery-123",
-            inputs={},
-            session=ANY,
-        )
+        assert service.delivery_calls == [
+            {
+                "app_model": app_model,
+                "account": account,
+                "node_id": "node-7",
+                "delivery_method_id": "delivery-123",
+                "inputs": {},
+                "session": sqlite_session,
+            }
+        ]
 
     @staticmethod
-    def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_human_input_delivery_test_maps_validation_error(app: Flask, sqlite_session: Session) -> None:
         account = _make_account()
         app_model = _make_app(AppMode.ADVANCED_CHAT)
-        _patch_console_guards(monkeypatch, account, app_model)
 
-        service_instance = MagicMock()
-        service_instance.test_human_input_delivery.side_effect = ValueError("bad delivery method")
-        monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
+        service = _RecordingHumanInputService()
+        service.delivery_error = ValueError("bad delivery method")
 
         with app.test_request_context(
             "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
             method="POST",
             json={"delivery_method_id": "bad"},
         ):
+            args = HumanInputDeliveryTestPayload.model_validate({"delivery_method_id": "bad"})
+            resource = workflow_module.WorkflowDraftHumanInputDeliveryTestApi()
+            handler: Callable[..., object] = inspect.unwrap(resource.post)
             with pytest.raises(ValueError, match="bad delivery method"):
-                workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+                handler(
+                    resource,
+                    args,
+                    account,
+                    app_model,
+                    "node-1",
+                    session=sqlite_session,
+                    workflow_service=service,
+                )
 
     @staticmethod
-    def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        account = _make_account()
-        app_model = _make_app(AppMode.ADVANCED_CHAT)
-        _patch_console_guards(monkeypatch, account, app_model)
-
+    def test_human_input_preview_rejects_non_mapping(app: Flask) -> None:
+        # The payload boundary rejects a non-mapping `inputs` before the handler runs. Exercise the
+        # production validator directly rather than patching the auth guards to reach it.
         with app.test_request_context(
             "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
             method="POST",
             json={"inputs": ["not-a-dict"]},
         ):
             with pytest.raises(UnprocessableEntity):
-                workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+                validate_request(HumanInputFormPreviewPayload)

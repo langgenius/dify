@@ -54,6 +54,11 @@ class WorkflowSessionInfo(TypedDict):
     graph_active: NotRequired[bool]
 
 
+# Raw ``HGETALL`` payload for one workflow's online-user hash: session id -> JSON-encoded
+# ``WorkflowSessionInfo``. Redis runs with ``decode_responses=False``, so keys/values arrive as bytes.
+type WorkflowOnlineUsersHash = dict[bytes, bytes]
+
+
 class SidMapping(TypedDict):
     workflow_id: str
     user_id: str

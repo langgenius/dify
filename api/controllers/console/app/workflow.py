@@ -90,7 +90,7 @@ from libs.login import login_required
 from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
-from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
+from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX, WorkflowOnlineUsersHash
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
@@ -1037,19 +1037,32 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @model_validate(HumanInputFormPreviewPayload)
-    def post(self, args: HumanInputFormPreviewPayload, current_user: Account, app_model: App, node_id: str):
+    def post(
+        self,
+        args: HumanInputFormPreviewPayload,
+        current_user: Account,
+        app_model: App,
+        node_id: str,
+        *,
+        session: Session | None = None,
+        workflow_service: WorkflowService | None = None,
+    ):
         """
-        Preview human input form content and placeholders
+        Preview human input form content and placeholders.
+
+        ``session`` and ``workflow_service`` are injectable so callers (including tests) can supply
+        real objects; when omitted they fall back to the request-scoped session and a fresh service.
         """
         inputs = args.inputs
 
-        workflow_service = WorkflowService()
+        workflow_service = workflow_service if workflow_service is not None else WorkflowService()
+        session = session if session is not None else db.session()
         preview = workflow_service.get_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
             inputs=inputs,
-            session=db.session(),
+            session=session,
         )
         return dump_response(HumanInputFormPreviewResponse, preview)
 
@@ -1073,11 +1086,24 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(HumanInputFormPreviewSubmitPayload)
-    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    def post(
+        self,
+        args: HumanInputFormPreviewSubmitPayload,
+        current_user: Account,
+        app_model: App,
+        node_id: str,
+        *,
+        session: Session | None = None,
+        workflow_service: WorkflowService | None = None,
+    ):
         """
-        Submit human input form preview
+        Submit human input form preview.
+
+        ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+        request-scoped session and a fresh service.
         """
-        workflow_service = WorkflowService()
+        workflow_service = workflow_service if workflow_service is not None else WorkflowService()
+        session = session if session is not None else db.session()
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
@@ -1085,7 +1111,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
             form_inputs=args.form_inputs,
             inputs=args.inputs,
             action=args.action,
-            session=db.session(),
+            session=session,
         )
         return jsonable_encoder(result)
 
@@ -1105,19 +1131,32 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @model_validate(HumanInputFormPreviewPayload)
-    def post(self, args: HumanInputFormPreviewPayload, current_user: Account, app_model: App, node_id: str):
+    def post(
+        self,
+        args: HumanInputFormPreviewPayload,
+        current_user: Account,
+        app_model: App,
+        node_id: str,
+        *,
+        session: Session | None = None,
+        workflow_service: WorkflowService | None = None,
+    ):
         """
-        Preview human input form content and placeholders
+        Preview human input form content and placeholders.
+
+        ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+        request-scoped session and a fresh service.
         """
         inputs = args.inputs
 
-        workflow_service = WorkflowService()
+        workflow_service = workflow_service if workflow_service is not None else WorkflowService()
+        session = session if session is not None else db.session()
         preview = workflow_service.get_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
             inputs=inputs,
-            session=db.session(),
+            session=session,
         )
         return dump_response(HumanInputFormPreviewResponse, preview)
 
@@ -1141,11 +1180,24 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(HumanInputFormPreviewSubmitPayload)
-    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    def post(
+        self,
+        args: HumanInputFormPreviewSubmitPayload,
+        current_user: Account,
+        app_model: App,
+        node_id: str,
+        *,
+        session: Session | None = None,
+        workflow_service: WorkflowService | None = None,
+    ):
         """
-        Submit human input form preview
+        Submit human input form preview.
+
+        ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+        request-scoped session and a fresh service.
         """
-        workflow_service = WorkflowService()
+        workflow_service = workflow_service if workflow_service is not None else WorkflowService()
+        session = session if session is not None else db.session()
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
@@ -1153,7 +1205,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
             form_inputs=args.form_inputs,
             inputs=args.inputs,
             action=args.action,
-            session=db.session(),
+            session=session,
         )
         return jsonable_encoder(result)
 
@@ -1173,18 +1225,31 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @model_validate(HumanInputDeliveryTestPayload)
-    def post(self, args: HumanInputDeliveryTestPayload, current_user: Account, app_model: App, node_id: str):
+    def post(
+        self,
+        args: HumanInputDeliveryTestPayload,
+        current_user: Account,
+        app_model: App,
+        node_id: str,
+        *,
+        session: Session | None = None,
+        workflow_service: WorkflowService | None = None,
+    ):
         """
-        Test human input delivery
+        Test human input delivery.
+
+        ``session`` and ``workflow_service`` are injectable; omitted values fall back to the
+        request-scoped session and a fresh service.
         """
-        workflow_service = WorkflowService()
+        workflow_service = workflow_service if workflow_service is not None else WorkflowService()
+        session = session if session is not None else db.session()
         workflow_service.test_human_input_delivery(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
             delivery_method_id=args.delivery_method_id,
             inputs=args.inputs,
-            session=db.session(),
+            session=session,
         )
         return jsonable_encoder({})
 
@@ -2116,7 +2181,7 @@ class WorkflowOnlineUsersApi(Resource):
             }
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
 
-        users_json_by_app_id: dict[str, Any] = {}
+        users_json_by_app_id: dict[str, WorkflowOnlineUsersHash] = {}
         for start_index in range(0, len(ordered_accessible_app_ids), WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE):
             app_id_batch = ordered_accessible_app_ids[
                 start_index : start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
