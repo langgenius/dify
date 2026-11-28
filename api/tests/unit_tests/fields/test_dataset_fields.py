@@ -22,6 +22,8 @@ from models.dataset import (
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, IndexingStatus, TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
 from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
+from services.knowledge.entities.datasets import DatasetDetailRecord
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _dataset_detail_payload(**overrides: object) -> dict[str, object]:
@@ -468,3 +470,73 @@ def test_dataset_detail_prefetch_keeps_query_count_independent_of_page_size(sqli
 
     assert full_page == small_page
     assert full_page <= 8
+
+
+def test_dataset_detail_signs_valid_icons_and_preserves_legacy_fallbacks(sqlite_session: Session) -> None:
+    account = Account(name="Ada", email="ada@example.com")
+    account.id = "account-1"
+    upload = make_upload_file(extension=".png", mime_type="image/png")
+    foreign_upload = make_upload_file(tenant_id="tenant-2", extension=".png", mime_type="image/png")
+    inline_preview = "data:image/png;base64," + "A" * 4096
+    missing_preview = "data:image/png;base64,missing-only-copy"
+    foreign_preview = "data:image/png;base64,foreign-only-copy"
+    emoji = {"icon_type": "emoji", "icon": "📙", "icon_background": "#FFF4ED", "icon_url": None}
+    datasets = [
+        _dataset(
+            1,
+            account.id,
+            icon_info={"icon_type": "image", "icon": upload.id, "icon_url": inline_preview},
+        ),
+        _dataset(
+            2,
+            account.id,
+            icon_info={"icon_type": "image", "icon": "missing-file", "icon_url": missing_preview},
+        ),
+        _dataset(
+            3,
+            account.id,
+            icon_info={"icon_type": "image", "icon": foreign_upload.id, "icon_url": foreign_preview},
+        ),
+        _dataset(4, account.id, icon_info=emoji),
+        _dataset(
+            5,
+            account.id,
+            icon_info={"icon_type": "image", "icon": "", "icon_url": missing_preview},
+        ),
+        _dataset(
+            6,
+            account.id,
+            icon_info={"icon_type": "image", "icon": None, "icon_url": missing_preview},
+        ),
+    ]
+    sqlite_session.add_all([account, upload, foreign_upload, *datasets])
+    sqlite_session.flush()
+
+    def load_page(page: list[Dataset]) -> tuple[list[DatasetDetailRecord], int]:
+        with _count_selects(sqlite_session) as statements:
+            details = load_dataset_details(page, session=sqlite_session)
+            return details, len(statements)
+
+    small_page, small_select_count = load_page(datasets[:1])
+    full_page, full_select_count = load_page(datasets)
+
+    assert small_select_count == full_select_count
+    signed_icon = full_page[0]["icon_info"]
+    assert isinstance(signed_icon, dict)
+    signed_url = signed_icon["icon_url"]
+    assert isinstance(signed_url, str)
+    assert f"/files/{upload.id}/image-preview" in signed_url
+    assert "base64" not in signed_url
+    assert len(signed_url) < 1024
+    missing_icon = full_page[1]["icon_info"]
+    foreign_icon = full_page[2]["icon_info"]
+    small_icon = small_page[0]["icon_info"]
+    assert isinstance(missing_icon, dict)
+    assert isinstance(foreign_icon, dict)
+    assert isinstance(small_icon, dict)
+    assert missing_icon["icon_url"] == missing_preview
+    assert foreign_icon["icon_url"] == foreign_preview
+    assert full_page[3]["icon_info"] == emoji
+    assert full_page[4]["icon_info"] == {"icon_type": "image", "icon": "", "icon_url": missing_preview}
+    assert full_page[5]["icon_info"] == {"icon_type": "image", "icon": None, "icon_url": missing_preview}
+    assert small_icon["icon"] == upload.id

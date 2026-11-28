@@ -46,6 +46,26 @@ def load_dataset_details(datasets: Sequence[Dataset], *, session: Session) -> li
     return [_dataset_detail_values(dataset, prefetch) for dataset in datasets]
 
 
+def _materialize_dataset_icon_info(dataset: Dataset, icon_files: Mapping[tuple[str, str], UploadFile]) -> Any:
+    """Return icon metadata with a short URL only for a tenant-owned upload.
+
+    Precondition: ``icon_files`` was fetched in one batch using each dataset's
+    tenant and file id. Postcondition: valid file-backed images carry a fresh
+    preview URL; all other payloads, including unresolved legacy data URLs, are
+    returned unchanged. This function performs no database or storage I/O.
+    """
+    icon_info = dataset.icon_info
+    if not isinstance(icon_info, Mapping) or icon_info.get("icon_type") != "image":
+        return icon_info
+    file_id = icon_info.get("icon")
+    if not isinstance(file_id, str) or not file_id:
+        return icon_info
+    upload = icon_files.get((dataset.tenant_id, file_id))
+    if upload is None:
+        return icon_info
+    return {**icon_info, "icon_url": sign_upload_file_preview_url(upload.id, upload.extension)}
+
+
 def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) -> DatasetDetailRecord:
     owner = (dataset.id, dataset.tenant_id)
     return {
@@ -81,7 +101,7 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "pipeline_id": dataset.pipeline_id,
         "runtime_mode": dataset.runtime_mode,
         "chunk_structure": dataset.chunk_structure,
-        "icon_info": dataset.icon_info,
+        "icon_info": _materialize_dataset_icon_info(dataset, prefetch.icon_files),
         "is_published": prefetch.pipeline_published.get(dataset.pipeline_id, False) if dataset.pipeline_id else False,
         "total_documents": prefetch.document_counts.get(dataset.id, 0),
         "total_available_documents": prefetch.available_document_counts.get(dataset.id, 0),

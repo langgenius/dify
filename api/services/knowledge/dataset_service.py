@@ -697,6 +697,28 @@ class DatasetService:
             session.add(external_knowledge_binding)
 
     @staticmethod
+    def _durable_icon_info_for_update(dataset: Dataset, icon_info: Any, *, session: Session) -> Any:
+        """Keep an uploaded icon's durable file id without persisting its preview URL.
+
+        Precondition: ``dataset.tenant_id`` owns the update. A valid image file
+        reference resolves only inside that tenant. Postcondition: a resolved
+        upload keeps ``icon`` as its durable reference and stores no expiring or
+        inline preview URL; unresolved legacy payloads and non-image icons are
+        returned unchanged so an unrelated save cannot destroy their only copy.
+        """
+        if not isinstance(icon_info, dict) or icon_info.get("icon_type") != "image":
+            return icon_info
+        file_id = icon_info.get("icon")
+        if not isinstance(file_id, str) or not file_id:
+            return icon_info
+        upload = session.scalar(
+            select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == dataset.tenant_id)
+        )
+        if upload is None:
+            return icon_info
+        return {**icon_info, "icon_url": None}
+
+    @staticmethod
     def _update_internal_dataset(dataset, data, user, session: Session):
         """
         Update internal dataset configuration.
@@ -732,7 +754,9 @@ class DatasetService:
             filtered_data["summary_index_setting"] = data.get("summary_index_setting")
         # update icon info
         if data.get("icon_info"):
-            filtered_data["icon_info"] = data.get("icon_info")
+            filtered_data["icon_info"] = DatasetService._durable_icon_info_for_update(
+                dataset, data["icon_info"], session=session
+            )
 
         # Update dataset in database. Use flush() rather than commit() so the
         # caller-managed transaction (opened with `with Session(...) as session`)

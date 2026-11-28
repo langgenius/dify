@@ -690,6 +690,7 @@ class DatasetDetailPrefetch:
     external_knowledge_infos: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     doc_metadata: dict[str, list[DatasetMetadata]] = field(default_factory=dict)
     pipeline_published: dict[str, bool] = field(default_factory=dict)
+    icon_files: dict[tuple[str, str], UploadFile] = field(default_factory=dict)
 
 
 def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Session) -> DatasetDetailPrefetch:
@@ -798,6 +799,27 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
             .all()
         )
 
+    icon_file_owners = list(
+        {
+            (dataset.tenant_id, icon_id)
+            for dataset in datasets
+            if isinstance(dataset.icon_info, dict)
+            and dataset.icon_info.get("icon_type") == "image"
+            and isinstance((icon_id := dataset.icon_info.get("icon")), str)
+            and icon_id
+        }
+    )
+    icon_files = (
+        {
+            (file.tenant_id, file.id): file
+            for file in session.scalars(
+                select(UploadFile).where(tuple_(UploadFile.tenant_id, UploadFile.id).in_(icon_file_owners))
+            )
+        }
+        if icon_file_owners
+        else {}
+    )
+
     return DatasetDetailPrefetch(
         app_counts=app_counts,
         document_counts=document_counts,
@@ -809,6 +831,7 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
         external_knowledge_infos=_load_external_knowledge_infos(datasets, session=session),
         doc_metadata=doc_metadata,
         pipeline_published=pipeline_published,
+        icon_files=icon_files,
     )
 
 
