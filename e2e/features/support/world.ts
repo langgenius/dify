@@ -113,6 +113,7 @@ export class DifyWorld extends World {
   sharedAppPage: Page | undefined
   workflowPreview: WorkflowPreviewFixture | undefined
   appPackage: { sourceAppId: string; importedAppId?: string } | undefined
+  workspaceInvitation: { email: string; path: string } | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -121,6 +122,7 @@ export class DifyWorld extends World {
 
   resetScenarioState() {
     this.appPackage = undefined
+    this.workspaceInvitation = undefined
     this.workflowPreview = undefined
     this.consoleErrors = []
     this.pageErrors = []

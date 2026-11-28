@@ -64,6 +64,8 @@ function NormalForm() {
   })
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
+  const isNewInvitedAccount =
+    isInviteLink && invitationCheckResp?.data?.account_status === 'pending'
   const isInvitationForCurrentAccount = isInvitationForAccount(
     invitationCheckResp?.data?.email,
     userResp?.profile.email,
@@ -227,6 +229,7 @@ function NormalForm() {
                 <MailAndPasswordAuth
                   isInvite={isInviteLink}
                   isEmailSetup={systemFeatures.is_email_setup}
+                  isNewAccount={isNewInvitedAccount}
                 />
               )}
               {hasEmailCodeLogin && hasEmailPasswordLogin && (

@@ -27,6 +27,7 @@ type InvitationData = {
     workspace_name: string
     workspace_id: string
     email: string
+    account_status?: string
   }
 }
 
@@ -150,6 +151,41 @@ it('keeps a different logged-in account on the invitation sign-in form', async (
 
   await expect.element(screen.getByRole('button', { name: 'login.signBtn' })).toBeVisible()
   expect(navigation.router.replace).not.toHaveBeenCalled()
+})
+
+it('asks a newly invited account to set a password instead of signing in', async () => {
+  search = 'invite_token=invite-token'
+
+  const screen = await renderForm({
+    invitation: { ...invitation, data: { ...invitation.data, account_status: 'pending' } },
+    systemFeatures: { is_email_setup: true },
+  })
+  const password = screen.getByLabelText('accountSettings.account.newPassword')
+
+  await expect
+    .element(screen.getByRole('button', { name: 'login.signup.createAccount' }))
+    .toBeVisible()
+  await expect.element(password).toHaveAttribute('autocomplete', 'new-password')
+  await expect.element(screen.getByText('login.error.passwordInvalid')).toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'login.signBtn' }))
+    .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('link', { name: 'login.forget' })).not.toBeInTheDocument()
+})
+
+it('keeps the sign-in form for an invited account that already has a password', async () => {
+  search = 'invite_token=invite-token'
+
+  const screen = await renderForm({
+    invitation: { ...invitation, data: { ...invitation.data, account_status: 'active' } },
+    systemFeatures: { is_email_setup: true },
+  })
+
+  await expect.element(screen.getByRole('button', { name: 'login.signBtn' })).toBeVisible()
+  await expect
+    .element(screen.getByLabelText('login.password'))
+    .toHaveAttribute('autocomplete', 'current-password')
+  await expect.element(screen.getByRole('link', { name: 'login.forget' })).toBeVisible()
 })
 
 it('preserves the current query when navigating to sign up', async () => {

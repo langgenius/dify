@@ -1,6 +1,12 @@
 import type { LoginPayload } from '@dify/contracts/api/console/login/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -13,7 +19,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { toast } from '@/app/notifications'
-import { emailRegex } from '@/config'
+import { emailRegex, validPassword } from '@/config'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -25,14 +31,20 @@ import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 type MailAndPasswordAuthProps = {
   isInvite: boolean
   isEmailSetup: boolean
+  // The invited account has no password yet, so this form sets one instead of checking one.
+  isNewAccount?: boolean
 }
 
 function hasErrorCode(error: unknown, code: string) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code
 }
 
-export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation(['login'])
+export default function MailAndPasswordAuth({
+  isInvite,
+  isEmailSetup,
+  isNewAccount = false,
+}: MailAndPasswordAuthProps) {
+  const { t } = useTranslation(['login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
@@ -108,19 +120,41 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         </FieldError>
       </Field>
 
-      <Field name="password" className="relative mb-3">
-        <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
+      <Field
+        name="password"
+        validate={(value) =>
+          !isNewAccount || !value || validPassword.test(String(value))
+            ? null
+            : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+        }
+        className="relative mb-3"
+      >
+        <FieldLabel>
+          {isNewAccount
+            ? t(($) => $['account.newPassword'], { ns: 'accountSettings' })
+            : t(($) => $.password, { ns: 'login' })}
+        </FieldLabel>
         <PasswordField>
           <PasswordFieldInput
             value={password}
             onValueChange={setPassword}
             required
-            autoComplete="current-password"
+            autoComplete={isNewAccount ? 'new-password' : 'current-password'}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
           />
           <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
         </PasswordField>
-        {isEmailSetup ? (
+        {isNewAccount ? (
+          <FieldValidity>
+            {({ validity }) =>
+              validity.valid !== false ? (
+                <FieldDescription>
+                  {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                </FieldDescription>
+              ) : null
+            }
+          </FieldValidity>
+        ) : isEmailSetup ? (
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className="absolute inset-e-0 top-1 rounded-sm system-xs-regular text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
@@ -141,7 +175,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
 
       <div className="mb-2">
         <Button type="submit" loading={isLoading} variant="primary" className="w-full">
-          {t(($) => $.signBtn, { ns: 'login' })}
+          {isNewAccount
+            ? t(($) => $['signup.createAccount'], { ns: 'login' })
+            : t(($) => $.signBtn, { ns: 'login' })}
         </Button>
       </div>
     </Form>
