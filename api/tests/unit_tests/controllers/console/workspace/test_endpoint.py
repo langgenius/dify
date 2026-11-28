@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from flask import Flask
+from flask import Flask, request
 from flask_restx import Resource
 
 from controllers.common.rbac import Workspace
@@ -107,7 +107,7 @@ class TestEndpointCollectionApi:
             assert response.get_json()["status"] == 500
             assert "success" not in response.get_json()
 
-    def test_create_success(self, app: Flask):
+    def test_create_success(self, app: Flask) -> None:
         api = EndpointCollectionApi()
         method = inspect.unwrap(api.post)
 
@@ -126,7 +126,7 @@ class TestEndpointCollectionApi:
 
         assert result["success"] is True
 
-    def test_create_permission_denied(self, app: Flask):
+    def test_create_permission_denied(self, app: Flask) -> None:
         api = EndpointCollectionApi()
         method = inspect.unwrap(api.post)
 
@@ -147,25 +147,25 @@ class TestEndpointCollectionApi:
             with pytest.raises(ValueError, match="denied"):
                 method(api, req_data, "t1", "u1")
 
-    def test_create_validation_error(self, app: Flask):
+    def test_create_validation_error(self, app: Flask) -> None:
         api = EndpointCollectionApi()
         method = inspect.unwrap(api.post)
 
-        payload = {
+        raw_payload = {
             "plugin_unique_identifier": "p1",
             "name": "",
-            "settings": {},
+            "settings": {"a": 1},
         }
 
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json=raw_payload),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointCreatePayload\\\nname"):
-                method(api, EndpointCreatePayload(**payload), "t1", "u1")
+                method(api, EndpointCreatePayload.model_validate(raw_payload), "t1", "u1")
 
 
 class TestDeprecatedEndpointCreateApi:
-    def test_create_success(self, app: Flask):
+    def test_create_success(self, app: Flask) -> None:
         api = DeprecatedEndpointCreateApi()
         method = inspect.unwrap(api.post)
 
@@ -186,7 +186,7 @@ class TestDeprecatedEndpointCreateApi:
 
 
 class TestEndpointListApi:
-    def test_list_success(self, app: Flask):
+    def test_list_success(self, app: Flask) -> None:
         api = EndpointListApi()
         method = inspect.unwrap(api.get)
         endpoint_entity = _endpoint_entity()
@@ -224,19 +224,21 @@ class TestEndpointListApi:
         assert endpoint["hook_id"] == "hook-1"
         assert endpoint_entity.settings["api_key"] == "pl********et"
 
-    def test_list_invalid_query(self, app: Flask):
+    def test_list_invalid_query(self, app: Flask) -> None:
         api = EndpointListApi()
         method = inspect.unwrap(api.get)
+
+        raw_query = {"page": 0, "page_size": 10}
 
         with (
             app.test_request_context("/?page=0&page_size=10"),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointListQuery\\\npage"):
-                method(api, EndpointListQuery(page=0, page_size=10), "t1", "u1")
+                method(api, EndpointListQuery.model_validate(raw_query), "t1", "u1")
 
 
 class TestEndpointListForSinglePluginApi:
-    def test_list_for_plugin_success(self, app: Flask):
+    def test_list_for_plugin_success(self, app: Flask) -> None:
         api = EndpointListForSinglePluginApi()
         method = inspect.unwrap(api.get)
 
@@ -253,7 +255,7 @@ class TestEndpointListForSinglePluginApi:
         assert result["endpoints"][0]["settings"]["api_key"] == "pl********et"
         assert result["endpoints"][0]["settings"]["nested"] == {"limit": 3}
 
-    def test_list_for_plugin_missing_param(self, app: Flask):
+    def test_list_for_plugin_missing_param(self, app: Flask) -> None:
         api = EndpointListForSinglePluginApi()
         method = inspect.unwrap(api.get)
 
@@ -261,11 +263,11 @@ class TestEndpointListForSinglePluginApi:
             app.test_request_context("/?page=1&page_size=10"),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointListForPluginQuery\\\nplugin_id"):
-                method(api, EndpointListForPluginQuery(page=1, page_size=10), "t1", "u1")
+                method(api, EndpointListForPluginQuery.model_validate({"page": 1, "page_size": 10}), "t1", "u1")
 
 
 class TestEndpointItemApi:
-    def test_delete_success(self, app: Flask):
+    def test_delete_success(self, app: Flask) -> None:
         api = EndpointItemApi()
         method = inspect.unwrap(api.delete)
 
@@ -281,7 +283,7 @@ class TestEndpointItemApi:
         assert result["success"] is True
         mock_delete.assert_called_once_with(tenant_id="t1", user_id="u1", endpoint_id="e1")
 
-    def test_delete_service_failure(self, app: Flask):
+    def test_delete_service_failure(self, app: Flask) -> None:
         api = EndpointItemApi()
         method = inspect.unwrap(api.delete)
 
@@ -295,7 +297,7 @@ class TestEndpointItemApi:
             with pytest.raises(PluginDaemonInternalServerError):
                 method(api, "t1", "u1", "e1")
 
-    def test_update_success(self, app: Flask):
+    def test_update_success(self, app: Flask) -> None:
         api = EndpointItemApi()
         method = inspect.unwrap(api.patch)
 
@@ -323,19 +325,14 @@ class TestEndpointItemApi:
             settings={"x": 1},
         )
 
-    def test_update_validation_error(self, app: Flask):
-        api = EndpointItemApi()
-        method = inspect.unwrap(api.patch)
-
-        payload = {"settings": {}}
-
+    def test_update_validation_error(self, app: Flask) -> None:
         with (
-            app.test_request_context("/", method="PATCH", json=payload),
+            app.test_request_context("/", method="PATCH", json={"settings": {"x": 1}}),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointUpdatePayload\\\nname"):
-                method(api, EndpointUpdatePayload(**payload), "t1", "u1", "e1")
+                EndpointUpdatePayload.model_validate(request.get_json(silent=True) or {})
 
-    def test_update_service_failure(self, app: Flask):
+    def test_update_service_failure(self, app: Flask) -> None:
         api = EndpointItemApi()
         method = inspect.unwrap(api.patch)
 
@@ -357,7 +354,7 @@ class TestEndpointItemApi:
 
 
 class TestDeprecatedEndpointDeleteApi:
-    def test_delete_success(self, app: Flask):
+    def test_delete_success(self, app: Flask) -> None:
         api = DeprecatedEndpointDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -372,7 +369,7 @@ class TestDeprecatedEndpointDeleteApi:
 
         assert result["success"] is True
 
-    def test_delete_invalid_payload(self, app: Flask):
+    def test_delete_invalid_payload(self, app: Flask) -> None:
         api = DeprecatedEndpointDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -380,9 +377,9 @@ class TestDeprecatedEndpointDeleteApi:
             app.test_request_context("/", json={}),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointIdPayload\\\nendpoint_id"):
-                method(api, EndpointIdPayload(), "t1", "u1")
+                method(api, EndpointIdPayload.model_validate({}), "t1", "u1")
 
-    def test_delete_service_failure(self, app: Flask):
+    def test_delete_service_failure(self, app: Flask) -> None:
         api = DeprecatedEndpointDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -401,50 +398,38 @@ class TestDeprecatedEndpointDeleteApi:
 
 
 class TestDeprecatedEndpointUpdateApi:
-    def test_update_success(self, app: Flask):
+    def test_update_success(self, app: Flask) -> None:
         api = DeprecatedEndpointUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload = {
-            "endpoint_id": "e1",
-            "name": "new-name",
-            "settings": {"x": 1},
-        }
-        req_data = LegacyEndpointUpdatePayload(**payload)
+        req_data = LegacyEndpointUpdatePayload(endpoint_id="e1", name="new-name", settings={"x": 1})
 
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json=req_data.model_dump()),
             patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=True),
         ):
             result = method(api, req_data, "t1", "u1")
 
         assert result["success"] is True
 
-    def test_update_validation_error(self, app: Flask):
+    def test_update_validation_error(self, app: Flask) -> None:
         api = DeprecatedEndpointUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload = {"endpoint_id": "e1", "settings": {}}
-
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json={"endpoint_id": "e1", "settings": {}}),
         ):
             with pytest.raises(ValueError, match="1 validation error for LegacyEndpointUpdatePayload\\\nname"):
-                method(api, LegacyEndpointUpdatePayload(**payload), "t1", "u1")
+                method(api, LegacyEndpointUpdatePayload.model_validate(request.get_json(silent=True) or {}), "t1", "u1")
 
-    def test_update_service_failure(self, app: Flask):
+    def test_update_service_failure(self, app: Flask) -> None:
         api = DeprecatedEndpointUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload = {
-            "endpoint_id": "e1",
-            "name": "n",
-            "settings": {},
-        }
-        req_data = LegacyEndpointUpdatePayload(**payload)
+        req_data = LegacyEndpointUpdatePayload(endpoint_id="e1", name="n", settings={})
 
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json=req_data.model_dump()),
             patch(
                 "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
@@ -461,15 +446,15 @@ class TestEndpointRouteMetadata:
         assert success_schema["const"] is True
         assert success_schema["type"] == "boolean"
 
-    def test_legacy_write_routes_are_marked_deprecated(self):
-        assert DeprecatedEndpointCreateApi.post.__apidoc__["deprecated"] is True
-        assert DeprecatedEndpointDeleteApi.post.__apidoc__["deprecated"] is True
-        assert DeprecatedEndpointUpdateApi.post.__apidoc__["deprecated"] is True
-        assert EndpointCollectionApi.post.__apidoc__.get("deprecated") is not True
-        assert EndpointItemApi.delete.__apidoc__.get("deprecated") is not True
-        assert EndpointItemApi.patch.__apidoc__.get("deprecated") is not True
+    def test_legacy_write_routes_are_marked_deprecated(self) -> None:
+        assert vars(DeprecatedEndpointCreateApi.post)["__apidoc__"]["deprecated"] is True
+        assert vars(DeprecatedEndpointDeleteApi.post)["__apidoc__"]["deprecated"] is True
+        assert vars(DeprecatedEndpointUpdateApi.post)["__apidoc__"]["deprecated"] is True
+        assert vars(EndpointCollectionApi.post)["__apidoc__"].get("deprecated") is not True
+        assert vars(EndpointItemApi.delete)["__apidoc__"].get("deprecated") is not True
+        assert vars(EndpointItemApi.patch)["__apidoc__"].get("deprecated") is not True
 
-    def test_canonical_and_legacy_write_routes_are_registered(self):
+    def test_canonical_and_legacy_write_routes_are_registered(self) -> None:
         route_map = {
             resource.__name__: urls
             for resource, urls, _route_doc, _kwargs in console_ns.resources
@@ -491,7 +476,7 @@ class TestEndpointRouteMetadata:
 
 
 class TestEndpointEnableApi:
-    def test_enable_success(self, app: Flask):
+    def test_enable_success(self, app: Flask) -> None:
         api = EndpointEnableApi()
         method = inspect.unwrap(api.post)
 
@@ -506,7 +491,7 @@ class TestEndpointEnableApi:
 
         assert result["success"] is True
 
-    def test_enable_invalid_payload(self, app: Flask):
+    def test_enable_invalid_payload(self, app: Flask) -> None:
         api = EndpointEnableApi()
         method = inspect.unwrap(api.post)
 
@@ -514,9 +499,9 @@ class TestEndpointEnableApi:
             app.test_request_context("/", json={}),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointIdPayload\\\nendpoint_id"):
-                method(api, EndpointIdPayload(), "t1", "u1")
+                method(api, EndpointIdPayload.model_validate({}), "t1", "u1")
 
-    def test_enable_service_failure(self, app: Flask):
+    def test_enable_service_failure(self, app: Flask) -> None:
         api = EndpointEnableApi()
         method = inspect.unwrap(api.post)
 
@@ -535,7 +520,7 @@ class TestEndpointEnableApi:
 
 
 class TestEndpointDisableApi:
-    def test_disable_success(self, app: Flask):
+    def test_disable_success(self, app: Flask) -> None:
         api = EndpointDisableApi()
         method = inspect.unwrap(api.post)
 
@@ -550,7 +535,7 @@ class TestEndpointDisableApi:
 
         assert result["success"] is True
 
-    def test_disable_invalid_payload(self, app: Flask):
+    def test_disable_invalid_payload(self, app: Flask) -> None:
         api = EndpointDisableApi()
         method = inspect.unwrap(api.post)
 
@@ -558,4 +543,4 @@ class TestEndpointDisableApi:
             app.test_request_context("/", json={}),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointIdPayload\\\nendpoint_id"):
-                method(api, EndpointIdPayload(), "t1", "u1")
+                method(api, EndpointIdPayload.model_validate({}), "t1", "u1")

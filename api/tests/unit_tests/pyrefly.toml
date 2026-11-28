@@ -16,9 +16,7 @@ project-excludes = [
   "controllers/console/datasets/rag_pipeline/test_rag_pipeline_draft_variable.py",
   "controllers/console/datasets/test_datasets_document.py",
   "controllers/console/test_wraps.py",
-  "controllers/console/workspace/test_endpoint.py",
   "controllers/console/workspace/test_tool_providers.py",
-  "controllers/files/test_upload_file_delivery.py",
   "controllers/inner_api/plugin/test_wraps.py",
   "controllers/mcp/test_mcp.py",
   "controllers/openapi/test__contract.py",
@@ -97,7 +95,6 @@ project-excludes = [
   "core/workflow/generator/test_runner.py",
   "../helpers/workflow/mock_factory.py",
   "../helpers/workflow/mock_nodes.py",
-  "../e2e_tests/contracts/core/workflow/graph_engine/test_parallel_human_input_join_resume.py",
   "core/workflow/nodes/agent_v2/test_agent_node.py",
   "core/workflow/nodes/agent_v2/test_dify_tools_builder.py",
   "core/workflow/nodes/agent_v2/test_runtime_request_builder.py",
@@ -118,7 +115,6 @@ project-excludes = [
   "enterprise/telemetry/test_enterprise_trace.py",
   "extensions/logstore/repositories/test_logstore_api_workflow_node_execution_repository.py",
   "../e2e_tests/contracts/libs/_human_input/test_form_service.py",
-  "../e2e_tests/contracts/libs/_human_input/test_models.py",
   "libs/broadcast_channel/redis/test_pubsub_channel.py",
   "services/agent/test_config_service.py",
   "services/agent/test_roster_service.py",
@@ -146,6 +142,7 @@ project-excludes = [
   "tasks/app_generate/test_workflow_execute_task.py",
   "services/agent/test_dsl_service.py",
   "core/workflow/test_node_runtime.py",
+  "controllers/console/datasets/test_hit_testing_base.py",
 ]
 
 [errors]
