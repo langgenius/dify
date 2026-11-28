@@ -9,7 +9,12 @@ affected request.
 """
 
 import logging
+import os
+import subprocess
+import sys
+import textwrap
 from collections.abc import Iterator
+from pathlib import Path
 
 import flask
 import pytest
@@ -65,3 +70,44 @@ def test_duplicate_teardown_does_not_log_detach_failure(
 
     assert calls == 1, "the instrumentation teardown never ran, so nothing was exercised"
     assert "Failed to detach context" not in caplog.text
+
+
+@pytest.mark.parametrize("patch_gevent", [False, True])
+def test_gc_metrics_use_the_configured_exporter(patch_gevent: bool) -> None:
+    """Enabled OTel startup must export GC observations through its existing reader.
+
+    Isolate the process-wide providers and instrumentors; no collector or database
+    service is needed for the console exporter and an unconnected SQLite engine.
+    """
+    script = textwrap.dedent("""
+        import gc
+        from opentelemetry.metrics import get_meter_provider
+        from configs import dify_config
+        from dify_app import DifyApp
+        from extensions import ext_otel
+        from models.engine import db
+
+        dify_config.OTEL_EXPORTER_TYPE = "console"
+        dify_config.OTEL_METRIC_EXPORT_INTERVAL = 3_600_000
+        dify_config.OTEL_SAMPLING_RATE = 0
+        app = DifyApp(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+        db.init_app(app)
+        ext_otel.init_app(app)
+        gc.collect(2)
+        get_meter_provider().force_flush()
+    """)
+    if patch_gevent:
+        script = "from gevent import monkey; monkey.patch_all()\n" + script
+    api_root = Path(__file__).resolve().parents[3]
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=api_root,
+        env={**os.environ, "ENABLE_OTEL": "true", "PYTHONPATH": str(api_root)},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert '"name": "cpython.gc.collections"' in result.stdout
+    assert '"name": "dify.gc.duration"' in result.stdout

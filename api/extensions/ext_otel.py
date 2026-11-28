@@ -47,6 +47,7 @@ def init_app(app: DifyApp):
     )
     from opentelemetry.trace import set_tracer_provider
 
+    from extensions.otel.gc_metrics import init_gc_metrics
     from extensions.otel.instrumentation import init_instruments
     from extensions.otel.runtime import setup_context_propagation, shutdown_tracer
 
@@ -132,11 +133,14 @@ def init_app(app: DifyApp):
         export_interval_millis=dify_config.OTEL_METRIC_EXPORT_INTERVAL,
         export_timeout_millis=dify_config.OTEL_METRIC_EXPORT_TIMEOUT,
     )
-    set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
+    metric_provider = MeterProvider(resource=resource, metric_readers=[reader])
+    set_meter_provider(metric_provider)
+    stop_gc_metrics = init_gc_metrics(metric_provider)
 
     init_instruments(app)
 
     atexit.register(shutdown_tracer)
+    atexit.register(stop_gc_metrics)
 
 
 def is_enabled():
