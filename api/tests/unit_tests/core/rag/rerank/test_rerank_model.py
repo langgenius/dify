@@ -24,7 +24,7 @@ from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
-from core.rag.models.document import Document
+from core.rag.models.document import SCORE_FROM_FULL_TEXT_METADATA_KEY, Document
 from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
@@ -157,6 +157,28 @@ class TestRerankModelRunner(_UsesSQLiteSession):
         assert result[2].metadata["score"] == 0.75
         assert result[3].metadata["score"] == 0.65
         assert result[0].page_content == sample_documents[2].page_content
+
+    def test_rerank_score_drops_full_text_score_flag(
+        self, rerank_runner: RerankModelRunner, mock_model_instance: ModelInstance
+    ) -> None:
+        """The model score replaces a hybrid full-text score, so the flag must not outlive it."""
+        documents = [
+            Document(
+                page_content="keyword match",
+                metadata={"doc_id": "doc1", "score": 7.4, SCORE_FROM_FULL_TEXT_METADATA_KEY: True},
+                provider="dify",
+            )
+        ]
+        rerank_result = RerankResult(
+            model="bge-reranker-base",
+            docs=[RerankDocument(index=0, text="keyword match", score=0.7)],
+        )
+
+        with patch.object(mock_model_instance, "invoke_rerank", return_value=rerank_result):
+            result = rerank_runner.run(query="python", documents=documents)
+
+        assert result[0].metadata["score"] == 0.7
+        assert SCORE_FROM_FULL_TEXT_METADATA_KEY not in result[0].metadata
 
     def test_score_threshold_filtering(
         self, rerank_runner: RerankModelRunner, mock_model_instance, sample_documents: list[Document]
@@ -720,6 +742,117 @@ class TestWeightRerankRunner:
                 mock_model_manager.return_value.get_model_instance.return_value
             )
             mock_cache_embedding.return_value.embed_query.assert_called_once_with("query")
+
+    def test_cosine_ignores_full_text_score_and_uses_stored_vector(
+        self, weights_config: Weights, mock_model_manager: MagicMock, mock_cache_embedding: MagicMock
+    ) -> None:
+        """A full-text relevance score (here BM25, above 1) is not a cosine similarity."""
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [
+            Document(
+                page_content="bm25 hit",
+                metadata={"score": 7.4, SCORE_FROM_FULL_TEXT_METADATA_KEY: True},
+                vector=[0.0, 1.0],
+            )
+        ]
+        mock_cache_embedding.get_cached_query_embedding.return_value = [1.0, 0.0]
+
+        result = runner._calculate_cosine("tenant123", "query", documents, weights_config.vector_setting)
+
+        assert result == pytest.approx([0.0])
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
+
+    def test_cosine_embeds_full_text_hits_without_vectors_in_one_batch(
+        self, weights_config: Weights, mock_model_manager: MagicMock, mock_cache_embedding: MagicMock
+    ) -> None:
+        """pgvector, Milvus, TiDB and others return full-text hits with a score but no vector."""
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [
+            Document(page_content="vector hit", metadata={"score": 0.82}),
+            Document(page_content="ts_rank hit", metadata={"score": 0.06, SCORE_FROM_FULL_TEXT_METADATA_KEY: True}),
+            Document(page_content="bm25 hit", metadata={"score": 7.4, SCORE_FROM_FULL_TEXT_METADATA_KEY: True}),
+            Document(page_content="nan hit", metadata={"score": 3.1, SCORE_FROM_FULL_TEXT_METADATA_KEY: True}),
+        ]
+        mock_cache_embedding.get_cached_query_embedding.return_value = [1.0, 0.0]
+        # CacheEmbedding yields None for a text whose embedding is unusable.
+        mock_cache_embedding.return_value.embed_documents.return_value = [[1.0, 0.0], [0.6, 0.8], None]
+
+        result = runner._calculate_cosine("tenant123", "query", documents, weights_config.vector_setting)
+
+        assert result == pytest.approx([0.82, 1.0, 0.6, 0.0])
+        mock_model_manager.assert_called_once_with(tenant_id="tenant123")
+        mock_cache_embedding.return_value.embed_documents.assert_called_once_with(
+            ["ts_rank hit", "bm25 hit", "nan hit"]
+        )
+        mock_cache_embedding.return_value.embed_query.assert_not_called()
+
+    def test_full_text_score_does_not_dominate_weighted_hybrid_ranking(
+        self,
+        weights_config: Weights,
+        mock_model_manager: MagicMock,
+        mock_cache_embedding: MagicMock,
+        mock_jieba_handler: MagicMock,
+    ) -> None:
+        """Regression: Weighted Score hybrid search used a BM25 score as the vector score.
+
+        doc1 is the vector hit closest to the query. doc2 is a full-text-only hit whose cosine
+        similarity is 0.3; its BM25 score of 7.4 used to stand in for that similarity and push
+        the fused score to 4.84, ranking it first.
+        """
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [
+            Document(page_content="semantic match", metadata={"doc_id": "doc1", "score": 0.82}, provider="dify"),
+            Document(
+                page_content="keyword match",
+                metadata={"doc_id": "doc2", "score": 7.4, SCORE_FROM_FULL_TEXT_METADATA_KEY: True},
+                provider="dify",
+            ),
+        ]
+        # Same keyword set, so both keyword similarities are 1.0.
+        mock_jieba_handler.return_value.extract_keywords.return_value = {"python"}
+        mock_cache_embedding.get_cached_query_embedding.return_value = [1.0, 0.0]
+        mock_cache_embedding.return_value.embed_documents.return_value = [[0.3, 0.91**0.5]]
+
+        result = runner.run(query="python", documents=documents)
+
+        assert [doc.metadata["doc_id"] for doc in result] == ["doc1", "doc2"]
+        assert result[0].metadata["score"] == pytest.approx(0.6 * 0.82 + 0.4 * 1.0)
+        assert result[1].metadata["score"] == pytest.approx(0.6 * 0.3 + 0.4 * 1.0)
+        assert SCORE_FROM_FULL_TEXT_METADATA_KEY not in result[1].metadata
+        mock_model_manager.assert_called_once_with(tenant_id="tenant123")
+        mock_cache_embedding.return_value.embed_documents.assert_called_once_with(["keyword match"])
+
+    def test_zero_vector_weight_skips_embedding(
+        self, mock_model_manager: MagicMock, mock_cache_embedding: MagicMock, mock_jieba_handler: MagicMock
+    ) -> None:
+        """A zero vector weight discards the semantic score, so no embedding may be resolved for it."""
+        weights = Weights(
+            vector_setting=VectorSetting(
+                vector_weight=0.0,
+                embedding_provider_name="openai",
+                embedding_model_name="text-embedding-ada-002",
+            ),
+            keyword_setting=KeywordSetting(keyword_weight=1.0),
+        )
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights)
+        documents = [
+            Document(page_content="semantic match", metadata={"doc_id": "doc1", "score": 0.82}, provider="dify"),
+            Document(
+                page_content="keyword match",
+                metadata={"doc_id": "doc2", "score": 7.4, SCORE_FROM_FULL_TEXT_METADATA_KEY: True},
+                provider="dify",
+            ),
+        ]
+        mock_jieba_handler.return_value.extract_keywords.return_value = {"python"}
+
+        result = runner.run(query="python", documents=documents)
+
+        assert [doc.metadata["score"] for doc in result] == pytest.approx([1.0, 1.0])
+        assert all(SCORE_FROM_FULL_TEXT_METADATA_KEY not in doc.metadata for doc in result)
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
+        mock_cache_embedding.get_cached_query_embedding.assert_not_called()
 
     @pytest.fixture
     def sample_documents_with_vectors(self):

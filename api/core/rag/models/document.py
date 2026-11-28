@@ -6,6 +6,12 @@ from pydantic import BaseModel, Field
 
 from graphon.file import File
 
+# Hybrid search sets this metadata flag on full-text hits. Their metadata["score"] is the vector
+# store's native full-text relevance (ts_rank, BM25, MATCH ... AGAINST, ...), which is neither a
+# semantic similarity nor on the same scale as vector-search scores. Whoever replaces the score
+# must drop the flag.
+SCORE_FROM_FULL_TEXT_METADATA_KEY = "score_from_full_text"
+
 
 class ChildDocument(BaseModel):
     """Class for storing a piece of text and associated metadata."""
