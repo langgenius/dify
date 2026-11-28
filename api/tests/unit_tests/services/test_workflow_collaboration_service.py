@@ -21,7 +21,7 @@ from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
 from repositories.account.repository import SQLAlchemyAccountRepository
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.account_avatar_service import AccountAvatarService
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
@@ -85,7 +85,7 @@ def _connect_editor(server: socketio.Server, user_id: str = "u-1") -> tuple[str,
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[App.__tablename__]])
     with Session(sqlite_engine, expire_on_commit=False) as session:
         yield session
 
@@ -335,7 +335,7 @@ class TestWorkflowCollaborationService:
     ) -> None:
         # Arrange
         collaboration_service, _repository, socketio = real_service
-        socketio.get_session.return_value = {}
+        socketio.get_session.return_value = dict[str, object]()
 
         # Act
         result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
@@ -1679,7 +1679,7 @@ class TestWorkflowCollaborationService:
         assert collaboration_service.is_session_active("wf-1", "sid-remote") is False
 
     @staticmethod
-    def _session(sid: str, connected_at: int, graph_active: bool) -> dict:
+    def _session(sid: str, connected_at: int, graph_active: bool) -> WorkflowSessionInfo:
         return {
             "user_id": f"u-{sid}",
             "username": sid,
