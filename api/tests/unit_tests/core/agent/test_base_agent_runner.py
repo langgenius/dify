@@ -819,15 +819,7 @@ def test_init_filters_files_by_type_not_vision(
         upload_file_id="img1",
         url="http://y",
     )
-    app_generate = AgentChatAppGenerateEntity.model_construct(
-        task_id="task",
-        app_config=app_config,
-        inputs={},
-        files=[doc_file, image_file],
-        user_id="user",
-        stream=False,
-        invoke_from=InvokeFrom.DEBUGGER,
-    )
+    app_generate = _app_generate(app_config=app_config, files=[doc_file, image_file])
 
     runner = BaseAgentRunner(
         session=database_session,
