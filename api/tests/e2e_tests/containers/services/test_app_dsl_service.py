@@ -1355,43 +1355,50 @@ class TestAppDslService:
             "graph": {
                 "nodes": [
                     {
+                        "id": "kr-node",
                         "data": {
                             "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                             "dataset_ids": ["d1", "d2"],
-                        }
+                        },
                     },
                     {
+                        "id": "tool-node",
                         "data": {
                             "type": BuiltinNodeTypes.TOOL,
                             "credential_id": "secret",
-                        }
+                        },
                     },
                     {
+                        "id": "agent-node",
                         "data": {
                             "type": BuiltinNodeTypes.AGENT,
                             "agent_parameters": {"tools": {"value": [{"credential_id": "secret"}]}},
-                        }
+                        },
                     },
                     {
+                        "id": "schedule-node",
                         "data": {
                             "type": TRIGGER_SCHEDULE_NODE_TYPE,
                             "config": {"x": 1},
-                        }
+                        },
                     },
                     {
+                        "id": "webhook-node",
                         "data": {
                             "type": TRIGGER_WEBHOOK_NODE_TYPE,
                             "webhook_url": "x",
                             "webhook_debug_url": "y",
-                        }
+                        },
                     },
                     {
+                        "id": "plugin-node",
                         "data": {
                             "type": TRIGGER_PLUGIN_NODE_TYPE,
                             "subscription_id": "s",
-                        }
+                        },
                     },
-                ]
+                ],
+                "edges": [],
             }
         }
 

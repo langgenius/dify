@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domain.workflow.agent_node import AGENT_NODE_KIND, AGENT_NODE_VERSION
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account
 from models.agent import (
@@ -37,12 +38,16 @@ from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
+    AgentNodeBindingDict,
+    AgentNodeDataDict,
+    AgentNodeGraphDict,
+    AgentNodeGraphNodeDict,
     AgentPackage,
     AgentPackageMetadata,
     make_portable_agent_package,
+    parse_agent_node_graph,
 )
-from services.agent.dsl_service import AgentDslService, AgentPackageImportResult, is_agent_v2_graph
-from services.entities.dsl_entities import DslImportWarning
+from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from tests.helpers.unit.model_factories import make_upload_file
 
 
@@ -117,7 +122,7 @@ def _workflow(*, workflow_id: str = "workflow-1") -> Workflow:
         app_id="app-1",
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
-        graph={"nodes": [], "edges": []},
+        graph=json.dumps({"nodes": [], "edges": []}),
         _features={},
         created_by="account-1",
         _environment_variables=[],
@@ -125,8 +130,12 @@ def _workflow(*, workflow_id: str = "workflow-1") -> Workflow:
     )
 
 
-def _agent_node(node_id: str, binding: object | None = None) -> dict:
-    data = {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
+def _agent_node(node_id: str, binding: AgentNodeBindingDict | None = None) -> AgentNodeGraphNodeDict:
+    data: AgentNodeDataDict = {
+        "type": BuiltinNodeTypes.AGENT,
+        "version": AGENT_NODE_VERSION,
+        "agent_node_kind": AGENT_NODE_KIND,
+    }
     if binding is not None:
         data["agent_binding"] = binding
     return {"id": node_id, "data": data}
@@ -262,16 +271,26 @@ def test_agent_package_normalizes_legacy_null_missing_asset_file_ids() -> None:
 
 
 @pytest.mark.parametrize(
-    "asset",
+    ("target", "asset"),
     [
-        {"name": "research", "file_id": None, "is_missing": False},
-        {"name": "guide.md", "file_kind": "tool_file", "file_id": None, "is_missing": False},
+        (
+            "config_skills",
+            AgentConfigSkillRefConfig(name="research", file_id="skill-file"),
+        ),
+        (
+            "config_files",
+            AgentConfigFileRefConfig(name="guide.md", file_kind="tool_file", file_id="config-file"),
+        ),
     ],
 )
-def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) -> None:
+def test_agent_package_rejects_null_file_id_for_available_assets(
+    target: str, asset: AgentConfigSkillRefConfig | AgentConfigFileRefConfig
+) -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig()).model_dump(mode="json")
-    target = "config_files" if "file_kind" in asset else "config_skills"
-    package["soul"][target] = [asset]
+    asset_payload = asset.model_dump(mode="json")
+    # Simulate a malformed export: an available asset whose file_id arrived as null.
+    asset_payload["file_id"] = None
+    package["soul"][target] = [asset_payload]
 
     with pytest.raises(ValidationError):
         AgentPackage.model_validate(package)
@@ -371,8 +390,36 @@ def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session,
     assert packages[package_ref].soul.tools.dify_tools[0].max_calls_per_run == (5 if use_draft else 3)
 
 
+def test_parse_agent_node_graph_preserves_other_graph_fields() -> None:
+    graph = json.loads(
+        json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "agent-1",
+                        "data": {
+                            "type": BuiltinNodeTypes.AGENT,
+                            "version": AGENT_NODE_VERSION,
+                            "agent_node_kind": AGENT_NODE_KIND,
+                            "agent_parameters": {"prompt": "preserve this"},
+                        },
+                        "position": {"x": 1, "y": 2},
+                    }
+                ],
+                "edges": [],
+                "viewport": {"x": 1, "y": 2, "zoom": 1},
+            }
+        )
+    )
+
+    assert parse_agent_node_graph(graph) == graph
+
+
 def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Session) -> None:
-    graph = {"nodes": [_agent_node("node-1"), _agent_node("node-2")], "edges": []}
+    graph: AgentNodeGraphDict = {
+        "nodes": [_agent_node("node-1"), _agent_node("node-2")],
+        "edges": [],
+    }
     bindings = [
         WorkflowAgentNodeBinding(
             id=f"binding-{node_id}",
@@ -417,7 +464,7 @@ def test_export_workflow_packages_rejects_incomplete_binding(sqlite_session: Ses
 def test_workflow_package_roundtrip_preserves_mode_with_a_destination_generation(sqlite_session: Session) -> None:
     source_generation = str(uuid4())
     source = _workflow()
-    graph = {"nodes": [_agent_node("session-node")], "edges": list[dict[str, object]]()}
+    graph: AgentNodeGraphDict = {"nodes": [_agent_node("session-node")], "edges": []}
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -462,20 +509,18 @@ def test_workflow_package_roundtrip_preserves_mode_with_a_destination_generation
 
 
 def test_graph_without_package_bindings_removes_portable_fields() -> None:
-    graph = {
-        "nodes": [
-            _agent_node(
-                "portable",
-                {
-                    "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
-                    AGENT_PACKAGE_REF_KEY: "agent_1",
-                },
-            ),
-            _agent_node("persisted", {"binding_type": "inline_agent", "agent_id": "agent-1"}),
-        ],
-        "edges": [],
-    }
-    for node in graph["nodes"]:
+    graph_nodes: list[AgentNodeGraphNodeDict] = [
+        _agent_node(
+            "portable",
+            {
+                "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                AGENT_PACKAGE_REF_KEY: "agent_1",
+            },
+        ),
+        _agent_node("persisted", {"binding_type": "inline_agent", "agent_id": "agent-1"}),
+    ]
+    graph: AgentNodeGraphDict = {"nodes": graph_nodes, "edges": []}
+    for node in graph_nodes:
         node["data"][AGENT_NODE_JOB_DSL_KEY] = {"workflow_prompt": "work"}
 
     result = AgentDslService.graph_without_package_bindings(graph)
@@ -483,30 +528,12 @@ def test_graph_without_package_bindings_removes_portable_fields() -> None:
     assert "agent_binding" not in result["nodes"][0]["data"]
     assert result["nodes"][1]["data"]["agent_binding"]["agent_id"] == "agent-1"
     assert all(AGENT_NODE_JOB_DSL_KEY not in node["data"] for node in result["nodes"])
-    assert AGENT_NODE_JOB_DSL_KEY in graph["nodes"][0]["data"]
+    assert AGENT_NODE_JOB_DSL_KEY in graph_nodes[0]["data"]
 
 
-def test_import_agent_app_package_creates_config_and_unpublished_draft(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_import_agent_app_package_creates_config_and_unpublished_draft(sqlite_session: Session) -> None:
     service = AgentDslService(sqlite_session)
     soul = AgentSoulConfig(config_note="portable")
-    warning = DslImportWarning(code="setup", path="agent.soul", message="setup required")
-    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
-    service.unique_roster_name = Mock(return_value="Portable Agent import")
-    agent = _agent()
-    agent.active_config_snapshot_id = "snapshot-1"
-    agent.active_config_is_published = True
-    snapshot = _snapshot(soul=soul)
-    roster_service = Mock()
-
-    def create_backing_agent(**_kwargs: object) -> Agent:
-        sqlite_session.add_all([agent, snapshot])
-        sqlite_session.flush()
-        return agent
-
-    roster_service.create_backing_agent_for_app.side_effect = create_backing_agent
-    monkeypatch.setattr("services.agent.dsl_service.AgentRosterService", Mock(return_value=roster_service))
     app = _app()
     app.icon_type = IconType.LINK
     app.icon = "https://example.com/override.png"
@@ -520,12 +547,28 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
         package=make_portable_agent_package(_agent(), soul),
     )
 
-    assert result.warnings == [warning]
-    creation = roster_service.create_backing_agent_for_app.call_args.kwargs
-    assert creation["icon_type"] == AgentIconType.LINK
-    assert creation["icon"] == app.icon
-    assert creation["icon_background"] == app.icon_background
+    # The portable Soul carries no assets to remap, so the real resolver finds nothing to warn about.
+    assert result.warnings == []
+    agent = result.agent
+    assert sqlite_session.get(Agent, agent.id) is agent
+    assert agent.name == "Portable Agent"
+    assert agent.scope == AgentScope.ROSTER
+    assert agent.source == AgentSource.IMPORTED
+    assert agent.app_id == app.id
+    assert agent.backing_app_id == app.id
+    assert agent.icon_type == AgentIconType.LINK
+    assert agent.icon == app.icon
+    assert agent.icon_background == app.icon_background
     assert agent.active_config_is_published is False
+    snapshot = result.snapshot
+    assert sqlite_session.get(AgentConfigSnapshot, snapshot.id) is snapshot
+    assert snapshot.version == 1
+    assert snapshot.config_snapshot.config_note == "portable"
+    revision = sqlite_session.scalar(
+        select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+    )
+    assert revision is not None
+    assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
     assert app.name == "Portable Agent"
     assert app.description == "description"
     assert app.app_model_config_id is not None
@@ -536,31 +579,47 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(
         )
     )
     assert draft is not None
+    assert draft.base_snapshot_id == snapshot.id
     assert draft.config_snapshot.config_note == "portable"
 
 
-def test_import_workflow_packages_materializes_every_package_binding_as_inline(sqlite_session: Session) -> None:
+def test_import_workflow_packages_materializes_every_package_binding_as_inline(
+    sqlite_session: Session,
+) -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig())
-    graph = {
-        "nodes": [
-            _agent_node(
-                "roster-1",
-                {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
-            ),
-            _agent_node(
-                "roster-2",
-                {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
-            ),
-            _agent_node(
-                "inline",
-                {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
-            ),
-            _agent_node("missing-binding"),
-            _agent_node("invalid-ref", {AGENT_PACKAGE_REF_KEY: 1}),
-        ],
-        "edges": [],
-    }
-    for node in graph["nodes"][:3]:
+    graph_nodes: list[AgentNodeGraphNodeDict] = [
+        _agent_node(
+            "roster-1",
+            {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
+        ),
+        _agent_node(
+            "roster-2",
+            {"binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
+        ),
+        _agent_node(
+            "inline",
+            {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value, AGENT_PACKAGE_REF_KEY: "agent_1"},
+        ),
+        _agent_node("missing-binding"),
+    ]
+    # A graph imported from an untrusted document may carry a wrongly typed reference.
+    # The untrusted document is raw JSON, so build it as text and let it arrive unparsed.
+    invalid_ref_node: AgentNodeGraphNodeDict = json.loads(
+        json.dumps(
+            {
+                "id": "invalid-ref",
+                "data": {
+                    "type": BuiltinNodeTypes.AGENT,
+                    "version": AGENT_NODE_VERSION,
+                    "agent_node_kind": AGENT_NODE_KIND,
+                    "agent_binding": {AGENT_PACKAGE_REF_KEY: 1},
+                },
+            }
+        )
+    )
+    graph_nodes.append(invalid_ref_node)
+    graph: AgentNodeGraphDict = {"nodes": graph_nodes, "edges": []}
+    for node in graph_nodes[:3]:
         node["data"][AGENT_NODE_JOB_DSL_KEY] = {"workflow_prompt": node["id"]}
     old_binding = WorkflowAgentNodeBinding(
         id="old-binding",
@@ -578,22 +637,6 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
     sqlite_session.add(old_binding)
     sqlite_session.commit()
     service = AgentDslService(sqlite_session)
-    imported_results = [
-        AgentPackageImportResult(
-            agent=_agent(
-                agent_id=f"inline-agent-{index}",
-                scope=AgentScope.WORKFLOW_ONLY,
-                source=AgentSource.IMPORTED,
-            ),
-            snapshot=_snapshot(
-                snapshot_id=f"inline-snapshot-{index}",
-                agent_id=f"inline-agent-{index}",
-            ),
-            warnings=[DslImportWarning(code=f"inline-{index}", path="agent", message="inline warning")],
-        )
-        for index in range(1, 4)
-    ]
-    service._create_imported_inline_agent = Mock(side_effect=imported_results)
     workflow = _workflow()
 
     result, warnings, retirement_candidates = service.import_workflow_packages(
@@ -605,20 +648,15 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
 
     assert sqlite_session.get(WorkflowAgentNodeBinding, old_binding.id) is None
     assert retirement_candidates == {"old-inline-agent"}
-    assert service._create_imported_inline_agent.call_count == 3
-    assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
-        "roster-1",
-        "roster-2",
-        "inline",
-    ]
-    assert [warning.code for warning in warnings] == ["inline-1", "inline-2", "inline-3"]
+    assert warnings == []
     bindings = [result["nodes"][index]["data"]["agent_binding"] for index in range(3)]
-    assert [binding["agent_id"] for binding in bindings] == [
-        "inline-agent-1",
-        "inline-agent-2",
-        "inline-agent-3",
-    ]
+    imported_agent_ids = [binding["agent_id"] for binding in bindings]
+    assert len(set(imported_agent_ids)) == 3
     assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in bindings)
+    imported_agents = [sqlite_session.get(Agent, agent_id) for agent_id in imported_agent_ids]
+    assert all(agent is not None for agent in imported_agents)
+    assert {agent.scope for agent in imported_agents if agent is not None} == {AgentScope.WORKFLOW_ONLY}
+    assert {agent.source for agent in imported_agents if agent is not None} == {AgentSource.IMPORTED}
     assert AGENT_NODE_JOB_DSL_KEY not in result["nodes"][0]["data"]
     assert json.loads(workflow.graph) == result
     added_bindings = sqlite_session.scalars(
@@ -639,7 +677,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(s
     ],
 )
 def test_import_workflow_packages_rejects_invalid_package_binding(
-    sqlite_session: Session, binding: dict, error: str
+    sqlite_session: Session, binding: AgentNodeBindingDict, error: str
 ) -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig())
 
@@ -652,15 +690,8 @@ def test_import_workflow_packages_rejects_invalid_package_binding(
         )
 
 
-def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
-    service = AgentDslService(unbound_session)
-    target_agent = _agent(
-        agent_id="target-agent",
-        scope=AgentScope.WORKFLOW_ONLY,
-        source=AgentSource.WORKFLOW,
-    )
-    target_snapshot = _snapshot(snapshot_id="target-snapshot", agent_id=target_agent.id)
-    service._create_workflow_only_agent = Mock(return_value=(target_agent, target_snapshot))
+def test_clone_inline_binding_copies_soul(sqlite_session: Session) -> None:
+    service = AgentDslService(sqlite_session)
     source_agent = _agent()
     source_soul = AgentSoulConfig(
         config_note="source",
@@ -670,7 +701,7 @@ def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
     source_snapshot = _snapshot(soul=source_soul)
     workflow = _workflow()
 
-    result = service.clone_inline_binding_for_node(
+    agent, snapshot = service.clone_inline_binding_for_node(
         workflow=workflow,
         node_id="target-node",
         source_agent=source_agent,
@@ -678,18 +709,31 @@ def test_clone_inline_binding_copies_soul(unbound_session: Session) -> None:
         account_id="account-1",
     )
 
-    assert result == (target_agent, target_snapshot)
-    create_kwargs = service._create_workflow_only_agent.call_args.kwargs
-    assert create_kwargs["metadata"].name == source_agent.name
-    cloned_soul = create_kwargs["soul"]
-    assert cloned_soul.config_note == "source"
-    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_skills] == [
+    assert sqlite_session.get(Agent, agent.id) is agent
+    assert agent.name == source_agent.name
+    assert agent.scope == AgentScope.WORKFLOW_ONLY
+    assert agent.source == AgentSource.WORKFLOW
+    assert agent.workflow_node_id == "target-node"
+    assert agent.workflow_id == workflow.id
+    assert agent.app_id == workflow.app_id
+    assert agent.icon_type == source_agent.icon_type
+    assert agent.active_config_is_published is True
+    assert agent.active_config_snapshot_id == snapshot.id
+    assert sqlite_session.get(AgentConfigSnapshot, snapshot.id) is snapshot
+    assert snapshot.agent_id == agent.id
+    assert snapshot.version == 1
+    assert snapshot.config_snapshot.config_note == "source"
+    assert [(item.name, item.file_kind, item.file_id) for item in snapshot.config_snapshot.config_skills] == [
         ("summarizer", "tool_file", "skill-file-1")
     ]
-    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_files] == [
+    assert [(item.name, item.file_kind, item.file_id) for item in snapshot.config_snapshot.config_files] == [
         ("brief.pdf", "upload_file", "config-file-1")
     ]
-    assert create_kwargs["source"] == AgentSource.WORKFLOW
+    revision = sqlite_session.scalar(
+        select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+    )
+    assert revision is not None
+    assert revision.operation == AgentConfigRevisionOperation.CREATE_VERSION
 
 
 def test_extract_package_dependencies_covers_models_features_tools_and_knowledge(
@@ -859,12 +903,9 @@ def test_extract_package_dependencies_ignores_inactive_knowledge_models(
     model_dependency.assert_not_called()
 
 
-def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Session) -> None:
-    service = AgentDslService(unbound_session)
+def test_create_imported_inline_agent_uses_import_provenance(sqlite_session: Session) -> None:
+    service = AgentDslService(sqlite_session)
     soul = AgentSoulConfig(config_note="inline")
-    warning = DslImportWarning(code="setup", path="agent", message="setup")
-    service.resolve_package_soul = Mock(return_value=(soul, [warning]))
-    service._create_workflow_only_agent = Mock(return_value=(_agent(), _snapshot(soul=soul)))
     workflow = _workflow()
 
     result = service._create_imported_inline_agent(
@@ -875,11 +916,18 @@ def test_create_imported_inline_agent_uses_import_provenance(unbound_session: Se
         package_path="agent_packages.agent_1",
     )
 
-    assert result.warnings == [warning]
-    assert service._create_workflow_only_agent.call_args.kwargs["source"] == AgentSource.IMPORTED
-    assert (
-        service._create_workflow_only_agent.call_args.kwargs["operation"] == AgentConfigRevisionOperation.IMPORT_PACKAGE
+    assert result.warnings == []
+    assert result.agent.source == AgentSource.IMPORTED
+    assert result.agent.scope == AgentScope.WORKFLOW_ONLY
+    assert result.agent.workflow_node_id == "node-1"
+    assert sqlite_session.get(Agent, result.agent.id) is result.agent
+    assert sqlite_session.get(AgentConfigSnapshot, result.snapshot.id) is result.snapshot
+    assert result.snapshot.config_snapshot.config_note == "inline"
+    revision = sqlite_session.scalar(
+        select(AgentConfigRevision).where(AgentConfigRevision.current_snapshot_id == result.snapshot.id)
     )
+    assert revision is not None
+    assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
 
 
 def test_create_workflow_only_agent_sets_backing_app_and_snapshot(

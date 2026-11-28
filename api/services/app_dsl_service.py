@@ -56,7 +56,12 @@ from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNode
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
-from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
+from services.agent.dsl_entities import (
+    AGENT_NODE_JOB_DSL_KEY,
+    AgentPackage,
+    make_agent_app_dsl,
+    parse_agent_node_graph,
+)
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -1103,7 +1108,7 @@ class AppDslService:
         )
         graph, agent_packages = AgentDslService(session).export_workflow_packages(
             workflow=workflow,
-            graph=graph_for_packages,
+            graph=parse_agent_node_graph(graph_for_packages),
             resource_exporter=resource_exporter,
         )
         if reference_nodes:

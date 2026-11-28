@@ -144,8 +144,6 @@ project-excludes = [
   "services/test_workflow_service.py",
   "services/test_workflow_draft_variable_service.py",
   "tasks/app_generate/test_workflow_execute_task.py",
-  "services/agent/test_dsl_service.py",
-  "core/workflow/test_node_runtime.py",
 ]
 
 [errors]

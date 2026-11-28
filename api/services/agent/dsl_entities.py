@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator, with_config
 
 from core.plugin.entities.plugin import PluginDependency
 from models.agent import Agent
@@ -17,6 +17,70 @@ from services.entities.site_dsl import SiteDsl
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
 AGENT_NODE_JOB_DSL_KEY = "agent_job"
+
+
+@with_config(ConfigDict(extra="allow"))
+class AgentNodeBindingDict(TypedDict, total=False):
+    """The ``agent_binding`` payload a workflow graph carries for one Dify Agent node.
+
+    A portable export stores the package reference so the importer can rebuild the binding;
+    a persisted graph stores the resolved agent and snapshot instead.
+    """
+
+    binding_type: str
+    agent_id: str
+    current_snapshot_id: str
+    package_ref: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class AgentNodeDataDict(TypedDict, total=False):
+    """The ``data`` payload one Dify Agent node carries inside a workflow graph.
+
+    ``type``/``version``/``agent_node_kind`` mirror the identification contract of
+    :func:`domain.workflow.agent_node.is_dify_agent_node_data` (``BuiltinNodeTypes.AGENT``,
+    ``AGENT_NODE_VERSION``, ``AGENT_NODE_KIND``); ``agent_binding`` and ``agent_job``
+    are the portable fields this module's export/import helpers read and rewrite.
+    """
+
+    type: str
+    version: str
+    agent_node_kind: str
+    agent_binding: AgentNodeBindingDict
+    agent_job: dict[str, object]
+
+
+@with_config(ConfigDict(extra="allow"))
+class AgentNodeGraphNodeDict(TypedDict):
+    """One workflow graph node whose ``data`` may carry an :class:`AgentNodeBindingDict`."""
+
+    id: str
+    data: AgentNodeDataDict
+
+
+@with_config(ConfigDict(extra="allow"))
+class AgentNodeGraphEdgeDict(TypedDict, total=False):
+    """One workflow graph edge shared by every node type."""
+
+    source: str
+    target: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class AgentNodeGraphDict(TypedDict):
+    """The workflow graph envelope the portable-package helpers read Agent nodes from."""
+
+    nodes: list[AgentNodeGraphNodeDict]
+    edges: list[AgentNodeGraphEdgeDict]
+
+
+_AGENT_NODE_GRAPH_ADAPTER = TypeAdapter(AgentNodeGraphDict)
+
+
+def parse_agent_node_graph(value: object) -> AgentNodeGraphDict:
+    """Validate the graph envelope while preserving fields owned by other node types."""
+
+    return _AGENT_NODE_GRAPH_ADAPTER.validate_python(value)
 
 
 class AgentPackageMetadata(BaseModel):

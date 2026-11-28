@@ -19,6 +19,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
+from services.agent.dsl_entities import parse_agent_node_graph
 from services.agent.dsl_service import AgentDslService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
@@ -551,15 +552,15 @@ class SnippetDslService:
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         graph, agent_packages = AgentDslService(self._session).export_workflow_packages(
             workflow=workflow,
-            graph=workflow_dict.get("graph", {}),
+            graph=parse_agent_node_graph(workflow_dict.get("graph", {})),
         )
         workflow_dict["graph"] = graph
         # Filter workspace related data from nodes
         workflow_dict["environment_variables"] = []
         workflow_dict["conversation_variables"] = []
 
-        for node in workflow_dict.get("graph", {}).get("nodes", []):
-            node_data = node.get("data", {})
+        for node in graph["nodes"]:
+            node_data = node["data"]
             if not node_data:
                 continue
             data_type = node_data.get("type", "")

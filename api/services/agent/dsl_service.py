@@ -48,6 +48,8 @@ from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
+    AgentNodeBindingDict,
+    AgentNodeGraphDict,
     AgentPackage,
     AgentPackageMetadata,
     AgentPackageWorkspaceSkill,
@@ -139,7 +141,7 @@ class AgentDslService:
         self,
         *,
         workflow: Workflow,
-        graph: Mapping[str, Any],
+        graph: AgentNodeGraphDict,
         resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> tuple[dict[str, Any], dict[str, AgentPackage]]:
         """Replace owned bindings with portable packages and their saved node policies.
@@ -203,10 +205,11 @@ class AgentDslService:
                             include_draft=False,
                         ),
                     )
-            node_data["agent_binding"] = {
+            portable_binding: AgentNodeBindingDict = {
                 "binding_type": binding.binding_type.value,
                 AGENT_PACKAGE_REF_KEY: package_ref,
             }
+            node_data["agent_binding"] = portable_binding
             node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             node_data[AGENT_NODE_JOB_DSL_KEY] = node_job.model_dump(mode="json")
             apply_workflow_agent_session_policy_to_node_data(node_data=node_data, node_job=node_job)
@@ -379,11 +382,12 @@ class AgentDslService:
                     updated_by=account.id,
                 )
             )
-            node_data["agent_binding"] = {
+            inline_binding: AgentNodeBindingDict = {
                 "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                 "agent_id": imported.agent.id,
                 "current_snapshot_id": imported.snapshot.id,
             }
+            node_data["agent_binding"] = inline_binding
             node_data.pop(AGENT_NODE_JOB_DSL_KEY, None)
             warnings.extend(imported.warnings)
 
