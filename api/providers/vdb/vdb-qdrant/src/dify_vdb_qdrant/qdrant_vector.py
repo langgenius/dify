@@ -369,32 +369,30 @@ class QdrantVector(BaseVector):
             # and at the same time, the score_threshold with value 1 may be valid for other vector stores
             return []
 
-        filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
-                ),
-            ],
-        )
+        conditions: list[models.Condition] = [
+            models.FieldCondition(
+                key="group_id",
+                match=models.MatchValue(value=self._group_id),
+            ),
+        ]
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            if filter.must:
-                filter.must.append(
-                    models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+            conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
                 )
-        results = self._client.search(
+            )
+        filter = models.Filter(must=conditions)
+        results = self._client.query_points(
             collection_name=self._collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
             score_threshold=score_threshold,
-        )
+        ).points
         docs = []
         for result in results:
             if result.payload is None:
@@ -456,7 +454,7 @@ class QdrantVector(BaseVector):
         if top_k <= 0:
             return []
 
-        seen_ids: set[str | int] = set()
+        seen_ids: set[int | str | uuid.UUID] = set()
         documents: list[Document] = []
         keyword_results: list[list[rest.Record]] = []
 

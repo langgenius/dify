@@ -99,7 +99,7 @@ def _build_fake_qdrant_modules():
             self.delete = MagicMock()
             self.delete_collection = MagicMock()
             self.retrieve = MagicMock(return_value=[])
-            self.search = MagicMock(return_value=[])
+            self.query_points = MagicMock(return_value=SimpleNamespace(points=[]))
             self.scroll = MagicMock(return_value=([], None))
 
     class QdrantLocal(QdrantClient):
@@ -264,10 +264,12 @@ def test_search_and_helper_methods(qdrant_module):
     vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
     assert vector.search_by_vector([0.1], score_threshold=1.0) == []
 
-    vector._client.search.return_value = [
-        SimpleNamespace(payload=None, score=0.9, vector=[0.1]),
-        SimpleNamespace(payload={"metadata": {"doc_id": "1"}, "page_content": "doc-a"}, score=0.8, vector=[0.1]),
-    ]
+    vector._client.query_points.return_value = SimpleNamespace(
+        points=[
+            SimpleNamespace(payload=None, score=0.9, vector=[0.1]),
+            SimpleNamespace(payload={"metadata": {"doc_id": "1"}, "page_content": "doc-a"}, score=0.8, vector=[0.1]),
+        ]
+    )
     docs = vector.search_by_vector([0.1], top_k=2, score_threshold=0.5, document_ids_filter=["d-1"])
     assert len(docs) == 1
     assert docs[0].metadata["score"] == pytest.approx(0.8)
