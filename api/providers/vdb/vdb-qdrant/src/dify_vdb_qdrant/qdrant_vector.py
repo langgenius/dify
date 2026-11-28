@@ -15,6 +15,8 @@ from qdrant_client.http.models import (
     PayloadSchemaType,
     TextIndexParams,
     TextIndexType,
+    TextScoringParams,
+    TextScoringType,
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
@@ -167,6 +169,8 @@ class QdrantVector(BaseVector):
                     min_token_len=2,
                     max_token_len=20,
                     lowercase=True,
+                    # BM25 ranking for full-text search on Qdrant 1.20+; older servers ignore it.
+                    scoring=TextScoringParams(type=TextScoringType.BM25),
                 )
                 self._client.create_payload_index(collection_name, Field.CONTENT_KEY, field_schema=text_index_params)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
@@ -369,32 +373,30 @@ class QdrantVector(BaseVector):
             # and at the same time, the score_threshold with value 1 may be valid for other vector stores
             return []
 
-        filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
-                ),
-            ],
-        )
+        conditions: list[models.Condition] = [
+            models.FieldCondition(
+                key="group_id",
+                match=models.MatchValue(value=self._group_id),
+            ),
+        ]
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            if filter.must:
-                filter.must.append(
-                    models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+            conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
                 )
-        results = self._client.search(
+            )
+        filter = models.Filter(must=conditions)
+        results = self._client.query_points(
             collection_name=self._collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
             score_threshold=score_threshold,
-        )
+        ).points
         docs = []
         for result in results:
             if result.payload is None:
@@ -416,8 +418,9 @@ class QdrantVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs most similar by full-text search.
 
-        Searches each keyword separately and merges results to ensure documents
-        matching ANY keyword are returned (OR logic). Results are capped at top_k.
+        Ranks documents matching ANY keyword with BM25 when the server and the
+        collection's text index support it (Qdrant 1.20+). Otherwise searches each
+        keyword separately and merges results (OR logic). Results are capped at top_k.
 
         Args:
             query: Search query text. Multi-word queries are split into keywords,
@@ -456,7 +459,11 @@ class QdrantVector(BaseVector):
         if top_k <= 0:
             return []
 
-        seen_ids: set[str | int] = set()
+        ranked = self._search_by_full_text_ranked(keywords, base_must_conditions, top_k)
+        if ranked is not None:
+            return ranked
+
+        seen_ids: set[int | str | uuid.UUID] = set()
         documents: list[Document] = []
         keyword_results: list[list[rest.Record]] = []
 
@@ -507,6 +514,45 @@ class QdrantVector(BaseVector):
                 break
 
         return documents
+
+    def _search_by_full_text_ranked(self, keywords: list[str], must: list, top_k: int) -> list[Document] | None:
+        """Rank full-text matches with BM25 on the content text index (Qdrant 1.20+).
+
+        Returns None when the server or the text index cannot score, so the caller
+        falls back to per-keyword matching.
+        """
+        import grpc
+        from qdrant_client.http import models
+        from qdrant_client.http.exceptions import UnexpectedResponse
+
+        if isinstance(self._client, QdrantLocal):
+            # Local mode only scores text indexes that use the default tokenizer.
+            return None
+        try:
+            points = self._client.query_points(
+                collection_name=self._collection_name,
+                query=models.TextQuery(text=" ".join(keywords)),
+                using=Field.CONTENT_KEY,
+                query_filter=models.Filter(must=must),
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            ).points
+        except UnexpectedResponse as e:
+            # 400: server older than 1.20, or a text index created without scoring.
+            if e.status_code != 400:
+                raise
+            return None
+        except grpc.RpcError as e:
+            code = getattr(e, "code", None)
+            if not callable(code) or code() != grpc.StatusCode.INVALID_ARGUMENT:
+                raise
+            return None
+        return [
+            self._document_from_scored_point(point, Field.CONTENT_KEY, Field.METADATA_KEY)
+            for point in points
+            if point.payload is not None
+        ]
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):

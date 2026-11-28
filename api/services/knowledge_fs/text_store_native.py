@@ -260,9 +260,10 @@ class QdrantTextStore:
             }
         elif payload.operation == "search":
             indices, values = lexical_sparse_vector(payload.query)
-            scored = self.client.search(
+            scored = self.client.query_points(
                 name,
-                query_vector=m.NamedSparseVector(name="lexical", vector=m.SparseVector(indices=indices, values=values)),
+                query=m.SparseVector(indices=indices, values=values),
+                using="lexical",
                 query_filter=m.Filter(
                     must=[
                         m.HasIdCondition(has_id=list(payload.ids)),
@@ -275,7 +276,7 @@ class QdrantTextStore:
                 limit=payload.limit,
                 with_payload=False,
                 with_vectors=False,
-            )
+            ).points
             return {"points": [], "matches": [{"id": str(p.id), "score": p.score} for p in scored]}
         else:
             result = self.client.delete(name, m.PointIdsList(points=list(payload.ids)), wait=True)

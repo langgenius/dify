@@ -59,7 +59,7 @@ class TidbOnQdrantConfig(BaseModel):
     prefer_grpc: bool = False
     replication_factor: int = 1
 
-    def to_qdrant_params(self):
+    def to_qdrant_params(self) -> dict[str, Any]:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -355,15 +355,15 @@ class TidbOnQdrantVector(BaseVector):
                     )
                 ],
             )
-        results = self._client.search(
+        results = self._client.query_points(
             collection_name=self._collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=False,
             score_threshold=kwargs.get("score_threshold", 0.0),
-        )
+        ).points
         docs = []
         for result in results:
             if result.payload is None:
@@ -402,7 +402,7 @@ class TidbOnQdrantVector(BaseVector):
                 )
             )
 
-        seen_ids: set[str | int] = set()
+        seen_ids: set[int | str | uuid.UUID] = set()
         documents: list[Document] = []
         keyword_results: list[list[rest.Record]] = []
         # MatchText combines tokens with AND; separate searches provide OR between keywords.

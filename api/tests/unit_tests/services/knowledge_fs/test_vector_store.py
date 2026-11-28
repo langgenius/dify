@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
@@ -863,9 +864,9 @@ class FakeQdrant:
         self.upsert_calls.append({"collection_name": collection_name, "wait": wait, "points": points})
         self.upserted_points.append(points)
 
-    def search(self, **kwargs: object) -> list[object]:
+    def query_points(self, **kwargs: object) -> SimpleNamespace:
         self.search_calls.append(kwargs)
-        return self.search_result
+        return SimpleNamespace(points=self.search_result)
 
     def retrieve(self, **kwargs: object) -> list[object]:
         self.retrieve_calls.append(kwargs)
@@ -1727,7 +1728,9 @@ class TestKnowledgeFsVectorStoreCases:
             ],
         )
         config_overrides(VECTOR_STORE="tidb_on_qdrant")
-        with patch.object(client, "search", side_effect=AssertionError("Legacy search must not query unfiltered")):
+        with patch.object(
+            client, "query_points", side_effect=AssertionError("Legacy search must not query unfiltered")
+        ):
             result = execute_vector_request(
                 client,
                 _knowledge_fs_vector_store_request(
