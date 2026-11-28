@@ -1,3 +1,4 @@
+import type { ModelModeType } from '@/types/app'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
@@ -298,5 +299,41 @@ describe('GetAutomaticRes', () => {
     })
 
     expect(screen.getByText(/generate.newNoDataLine1/)).toBeInTheDocument()
+  })
+
+  it('should send chat model mode for agent app prompt generation', async () => {
+    const user = userEvent.setup()
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+    })
+
+    render(
+      <GetAutomaticRes
+        // The configuration context passes the app mode through the
+        // ModelModeType-typed modelMode prop, so Agent apps reach this
+        // modal with 'agent-chat' at runtime.
+        modelMode={'agent-chat' as ModelModeType}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    await user.click(instruction())
+    await user.paste('agent instruction')
+    await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instruction: 'agent instruction',
+          model_config: expect.objectContaining({
+            mode: 'chat',
+          }),
+        }),
+      )
+    })
   })
 })
