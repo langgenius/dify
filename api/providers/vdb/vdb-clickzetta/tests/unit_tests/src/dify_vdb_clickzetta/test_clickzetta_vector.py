@@ -14,15 +14,18 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_clickzetta_module() -> FakeModule:
+def _build_fake_clickzetta_module(*, rows: list[tuple[str, str, str]] | None = None) -> FakeModule:
     clickzetta = FakeModule("clickzetta")
 
     class _FakeCursor:
         def __init__(self) -> None:
             self.execute = MagicMock()
             self.executemany = MagicMock()
-            self.fetchall = MagicMock(return_value=[])
             self.fetchone = MagicMock(return_value=(0,))
+
+        def fetchall(self) -> list[tuple[str, str, str]]:
+            """Return the rows supplied by the test transport, or an empty result."""
+            return rows if rows is not None else []
 
         def __enter__(self) -> Self:
             return self
@@ -244,6 +247,59 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module: ModuleType, mo
 
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "collection"
+
+
+@pytest.mark.parametrize(
+    ("config_value", "returns_matches"),
+    [
+        (True, True),
+        (False, False),
+        (None, True),
+    ],
+)
+def test_factory_honors_the_inverted_index_toggle(
+    clickzetta_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    config_value: bool | None,
+    returns_matches: bool,
+) -> None:
+    """Search through the initialized vector unless full-text search is explicitly disabled."""
+    factory = clickzetta_module.ClickzettaVectorFactory()
+    dataset = Dataset(id="dataset-1")
+
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_USERNAME", "username")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_PASSWORD", "password")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_INSTANCE", "instance")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_SERVICE", "service")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_WORKSPACE", "workspace")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VCLUSTER", "cluster")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_SCHEMA", "dify")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_BATCH_SIZE", 10)
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ENABLE_INVERTED_INDEX", config_value)
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_TYPE", "chinese")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_MODE", "smart")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
+
+    clickzetta = _build_fake_clickzetta_module(rows=[("chunk-1", "matching text", '{"document_id": "doc-1"}')])
+    monkeypatch.setattr(clickzetta_module, "clickzetta", clickzetta)
+    vector = factory.init_vector(dataset, attributes=[], embeddings=None, session=None)  # type: ignore[arg-type]
+
+    try:
+        matches = vector.search_by_full_text("matching")
+        expected = (
+            [
+                Document(
+                    page_content="matching text", metadata={"doc_id": "chunk-1", "document_id": "doc-1", "score": 1.0}
+                )
+            ]
+            if returns_matches
+            else []
+        )
+        assert matches == expected
+    finally:
+        clickzetta_module.ClickzettaConnectionPool.get_instance().shutdown()
+        clickzetta_module.ClickzettaVector._write_queue.put(None)
+        clickzetta_module.ClickzettaVector._write_thread.join(timeout=1)
 
 
 def test_connection_pool_singleton_and_config_key(

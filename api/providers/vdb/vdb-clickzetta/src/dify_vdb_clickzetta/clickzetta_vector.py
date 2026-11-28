@@ -1084,7 +1084,11 @@ class ClickzettaVectorFactory(AbstractVectorFactory):
             vcluster=dify_config.CLICKZETTA_VCLUSTER or "default_ap",
             schema_name=dify_config.CLICKZETTA_SCHEMA or "dify",
             batch_size=dify_config.CLICKZETTA_BATCH_SIZE or 100,
-            enable_inverted_index=dify_config.CLICKZETTA_ENABLE_INVERTED_INDEX or True,
+            enable_inverted_index=(
+                dify_config.CLICKZETTA_ENABLE_INVERTED_INDEX
+                if dify_config.CLICKZETTA_ENABLE_INVERTED_INDEX is not None
+                else True
+            ),
             analyzer_type=dify_config.CLICKZETTA_ANALYZER_TYPE or "chinese",
             analyzer_mode=dify_config.CLICKZETTA_ANALYZER_MODE or "smart",
             vector_distance_function=dify_config.CLICKZETTA_VECTOR_DISTANCE_FUNCTION or "cosine_distance",
