@@ -61,6 +61,25 @@ func TestMaterializeStdioStatusMarksMissingSessionWithIncompleteArtifactsLost(t 
 	if view.Status != StatusLost {
 		t.Errorf("status = %q, want %q", view.Status, StatusLost)
 	}
+	if view.ExitCode != nil {
+		t.Errorf("exit code = %d, want nil for lost job", *view.ExitCode)
+	}
+}
+
+func TestMaterializePTYStatusMarksInactivePipeFailedWithNilExitCode(t *testing.T) {
+	service, row := setupModeTestService(t, jobmode.PTY, StatusRunning)
+	pipeInactive := false
+
+	view, err := service.materializeStatusView(row, true, &pipeInactive)
+	if err != nil {
+		t.Fatalf("materializeStatusView: %v", err)
+	}
+	if view.Status != StatusFailed || !view.Done {
+		t.Errorf("view = status %q done %v, want failed and done", view.Status, view.Done)
+	}
+	if view.ExitCode != nil {
+		t.Errorf("exit code = %d, want nil for failed job", *view.ExitCode)
+	}
 }
 
 func setupModeTestService(t *testing.T, mode jobmode.Mode, status JobStatusName) (*Service, *JobRow) {
