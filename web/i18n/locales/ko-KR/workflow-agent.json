@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Agent 추가 작업",
   "nodes.agent.roster.openPanel": "{{name}} 상세 열기",
   "nodes.agent.roster.panelLabel": "{{name}} 상세",
+  "nodes.agent.sessionContinuity.description": "켜면 Agent가 이 채팅 내의 기록을 유지합니다. 끄면 사용자 메시지마다 새 세션을 시작합니다.",
+  "nodes.agent.sessionContinuity.title": "Agent 세션 이어가기",
   "nodes.agent.strategy.configureTip": "에이전트 전략을 구성하세요.",
   "nodes.agent.strategy.configureTipDesc": "에이전트 전략을 구성한 후 이 노드는 나머지 구성을 자동으로 로드합니다. 이 전략은 다단계 도구 추론의 메커니즘에 영향을 미칩니다.",
   "nodes.agent.strategy.label": "에이전트 전략",

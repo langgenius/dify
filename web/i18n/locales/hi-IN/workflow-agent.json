@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "अधिक एजेंट क्रियाएँ",
   "nodes.agent.roster.openPanel": "{{name}} विवरण खोलें",
   "nodes.agent.roster.panelLabel": "{{name}} विवरण",
+  "nodes.agent.sessionContinuity.description": "चालू होने पर, एजेंट इस चैट के भीतर अपना इतिहास बनाए रखता है। बंद होने पर, यह प्रत्येक उपयोगकर्ता संदेश के लिए एक नया सत्र शुरू करता है।",
+  "nodes.agent.sessionContinuity.title": "एजेंट सत्र जारी रखें",
   "nodes.agent.strategy.configureTip": "कृपया एजेंटिक रणनीति को कॉन्फ़िगर करें।",
   "nodes.agent.strategy.configureTipDesc": "एजेंटिक रणनीति को कॉन्फ़िगर करने के बाद, यह नोड स्वचालित रूप से शेष कॉन्फ़िगरेशन लोड करेगा। यह रणनीति बहु-चरण उपकरण तर्क के तंत्र को प्रभावित करेगी।",
   "nodes.agent.strategy.label": "एजेंटिक रणनीति",

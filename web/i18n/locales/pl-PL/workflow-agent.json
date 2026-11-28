@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Więcej akcji agenta",
   "nodes.agent.roster.openPanel": "Otwórz szczegóły {{name}}",
   "nodes.agent.roster.panelLabel": "Szczegóły {{name}}",
+  "nodes.agent.sessionContinuity.description": "Gdy włączone, agent zachowuje swoją historię w tym czacie. Gdy wyłączone, rozpoczyna nową sesję dla każdej wiadomości użytkownika.",
+  "nodes.agent.sessionContinuity.title": "Kontynuuj sesję agenta",
   "nodes.agent.strategy.configureTip": "Skonfiguruj strategię agentyczną.",
   "nodes.agent.strategy.configureTipDesc": "Po skonfigurowaniu strategii agentycznej ten węzeł automatycznie załaduje pozostałe konfiguracje. Strategia będzie miała wpływ na mechanizm wieloetapowego rozumowania narzędziowego.",
   "nodes.agent.strategy.label": "Strategia agentyczna",

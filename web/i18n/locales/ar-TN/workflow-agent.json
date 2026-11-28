@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "إجراءات وكيل أخرى",
   "nodes.agent.roster.openPanel": "فتح تفاصيل {{name}}",
   "nodes.agent.roster.panelLabel": "تفاصيل {{name}}",
+  "nodes.agent.sessionContinuity.description": "عند التفعيل، يحتفظ الوكيل بسجله داخل هذه الدردشة. عند الإيقاف، يبدأ جلسة جديدة لكل رسالة من المستخدم.",
+  "nodes.agent.sessionContinuity.title": "متابعة جلسة الوكيل",
   "nodes.agent.strategy.configureTip": "يرجى تكوين استراتيجية الوكيل.",
   "nodes.agent.strategy.configureTipDesc": "بعد تكوين استراتيجية الوكيل، ستقوم هذه العقدة تلقائيًا بتحميل التكوينات المتبقية. ستؤثر الاستراتيجية على آلية التفكير في الأدوات متعددة الخطوات. ",
   "nodes.agent.strategy.label": "استراتيجية الوكيل",

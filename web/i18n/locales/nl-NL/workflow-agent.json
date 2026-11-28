@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Meer agentacties",
   "nodes.agent.roster.openPanel": "Details van {{name}} openen",
   "nodes.agent.roster.panelLabel": "Details van {{name}}",
+  "nodes.agent.sessionContinuity.description": "Indien ingeschakeld, behoudt de agent zijn geschiedenis binnen deze chat. Indien uitgeschakeld, start hij voor elk gebruikersbericht een nieuwe sessie.",
+  "nodes.agent.sessionContinuity.title": "Agentsessie voortzetten",
   "nodes.agent.strategy.configureTip": "Please configure agentic strategy.",
   "nodes.agent.strategy.configureTipDesc": "After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ",
   "nodes.agent.strategy.label": "Agentic Strategy",

@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Weitere Agentenaktionen",
   "nodes.agent.roster.openPanel": "Details zu {{name}} öffnen",
   "nodes.agent.roster.panelLabel": "Details zu {{name}}",
+  "nodes.agent.sessionContinuity.description": "Wenn aktiviert, behält der Agent seinen Verlauf innerhalb dieses Chats bei. Wenn deaktiviert, startet er für jede Benutzernachricht eine neue Sitzung.",
+  "nodes.agent.sessionContinuity.title": "Agentensitzung fortsetzen",
   "nodes.agent.strategy.configureTip": "Bitte konfigurieren Sie die Agentenstrategie.",
   "nodes.agent.strategy.configureTipDesc": "Nach der Konfiguration der agentischen Strategie lädt dieser Knoten automatisch die verbleibenden Konfigurationen. Die Strategie wirkt sich auf den Mechanismus des mehrstufigen Tool-Reasoning aus.",
   "nodes.agent.strategy.label": "Agentische Strategie",

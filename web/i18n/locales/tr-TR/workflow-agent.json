@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Daha fazla ajan eylemi",
   "nodes.agent.roster.openPanel": "{{name}} detaylarını aç",
   "nodes.agent.roster.panelLabel": "{{name}} detayları",
+  "nodes.agent.sessionContinuity.description": "Açık olduğunda ajan, bu sohbet içindeki geçmişini korur. Kapalı olduğunda her kullanıcı mesajı için yeni bir oturum başlatır.",
+  "nodes.agent.sessionContinuity.title": "Ajan oturumunu sürdür",
   "nodes.agent.strategy.configureTip": "Lütfen ajan stratejisini yapılandırın.",
   "nodes.agent.strategy.configureTipDesc": "Aracı stratejiyi yapılandırdıktan sonra, bu düğüm kalan yapılandırmaları otomatik olarak yükleyecektir. Strateji, çok adımlı araç akıl yürütme mekanizmasını etkileyecektir.",
   "nodes.agent.strategy.label": "Ajan Stratejisi",

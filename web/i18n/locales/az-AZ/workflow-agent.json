@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Daha çox agent əməliyyatı",
   "nodes.agent.roster.openPanel": "{{name}} haqqında ətraflı məlumatı aç",
   "nodes.agent.roster.panelLabel": "{{name}} haqqında ətraflı məlumat",
+  "nodes.agent.sessionContinuity.description": "Aktiv olduqda agent bu söhbət daxilində öz tarixçəsini saxlayır. Deaktiv olduqda hər istifadəçi mesajı üçün yeni sessiya başladır.",
+  "nodes.agent.sessionContinuity.title": "Agent sessiyasını davam etdir",
   "nodes.agent.strategy.configureTip": "Agent strategiyasını konfiqurasiya edin.",
   "nodes.agent.strategy.configureTipDesc": "Agent strategiyası konfiqurasiya edildikdən sonra bu düyün qalan konfiqurasiyaları avtomatik yükləyəcək. Strategiya alətlərlə çoxaddımlı mühakimə mexanizminə təsir edəcək.",
   "nodes.agent.strategy.label": "Agent strategiyası",

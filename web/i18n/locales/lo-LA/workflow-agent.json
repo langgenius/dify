@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "ການດຳເນີນການ Agent ເພີ່ມເຕີມ",
   "nodes.agent.roster.openPanel": "ເປີດລາຍລະອຽດ {{name}}",
   "nodes.agent.roster.panelLabel": "ລາຍລະອຽດ {{name}}",
+  "nodes.agent.sessionContinuity.description": "ເມື່ອເປີດ, Agent ຈະເກັບປະຫວັດຂອງມັນໄວ້ພາຍໃນແຊັດນີ້. ເມື່ອປິດ, ມັນຈະເລີ່ມເຊດຊັນໃໝ່ສຳລັບແຕ່ລະຂໍ້ຄວາມຂອງຜູ້ໃຊ້.",
+  "nodes.agent.sessionContinuity.title": "ສືບຕໍ່ເຊດຊັນ Agent",
   "nodes.agent.strategy.configureTip": "ກະລຸນາຕັ້ງຄ່າກົນລະຍຸດ Agentic.",
   "nodes.agent.strategy.configureTipDesc": "ຫຼັງຈາກຕັ້ງຄ່າກົນລະຍຸດ Agentic, ໂນດນີ້ຈະໂຫຼດການຕັ້ງຄ່າທີ່ເຫຼືອອັດຕະໂນມັດ. ກົນລະຍຸດຈະສົ່ງຜົນຕໍ່ກົນໄກການໃຊ້ເຄື່ອງມືຫຼາຍຂັ້ນຕອນ.",
   "nodes.agent.strategy.label": "ກົນລະຍຸດ Agentic",
