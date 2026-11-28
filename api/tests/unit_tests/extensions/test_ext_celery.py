@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from queue import Empty
 from types import SimpleNamespace
+from typing import TypedDict
 from unittest.mock import MagicMock, Mock, patch
 from zoneinfo import ZoneInfo
 
@@ -30,6 +31,13 @@ from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 
 """Tests for Celery SSL configuration."""
+
+
+class _CeleryTaskAnnotation(TypedDict, total=False):
+    """Test-side shape of one CELERY_TASK_ANNOTATIONS entry: task name to Task option overrides."""
+
+    rate_limit: str | float | None
+    queue: str | None
 
 
 @pytest.mark.parametrize(
@@ -401,7 +409,7 @@ class TestCelerySslCases:
             mock_config.LOG_FORMAT = "%(message)s"
             mock_config.LOG_TZ = "UTC"
             mock_config.LOG_FILE = None
-            mock_config.CELERY_TASK_ANNOTATIONS = dict[str, object]()
+            mock_config.CELERY_TASK_ANNOTATIONS = dict[str, _CeleryTaskAnnotation]()
 
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
