@@ -1,7 +1,9 @@
 import contextlib
 import json
+from collections.abc import Generator
 from datetime import datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, PropertyMock, create_autospec
 
 import pytest
@@ -13,7 +15,15 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.datasource.__base.datasource_runtime import DatasourceRuntime
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
+    OnlineDriveFile,
+    OnlineDriveFileBucket,
+)
+from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
@@ -23,6 +33,7 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.entities.feature_entities import FeatureModel
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.helpers.unit.core.datasource.factories import datasource_entity
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -1256,3 +1267,71 @@ def test_scan_local_file_lets_allowed_files_and_other_datasources_through(genera
         pipeline=pipeline, application_generate_entity=_ScanEntity(datasource_info={"name": "no reference"})
     )
     assert len(generator._file_admission.calls) == 1
+
+
+class _PagedDrive(OnlineDriveDatasourcePlugin):
+    """An online drive that returns the given pages of one folder, one page per request."""
+
+    def __init__(self, pages: list[tuple[list[str], bool, dict[str, str] | None]]) -> None:
+        super().__init__(
+            entity=datasource_entity("drive"),
+            runtime=DatasourceRuntime(tenant_id="tenant"),
+            tenant_id="tenant",
+            icon="",
+            plugin_unique_identifier="drive",
+        )
+        self.pages = pages
+        self.requests: list[OnlineDriveBrowseFilesRequest] = []
+
+    @override
+    def online_drive_browse_files(
+        self, user_id: str, request: OnlineDriveBrowseFilesRequest, provider_type: str
+    ) -> Generator[OnlineDriveBrowseFilesResponse]:
+        self.requests.append(request)
+        names, is_truncated, next_page_parameters = self.pages[len(self.requests) - 1]
+        files = [OnlineDriveFile(id=name, name=name, size=1, type="file") for name in names]
+        bucket = OnlineDriveFileBucket(
+            files=files, is_truncated=is_truncated, next_page_parameters=next_page_parameters
+        )
+        yield OnlineDriveBrowseFilesResponse(result=[bucket])
+
+
+def _list_files(generator: module.PipelineGenerator, drive: _PagedDrive) -> list[str]:
+    all_files: list[dict[str, str | None]] = []
+    generator._get_files_in_folder(drive, "root", "b", "user", all_files, {})
+    return [str(f["id"]) for f in all_files]
+
+
+def test_get_files_in_folder_fetches_every_page_of_a_folder(generator: module.PipelineGenerator) -> None:
+    drive = _PagedDrive(
+        [
+            (["f1", "f2"], True, {"page_token": "2"}),
+            (["f3"], True, {"page_token": "3"}),
+            (["f4"], False, None),
+        ]
+    )
+
+    assert _list_files(generator, drive) == ["f1", "f2", "f3", "f4"]
+    assert [(r.prefix, r.next_page_parameters) for r in drive.requests] == [
+        ("root", None),
+        ("root", {"page_token": "2"}),
+        ("root", {"page_token": "3"}),
+    ]
+
+
+def test_get_files_in_folder_stops_when_a_truncated_page_has_no_next_page(
+    generator: module.PipelineGenerator,
+) -> None:
+    drive = _PagedDrive([(["f1"], True, None), (["f1"], True, None)])
+
+    assert _list_files(generator, drive) == ["f1"]
+    assert len(drive.requests) == 1
+
+
+def test_get_files_in_folder_stops_when_the_next_page_repeats(generator: module.PipelineGenerator) -> None:
+    drive = _PagedDrive(
+        [(["f1"], True, {"page_token": "1"}), (["f2"], True, {"page_token": "1"}), (["f3"], False, None)]
+    )
+
+    assert _list_files(generator, drive) == ["f1", "f2"]
+    assert len(drive.requests) == 2
