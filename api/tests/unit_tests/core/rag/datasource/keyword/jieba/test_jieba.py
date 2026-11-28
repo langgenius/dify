@@ -267,6 +267,26 @@ def test_keyword_decoder_handles_missing_and_invalid_payloads(storage_type: str,
         )
 
 
+def test_search_applies_document_filter_before_top_k(runtime: KeywordRuntime) -> None:
+    first, second = segment("node-1"), segment("node-2")
+    second.document_id = "document-2"
+    runtime.session.add_all([first, second])
+    keyword = Jieba(runtime.dataset)
+    keyword.add_texts(
+        [
+            Document(page_content="alpha", metadata={"doc_id": "node-1"}),
+            Document(page_content="alpha beta", metadata={"doc_id": "node-2"}),
+        ],
+        runtime.session,
+    )
+    runtime.session.commit()
+
+    # node-2 ranks higher but belongs to a filtered-out document; it must not take the only slot.
+    documents = keyword.search("alpha beta", session=runtime.session, top_k=1, document_ids_filter=["document-1"])
+
+    assert [doc.metadata["doc_id"] for doc in documents] == ["node-1"]
+
+
 def test_delete_removes_the_database_record_and_file(runtime: KeywordRuntime) -> None:
     keyword = Jieba(runtime.dataset)
     keyword.create([Document(page_content="alpha", metadata={"doc_id": "node-1"})], runtime.session)
