@@ -204,3 +204,27 @@ def test_run_captures_tool_snapshots_only_for_evaluation(
     assert transform_kwargs["tool_info"] == expected_tool_info
     assert snapshot_calls == int(capture_evaluation_trace)
     assert ("continuing without the snapshot" in caplog.text) is (capture_evaluation_trace and fail_capture)
+
+
+def test_extract_variable_selector_to_variable_mapping_skips_empty_selectors() -> None:
+    node_data = AgentNodeData(
+        agent_parameters={
+            "empty_str": AgentNodeData.AgentInput(type="variable", value=""),
+            "empty_list": AgentNodeData.AgentInput(type="variable", value=[]),
+            "none_val": AgentNodeData.AgentInput(type="variable", value=None),
+            "valid_var": AgentNodeData.AgentInput(type="variable", value=["start", "text"]),
+            "template_var": AgentNodeData.AgentInput(type="mixed", value="{{#start.query#}}"),
+        }
+    )
+
+    mapping = AgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent_1",
+        node_data=node_data,
+    )
+
+    assert "agent_1.empty_str" not in mapping
+    assert "agent_1.empty_list" not in mapping
+    assert "agent_1.none_val" not in mapping
+    assert mapping["agent_1.valid_var"] == ["start", "text"]
+    assert mapping["agent_1.#start.query#"] == ["start", "query"]

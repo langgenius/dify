@@ -13,6 +13,7 @@ from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from core.tools.entities.common_entities import I18nObject as ToolI18nObject
 from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity, ToolParameter
 from core.workflow.nodes.agent.entities import AgentNodeData
+from core.workflow.nodes.agent.exceptions import AgentVariableNotFoundError
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
@@ -226,8 +227,18 @@ def test_build_model_visible_tool_snapshots_excludes_runtime_values() -> None:
 _ParameterType = AgentStrategyParameter.AgentStrategyParameterType
 
 
-def _declared_parameter(name: str, parameter_type: _ParameterType) -> AgentStrategyParameter:
-    return AgentStrategyParameter(name=name, label=ToolI18nObject(en_US=name), type=parameter_type)
+def _declared_parameter(
+    name: str,
+    parameter_type: _ParameterType,
+    *,
+    required: bool = False,
+) -> AgentStrategyParameter:
+    return AgentStrategyParameter(
+        name=name,
+        label=ToolI18nObject(en_US=name),
+        type=parameter_type,
+        required=required,
+    )
 
 
 def _resolved_strategy() -> PluginAgentStrategy:
@@ -285,8 +296,9 @@ def test_build_parameters_treats_null_variable_value_as_not_provided() -> None:
     """A canvas-written {type: variable, value: null} entry must not crash the node.
 
     The canvas stores unset optional strategy params as {"type": "variable", "value": null}.
-    build_parameters must pass None to the strategy instead of calling
-    variable_pool.get(None), which raises TypeError: object of type 'NoneType' has no len().
+    Optional cleared selectors are omitted so the strategy treats them as unset,
+    instead of calling variable_pool.get(None), which raises
+    TypeError: object of type 'NoneType' has no len().
     """
     result = _build_parameters(
         configured={
@@ -300,8 +312,8 @@ def test_build_parameters_treats_null_variable_value_as_not_provided() -> None:
         variables={},
     )
 
-    assert result["files"] is None
-    assert result["allowed_tools"] is None
+    assert "files" not in result
+    assert "allowed_tools" not in result
 
 
 def test_build_parameters_resolves_set_variable_value() -> None:
@@ -493,3 +505,54 @@ def test_build_parameters_keeps_top_level_string_lookup_behaviour() -> None:
     )
 
     assert result["query"] == "the user question"
+
+
+@pytest.mark.parametrize("empty_selector", ["", [], None])
+def test_build_parameters_empty_selector_optional_parameter_treated_as_unset(empty_selector: object) -> None:
+    result = _build_parameters(
+        configured={"context": {"type": "variable", "value": empty_selector}},
+        declared=[_declared_parameter("context", _ParameterType.ANY)],
+        variables={"text": "hello"},
+    )
+
+    assert "context" not in result
+
+
+@pytest.mark.parametrize("empty_selector", ["", [], None])
+def test_build_parameters_empty_selector_required_parameter_raises_error(empty_selector: object) -> None:
+    with pytest.raises(AgentVariableNotFoundError):
+        _build_parameters(
+            configured={"context": {"type": "variable", "value": empty_selector}},
+            declared=[_declared_parameter("context", _ParameterType.ANY, required=True)],
+            variables={"text": "hello"},
+        )
+
+
+def test_build_parameters_non_empty_unresolvable_selector_raises_error() -> None:
+    with pytest.raises(AgentVariableNotFoundError):
+        _build_parameters(
+            configured={"context": {"type": "variable", "value": ["start", "missing"]}},
+            declared=[_declared_parameter("context", _ParameterType.ANY)],
+            variables={"text": "hello"},
+        )
+
+
+@pytest.mark.parametrize(
+    ("selector_key", "expected_value"),
+    [
+        ("empty_str", ""),
+        ("zero", 0),
+        ("falsy", False),
+    ],
+)
+def test_build_parameters_resolving_to_empty_or_falsy_not_treated_as_unset(
+    selector_key: str,
+    expected_value: object,
+) -> None:
+    result = _build_parameters(
+        configured={"context": {"type": "variable", "value": ["start", selector_key]}},
+        declared=[_declared_parameter("context", _ParameterType.ANY)],
+        variables={"empty_str": "", "zero": 0, "falsy": False},
+    )
+
+    assert result["context"] == expected_value
