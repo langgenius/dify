@@ -12,6 +12,7 @@ import (
 )
 
 // TmuxController manages tmux sessions for shellctl jobs via a dedicated socket.
+// Job-targeted methods require a parsed or generated JobID.
 type TmuxController struct {
 	config *Config
 }
@@ -65,7 +66,7 @@ func (t *TmuxController) SessionExists(sessionName string) (bool, error) {
 
 // IsOutputPipeActive checks the #{pane_pipe} format variable for a job pane.
 // Returns: true=active, false=inactive, error with nil bool if pane missing.
-func (t *TmuxController) IsOutputPipeActive(jobID string) (*bool, error) {
+func (t *TmuxController) IsOutputPipeActive(jobID JobID) (*bool, error) {
 	result, err := t.runTmuxNoCheck(
 		"display-message", "-p", "-t", JobPaneTarget(jobID), "#{pane_pipe}",
 	)
@@ -85,12 +86,13 @@ func (t *TmuxController) IsOutputPipeActive(jobID string) (*bool, error) {
 
 // CreateJobSession creates a new tmux session for a job.
 func (t *TmuxController) CreateJobSession(
-	jobID, jobDir, cwd string,
+	jobID JobID,
+	jobDir, cwd string,
 	cols, rows int,
 	mode jobmode.Mode,
 ) error {
 	runnerCmd := shellJoin([]string{
-		t.config.RunnerPath(), jobDir, jobID, cwd, string(mode),
+		t.config.RunnerPath(), jobDir, string(jobID), cwd, string(mode),
 	})
 	result, err := t.runTmuxNoCheck(
 		"-f", "/dev/null",
@@ -111,7 +113,7 @@ func (t *TmuxController) CreateJobSession(
 }
 
 // EnableOutputPipe attaches the sanitize→output pipeline via tmux pipe-pane.
-func (t *TmuxController) EnableOutputPipe(jobID, jobDir string, readyFile string) error {
+func (t *TmuxController) EnableOutputPipe(jobID JobID, jobDir string, readyFile string) error {
 	pipeCmd := t.buildPipeCommand(jobID, jobDir, readyFile)
 	result, err := t.runTmuxNoCheck(
 		"pipe-pane", "-o", "-t", JobPaneTarget(jobID), pipeCmd,
@@ -127,7 +129,7 @@ func (t *TmuxController) EnableOutputPipe(jobID, jobDir string, readyFile string
 }
 
 // SendInput sends text to a job's tmux pane via load-buffer + paste-buffer.
-func (t *TmuxController) SendInput(jobID, text string) error {
+func (t *TmuxController) SendInput(jobID JobID, text string) error {
 	bufferName := fmt.Sprintf("shellctl-in-%s", jobID)
 
 	// Write input to a temp file
@@ -180,21 +182,21 @@ func (t *TmuxController) SendInput(jobID, text string) error {
 }
 
 // SendInterrupt sends C-c to a job's pane.
-func (t *TmuxController) SendInterrupt(jobID string) error {
+func (t *TmuxController) SendInterrupt(jobID JobID) error {
 	_, _ = t.runTmuxNoCheck("send-keys", "-t", JobPaneTarget(jobID), "C-c")
 	return nil
 }
 
 // CleanupSession kills the tmux session for a job (best-effort).
-func (t *TmuxController) CleanupSession(jobID string) {
+func (t *TmuxController) CleanupSession(jobID JobID) {
 	_, _ = t.runTmuxNoCheck("kill-session", "-t", JobSessionName(jobID))
 }
 
-func (t *TmuxController) buildPipeCommand(jobID, jobDir, readyFile string) string {
+func (t *TmuxController) buildPipeCommand(jobID JobID, jobDir, readyFile string) string {
 	sanitizeCmd := shellJoin(append(t.config.SanitizePtyCommand, "--ready-file", readyFile))
 	runnerExitCmd := shellJoin(append(t.config.RunnerExitCommand,
 		"--state-dir", t.config.StateDir,
-		"--job-id", jobID,
+		"--job-id", string(jobID),
 		"--sqlite-busy-timeout-ms", fmt.Sprintf("%d", t.config.SQLiteBusyTimeoutMs),
 	))
 

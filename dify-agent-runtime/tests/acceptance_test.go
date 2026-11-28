@@ -463,8 +463,20 @@ func TestDeleteJob(t *testing.T) {
 			if err != nil {
 				t.Fatalf("delete request failed: %v", err)
 			}
-			defer resp.Body.Close()
-			assertStatus(t, resp, 200)
+			assertStatus(t, resp, http.StatusOK)
+			var deleteResult struct {
+				JobID   string `json:"job_id"`
+				Deleted bool   `json:"deleted"`
+			}
+			if err := json.Unmarshal(readBody(t, resp), &deleteResult); err != nil {
+				t.Fatalf("decode delete response: %v", err)
+			}
+			if deleteResult.JobID != jobID {
+				t.Errorf("expected job_id %q, got %q", jobID, deleteResult.JobID)
+			}
+			if !deleteResult.Deleted {
+				t.Error("expected deleted=true")
+			}
 
 			// Should be gone now
 			getResp := doGet(t, tgt, fmt.Sprintf("/v1/jobs/%s", jobID), true)
@@ -579,11 +591,39 @@ func TestInvalidCwd(t *testing.T) {
 func TestJobNotFound(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
-			resp := doGet(t, tgt, "/v1/jobs/nonexistent-id-xyz", true)
-			if resp.StatusCode != 404 {
-				t.Errorf("expected 404, got %d", resp.StatusCode)
+			resp := doGet(t, tgt, "/v1/jobs/0000000000000000", true)
+			assertStatus(t, resp, http.StatusNotFound)
+			var result struct {
+				Error struct {
+					Code string `json:"code"`
+				} `json:"error"`
 			}
-			resp.Body.Close()
+			if err := json.Unmarshal(readBody(t, resp), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Error.Code != "job_not_found" {
+				t.Errorf("expected job_not_found, got %q", result.Error.Code)
+			}
+		})
+	}
+}
+
+func TestInvalidJobID(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			resp := doGet(t, tgt, "/v1/jobs/nonexistent-id-xyz", true)
+			assertStatus(t, resp, http.StatusBadRequest)
+			var result struct {
+				Error struct {
+					Code string `json:"code"`
+				} `json:"error"`
+			}
+			if err := json.Unmarshal(readBody(t, resp), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Error.Code != "invalid_job_id" {
+				t.Errorf("expected invalid_job_id, got %q", result.Error.Code)
+			}
 		})
 	}
 }
