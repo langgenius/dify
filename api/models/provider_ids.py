@@ -23,9 +23,9 @@ class GenericProviderID:
         if not value:
             raise NotFound("plugin not found, please add plugin")
         # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
-        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
+        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+\Z", value):
             # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
-            if re.match(r"^[a-z0-9_-]+$", value):
+            if re.match(r"^[a-z0-9_-]+\Z", value):
                 value = f"langgenius/{value}/{value}"
             else:
                 raise ValueError(f"Invalid plugin id {value}")
