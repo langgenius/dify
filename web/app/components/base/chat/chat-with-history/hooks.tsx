@@ -201,21 +201,20 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useQuery(
-    shareConversationsQueryOptions(
-      {
-        appSourceType,
-        appId,
-        pinned: true,
-        limit: 100,
-      },
-      {
-        enabled: !!appId,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
-      },
-    ),
+  const pinnedConversationListQueryOptions = shareConversationsQueryOptions(
+    {
+      appSourceType,
+      appId,
+      pinned: true,
+      limit: 100,
+    },
+    {
+      enabled: !!appId,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
   )
+  const { data: appPinnedConversationData } = useQuery(pinnedConversationListQueryOptions)
   const conversationListQueryOptions = shareConversationsQueryOptions(
     {
       appSourceType,
@@ -474,7 +473,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     handleStop: () => void
   }>({ handleStop: noop })
   // The conversation whose generated name is still loading. Leaving it drops the late name,
-  // so a conversation pinned or deleted meanwhile does not come back to this list.
+  // so a conversation pinned, renamed, or deleted meanwhile is not overwritten or re-added.
   const pendingNameConversationIdRef = useRef('')
   useEffect(
     () => () => {
@@ -581,17 +580,26 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       setConversationRenaming(true)
       try {
         await renameConversation(appSourceType, appId, conversationId, newName)
-        updateConversationList(
-          queryClient,
+        if (conversationId === pendingNameConversationIdRef.current)
+          pendingNameConversationIdRef.current = ''
+        for (const queryKey of [
           conversationListQueryOptions.queryKey,
-          (data) =>
-            data && {
-              ...data,
-              data: data.data.map((item) =>
-                item.id === conversationId ? { ...item, name: newName } : item,
-              ),
-            },
-        )
+          pinnedConversationListQueryOptions.queryKey,
+        ]) {
+          if (!queryClient.getQueryData(queryKey)?.data.some((item) => item.id === conversationId))
+            continue
+          updateConversationList(
+            queryClient,
+            queryKey,
+            (data) =>
+              data && {
+                ...data,
+                data: data.data.map((item) =>
+                  item.id === conversationId ? { ...item, name: newName } : item,
+                ),
+              },
+          )
+        }
         onSuccess()
       } catch (error) {
         reportRequestError(error)
@@ -606,6 +614,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       conversationRenaming,
       queryClient,
       conversationListQueryOptions.queryKey,
+      pinnedConversationListQueryOptions.queryKey,
     ],
   )
   const handleNewConversationCompleted = useCallback(

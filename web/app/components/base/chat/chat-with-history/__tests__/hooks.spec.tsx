@@ -550,6 +550,48 @@ describe('useChatWithHistory', () => {
         { id: 'conversation-1', name: 'Renamed' },
       ])
     })
+
+    it('should drop a late generated name after the conversation was renamed', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockRenameConversation.mockResolvedValue(undefined)
+      const { promise: generatedName, resolve: resolveGeneratedName } =
+        createDeferred<ConversationItem>()
+      mockGenerationConversationName.mockReturnValue(generatedName)
+      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
+
+      mockFetchConversations.mockImplementation(async (_source, _appId, _lastId, pinned) =>
+        createConversationData({
+          data: pinned
+            ? []
+            : [createConversationItem({ id: 'conversation-new', name: 'Original' })],
+        }),
+      )
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]?.name).toBe('Original'))
+      await waitFor(() =>
+        expect(queryClient.isFetching({ queryKey: shareQueryKeys.conversations })).toBe(0),
+      )
+
+      await act(async () => {
+        await result.current.handleRenameConversation('conversation-new', 'Renamed', {
+          onSuccess: vi.fn(),
+        })
+      })
+      expect(result.current.conversationList[0]?.name).toBe('Renamed')
+
+      await act(async () => {
+        resolveGeneratedName(createConversationItem({ id: 'conversation-new', name: 'Generated' }))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+
+      expect(result.current.conversationList[0]).toMatchObject({
+        id: 'conversation-new',
+        name: 'Renamed',
+      })
+    })
   })
 
   describe('Chat list gating', () => {
@@ -967,6 +1009,44 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result.current.conversationList[0]!.name).toBe('New Name')
       })
+    })
+
+    it('should update pinnedConversationList and currentConversationItem when renaming a pinned conversation', async () => {
+      setConversationIdInfo('app-1', 'pinned-1')
+      const pinnedData = createConversationData({
+        data: [createConversationItem({ id: 'pinned-1', name: 'Old Pinned Name' })],
+      })
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1', name: 'Regular Convo' })],
+      })
+      mockFetchConversations.mockImplementation(async (_source, _appId, _lastId, pinned) => {
+        return pinned ? pinnedData : listData
+      })
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockRenameConversation.mockResolvedValue(undefined)
+      const onSuccess = vi.fn()
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result.current.pinnedConversationList[0]?.name).toBe('Old Pinned Name')
+        expect(result.current.currentConversationItem?.name).toBe('Old Pinned Name')
+      })
+
+      await act(async () => {
+        await result.current.handleRenameConversation('pinned-1', 'New Pinned Name', { onSuccess })
+      })
+
+      expect(mockRenameConversation).toHaveBeenCalledWith(
+        AppSourceType.webApp,
+        'app-1',
+        'pinned-1',
+        'New Pinned Name',
+      )
+      expect(onSuccess).toHaveBeenCalledTimes(1)
+      expect(result.current.pinnedConversationList[0]!.name).toBe('New Pinned Name')
+      expect(result.current.currentConversationItem?.name).toBe('New Pinned Name')
+      expect(result.current.conversationList[0]!.name).toBe('Regular Convo')
     })
 
     it('should not rename when new name is empty (whitespace)', async () => {
