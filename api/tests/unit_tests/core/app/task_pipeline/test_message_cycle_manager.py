@@ -1,7 +1,7 @@
 """Unit tests for the message cycle manager optimization."""
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -394,6 +394,79 @@ class TestMessageCycleManagerOptimization:
         )
         mock_redis.setex.assert_called_once()
 
+    def test_generate_conversation_name_worker_holds_no_session_while_the_name_is_generated(
+        self,
+        message_cycle_manager: MessageCycleManager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Naming is a model call; the worker must not keep a pooled connection checked out across it."""
+        flask_app = Flask(__name__)
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
+        create_session = message_cycle_manager_module.session_factory.create_session
+        worker_sessions: list[Session] = []
+
+        def tracked_session() -> Session:
+            session = create_session()
+            worker_sessions.append(session)
+            return session
+
+        monkeypatch.setattr(message_cycle_manager_module.session_factory, "create_session", tracked_session)
+        in_transaction_during_generation: list[list[bool]] = []
+
+        def generate_conversation_name(*args: object, **kwargs: object) -> str:
+            assert args[:2] == ("tenant-1", "hello")
+            assert kwargs["message_id"] == "message-1"
+            in_transaction_during_generation.append([session.in_transaction() for session in worker_sessions])
+            return "generated-title"
+
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
+            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+        ):
+            mock_redis.get.return_value = None
+            mock_llm_generator.generate_conversation_name.side_effect = generate_conversation_name
+
+            message_cycle_manager._generate_conversation_name_worker(
+                flask_app, "conv-1", "hello", message_id="message-1"
+            )
+
+        assert in_transaction_during_generation == [[False]]
+        assert len(worker_sessions) == 2
+        with Session(sqlite_engine) as verification_session:
+            conversation = verification_session.get(Conversation, "conv-1")
+        assert conversation is not None
+        assert conversation.name == "generated-title"
+
+    def test_generate_conversation_name_worker_drops_the_name_when_the_conversation_was_deleted(
+        self, message_cycle_manager: MessageCycleManager, cycle_db: Session, sqlite_engine: Engine
+    ) -> None:
+        """The conversation can disappear while the name is generated; the worker then has nothing to update."""
+        flask_app = Flask(__name__)
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
+
+        def delete_conversation_then_name(*args: object, **kwargs: object) -> str:
+            assert kwargs["message_id"] is None
+            with Session(sqlite_engine) as other_session:
+                other_session.delete(other_session.get(Conversation, args[2]))
+                other_session.commit()
+            return "generated-title"
+
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
+            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+        ):
+            mock_redis.get.return_value = None
+            mock_llm_generator.generate_conversation_name.side_effect = delete_conversation_then_name
+
+            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
+
+        with Session(sqlite_engine) as verification_session:
+            assert verification_session.get(Conversation, "conv-1") is None
+
     def test_generate_conversation_name_worker_falls_back_when_generation_fails(
         self,
         message_cycle_manager,
@@ -424,6 +497,36 @@ class TestMessageCycleManagerOptimization:
         assert conversation is not None
         assert conversation.name == (long_query[:47] + "...")
         assert any(record.levelno == logging.ERROR for record in caplog.records)
+
+    def test_generate_conversation_name_worker_falls_back_quietly_outside_debug(
+        self,
+        message_cycle_manager: MessageCycleManager,
+        cycle_db: Session,
+        sqlite_engine: Engine,
+        caplog: pytest.LogCaptureFixture,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        """Outside debug mode a failed generation is not logged; a short query becomes the name as it is."""
+        config_overrides(DEBUG=False)
+        flask_app = Flask(__name__)
+        cycle_db.add_all([_app(), _conversation()])
+        cycle_db.commit()
+
+        with (
+            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
+            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+        ):
+            mock_redis.get.return_value = None
+            mock_llm_generator.generate_conversation_name.side_effect = RuntimeError("generation failed")
+            with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
+                message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "short query")
+
+        assert cycle_db.in_transaction() is False
+        with Session(sqlite_engine) as verification_session:
+            conversation = verification_session.get(Conversation, "conv-1")
+        assert conversation is not None
+        assert conversation.name == "short query"
+        assert not caplog.records
 
     @pytest.mark.parametrize("author_name", ["Alice", "", None])
     def test_handle_annotation_reply_reads_author_in_one_query(
