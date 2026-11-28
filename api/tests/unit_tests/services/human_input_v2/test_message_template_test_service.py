@@ -69,6 +69,7 @@ from services.human_input_v2.submission_service import (
     HumanInputSubmissionService,
 )
 from services.workflow_draft_variable_service import DraftVarLoader
+from tests.helpers.unit.core.human_input_v2.slack import SlackApiServer, make_slack_adapter
 
 _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
 _ACCOUNT = AccountId("00000000-0000-0000-0000-000000000002")
@@ -496,6 +497,35 @@ def test_im_uses_current_editors_binding_and_closes_adapter(context: _Context) -
         binding = session.query(HumanInputIMBinding).one()
         assert isinstance(delivery.target_snapshot, IMUserTargetSnapshot)
         assert delivery.target_snapshot.im_binding_id == binding.id
+
+
+def test_im_template_test_logs_safe_send_rejection(
+    context: _Context,
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: SlackApiServer,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    state = slack_api_server.state
+    state.enqueue(
+        "chat.postMessage",
+        {"ok": False, "error": "channel_not_found", "detail": "private provider response"},
+    )
+    adapter, _ = make_slack_adapter(monkeypatch, slack_api_server)
+    context.adapter.messaging.send_text.side_effect = adapter.messaging.send_text
+    context.adapter.close.side_effect = adapter.close
+    context.template("Review {{#start.name#}}", "private request body {{#url#}}")
+
+    with pytest.raises(MessageTemplateSendError, match=r"^The IM provider did not accept the test message\.$"):
+        context.send(DebugChannel.SLACK, **{"#start.name#": "Alice"})
+
+    assert len(state.requests_for("chat.postMessage")) == 1
+    context.adapter.close.assert_called_once()
+    assert "im_provider=slack" in caplog.text
+    assert "operation=send_text" in caplog.text
+    assert "provider_error_code='channel_not_found'" in caplog.text
+    assert "http_status=200" in caplog.text
+    assert "private" not in caplog.text
+    assert "https://console.example.com/human-input/" not in caplog.text
 
 
 @pytest.mark.parametrize("channel", list(DebugChannel))

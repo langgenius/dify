@@ -46,6 +46,7 @@ from slack_sdk.web.slack_response import SlackResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_failure
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -99,6 +100,9 @@ from core.human_input_v2.resolved_form import (
 )
 
 logger = logging.getLogger(__name__)
+# The Web SDK can log raw response bodies, including on JSON decoding errors.
+_WEB_SDK_LOGGER = logging.Logger(f"{__name__}.web_sdk", level=logging.CRITICAL + 1)
+_SDK_NON_JSON_ERROR_PREFIX = "Received a response in a non-JSON format: "
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, JsonValue] | None = None) -> None:
@@ -724,6 +728,7 @@ class _SlackDirectory(IMDirectory):
 
     @override
     def read_directory(self) -> Directory | DirectoryReadFailure:
+        """Return a complete Slack directory, logging provider and snapshot failures."""
         entries: list[DirectoryEntry] = []
         cursor: str | None = None
         seen_cursors: set[str] = set()
@@ -733,28 +738,35 @@ class _SlackDirectory(IMDirectory):
                     response = self._client.users_list(limit=self._PAGE_SIZE)
                 else:
                     response = self._client.users_list(limit=self._PAGE_SIZE, cursor=cursor)
-                members = response.get("members")
+                members = response.get("members") if isinstance(response.data, Mapping) else None
                 if not isinstance(members, Sequence) or isinstance(members, (str, bytes, bytearray)):
+                    _log_api_failure("read_directory", response)
                     return DirectoryReadFailure("Slack returned an incomplete directory response.")
-                page_entries = self._directory_entries(members)
+                try:
+                    page_entries = self._directory_entries(members)
+                except ValidationError:
+                    _log_api_failure("read_directory", response)
+                    return DirectoryReadFailure("Slack returned an invalid directory entry.")
                 if page_entries is None:
+                    _log_api_failure("read_directory", response)
                     return DirectoryReadFailure("Slack returned an invalid directory entry.")
                 pagination = self._pagination(response.get("response_metadata"))
-                if pagination is None:
+                if pagination is None or pagination.next_cursor in seen_cursors:
+                    _log_api_failure("read_directory", response)
                     return DirectoryReadFailure("Slack returned invalid directory pagination.")
                 next_cursor = pagination.next_cursor
-                if next_cursor is not None and next_cursor in seen_cursors:
-                    return DirectoryReadFailure("Slack returned invalid directory pagination.")
                 entries.extend(page_entries)
                 if next_cursor is None:
                     return Directory(tuple(entries))
                 seen_cursors.add(next_cursor)
                 cursor = next_cursor
-        except (SlackClientError, AvatarReadError):
+        except (SlackClientError, AvatarReadError) as error:
+            _log_api_failure("read_directory", error.response if isinstance(error, SlackApiError) else None)
             return DirectoryReadFailure("Slack directory could not be read completely.")
 
     @staticmethod
     def _directory_entries(members: Sequence[JsonValue]) -> tuple[DirectoryEntry, ...] | None:
+        """Build entries from one Slack page or signal a malformed member."""
         entries: list[DirectoryEntry] = []
         avatar_urls: list[str | None] = []
         for member in members:
@@ -775,10 +787,7 @@ class _SlackDirectory(IMDirectory):
                 profile.get("real_name_normalized"),
             )
             email = _optional_non_empty_string(profile.get("email"))
-            try:
-                avatar_url = _SlackDirectory._AVATAR_URL_ADAPTER.validate_python(profile.get("image_192"), strict=True)
-            except ValidationError:
-                return None
+            avatar_url = _SlackDirectory._AVATAR_URL_ADAPTER.validate_python(profile.get("image_192"), strict=True)
             entries.append(DirectoryEntry(ProviderUserId(provider_user_id), display_name, email))
             avatar_urls.append(avatar_url)
         avatars = read_avatars(avatar_urls)
@@ -794,6 +803,21 @@ class _SlackDirectory(IMDirectory):
         return _SlackDirectoryPagination(next_cursor or None)
 
 
+def _log_api_failure(operation: str, response: SlackResponse | None) -> None:
+    """Log a Slack directory or send failure with any available response diagnostics."""
+    code = _slack_error_code(response) if response is not None else None
+    # On JSON decode failure the SDK substitutes its own message containing the raw body.
+    if code is not None and code.startswith(_SDK_NON_JSON_ERROR_PREFIX):
+        code = None
+    log_provider_failure(
+        logger,
+        IMProvider.SLACK,
+        operation,
+        provider_error_code=code,
+        http_status=response.status_code if response is not None else None,
+    )
+
+
 class _SlackMessaging(IMMessaging):
     def __init__(self, client: WebClient) -> None:
         self._client = client
@@ -802,6 +826,7 @@ class _SlackMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Post the rendered text once and log safe Slack rejection metadata."""
         try:
             if subject is None:
                 response = self._client.chat_postMessage(channel=str(provider_user_id), markdown_text=body)
@@ -816,9 +841,10 @@ class _SlackMessaging(IMMessaging):
                 response = self._client.chat_postMessage(
                     channel=str(provider_user_id), text=f"{subject}\n\n{body}", blocks=blocks
                 )
-        except SlackClientError:
+        except SlackClientError as error:
+            _log_api_failure("send_text", error.response if isinstance(error, SlackApiError) else None)
             return MessageSendingError("Slack message acceptance could not be confirmed.")
-        return _accepted_message(response)
+        return _accepted_message(response, operation="send_text")
 
 
 class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
@@ -846,6 +872,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
         intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
+        """Post one representable card and log safe Slack rejection metadata."""
         assessment = self._codec.assess(intent)
         if not assessment.representable:
             raise DynamicCardMessagingError(assessment.reason or "Slack cannot preserve this card.")
@@ -859,9 +886,10 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
                 channel=str(provider_user_id),
                 blocks=blocks,
             )
-        except SlackClientError:
+        except SlackClientError as error:
+            _log_api_failure("send_card", error.response if isinstance(error, SlackApiError) else None)
             return MessageSendingError("Slack card acceptance could not be confirmed.")
-        return _accepted_message(response)
+        return _accepted_message(response, operation="send_card")
 
     @override
     def replace_with_static(
@@ -886,7 +914,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
                 blocks=blocks,
             )
         except SlackApiError as error:
-            error_code = _slack_error_code(error)
+            error_code = _slack_error_code(error.response)
             if error_code in self._STALE_MESSAGE_ERROR_CODES:
                 return ReplacementError(
                     ReplacementErrorKind.STALE_REFERENCE,
@@ -1139,7 +1167,7 @@ class SlackIMProviderAdapter:
         if not isinstance(credentials, SlackCredentials):
             raise TypeError("Slack adapter requires resolved Slack credentials")
         self._credentials = credentials
-        self._client = WebClient(token=credentials.bot_token, retry_handlers=[])
+        self._client = WebClient(token=credentials.bot_token, retry_handlers=[], logger=_WEB_SDK_LOGGER)
         self._directory = _SlackDirectory(self._client)
         self._messaging = _SlackMessaging(self._client)
         self._dynamic_card_messaging = _SlackDynamicCardMessaging(self._client, _SlackCardCodec())
@@ -1247,10 +1275,10 @@ def _optional_non_empty_string(value: JsonValue) -> str | None:
     return value
 
 
-def _accepted_message(
-    response: SlackResponse,
-) -> MessageSendingResult:
-    if response.get("ok") is not True:
+def _accepted_message(response: SlackResponse, *, operation: str) -> MessageSendingResult:
+    """Decode an accepted message locator or log the missing acceptance evidence."""
+    if not isinstance(response.data, Mapping) or response.get("ok") is not True:
+        _log_api_failure(operation, response)
         return MessageSendingError("Slack message acceptance could not be confirmed.")
     channel_id = response.get("channel")
     message_ts = response.get("ts")
@@ -1260,6 +1288,7 @@ def _accepted_message(
         or not isinstance(message_ts, str)
         or _SlackLocatorPayload._TIMESTAMP_PATTERN.fullmatch(message_ts) is None
     ):
+        _log_api_failure(operation, response)
         return MessageSendingError("Slack returned no exact message reference.")
     return MessageAccepted(
         MessageLocator(
@@ -1347,8 +1376,9 @@ def _provider_tenant_id(body: Mapping[str, JsonValue]) -> str | None:
     return None
 
 
-def _slack_error_code(error: SlackApiError) -> str | None:
-    error_code = error.response.get("error")
+def _slack_error_code(response: SlackResponse) -> str | None:
+    """Get the response's error field when the SDK supplies a JSON object."""
+    error_code = response.get("error") if isinstance(response.data, Mapping) else None
     return error_code if isinstance(error_code, str) else None
 
 
@@ -1377,7 +1407,7 @@ def _slack_credential_failure(
     reason: str,
 ) -> CredentialTestFailure:
     http_status = _SlackHTTPResponseMetadata.model_validate(error.response).status_code
-    error_code = _slack_error_code(error)
+    error_code = _slack_error_code(error.response)
     kind = CredentialTestFailureKind.UNKNOWN
     if error_code in authentication_error_codes:
         kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED

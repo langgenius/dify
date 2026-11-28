@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from email.headerregistry import Address
 from json import JSONDecodeError
@@ -9,12 +10,15 @@ from typing import Annotated, Literal, Protocol, override
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StrictStr, ValidationError, field_validator
+from requests import Response as RequestsResponse
+from requests.exceptions import RequestException as RequestsRequestError
 from requests.exceptions import Timeout as RequestsTimeout
 from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.avatar import read_avatars
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_failure
+from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import WeComCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
@@ -40,6 +44,8 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMMessaging,
     IMWebhookHandler,
 )
+
+logger = logging.getLogger(__name__)
 
 _SDK_TIMEOUT_SECONDS = 5.0
 _ACCESS_TOKEN_URL = "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
@@ -275,6 +281,34 @@ class _SDKAccessTokenProvider(AccessTokenProvider):
         return _fetch_access_token(_new_client(self._credentials))
 
 
+def _log_api_rejection(error: WeChatClientException, operation: str) -> None:
+    """Log the WeCom SDK error code and HTTP status for an API rejection."""
+    upstream = error.response
+    code = error.errcode
+    log_provider_failure(
+        logger,
+        IMProvider.WE_COM,
+        operation,
+        provider_error_code=code if type(code) is int else None,
+        http_status=upstream.status_code if isinstance(upstream, (RequestsResponse, httpx.Response)) else None,
+    )
+
+
+def _try_get_access_token(token_provider: AccessTokenProvider) -> str | None:
+    """Get a token for either capability, or return None on an expected API failure."""
+    try:
+        return token_provider.get()
+    except WeChatClientException as error:
+        _log_api_rejection(error, "get_access_token")
+        return None
+    except httpx.HTTPStatusError as error:
+        log_provider_failure(logger, IMProvider.WE_COM, "get_access_token", http_status=error.response.status_code)
+        return None
+    except (httpx.RequestError, RequestsRequestError, JSONDecodeError, ValidationError):
+        log_provider_failure(logger, IMProvider.WE_COM, "get_access_token")
+        return None
+
+
 class _WeComDirectory(IMDirectory):
     def __init__(
         self,
@@ -286,15 +320,21 @@ class _WeComDirectory(IMDirectory):
 
     @override
     def read_directory(self) -> Directory | DirectoryReadFailure:
+        """Return a complete directory or a safe failure for expected WeCom errors."""
+        access_token = _try_get_access_token(self._token_provider)
+        if access_token is None:
+            return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
         try:
-            return self._read_complete_directory()
-        # Provider SDKs may surface transport and decoding failures through
-        # different exception classes. Directory never exposes partial state.
-        except Exception:
+            return self._read_complete_directory(access_token)
+        except WeChatClientException as error:
+            _log_api_rejection(error, "read_directory")
+            return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
+        except (RequestsRequestError, ValidationError, _DirectoryBoundaryError, AvatarReadError):
+            log_provider_failure(logger, IMProvider.WE_COM, "read_directory")
             return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
 
-    def _read_complete_directory(self) -> Directory:
-        access_token = self._token_provider.get()
+    def _read_complete_directory(self, access_token: str) -> Directory:
+        """Read the entire agent scope with an acquired token or propagate its failure."""
         client = _new_client(self._credentials, access_token=access_token)
         scope = _AgentResponse.model_validate(client.agent.get(int(self._credentials.agent_id)))
         if scope.agentid != int(self._credentials.agent_id):
@@ -358,11 +398,15 @@ class _WeComMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Attempt one WeCom message after token setup and log safe send rejection metadata."""
+        failure = MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
         if subject is not None:
             body = f"{subject}\n\n{body}"
+        access_token = _try_get_access_token(self._token_provider)
+        if access_token is None:
+            return failure
+        client = _new_client(self._credentials, access_token=access_token)
         try:
-            access_token = self._token_provider.get()
-            client = _new_client(self._credentials, access_token=access_token)
             response = _MessageSendResponse.model_validate(
                 client.message.send_text(
                     int(self._credentials.agent_id),
@@ -370,26 +414,27 @@ class _WeComMessaging(IMMessaging):
                     body,
                 )
             )
-            if any(
-                _optional_non_blank(invalid_target) is not None
-                for invalid_target in (response.invaliduser, response.invalidparty, response.invalidtag)
-            ):
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
-            if not response.msgid.strip():
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
-            return MessageAccepted(
-                MessageLocator(
-                    _WeComLocatorPayload(
-                        v=1,
-                        p=IMProvider.WE_COM,
-                        message_id=response.msgid,
-                    ).encode()
-                )
+        except WeChatClientException as error:
+            _log_api_rejection(error, "send_text")
+            return failure
+        except (RequestsRequestError, ValidationError):
+            log_provider_failure(logger, IMProvider.WE_COM, "send_text")
+            return failure
+        if not response.msgid.strip() or any(
+            _optional_non_blank(invalid_target) is not None
+            for invalid_target in (response.invaliduser, response.invalidparty, response.invalidtag)
+        ):
+            log_provider_failure(logger, IMProvider.WE_COM, "send_text")
+            return failure
+        return MessageAccepted(
+            MessageLocator(
+                _WeComLocatorPayload(
+                    v=1,
+                    p=IMProvider.WE_COM,
+                    message_id=response.msgid,
+                ).encode()
             )
-        # One mutation attempt is the maximum; every SDK/transport/response
-        # failure is normalized without replay or Provider material.
-        except Exception:
-            return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
+        )
 
 
 class WeComIMProviderAdapter:

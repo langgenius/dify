@@ -18,7 +18,14 @@ from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 import httpx
-from azure.core.exceptions import ClientAuthenticationError, ServiceRequestTimeoutError, ServiceResponseTimeoutError
+from azure.core.exceptions import (
+    ClientAuthenticationError,
+    DeserializationError,
+    ServiceRequestError,
+    ServiceRequestTimeoutError,
+    ServiceResponseError,
+    ServiceResponseTimeoutError,
+)
 from azure.core.pipeline import PipelineResponse
 from azure.core.pipeline.transport import HttpResponse as AzureLegacyHttpResponse
 from azure.core.rest import HttpRequest as AzureHttpRequest
@@ -30,20 +37,25 @@ from botbuilder.schema import (
     ChannelAccount,
     ConversationParameters,
     ConversationResourceResponse,
+    ErrorResponse,
     ResourceResponse,
 )
+from botbuilder.schema import Error as BotFrameworkError
 from botframework.connector import ConnectorClient
 from botframework.connector.auth import (
     JwtTokenValidation,
     MicrosoftAppCredentials,
     SimpleCredentialProvider,
 )
-from msrest.exceptions import HttpOperationError
+from msrest.exceptions import ClientRequestError, HttpOperationError, TokenExpiredError
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
+from requests import Response as RequestsResponse
+from requests.exceptions import RequestException as RequestsRequestError
 from requests.exceptions import Timeout as RequestsTimeout
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_failure
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import MSTeamsCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -559,16 +571,28 @@ class _MSTeamsDirectory(IMDirectory):
 
     @override
     def read_directory(self) -> Directory | DirectoryReadFailure:
+        """Return a complete Graph directory, logging known failures at the provider boundary."""
         try:
             access_token = self._credential.get_token(_GRAPH_SCOPE).token
-            return self._read_all_pages(access_token)
-        except (AvatarReadError, ClientAuthenticationError, httpx.HTTPError, ValidationError, ValueError):
-            return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
-        except Exception:
-            _log_safe_error("Unexpected Microsoft Teams directory failure")
+        except (ClientAuthenticationError, ServiceRequestError, ServiceResponseError) as error:
+            log_provider_failure(
+                logger,
+                IMProvider.MS_TEAMS,
+                "get_access_token",
+                http_status=error.status_code if isinstance(error, ClientAuthenticationError) else None,
+            )
             return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
 
-    def _read_all_pages(self, access_token: str) -> Directory:
+        try:
+            return self._read_all_pages(access_token)
+        except httpx.HTTPStatusError as error:
+            log_provider_failure(logger, IMProvider.MS_TEAMS, "read_directory", http_status=error.response.status_code)
+        except (AvatarReadError, httpx.RequestError):
+            log_provider_failure(logger, IMProvider.MS_TEAMS, "read_directory")
+        return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
+
+    def _read_all_pages(self, access_token: str) -> Directory | DirectoryReadFailure:
+        """Read and validate Graph pages using an acquired token before returning a snapshot."""
         entries: list[DirectoryEntry] = []
         next_url: str | None = None
         seen_urls: set[str] = set()
@@ -586,7 +610,11 @@ class _MSTeamsDirectory(IMDirectory):
             else:
                 response = self._client.get(next_url, headers=headers)
             response.raise_for_status()
-            page = _GraphUsersPage.model_validate(response.json())
+            try:
+                page = _GraphUsersPage.model_validate(response.json())
+            except (json.JSONDecodeError, ValidationError):
+                log_provider_failure(logger, IMProvider.MS_TEAMS, "read_directory", http_status=response.status_code)
+                return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
             avatars = read_avatars(
                 [f"{_GRAPH_USERS_URL}/{quote(user.id, safe='')}/photo/$value" for user in page.users],
                 headers=headers,
@@ -600,12 +628,18 @@ class _MSTeamsDirectory(IMDirectory):
                 )
                 for user, avatar in zip(page.users, avatars, strict=True)
             )
-            if page.next_link is None:
-                return Directory(tuple(entries))
-            if not _trusted_graph_users_url(page.next_link) or page.next_link in seen_urls:
-                raise ValueError("invalid Microsoft Graph pagination")
-            seen_urls.add(page.next_link)
             next_url = page.next_link
+            if next_url is None:
+                return Directory(tuple(entries))
+            try:
+                trusted_next_page = _trusted_graph_users_url(next_url)
+            except ValueError:
+                log_provider_failure(logger, IMProvider.MS_TEAMS, "read_directory", http_status=response.status_code)
+                return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
+            if not trusted_next_page or next_url in seen_urls:
+                log_provider_failure(logger, IMProvider.MS_TEAMS, "read_directory", http_status=response.status_code)
+                return DirectoryReadFailure("Microsoft Teams directory could not be read completely.")
+            seen_urls.add(next_url)
 
 
 class _MSTeamsMessaging(IMMessaging):
@@ -618,6 +652,7 @@ class _MSTeamsMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Send the rendered text once and log safe Connector rejection metadata."""
         if subject:
             # Keep subject content literal inside the Markdown heading.
             escaped_subject = "".join(
@@ -628,13 +663,19 @@ class _MSTeamsMessaging(IMMessaging):
         return self._send_activity(
             provider_user_id,
             Activity(type="message", text=body, text_format=_EXTENDED_MARKDOWN_TEXT_FORMAT),
+            operation="send_text",
         )
 
     def _send_activity(
         self,
         provider_user_id: ProviderUserId,
         activity: Activity,
+        *,
+        operation: str,
     ) -> MessageSendingResult:
+        """Send one activity to a resolved user and log safe Connector rejection metadata."""
+        failure = MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
+        stage = "create_conversation"
         try:
             conversation_client = _mutation_connector(self._credentials, _PUBLIC_TEAMS_SERVICE_URL)
             conversation = conversation_client.conversations.create_conversation(
@@ -645,19 +686,22 @@ class _MSTeamsMessaging(IMMessaging):
                     tenant_id=self._tenant_id,
                 )
             )
-            if not isinstance(conversation, ConversationResourceResponse):
+            if (
+                not isinstance(conversation, ConversationResourceResponse)
+                or not _non_empty_string(conversation.id)
+                or not _trusted_teams_service_url(conversation.service_url or _PUBLIC_TEAMS_SERVICE_URL)
+            ):
+                log_provider_failure(logger, IMProvider.MS_TEAMS, f"{operation}.{stage}")
                 return MessageSendingError("Microsoft Teams returned no usable personal conversation reference.")
             conversation_id = conversation.id
             service_url = conversation.service_url or _PUBLIC_TEAMS_SERVICE_URL
-            if not _non_empty_string(conversation_id) or not _trusted_teams_service_url(service_url):
-                return MessageSendingError("Microsoft Teams returned no usable personal conversation reference.")
+            stage = "send_to_conversation"
             message_client = _mutation_connector(self._credentials, service_url)
             response = message_client.conversations.send_to_conversation(conversation_id, activity)
-            if not isinstance(response, ResourceResponse):
+            if not isinstance(response, ResourceResponse) or not _non_empty_string(response.id):
+                log_provider_failure(logger, IMProvider.MS_TEAMS, f"{operation}.{stage}")
                 return MessageSendingError("Microsoft Teams returned no exact message reference.")
             activity_id = response.id
-            if not _non_empty_string(activity_id):
-                return MessageSendingError("Microsoft Teams returned no exact message reference.")
             return MessageAccepted(
                 MessageLocator(
                     _MSTeamsLocatorPayload(
@@ -669,9 +713,26 @@ class _MSTeamsMessaging(IMMessaging):
                     ).encode()
                 )
             )
-        except Exception:
-            _log_safe_error("Unexpected Microsoft Teams message creation failure")
-            return MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
+        except HttpOperationError as error:
+            response = error.response
+            envelope = error.error
+            detail = envelope.error if isinstance(envelope, ErrorResponse) else None
+            log_provider_failure(
+                logger,
+                IMProvider.MS_TEAMS,
+                f"{operation}.{stage}",
+                provider_error_code=detail.code if isinstance(detail, BotFrameworkError) else None,
+                http_status=response.status_code if isinstance(response, RequestsResponse) else None,
+            )
+            return failure
+        except PermissionError as error:
+            if not str(error).startswith(_BOT_TOKEN_REJECTION_PREFIX):
+                raise
+            log_provider_failure(logger, IMProvider.MS_TEAMS, f"{operation}.{stage}")
+            return failure
+        except (ClientRequestError, RequestsRequestError, TokenExpiredError, DeserializationError):
+            log_provider_failure(logger, IMProvider.MS_TEAMS, f"{operation}.{stage}")
+            return failure
 
 
 class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
@@ -696,13 +757,14 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
         intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
+        """Send one representable card and log safe Connector rejection metadata."""
         content = self._codec.encode(intent, correlation_token)
         activity = Activity(
             type="message",
             summary=_card_summary(intent),
             attachments=[Attachment(content_type=self._codec._CONTENT_TYPE, content=dict(content))],
         )
-        return self._send_activity(provider_user_id, activity)
+        return self._send_activity(provider_user_id, activity, operation="send_card")
 
     @override
     def replace_with_static(

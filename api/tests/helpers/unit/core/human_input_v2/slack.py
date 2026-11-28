@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from collections import defaultdict, deque
 from collections.abc import Generator, Mapping
@@ -13,6 +14,7 @@ from typing import override
 from urllib.parse import parse_qs
 
 import pytest
+from slack_sdk.http_retry import RetryHandler
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
@@ -27,7 +29,7 @@ SIGNING_SECRET = "sanitized-signing-material"
 
 @dataclass(frozen=True, slots=True)
 class _QueuedResponse:
-    body: Mapping[str, object]
+    body: Mapping[str, object] | bytes
     status: int = 200
     headers: tuple[tuple[str, str], ...] = ()
 
@@ -59,7 +61,7 @@ class _SlackApiState:
     def enqueue(
         self,
         api_method: str,
-        body: Mapping[str, object],
+        body: Mapping[str, object] | bytes,
         *,
         status: int = 200,
         headers: tuple[tuple[str, str], ...] = (),
@@ -94,7 +96,11 @@ class _SlackApiHandler(BaseHTTPRequestHandler):
         api_method = self.path.removeprefix("/api/")
         recorded = _RecordedRequest(api_method, dict(self.headers.items()), request_body)
         response = self.server.state.respond(recorded)
-        response_body = json.dumps(response.body, separators=(",", ":")).encode()
+        response_body = (
+            response.body
+            if isinstance(response.body, bytes)
+            else json.dumps(response.body, separators=(",", ":")).encode()
+        )
         self.send_response(response.status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(response_body)))
@@ -169,16 +175,17 @@ def make_slack_form(
 def make_slack_adapter(
     monkeypatch: pytest.MonkeyPatch, server: SlackApiServer
 ) -> tuple[SlackIMProviderAdapter, WebClient]:
-    client = WebClient(
-        token="xoxb-sanitized-placeholder",
-        base_url=server.base_url,
-        timeout=2,
-        retry_handlers=[],
-    )
+    clients: list[WebClient] = []
 
-    def _client_factory(**kwargs: object) -> WebClient:
-        del kwargs
+    def _client_factory(
+        *, token: str, retry_handlers: list[RetryHandler], logger: logging.Logger | None = None, timeout: int = 2
+    ) -> WebClient:
+        client = WebClient(
+            token=token, base_url=server.base_url, timeout=timeout, retry_handlers=retry_handlers, logger=logger
+        )
+        clients.append(client)
         return client
 
     monkeypatch.setattr(slack_adapter_module, "WebClient", _client_factory)
-    return SlackIMProviderAdapter(slack_credentials()), client
+    adapter = SlackIMProviderAdapter(slack_credentials())
+    return adapter, clients[0]

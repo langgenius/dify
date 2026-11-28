@@ -855,6 +855,33 @@ def test_message_send_failure_is_safe_and_never_replayed(mocker: MockerFixture) 
     assert "secret" not in result.reason
 
 
+@pytest.mark.parametrize("operation", ["send_text", "send_card", "read_directory"])
+def test_sdk_failure_without_response_is_logged(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture, operation: str
+) -> None:
+    client = FakeWebClient()
+    client.post_responses.append(SlackClientError("private SDK exception text"))
+    client.directory_responses.append(SlackClientError("private SDK exception text"))
+    adapter = _adapter(mocker, client)
+    user = ProviderUserId("private-recipient")
+
+    if operation == "read_directory":
+        assert isinstance(adapter.directory.read_directory(), DirectoryReadFailure)
+        assert len(client.directory_calls) == 1
+    elif operation == "send_card":
+        assert isinstance(
+            adapter.dynamic_card_messaging.send_card(user, _intent(), CorrelationToken("private-correlation")),
+            MessageSendingError,
+        )
+        assert len(client.post_calls) == 1
+    else:
+        assert isinstance(adapter.messaging.send_text(user, "private request body"), MessageSendingError)
+        assert len(client.post_calls) == 1
+
+    assert caplog.text.count(f"operation={operation} provider_error_code=None http_status=None") == 1
+    assert "private" not in caplog.text
+
+
 @pytest.mark.parametrize("input_type", ["file", "file-list"])
 def test_card_assessment_rejects_file_controls_without_side_effects(mocker: MockerFixture, input_type: str) -> None:
     client = FakeWebClient()

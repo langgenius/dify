@@ -26,6 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 from pytest_mock import MockerFixture
+from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.response import HTTPResponse
 
 from core.human_input import ButtonStyle
@@ -798,9 +799,7 @@ def test_directory_normalizes_blank_optional_fields_and_rejects_pagination_loops
     assert graph_client.get.call_count == 2
 
 
-def test_directory_normalizes_unexpected_failure_without_provider_details(
-    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_directory_surfaces_unexpected_failure(mocker: MockerFixture) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -814,13 +813,13 @@ def test_directory_normalizes_unexpected_failure_without_provider_details(
             "tid": _credentials().tenant_id,
         },
     )
-    graph_client.get.side_effect = RuntimeError("sensitive graph response")
+    failure = RuntimeError("unexpected Graph error")
+    graph_client.get.side_effect = failure
 
-    result = adapter.directory.read_directory()
+    with pytest.raises(RuntimeError) as raised:
+        adapter.directory.read_directory()
 
-    assert isinstance(result, DirectoryReadFailure)
-    assert "sensitive graph response" not in result.reason
-    assert "sensitive graph response" not in caplog.text
+    assert raised.value is failure
 
 
 @pytest.mark.parametrize(
@@ -872,7 +871,10 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
     assert connector.config.retry_policy.retries == 0
 
 
-def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("error_type", [RequestsConnectionError, RuntimeError])
+def test_text_send_does_not_replay_transport_or_unexpected_failures(
+    mocker: MockerFixture, error_type: type[Exception]
+) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -894,12 +896,16 @@ def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker: 
         id="sanitized-conversation",
         service_url="https://smba.trafficmanager.net/teams/",
     )
-    send_to_conversation.side_effect = RuntimeError("sensitive provider response")
+    failure = error_type("sensitive provider response")
+    send_to_conversation.side_effect = failure
 
-    result = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
-
-    assert isinstance(result, MessageSendingError)
-    assert "sensitive provider response" not in result.reason
+    if isinstance(failure, RuntimeError):
+        with pytest.raises(RuntimeError) as raised:
+            adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
+        assert raised.value is failure
+    else:
+        result = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
+        assert result == MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
     create_conversation.assert_called_once()
     send_to_conversation.assert_called_once()
 
@@ -923,6 +929,7 @@ def test_text_send_requires_typed_exact_provider_acceptance(
     conversation_response: object,
     message_response: object,
     expected_send_count: int,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
@@ -949,6 +956,9 @@ def test_text_send_requires_typed_exact_provider_acceptance(
     assert isinstance(result, MessageSendingError)
     create_conversation.assert_called_once()
     assert send_to_conversation.call_count == expected_send_count
+
+    stage = "send_to_conversation" if expected_send_count else "create_conversation"
+    assert caplog.text.count(f"operation=send_text.{stage} provider_error_code=None http_status=None") == 1
 
 
 def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_io(mocker: MockerFixture) -> None:

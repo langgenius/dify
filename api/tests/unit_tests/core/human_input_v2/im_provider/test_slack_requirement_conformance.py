@@ -57,6 +57,7 @@ class _SlackResponse(UserDict[str, object]):
     def __init__(self, values: Mapping[str, object], *, headers: Mapping[str, str] | None = None) -> None:
         super().__init__(values)
         self.headers = dict(headers or {})
+        self.status_code: int | None = None
 
 
 class _RecordingConsumer:

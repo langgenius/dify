@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
@@ -239,6 +240,69 @@ def test_real_web_client_sends_plain_subject_separately_from_markdown_body(
     assert parameters["text"] == f"{subject}\n\n{body}"
 
 
+@pytest.mark.parametrize("operation", ["send_text", "send_card"])
+@pytest.mark.parametrize(
+    ("response_code", "http_status", "logged_code"),
+    [
+        ("channel_not_found", 200, "channel_not_found"),
+        (None, 429, None),
+        ("new-provider/code: rejected", 403, "new-provider/code: rejected"),
+    ],
+)
+def test_real_web_client_logs_safe_send_rejection_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: _SlackApiServer,
+    caplog: pytest.LogCaptureFixture,
+    operation: str,
+    response_code: str | None,
+    http_status: int,
+    logged_code: str | None,
+) -> None:
+    state = slack_api_server.state
+    caplog.set_level(logging.DEBUG, logger="slack_sdk")
+    response: dict[str, object] = {"ok": False, "detail": "private provider response"}
+    if response_code is not None:
+        response["error"] = response_code
+    state.enqueue("chat.postMessage", response, status=http_status)
+    adapter, _ = _adapter(monkeypatch, slack_api_server)
+    user = ProviderUserId("private-recipient")
+    if operation == "send_text":
+        result = adapter.messaging.send_text(user, "private request body")
+        kind = "message"
+    else:
+        result = adapter.dynamic_card_messaging.send_card(
+            user,
+            _custom_intent(blocks=(MarkdownFragment(text="private request body"),)),
+            CorrelationToken("private-correlation"),
+        )
+        kind = "card"
+
+    assert result == MessageSendingError(f"Slack {kind} acceptance could not be confirmed.")
+    assert len(state.requests_for("chat.postMessage")) == 1
+    assert "im_provider=slack" in caplog.text
+    assert f"operation={operation}" in caplog.text
+    assert f"provider_error_code={logged_code!r}" in caplog.text
+    assert f"http_status={http_status}" in caplog.text
+    assert "private" not in caplog.text
+    assert "xoxb-sanitized-placeholder" not in caplog.text
+
+
+def test_real_web_client_logs_only_status_for_non_json_send_rejection(
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: _SlackApiServer,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    slack_api_server.state.enqueue("chat.postMessage", b"<html>private provider response</html>", status=502)
+    adapter, _ = _adapter(monkeypatch, slack_api_server)
+
+    result = adapter.messaging.send_text(ProviderUserId("private-recipient"), "private request body")
+
+    assert result == MessageSendingError("Slack message acceptance could not be confirmed.")
+    assert len(slack_api_server.state.requests_for("chat.postMessage")) == 1
+    assert "provider_error_code=None http_status=502" in caplog.text
+    assert "private" not in caplog.text
+
+
 @pytest.mark.parametrize(
     ("content", "expected_blocks"),
     [
@@ -450,6 +514,7 @@ def test_real_web_client_socket_credential_failures_are_typed(
 def test_real_web_client_provider_failures_do_not_return_partial_success(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     state = slack_api_server.state
     state.enqueue(
@@ -483,6 +548,7 @@ def test_real_web_client_provider_failures_do_not_return_partial_success(
     assert "sanitized-user" not in directory_result.reason
     assert isinstance(message_result, MessageSendingError)
     assert isinstance(card_result, MessageSendingError)
+    assert "operation=read_directory provider_error_code='ratelimited' http_status=200" in caplog.text
     assert len(state.requests_for("users.list")) == 2
     assert len(state.requests_for("chat.postMessage")) == 2
 

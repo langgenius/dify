@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -20,8 +21,11 @@ from alibabacloud_dingtalk.robot_1_0.models import (
     BatchSendOTOResponseBody,
 )
 from alibabacloud_tea_util.models import RuntimeOptions
+from darabonba.exceptions import RetryError as DaraRetryError
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
+from Tea.exceptions import TeaException, UnretryableException
+from Tea.request import TeaRequest
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -416,7 +420,7 @@ def test_public_directory_discards_late_partial_state_and_detects_bad_cursor(
 @pytest.mark.parametrize(
     "provider_response",
     [
-        _SDKError(500),
+        UnretryableException(TeaRequest(), DaraRetryError("private transport detail")),
         _message_response_without_locator(),
         _message_response(filtered=["fake-user-001"]),
         _message_response(flow_controlled=["fake-user-001"]),
@@ -427,6 +431,7 @@ def test_public_directory_discards_late_partial_state_and_detects_bad_cursor(
 def test_public_messaging_returns_one_safe_failure_without_replay(
     monkeypatch: pytest.MonkeyPatch,
     provider_response: object,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     adapter, provider, robot, _http = _adapter(
         monkeypatch,
@@ -441,6 +446,57 @@ def test_public_messaging_returns_one_safe_failure_without_replay(
     assert len(provider.calls) == 1
     assert len(robot.calls) == 1
 
+    assert caplog.text.count("im_provider=ding_talk operation=send_text provider_error_code=None") == 1
+    assert "private transport detail" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("response_code", "metadata", "logged_code", "http_status"),
+    [
+        ("invalidParameter.userIds", {"statusCode": 400}, "invalidParameter.userIds", 400),
+        ("None", {"statusCode": 403}, None, 403),
+        ("None", {"errcode": 60011, "statusCode": "private bad status"}, 60011, None),
+        (
+            "DingTalk.Robot.BatchSend.UserLimitExceeded.ForThisWorkspaceAndApplication",
+            {"statusCode": 429},
+            "DingTalk.Robot.BatchSend.UserLimitExceeded.ForThisWorkspaceAndApplication",
+            429,
+        ),
+    ],
+)
+def test_public_messaging_logs_safe_send_rejection_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    response_code: str,
+    metadata: dict[str, object],
+    logged_code: str | int | None,
+    http_status: int | None,
+) -> None:
+    rejection = TeaException(
+        {
+            "code": response_code,
+            "message": "private SDK exception text",
+            "data": {**metadata, "requestId": "private-request-id", "message": "private provider response"},
+        }
+    )
+    adapter, provider, robot, _http = _adapter(
+        monkeypatch,
+        direct=_OAuthSequence(),
+        provider=_OAuthSequence(_token_response("private-access-token")),
+        robot=_RobotSequence(rejection),
+    )
+
+    result = adapter.messaging.send_text(ProviderUserId("private-recipient"), "private request body")
+
+    assert result == MessageSendingError("DingTalk message acceptance could not be confirmed.")
+    assert len(provider.calls) == 1
+    assert len(robot.calls) == 1
+    assert "im_provider=ding_talk" in caplog.text
+    assert "operation=send_text" in caplog.text
+    assert f"provider_error_code={logged_code!r}" in caplog.text
+    assert f"http_status={http_status}" in caplog.text
+    assert "private" not in caplog.text
+
 
 def test_public_messaging_does_not_mutate_when_token_acquisition_fails(
     monkeypatch: pytest.MonkeyPatch,
@@ -448,7 +504,7 @@ def test_public_messaging_does_not_mutate_when_token_acquisition_fails(
     adapter, provider, robot, _http = _adapter(
         monkeypatch,
         direct=_OAuthSequence(),
-        provider=_OAuthSequence(_SDKError(500)),
+        provider=_OAuthSequence(TeaException({"code": "TokenRejected"})),
         robot=_RobotSequence(),
     )
 
@@ -457,6 +513,46 @@ def test_public_messaging_does_not_mutate_when_token_acquisition_fails(
     assert result == MessageSendingError("DingTalk message acceptance could not be confirmed.")
     assert len(provider.calls) == 1
     assert robot.calls == []
+
+
+@pytest.mark.parametrize("operation", ["read_directory", "send_text"])
+def test_public_operations_surface_unexpected_token_failure(monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    failure = UnretryableException(TeaRequest(), RuntimeError("unexpected SDK failure"))
+    adapter, provider, robot, http = _adapter(
+        monkeypatch,
+        direct=_OAuthSequence(),
+        provider=_OAuthSequence(failure),
+        robot=_RobotSequence(),
+    )
+
+    call = (
+        adapter.directory.read_directory
+        if operation == "read_directory"
+        else partial(adapter.messaging.send_text, ProviderUserId("fake-user-001"), "Exact body")
+    )
+    with pytest.raises(UnretryableException) as raised:
+        call()
+
+    assert raised.value is failure
+    assert len(provider.calls) == 1
+    assert robot.calls == []
+    assert http.calls == []
+
+
+def test_public_messaging_surfaces_unexpected_robot_failure_without_replay(monkeypatch: pytest.MonkeyPatch) -> None:
+    failure = RuntimeError("unexpected SDK failure")
+    adapter, _, robot, _ = _adapter(
+        monkeypatch,
+        direct=_OAuthSequence(),
+        provider=_OAuthSequence(_token_response("fake-access-token-message-001")),
+        robot=_RobotSequence(failure),
+    )
+
+    with pytest.raises(RuntimeError) as raised:
+        adapter.messaging.send_text(ProviderUserId("fake-user-001"), "Exact body")
+
+    assert raised.value is failure
+    assert len(robot.calls) == 1
 
 
 def test_public_sdk_surface_and_local_factories_are_importable_without_io() -> None:

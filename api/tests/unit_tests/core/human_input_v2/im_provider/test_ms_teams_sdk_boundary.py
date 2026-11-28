@@ -563,6 +563,51 @@ def test_real_connector_sends_h1_subject_and_body_with_extended_markdown(
     }
 
 
+@pytest.mark.parametrize("operation", ["send_text", "send_card"])
+@pytest.mark.parametrize(
+    ("stage", "response_code", "http_status", "logged_code"),
+    [
+        ("create", "BotNotInConversationRoster", 403, "BotNotInConversationRoster"),
+        ("send", "BadArgument", 400, "BadArgument"),
+        ("send", None, 429, None),
+        ("send", "Connector.Policy/Rejected-v2", 403, "Connector.Policy/Rejected-v2"),
+    ],
+)
+def test_real_connector_logs_safe_send_rejection_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    connector_server: _ConnectorServer,
+    caplog: pytest.LogCaptureFixture,
+    operation: str,
+    stage: str,
+    response_code: str | None,
+    http_status: int,
+    logged_code: str | None,
+) -> None:
+    state = connector_server.state
+    error: dict[str, object] = {"message": "private provider response"}
+    if response_code is not None:
+        error["code"] = response_code
+    if stage == "send":
+        state.enqueue("create", 201, {"id": "private-conversation", "serviceUrl": _PUBLIC_SERVICE_URL})
+    state.enqueue(stage, http_status, {"error": error})
+    adapter, _, _ = _adapter(monkeypatch, connector_factory=_connector_factory(connector_server))
+    user = ProviderUserId("private-recipient")
+    if operation == "send_text":
+        result = adapter.messaging.send_text(user, "private request body")
+    else:
+        result = adapter.dynamic_card_messaging.send_card(user, _card_intent(), CorrelationToken("private-correlation"))
+
+    assert result == MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
+    assert len(state.requests_for("create")) == 1
+    assert len(state.requests_for("send")) == (1 if stage == "send" else 0)
+    provider_operation = "send_to_conversation" if stage == "send" else "create_conversation"
+    assert "im_provider=ms_teams" in caplog.text
+    assert f"operation={operation}.{provider_operation}" in caplog.text
+    assert f"provider_error_code={logged_code!r}" in caplog.text
+    assert f"http_status={http_status}" in caplog.text
+    assert "private" not in caplog.text
+
+
 def test_real_connector_disables_automatic_replay_for_ambiguous_send(
     monkeypatch: pytest.MonkeyPatch,
     connector_server: _ConnectorServer,
@@ -652,7 +697,7 @@ def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pyt
     ("responses", "expected_request_count"),
     [
         ([httpx.Response(500, json={"error": "test-only"})], 1),
-        ([RuntimeError("test-only unexpected Graph failure")], 1),
+        ([httpx.ReadError("private Graph transport detail")], 1),
         (
             [
                 httpx.Response(
@@ -679,12 +724,13 @@ def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pyt
             2,
         ),
     ],
-    ids=("http-failure", "unexpected-failure", "untrusted-next-link", "malformed-later-page"),
+    ids=("http-failure", "transport-failure", "untrusted-next-link", "malformed-later-page"),
 )
 def test_graph_boundary_never_publishes_partial_directory(
     monkeypatch: pytest.MonkeyPatch,
     responses: list[httpx.Response | Exception],
     expected_request_count: int,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     monkeypatch.setattr(remote_fetcher, "make_request", lambda *_args, **_kwargs: httpx.Response(404))
     adapter, _, graph_boundary = _adapter(monkeypatch, graph_responses=responses)
@@ -694,6 +740,10 @@ def test_graph_boundary_never_publishes_partial_directory(
     assert isinstance(result, DirectoryReadFailure)
     assert "test-only-partial" not in result.reason
     assert len(graph_boundary.requests) == expected_request_count
+
+    assert caplog.text.count("im_provider=ms_teams operation=read_directory provider_error_code=None") == 1
+    assert "private Graph transport detail" not in caplog.text
+    assert "test-only-partial" not in caplog.text
 
 
 @pytest.mark.parametrize(
