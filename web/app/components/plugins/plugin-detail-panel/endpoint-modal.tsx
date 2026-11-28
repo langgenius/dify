@@ -210,6 +210,7 @@ const EndpointModal = ({
                     }}
                     formSchemas={formSchemas}
                     isEditMode={true}
+                    readonly={isPending}
                     showOnVariableMap={{}}
                     validating={false}
                     inputClassName="bg-components-input-bg-normal hover:bg-components-input-bg-hover"

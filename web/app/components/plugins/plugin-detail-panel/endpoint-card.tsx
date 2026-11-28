@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -107,15 +108,32 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             <span aria-hidden className="i-ri-login-circle-line size-4" />
             <div id={endpointNameId}>{data.name}</div>
           </div>
-          <div className="flex w-0 items-center overflow-hidden opacity-0 group-hover:w-auto group-hover:overflow-visible group-hover:opacity-100 focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100">
+          <div
+            className={cn(
+              'flex items-center',
+              isUpdating
+                ? 'w-auto'
+                : 'w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:overflow-visible group-hover:opacity-100 focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100',
+            )}
+          >
             <IconButton
               aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${data.name}`}
               onClick={showEndpointModalConfirm}
+              disabled={isUpdating}
+              focusableWhenDisabled
             >
-              <span aria-hidden className="i-ri-edit-line size-4" />
+              <span
+                aria-hidden
+                className={
+                  isUpdating
+                    ? 'i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none'
+                    : 'i-ri-edit-line size-4'
+                }
+              />
             </IconButton>
             <AlertDialog actionsRef={deleteActionsRef}>
               <AlertDialogTrigger
+                disabled={isUpdating}
                 render={
                   <IconButton
                     aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${data.name}`}
@@ -207,7 +225,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
           className="ms-3"
           checked={data.enabled}
           onCheckedChange={handleSwitch}
-          disabled={isEnabling || isDisabling}
+          disabled={isEnabling || isDisabling || isUpdating}
           size="sm"
         />
       </div>
