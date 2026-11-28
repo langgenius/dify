@@ -9,7 +9,12 @@ import pytest
 from sqlalchemy.orm import Session
 
 from events.event_handlers import sync_knowledge_fs_bindings_when_app_published_workflow_updated as handler
-from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
+from models.knowledge_fs import (
+    AppKnowledgeFSSpaceJoin,
+    KnowledgeFSAppSpaceJoinType,
+    KnowledgeFSControlSpace,
+    KnowledgeFSControlSpaceState,
+)
 from models.model import App
 from models.workflow import Workflow
 from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
@@ -133,3 +138,52 @@ def test_publish_union_includes_modern_agent_and_uses_the_publish_transaction(mo
     assert len(bindings.calls) == 1
     assert bindings.calls[0]["control_space_ids"] == ["space-a", "space-b", "space-c"]
     assert bindings.calls[0]["session"] is publish_session
+
+
+def test_publish_without_control_spaces_or_workflow_binding_skips_sync(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    bindings = _RecordingAppBindings()
+    monkeypatch.setattr(handler, "get_knowledge_fs_runtime", lambda _: _Runtime(bindings))
+
+    handler.handle(_app(), published_workflow=_workflow(), session=sqlite_session)
+
+    assert bindings.calls == []
+
+
+def test_publish_without_control_spaces_syncs_an_empty_set_when_a_workflow_binding_exists(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="provision-a",
+        knowledge_space_id="knowledge-space-a",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    space.id = "space-a"
+    sqlite_session.add(space)
+    sqlite_session.add(
+        AppKnowledgeFSSpaceJoin(
+            tenant_id="tenant-1",
+            control_space_id="space-a",
+            app_id="app-1",
+            join_type=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        )
+    )
+    # Flushed but not committed: only a lookup through the publish session can see this binding.
+    sqlite_session.flush()
+    bindings = _RecordingAppBindings()
+    monkeypatch.setattr(handler, "get_knowledge_fs_runtime", lambda _: _Runtime(bindings))
+
+    handler.handle(_app(), published_workflow=_workflow(), session=sqlite_session)
+
+    assert bindings.calls == [
+        {
+            "tenant_id": "tenant-1",
+            "actor_account_id": "account-1",
+            "app_id": "app-1",
+            "control_space_ids": [],
+            "session": sqlite_session,
+        }
+    ]
