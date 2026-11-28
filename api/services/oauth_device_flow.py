@@ -14,8 +14,11 @@ import json
 import logging
 import secrets
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import InitVar, asdict, dataclass, field
 from datetime import UTC, datetime
+from typing import ClassVar
+
+from pydantic import ConfigDict, JsonValue, TypeAdapter, ValidationError
 
 from services.oauth_device_contracts import (
     DEVICE_FLOW_TTL_SECONDS,
@@ -106,12 +109,13 @@ USER_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXY3456789"  # ambiguous chars dropped
 USER_CODE_SEGMENT_LEN = 4
 USER_CODE_MAX_CLAIM_ATTEMPTS = 5
 _TRANSITION_TOKEN_PREFIX = "transition:"
-_LEGACY_APPROVAL_FIELDS = ("subject_email", "account_id", "subject_issuer", "minted_token", "transition_id")
 
 
 @dataclass
 class DeviceFlowState:
     """Ephemeral device state; approved payload is consumed exactly once."""
+
+    __pydantic_config__: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     user_code: str
     client_id: str
@@ -123,19 +127,28 @@ class DeviceFlowState:
     last_poll_at: str = ""
     poll_payload: PollPayload | None = field(default=None)
 
+    # Accept old approval keys while their cached rows expire. Init-only
+    # fields are discarded after parsing and never written back to Redis.
+    subject_email: InitVar[JsonValue] = field(default=None, kw_only=True)
+    account_id: InitVar[JsonValue] = field(default=None, kw_only=True)
+    subject_issuer: InitVar[JsonValue] = field(default=None, kw_only=True)
+    minted_token: InitVar[JsonValue] = field(default=None, kw_only=True)
+    transition_id: InitVar[JsonValue] = field(default=None, kw_only=True)
+
     def to_json(self) -> str:
         return json.dumps(asdict(self))
 
     @classmethod
-    def from_json(cls, raw: str) -> DeviceFlowState:
-        data = json.loads(raw)
-        # Device codes live for at most 15 minutes, but tolerate state written
-        # by the previous schema during a rolling deployment.
-        for field_name in _LEGACY_APPROVAL_FIELDS:
-            data.pop(field_name, None)
-        if "status" in data:
-            data["status"] = DeviceFlowStatus(data["status"])
-        return cls(**data)
+    def from_json(cls, raw: str | bytes | bytearray) -> DeviceFlowState:
+        """Parse a Redis JSON value into live state, or raise ValidationError.
+
+        Only the listed legacy keys are accepted and discarded. Unknown keys
+        and malformed state fail validation without constructing live state.
+        """
+        return _device_flow_state_adapter.validate_json(raw)
+
+
+_device_flow_state_adapter = TypeAdapter(DeviceFlowState)
 
 
 def _random_device_code() -> str:
@@ -205,11 +218,11 @@ class DeviceFlowRedis:
         raw = self._redis.get(DEVICE_CODE_KEY_FMT.format(code=device_code))
         if not raw:
             return None
-        text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
         try:
-            return DeviceFlowState.from_json(text_)
-        except (ValueError, KeyError):
-            logger.exception("device_flow: corrupt state for %s", device_code)
+            return DeviceFlowState.from_json(raw)
+        except ValidationError:
+            # Validation errors can contain the plaintext token in poll_payload.
+            logger.warning("device_flow: corrupt state for %s", device_code)
             return None
 
     def approve(
@@ -264,11 +277,11 @@ class DeviceFlowRedis:
         )
         if raw is None:
             return None
-        text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
         try:
-            state = DeviceFlowState.from_json(text_)
-        except (ValueError, KeyError):
-            logger.exception("device_flow: corrupt state on consume %s", device_code)
+            state = DeviceFlowState.from_json(raw)
+        except ValidationError:
+            # Validation errors can contain the plaintext token in poll_payload.
+            logger.warning("device_flow: corrupt state on consume %s", device_code)
             return None
         try:
             self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))
