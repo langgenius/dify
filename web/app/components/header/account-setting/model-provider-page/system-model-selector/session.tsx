@@ -27,7 +27,6 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { canConfigureModelsAtom } from '../atoms'
 import { ModelTypeEnum } from '../declarations'
-import { useUpdateModelList } from '../hooks'
 import { ModelSelector } from '../model-selector'
 import { systemModelDialog } from './handle'
 
@@ -63,15 +62,12 @@ type ClearConfirmation = {
 export default function SystemModelSession() {
   const { t } = useTranslation(['common', 'modelProvider'])
   const [defaultModels, setDefaultModels] = useState<DefaultModelDraft>()
-  const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
-  const updateModelList = useUpdateModelList()
   const saveMutation = useMutation(
     consoleQuery.workspaces.current.defaultModel.post.mutationOptions({
       meta: { errorToast: false },
       onSuccess: (res) => {
         if (res.result !== 'success') return
 
-        changedModelTypes.forEach((type) => updateModelList(type))
         systemModelDialog.close()
       },
     }),
@@ -162,8 +158,6 @@ export default function SystemModelSession() {
     isTTSModelListLoading
   const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel | undefined) => {
     setDefaultModels((current) => ({ ...current, [modelType]: model }))
-    if (!changedModelTypes.includes(modelType))
-      setChangedModelTypes([...changedModelTypes, modelType])
   }
 
   const getClearProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({

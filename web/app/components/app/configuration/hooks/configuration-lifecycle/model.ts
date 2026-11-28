@@ -6,7 +6,7 @@ import type { VisionSettings } from '@/types/app'
 import { produce } from 'immer'
 import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { ModelModeType } from '@/types/app'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { getErrorMessage } from '@/utils/error-message'
@@ -80,7 +80,7 @@ export const createModelChangeHandler =
         if (nextModelMode === ModelModeType.chat && chatPromptLength === 0)
           await migrateToDefaultPrompt(true, ModelModeType.chat)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         return
       }
     }

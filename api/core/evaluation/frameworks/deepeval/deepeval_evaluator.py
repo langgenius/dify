@@ -48,6 +48,15 @@ _DEEPEVAL_REFERENCE_METRICS = {
     EvaluationMetricName.CONTEXT_RECALL.value,
 }
 
+_DEEPEVAL_CONTEXT_METRICS = frozenset(
+    {
+        EvaluationMetricName.FAITHFULNESS.value,
+        EvaluationMetricName.CONTEXT_PRECISION.value,
+        EvaluationMetricName.CONTEXT_RECALL.value,
+        EvaluationMetricName.CONTEXT_RELEVANCE.value,
+    }
+)
+
 _ANSWER_CORRECTNESS_STEPS = [
     "Compare the actual output with the expected output and identify factual contradictions.",
     "Check whether the actual output covers the key information present in the expected output.",
@@ -196,7 +205,8 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
 
         Precondition: the selected category and metrics are from validated configuration.
         Postcondition: each row has metric scores or approved public errors;
-        raw provider exceptions remain in server logs.
+        metrics requiring text context never score without usable evidence,
+        and raw provider exceptions remain in server logs.
         """
         requested_metrics = metric_names or self.get_supported_metrics(category)
         category_metrics = set(self.get_supported_metrics(category))
@@ -243,28 +253,39 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
                 model = DifyDeepEvalModel(model_provider, model_name, tenant_id)
             metrics: list[EvaluationMetric] = []
             test_case = _build_test_case(item, category, components)
+            has_text_context = any(context.strip() for context in item.context or [])
             for canonical_name, metric in _build_deepeval_metrics(supported_metrics, model, components):
-                try:
-                    with use_plugin_daemon_request_timeout(_DEEPEVAL_METRIC_TIMEOUT_SECONDS):
-                        measured_score = metric.measure(test_case, _show_indicator=False)
-                    score = metric.score if metric.score is not None else measured_score
-                    numeric_score = float(score)
-                    if not math.isfinite(numeric_score):
-                        raise ValueError(f"DeepEval returned a non-finite score: {score}")
-                    details: dict[str, Any] = {}
-                    reason = metric.reason
-                    if reason:
-                        details["reason"] = str(reason)
-                    metrics.append(EvaluationMetric(name=canonical_name, value=numeric_score, details=details))
-                except Exception:
-                    failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
-                    logger.exception(
-                        "DeepEval metric %s failed for item %d (error_id=%s)",
+                if canonical_name in _DEEPEVAL_CONTEXT_METRICS and not has_text_context:
+                    failure = new_public_evaluation_error(EvaluationErrorCode.CONTEXT_MISSING)
+                    logger.info(
+                        "DeepEval metric %s has no usable text context for item %d (error_id=%s)",
                         canonical_name,
                         item.index,
                         failure.error_id,
                     )
                     errors.append(failure.text)
+                else:
+                    try:
+                        with use_plugin_daemon_request_timeout(_DEEPEVAL_METRIC_TIMEOUT_SECONDS):
+                            measured_score = metric.measure(test_case, _show_indicator=False)
+                        score = metric.score if metric.score is not None else measured_score
+                        numeric_score = float(score)
+                        if not math.isfinite(numeric_score):
+                            raise ValueError(f"DeepEval returned a non-finite score: {score}")
+                        details: dict[str, Any] = {}
+                        reason = metric.reason
+                        if reason:
+                            details["reason"] = str(reason)
+                        metrics.append(EvaluationMetric(name=canonical_name, value=numeric_score, details=details))
+                    except Exception:
+                        failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+                        logger.exception(
+                            "DeepEval metric %s failed for item %d (error_id=%s)",
+                            canonical_name,
+                            item.index,
+                            failure.error_id,
+                        )
+                        errors.append(failure.text)
 
             results.append(
                 EvaluationItemResult(

@@ -283,3 +283,40 @@ export const saveProviderToolActionSettingsAtom = atom(
     }))
   },
 )
+
+export const setProviderToolCallLimitAtom = atom(
+  null,
+  (
+    _get,
+    set,
+    {
+      toolId,
+      actionId,
+      maxCallsPerRun,
+    }: {
+      toolId: string
+      actionId: string
+      maxCallsPerRun: number | null
+    },
+  ) => {
+    set(agentComposerToolsAtom, (tools) =>
+      tools.map((tool) =>
+        tool.kind === 'provider' && tool.id === toolId
+          ? {
+              ...tool,
+              actions: tool.actions.map((action) =>
+                action.id === actionId
+                  ? {
+                      ...action,
+                      maxCallsPerRun,
+                      lastMaxCallsPerRun:
+                        maxCallsPerRun ?? action.maxCallsPerRun ?? action.lastMaxCallsPerRun,
+                    }
+                  : action,
+              ),
+            }
+          : tool,
+      ),
+    )
+  },
+)

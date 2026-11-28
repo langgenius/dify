@@ -618,11 +618,11 @@ describe('SkillsPage', () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill'))
   })
 
-  it('shows the server message when draft creation fails', async () => {
+  it('shows the translated reason when draft creation fails', async () => {
     const user = userEvent.setup()
     mocks.createSkillMutationFn.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+      createHttpError(new Response(null, { status: 403 }), {
+        code: 'access_denied',
         message: 'Server says why',
       }),
     )
@@ -631,7 +631,7 @@ describe('SkillsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Server says why')
+      expect(toast.error).toHaveBeenCalledWith('requestErrors.code.access_denied')
     })
   })
 
@@ -955,8 +955,18 @@ describe('SkillsPage', () => {
         code: 'invalid_package',
         message: 'Server says why',
       }),
-      message: 'Server says why',
+      message: 'skill.skillManagement.importFailed',
     },
+    ...[
+      ['too_many_files', 'skill has more than 200 files'],
+      ['missing_skill_description', 'SKILL.md frontmatter needs a description'],
+      ['invalid_skill_md', 'SKILL.md frontmatter is not valid YAML'],
+      ['archive_too_large', 'archive exceeds 50 MB'],
+      ['skill_too_large', 'skill exceeds 20 MB'],
+    ].map(([code, message]) => ({
+      error: createHttpError(new Response(null, { status: 400 }), { code, message }),
+      message,
+    })),
     {
       error: new TypeError('Failed to fetch'),
       message: 'skill.skillManagement.importFailed',

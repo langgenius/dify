@@ -439,6 +439,25 @@ export const stylingContractRules = {
             '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and position.',
         },
         {
+          pattern: '^CoachmarkPopup$',
+          allow: ['min-h-*'],
+          message:
+            '"{{className}}" is outside the CoachmarkPopup styling contract. The popup owns its surface, width, spacing and focus ring; callers may only reserve a minimum height.',
+        },
+        {
+          pattern: '^CoachmarkActions$',
+          allow: ['items-*'],
+          message:
+            '"{{className}}" is outside the CoachmarkActions styling contract. The row owns its spacing and wrapping; callers may only change the cross-axis alignment.',
+        },
+        {
+          pattern:
+            '^(CoachmarkPortal|CoachmarkSpotlight|CoachmarkPositioner|CoachmarkArrow|CoachmarkTitle|CoachmarkStepLabel|CoachmarkDescription|CoachmarkClose)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its appearance and position.',
+        },
+        {
           pattern: '^(Dialog|AlertDialog)Content$',
           allow: [
             'w-*',

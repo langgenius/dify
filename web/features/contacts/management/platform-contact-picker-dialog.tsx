@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { availablePlatformCandidatesOptions } from './available-platform-candidates'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactAvatar } from './contact-avatar'
@@ -28,6 +28,7 @@ function PlatformContactPickerContent({
   onBusyChange: (busy: boolean) => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const context = useContactsFeatureContext()
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -64,7 +65,10 @@ function PlatformContactPickerContent({
       ? t(($) => $['platformPicker.addForbidden'])
       : add.error && 'status' in add.error && add.error.status === 409
         ? t(($) => $['platformPicker.addConflict'])
-        : (getRequestErrorMessage(add.error) ?? t(($) => $['platformPicker.addFailed']))
+        : describeRequestError(
+            add.error,
+            t(($) => $['platformPicker.addFailed']),
+          )
   return (
     <>
       <DialogHeader>
@@ -120,7 +124,10 @@ function PlatformContactPickerContent({
             className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
           >
             <p className="system-sm-regular text-text-secondary">
-              {getRequestErrorMessage(error) ?? t(($) => $['platformPicker.error'])}
+              {describeRequestError(
+                error,
+                t(($) => $['platformPicker.error']),
+              )}
             </p>
             <Button
               size="small"
@@ -163,7 +170,10 @@ function PlatformContactPickerContent({
           <div className="p-2">
             {candidates.isFetchNextPageError && (
               <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
-                {getRequestErrorMessage(error) ?? t(($) => $['platformPicker.error'])}
+                {describeRequestError(
+                  error,
+                  t(($) => $['platformPicker.error']),
+                )}
               </p>
             )}
             <Button

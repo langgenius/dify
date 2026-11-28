@@ -494,7 +494,7 @@ describe('AppCard', () => {
     expect(toast.error).toHaveBeenCalledWith('Failed to open new window')
   })
 
-  it('should render the tour-controlled operations menu as presentation only', async () => {
+  it('should open the tour-controlled operations menu', async () => {
     render(
       <AppCard
         dialogs={dialogs}
@@ -509,7 +509,6 @@ describe('AppCard', () => {
 
     expect(await screen.findByText('app.editApp')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'app.editApp', hidden: true })).toBeInTheDocument()
-    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('should tell workflow users to publish before opening in explore', async () => {

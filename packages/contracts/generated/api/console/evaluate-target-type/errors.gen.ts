@@ -10,6 +10,14 @@ const zErrorResponse = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zEvaluationDatasetInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_dataset_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -18,7 +26,40 @@ const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-export const postErrors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+const zEvaluationConfigInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_config_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zEvaluationFrameworkNotConfiguredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_framework_not_configured'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zEvaluationMaxConcurrentRunsDetails = /* @__PURE__ */ (() =>
+  z.object({
+    limit: z.int(),
+  }))()
+
+const zEvaluationMaxConcurrentRunsError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_max_concurrent_runs'),
+      details: zEvaluationMaxConcurrentRunsDetails.optional(),
+      status: z.literal(429),
+    }),
+  ))()
+
+export const postErrors = {
+  evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const getErrors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
@@ -30,16 +71,40 @@ export const get4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRe
 
 export const post2Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
-export const post3Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+export const post3Errors = {
+  evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+  evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+  evaluation_framework_not_configured: {
+    status: 400,
+    data: zEvaluationFrameworkNotConfiguredError,
+  },
+  evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const post4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
-export const post5Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+export const post5Errors = {
+  evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+  evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+  evaluation_framework_not_configured: {
+    status: 400,
+    data: zEvaluationFrameworkNotConfiguredError,
+  },
+  evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const get5Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
-export const post6Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+export const post6Errors = {
+  evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const get6Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
 
-export const putErrors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+export const putErrors = {
+  evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}

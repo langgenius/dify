@@ -63,7 +63,7 @@ class AgentLLMInvokeApi(Resource):
         except QuotaExceededError as exc:
             raise AgentLLMInvokeHttpError(
                 error_code="agent_llm_quota_exceeded",
-                description=str(exc) or "Insufficient Message Credits.",
+                description=str(exc) or "Insufficient AI Credits.",
                 status_code=429,
             ) from exc
         except ValueError as exc:

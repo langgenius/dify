@@ -3,7 +3,7 @@
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { useEffect, useState } from 'react'
 import { parseMarketplacePluginId } from '@/app/components/plugins/plugin-routes'
-import { toastActionError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import {
@@ -77,7 +77,7 @@ export const useInstallFromMarketplaceQuery = ({
           setIsShowInstallFromMarketplace(true)
         } catch (error) {
           // The deep link opens nothing when the lookup fails, so the failure is reported here.
-          if (!ignore) toastActionError(error)
+          if (!ignore) reportRequestError(error)
         }
         return
       }
@@ -90,7 +90,7 @@ export const useInstallFromMarketplaceQuery = ({
           setDependencies(data.version.dependencies)
           setIsShowInstallFromMarketplace(true)
         } catch (error) {
-          if (!ignore) toastActionError(error)
+          if (!ignore) reportRequestError(error)
         }
       }
     }

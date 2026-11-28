@@ -1829,11 +1829,14 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('shows the server message when staging a file fails', async () => {
+  it('shows the translated error code when staging a file fails', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     serviceMock.stageUpload.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' }),
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
     )
     await renderPage()
 
@@ -1844,7 +1847,7 @@ describe('CreateKnowledgePage', () => {
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
   })
 
   it('does not check document or vector quota when creating an empty space', async () => {

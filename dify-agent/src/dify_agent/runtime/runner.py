@@ -24,6 +24,8 @@ from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEven
 from pydantic_ai.usage import RunUsage, UsageLimits
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
+from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.modules import REGISTRY, load_modules, create_modules, snapshot_modules
 from pydantic_ai.capabilities import AbstractCapability
@@ -185,6 +187,9 @@ class AgentRunRunner:
         self._terminal_session_snapshot = None
         self._terminal_usage = None
         self._knowledge_modules = []
+        self._tool_call_limit_store = InMemoryToolCallLimitStore()
+        self._terminal_tool_call_limits: dict[str, ToolCallLimitSnapshot] = {}
+        self._started = False
 
     @property
     def terminal_session_snapshot(self) -> SessionSnapshot | None:
@@ -196,7 +201,28 @@ class AgentRunRunner:
         """Return usage accumulated before the current run reached any terminal state."""
         return self._terminal_usage
 
+    @property
+    def terminal_tool_call_limits(self) -> dict[str, ToolCallLimitSnapshot]:
+        """Return detached reservations sealed after the native run exited."""
+        return {
+            identity: snapshot.model_copy(deep=True) for identity, snapshot in self._terminal_tool_call_limits.items()
+        }
+
+    def close_tool_admission(self) -> None:
+        """Stop reservations immediately when the owner observes cancellation."""
+        self._tool_call_limit_store.close_admission()
+
     async def run(self) -> None:
+        """Own one invocation's counters through cleanup and terminal persistence."""
+        if self._started:
+            raise RuntimeError("a runner can execute its native run only once")
+        self._started = True
+        try:
+            await self._run()
+        finally:
+            self._terminal_tool_call_limits = self._tool_call_limit_store.seal()
+
+    async def _run(self) -> None:
         """Execute the run and emit the documented event sequence."""
         self._terminal_session_snapshot = None
         self._terminal_usage = None
@@ -238,6 +264,7 @@ class AgentRunRunner:
                 reason=reason,
                 session_snapshot=self._terminal_session_snapshot,
                 usage=self._terminal_usage,
+                tool_call_limits=self._tool_call_limit_store.seal(),
             )
             if finalization.applied:
                 for module in self._knowledge_modules:
@@ -253,6 +280,7 @@ class AgentRunRunner:
             output=outcome.output,
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
+            tool_call_limits=self._tool_call_limit_store.seal(),
         )
         if finalization.applied:
             answer = (
@@ -295,6 +323,7 @@ class AgentRunRunner:
         application_tracing: ApplicationTracingContext | None = None
         try:
             deps = load_modules(self.request, self.services, self.run_id, registry=self.registry)
+            deps.tool_call_limit_store = self._tool_call_limit_store
             modules = create_modules(deps, registry=self.registry)
             self._knowledge_modules = [
                 module for module in modules.values() if isinstance(module, knowledge_fs_module.Capability)
@@ -368,7 +397,7 @@ class AgentRunRunner:
                 max_chars=self.stream_text_delta_max_chars,
             )
             async for event in published_events:
-                if self.is_cancelled():
+                if self.is_cancelled() or timeout.expired():
                     raise asyncio.CancelledError
                 await emit_pydantic_ai_event(
                     self.sink, run_id=self.run_id, data=event, agent_message_delta=_extract_agent_message_delta(event)
@@ -380,13 +409,26 @@ class AgentRunRunner:
                 finished = False
                 try:
                     async with timeout:
-                        result = await agent.run(
-                            normalize_user_input(user_content),
-                            deps=deps,
-                            message_history=message_history,
-                            event_stream_handler=handle_events,
-                            usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
-                        )
+                        deadline = timeout.when()
+                        assert deadline is not None
+                        # Close the same owner's admission at the timeout,
+                        # before a tool can suppress cancellation and reserve
+                        # another call during native cleanup.
+                        close_admission = asyncio.get_running_loop().call_at(deadline, self.close_tool_admission)
+                        try:
+                            result = await agent.run(
+                                normalize_user_input(user_content),
+                                deps=deps,
+                                message_history=message_history,
+                                event_stream_handler=handle_events,
+                                usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
+                            )
+                        finally:
+                            close_admission.cancel()
+                    if timeout.expired():
+                        # Native tools may suppress cancellation while cleaning
+                        # up. They cannot turn an expired deadline into success.
+                        raise TimeoutError
                     finished = True
                 finally:
                     if messages and isinstance(history, history_module.Capability):

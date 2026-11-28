@@ -43,7 +43,7 @@ import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/mode
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { documentRenameFilter } from '@/service/datasets'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
@@ -75,6 +75,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
+  const describeRequestError = useRequestErrorDescriber()
 
   const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
@@ -219,7 +220,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
-      invalidDocumentList()
+      // Syncs run through read endpoints, which the invalidation fallback skips.
+      if (operateName === 'sync') invalidDocumentList()
       if (operateName === 'delete') {
         backToPrev()
       } else {
@@ -515,8 +517,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               </AlertDialogDescription>
               {deletion.isError && (
                 <p role="alert" className="text-text-destructive">
-                  {getRequestErrorMessage(deletion.error) ??
-                    t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                  {describeRequestError(
+                    deletion.error,
+                    t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+                  )}
                 </p>
               )}
             </AlertDialogHeader>

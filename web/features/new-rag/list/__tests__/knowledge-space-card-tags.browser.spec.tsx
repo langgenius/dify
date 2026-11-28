@@ -222,13 +222,15 @@ it('persists an empty selection after every tag is removed', async () => {
   await expect.element(option('Backend')).toHaveAttribute('aria-selected', 'false')
 })
 
-it('shows the server message when the replacement fails', async () => {
+it('shows its own text for a framework error code when the replacement fails', async () => {
   await setup()
   fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mockRejectedValueOnce(
-    apiError({ status: 400, code: 'invalid_param', message: 'Server says why' }),
+    apiError({ status: 400, code: 'bad_request', message: 'Server says why' }),
   )
   await trigger().click()
   await option('Frontend').click()
   await userEvent.keyboard('{Escape}')
-  await expect.element(page.getByRole('dialog', { name: 'Server says why' })).toBeVisible()
+  await expect
+    .element(page.getByRole('dialog', { name: 'common.actionMsg.modifiedUnsuccessfully' }))
+    .toBeVisible()
 })

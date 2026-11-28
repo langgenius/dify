@@ -4,12 +4,13 @@ import type { SyncPolicyValue } from '../setup/sync-policy-field'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from '../source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { createRequestId } from '../../request-id'
 import { newKnowledgeDetailPath } from '../../routes'
@@ -80,8 +81,8 @@ function ReadyCrawlSelectionForm({
   workflowUncertain: boolean
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const {
     configureModelSetup,
     ensureModelReady,
@@ -123,7 +124,7 @@ function ReadyCrawlSelectionForm({
   })
   const syncPolicy = showSyncPolicyField ? localSyncPolicy : (syncPolicyValue ?? localSyncPolicy)
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<{ message?: string } | false>(false)
+  const [submitError, setSubmitError] = useState<{ error?: unknown } | false>(false)
   const [selectionUncertain, setSelectionUncertain] = useState(false)
   const submissionPendingRef = useRef(false)
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
@@ -223,15 +224,10 @@ function ReadyCrawlSelectionForm({
       }
       updateSelectionUncertain(false)
       if (discardRequested()) return
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-        refetchType: 'none',
-      })
-      if (discardRequested()) return
       await onSubmitted()
       router.push(newKnowledgeDetailPath(knowledgeSpaceId))
     } catch (error) {
-      setSubmitError({ message: getRequestErrorMessage(error) })
+      setSubmitError({ error })
     } finally {
       resolveTransaction(transactionRun)
       submissionPendingRef.current = false
@@ -267,7 +263,10 @@ function ReadyCrawlSelectionForm({
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {submitError.message ?? t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
+          {describeRequestError(
+            submitError.error,
+            t(($) => $.addSourceFailed, { ns: 'knowledgeSources' }),
+          )}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-3 border-t border-divider-subtle pt-5">

@@ -138,7 +138,9 @@ it.each(['run', 'results'] as const)(
     const user = userEvent.setup()
     renderDetails('run-1', '?sync_result=failed')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Temporarily unavailable')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.details.loadError',
+    )
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.retry' }))
 
     expect(await screen.findByText('contacts.imPlatform.details.empty')).toBeVisible()
@@ -182,7 +184,9 @@ it('keeps loaded contacts when the next page fails and retries that page without
   expect(within(table).getByText('Contact 20')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.loadMore' }))
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Temporarily unavailable')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'contacts.imPlatform.details.pageError',
+  )
   expect(within(table).getByText('Contact 1')).toBeVisible()
   expect(within(table).getAllByRole('row')).toHaveLength(21)
   await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.retry' }))
@@ -432,7 +436,9 @@ it('keeps an empty report available after a failed download and allows retrying'
   expect(screen.getByText('contacts.imPlatform.details.empty')).toBeVisible()
   await user.click(download)
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Report temporarily unavailable')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'contacts.imPlatform.details.downloadFailed',
+  )
   expect(downloadBlob).not.toHaveBeenCalled()
   expect(screen.getByText('contacts.imPlatform.details.empty')).toBeVisible()
   await user.click(download)

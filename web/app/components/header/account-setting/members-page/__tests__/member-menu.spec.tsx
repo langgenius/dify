@@ -133,7 +133,7 @@ describe('MemberMenu', () => {
         }),
       ),
     )
-    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_role')
     expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
     expect(second).toHaveAttribute('aria-selected', 'true')
     await user.click(confirm)

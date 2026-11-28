@@ -5,7 +5,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
@@ -50,7 +50,7 @@ function WebSSOForm() {
     try {
       await webAppLogout(resolveWebAppAddress())
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     const url = getSigninUrl()

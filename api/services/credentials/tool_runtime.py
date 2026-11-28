@@ -1,11 +1,18 @@
 """Resolve tool credentials through scoped snapshots and serialized OAuth refreshes."""
 
+import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from services.credentials.refresh import CredentialRefreshLock, credential_needs_refresh
+from services.credentials.refresh import (
+    CredentialRefreshLock,
+    CredentialRefreshUnavailableError,
+    credential_needs_refresh,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +58,7 @@ class ToolCredentialStore(Protocol):
     def update_tool_credential_if_unchanged(
         self, *, record: ToolRuntimeCredential, encrypted_credentials: str, expires_at: int
     ) -> bool:
-        """Commit in a short transaction, guarding the owner, auth type, expiry and previous ciphertext."""
+        """Commit a refresh for the given snapshot, returning false for a known concurrent change."""
         ...
 
 
@@ -82,6 +89,7 @@ class ToolCredentialService:
         self._providers = providers
 
     def resolve(self, *, workspace_id: str, credential_id: str | None) -> ResolvedToolCredential:
+        """Resolve a workspace credential, returning a refresh only after its write is confirmed."""
         record = self._load(workspace_id=workspace_id, credential_id=credential_id)
         self._runtime.check_policy(record)
         if not credential_needs_refresh(record.expires_at, now=time.time()):
@@ -99,9 +107,22 @@ class ToolCredentialService:
             refreshed = self._runtime.refresh(record, decrypted)
             encrypted = self._runtime.encrypt(record, refreshed.credentials)
             lease.ensure_owned()
-            if not self._credentials.update_tool_credential_if_unchanged(
-                record=record, encrypted_credentials=encrypted, expires_at=refreshed.expires_at
-            ):
+            try:
+                updated = self._credentials.update_tool_credential_if_unchanged(
+                    record=record, encrypted_credentials=encrypted, expires_at=refreshed.expires_at
+                )
+            except Exception as exc:
+                error = CredentialRefreshUnavailableError()
+                # Database exceptions may include credential values in SQL parameters.
+                logger.exception(
+                    "Could not persist refreshed tool credential %s in workspace %s (%s)",
+                    record.id,
+                    record.workspace_id,
+                    type(exc).__name__,
+                    exc_info=(type(error), error, exc.__traceback__),
+                )
+                raise error from None
+            if not updated:
                 latest = self._load(workspace_id=workspace_id, credential_id=record.id)
                 self._runtime.check_policy(latest)
                 if credential_needs_refresh(latest.expires_at, now=time.time()):

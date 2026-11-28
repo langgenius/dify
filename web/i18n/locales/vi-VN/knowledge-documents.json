@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Không có tài liệu phù hợp với tìm kiếm này.",
   "parentChildChunkCount": "{{parentCount}} cha / {{childCount}} con",
   "partialDocumentResults": "Có thể còn tài liệu phù hợp khác. Hãy tải thêm để tiếp tục tìm kiếm.",
+  "reindexConfirmDescription": "Lập chỉ mục lại sẽ tạo lại toàn bộ các đoạn và mục chỉ mục từ tệp nguồn. Các chỉnh sửa đã thực hiện với các đoạn trong cơ sở tri thức, chẳng hạn dùng nội dung của tài liệu khác khi xử lý xung đột, sẽ bị nội dung của tệp nguồn ghi đè. Tìm kiếm vẫn dùng chỉ mục hiện tại cho đến khi lập chỉ mục lại xong.",
+  "reindexConfirmTitle": "Lập chỉ mục lại từ tệp nguồn?",
   "reindexDocument": "Lập chỉ mục lại",
   "retrievalCountValue": "{{value}} trong 7 ngày qua",
   "retryReindexDocument": "Lập chỉ mục lại lần nữa",

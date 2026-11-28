@@ -1,3 +1,4 @@
+import hashlib
 import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -22,6 +23,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from pydantic import JsonValue
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
@@ -411,6 +413,10 @@ class ToolActivityBackendClient(FakeAgentBackendRunClient):
 
 
 class ToolCallThenCancelledBackendClient(FakeAgentBackendRunClient):
+    def __init__(self, *, call_limits: dict[str, ToolCallLimitSnapshot] | None = None) -> None:
+        super().__init__()
+        self._call_limits = call_limits or {}
+
     @override
     def _events(self, run_id: str):
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
@@ -433,6 +439,7 @@ class ToolCallThenCancelledBackendClient(FakeAgentBackendRunClient):
                 run_id=run_id,
                 created_at=created_at,
                 data=RunCancelledEventData(reason="user_stop"),
+                tool_call_limits=self._call_limits,
             ),
         )
 
@@ -1695,6 +1702,36 @@ def test_agent_node_cancelled_run_closes_unfinished_tool_calls(stream_text: bool
         assert agent_logs == []
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
+
+
+@pytest.mark.parametrize("stream_text", [True, False])
+def test_agent_node_retains_terminal_reservations_and_marks_missing_results_unconfirmed(stream_text: bool) -> None:
+    summary = ToolCallLimitSnapshot(
+        tool_identity="operation",
+        limit=3,
+        used=1,
+        call_ids={hashlib.sha256(b"call-1").hexdigest(): 1},
+    )
+    node = _node(agent_backend_client=ToolCallThenCancelledBackendClient(call_limits={"digest": summary}))
+    metadata = {"agent_backend": {}}
+    events = list(
+        node._consume_event_stream(
+            "run-1",
+            inputs={},
+            process_data={},
+            metadata=metadata,
+            stream_text=stream_text,
+        )
+    )
+    logs = [event for event in events if isinstance(event, AgentLogEvent)]
+    if stream_text:
+        assert logs[-1].status == "cancelled"
+        assert logs[-1].data["call_limit"]["execution_status"] == "unconfirmed"
+        assert logs[-1].data["call_limit"]["used"] == 1
+        assert logs[-1].data["call_limit"]["limit"] == 3
+    else:
+        assert logs == []
+    assert metadata["agent_backend"]["tool_call_limits"]["digest"]["used"] == 1
 
 
 @pytest.mark.parametrize("stream_text", [True, False])

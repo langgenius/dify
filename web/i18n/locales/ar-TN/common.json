@@ -110,7 +110,6 @@
   "feedback.placeholder": "يرجى وصف ما حدث خطأ أو كيف يمكننا التحسين...",
   "feedback.subtitle": "من فضلك أخبرنا ما الخطأ في هذه الاستجابة",
   "feedback.title": "تقديم تعليق",
-  "fileUploader.fileExtensionBlocked": "تم حظر نوع الملف هذا لأسباب أمنية",
   "fileUploader.fileExtensionNotSupport": "امتداد الملف غير مدعوم",
   "fileUploader.pasteFileLink": "لصق رابط الملف",
   "fileUploader.pasteFileLinkInputPlaceholder": "أدخل URL...",

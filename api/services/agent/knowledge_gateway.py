@@ -34,8 +34,8 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode, EndUser
+from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.config_service import AgentConfigService
-from services.agent_config_contracts import AgentConfigVersionKind
 from services.knowledge_fs.app_execution_capability import _move_query_image_grants_to_internal_header
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalQueryImageReference, KnowledgeFSRetrievalTestPayload

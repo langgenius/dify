@@ -68,6 +68,7 @@ def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> No
 
     assert config.EVALUATION_RUN_MAX_RETRIES == 3
     assert config.EVALUATION_RUN_RETRY_DELAY == 30
+    assert config.EVALUATION_APP_CONCURRENCY_WAIT_TIMEOUT == 300
 
 
 class _IsolatedDifyConfig(DifyConfig):

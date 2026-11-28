@@ -639,9 +639,9 @@ describe('installation through real polling and invalidation', () => {
       'Plugin not found',
     ],
     [
-      'the default message for a network failure',
+      'the network message for a network failure',
       new TypeError('Failed to fetch'),
-      'api.actionFailed',
+      'requestErrors.generic.network',
     ],
   ])('reports a failed marketplace lookup with %s', async (_case, error, message) => {
     const errorToast = vi.spyOn(toast, 'error')

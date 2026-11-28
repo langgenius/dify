@@ -7,7 +7,7 @@ import type { BuildTriggerSubscriptionPayload } from '@/service/trigger-queries'
 import { useEffect, useRef } from 'react'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 
 type FormValuesResult = {
@@ -134,6 +134,7 @@ export const useInitializeSubscriptionBuilder = ({
   t,
 }: InitializeBuilderParams) => {
   const isInitializedRef = useRef(false)
+  const describeRequestError = useRequestErrorDescriber()
 
   useEffect(() => {
     const initializeBuilder = async () => {
@@ -147,14 +148,24 @@ export const useInitializeSubscriptionBuilder = ({
       } catch (error) {
         console.error('createBuilder error:', error)
         toast.error(
-          getRequestErrorMessage(error) ??
+          describeRequestError(
+            error,
             t(($) => $['modal.errors.createFailed'], { ns: 'pluginTrigger' }),
+          ),
         )
       }
     }
 
     if (!isInitializedRef.current && !subscriptionBuilder && provider) initializeBuilder()
-  }, [subscriptionBuilder, provider, credentialType, createBuilder, setSubscriptionBuilder, t])
+  }, [
+    subscriptionBuilder,
+    provider,
+    credentialType,
+    createBuilder,
+    setSubscriptionBuilder,
+    t,
+    describeRequestError,
+  ])
 }
 
 export const useSyncSubscriptionEndpoint = ({

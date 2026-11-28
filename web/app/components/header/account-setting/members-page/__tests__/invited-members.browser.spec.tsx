@@ -6,8 +6,9 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { TEST_WORKSPACE_ID } from '@/test/console/ids'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { MembersPage } from '../index'
@@ -21,6 +22,8 @@ const setup = (
 ) => {
   let invitations: PendingWorkspaceInvitationResponse[] = []
   const { queryClient } = createConsoleQueryWrapper({
+    // Like the app's client: a write refreshes its domain in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     currentWorkspace: { role: 'owner' },
     systemFeatures: {
       deployment_edition: 'CLOUD',
@@ -236,7 +239,7 @@ it('closes the revoke dialog and refreshes when the invitation was accepted mean
     .not.toBeInTheDocument()
 })
 
-it('keeps the revoke dialog open with the server message when revoking fails', async () => {
+it('keeps the revoke dialog open with the action failure when revoking fails', async () => {
   const email = 'invited@example.com'
   const queryClient = setup([{ status: 'success', email, url: 'https://example.com/invite' }])
   fake.console.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mockRejectedValueOnce(
@@ -257,7 +260,7 @@ it('keeps the revoke dialog open with the server message when revoking fails', a
   const confirm = screen.getByRole('alertdialog', { name: /members\.revokeInvitationTitle/ })
   await confirm.getByRole('button', { name: /members\.revokeInvitation$/ }).click()
 
-  await expect.element(confirm.getByRole('alert')).toHaveTextContent('Server says why')
+  await expect.element(confirm.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
 })
 
 it('shows the new invitation link after a resend without email delivery', async () => {
@@ -285,7 +288,7 @@ it('shows the new invitation link after a resend without email delivery', async 
   await expect.element(result.getByText(/members\.invitationLink$/)).toBeVisible()
 })
 
-it('reports the server message when a resend fails', async () => {
+it('reports the action failure when a resend fails', async () => {
   const toastError = vi.spyOn(toast, 'error')
   onTestFinished(() => toastError.mockRestore())
   const email = 'invited@example.com'
@@ -311,5 +314,5 @@ it('reports the server message when a resend fails', async () => {
     .click()
   await screen.getByRole('menuitem', { name: /members\.resendInvitation$/ }).click()
 
-  await expect.poll(() => toastError).toHaveBeenCalledWith('Server says why')
+  await expect.poll(() => toastError).toHaveBeenCalledWith('common.api.actionFailed')
 })

@@ -110,7 +110,6 @@
   "feedback.placeholder": "Prosimo, opišite, kaj je šlo narobe ali kako lahko izboljšamo ...",
   "feedback.subtitle": "Prosim, povejte nam, kaj je šlo narobe s tem odzivom.",
   "feedback.title": "Posreduj povratne informacije",
-  "fileUploader.fileExtensionBlocked": "Ta vrsta datoteke je zaradi varnostnih razlogov blokirana",
   "fileUploader.fileExtensionNotSupport": "Datotečna pripona ni podprta",
   "fileUploader.pasteFileLink": "Prilepi povezavo do datoteke",
   "fileUploader.pasteFileLinkInputPlaceholder": "Vnesite URL ...",

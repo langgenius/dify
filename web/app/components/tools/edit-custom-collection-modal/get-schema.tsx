@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { importSchemaFromURL } from '@/service/tools'
 import examples from './examples'
 
@@ -33,7 +33,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
       setImportUrl('')
       onChange(schema)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     } finally {
       setIsParsing(false)
       setShowImportFromUrl(false)

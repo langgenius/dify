@@ -75,6 +75,7 @@
   "entry.checkFailed": "De gepubliceerde versie kon niet worden gecontroleerd. Probeer het opnieuw.",
   "entry.duplicateNodeNames": "De gepubliceerde versie bevat nodes met dezelfde naam ({{names}}). Je kunt doorgaan met de evaluatie, maar als je ze hernoemt en een nieuwe versie publiceert, zijn de resultaten gemakkelijker te onderscheiden.",
   "entry.duplicateNodeNamesTitle": "Dubbele nodenamen",
+  "entry.triggerUnsupported": "Workflows die door een trigger starten, kunnen niet worden geëvalueerd. Publiceer een workflow met een startknooppunt voor gebruikersinvoer.",
   "history.actions.cancel": "Uitvoering annuleren",
   "history.actions.downloadFailed": "Kan het evaluatiebestand niet downloaden.",
   "history.actions.downloadResultFile": "Resultaat downloaden",

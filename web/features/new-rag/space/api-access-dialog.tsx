@@ -22,7 +22,7 @@ import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 
 export type KnowledgeFsApiAccessStatus = 'active' | 'inactive' | 'loading' | 'unavailable'
@@ -41,6 +41,7 @@ export function KnowledgeFsApiAccessDialog({
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tAppApi } = useTranslation(['appApi'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const docLink = useDocLink()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
@@ -80,8 +81,10 @@ export function KnowledgeFsApiAccessDialog({
                 <code className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
                   {endpoint ||
                     (apiBaseInfoError
-                      ? (getRequestErrorMessage(apiBaseInfoError) ??
-                        t(($) => $.unavailable, { ns: 'dataset' }))
+                      ? describeRequestError(
+                          apiBaseInfoError,
+                          t(($) => $.unavailable, { ns: 'dataset' }),
+                        )
                       : tAppApi(($) => $.loading))}
                 </code>
                 {endpoint && <CopyFeedback content={endpoint} />}
