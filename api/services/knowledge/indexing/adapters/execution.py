@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
 
+from configs import dify_config
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     InvokeRateLimitError,
@@ -217,7 +218,12 @@ class IndexingExecutionAdapter:
         vector_type = None
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with self._session_factory() as session:
-                vector_type = Vector.resolve_vector_type(dataset, session=session)
+                vector_type = Vector.resolve_vector_type(
+                    dataset,
+                    session=session,
+                    vector_store=dify_config.VECTOR_STORE,
+                    whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+                )
         writes_keywords = (
             dataset.indexing_technique == IndexTechniqueType.ECONOMY
             and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
@@ -249,7 +255,12 @@ class IndexingExecutionAdapter:
                 )
             elif dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 with self._session_factory() as session:
-                    vector_type = Vector.resolve_vector_type(dataset, session=session)
+                    vector_type = Vector.resolve_vector_type(
+                        dataset,
+                        session=session,
+                        vector_store=dify_config.VECTOR_STORE,
+                        whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+                    )
                 attachments = (
                     [attachment for chunk in chunks for attachment in chunk.attachments or []]
                     if dataset.is_multimodal

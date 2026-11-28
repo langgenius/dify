@@ -108,7 +108,16 @@ def clean_document_indexes(
         )
         high_quality = dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         node_ids = list(dict.fromkeys([*summary_node_ids, *body_node_ids]))
-        vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and node_ids else None
+        vector_type = (
+            Vector.resolve_vector_type(
+                dataset,
+                session=session,
+                vector_store=dify_config.VECTOR_STORE,
+                whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+            )
+            if high_quality and node_ids
+            else None
+        )
         session.expunge(dataset)
 
     if not node_ids and not summary_ids and not child_ids:

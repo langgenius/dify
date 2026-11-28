@@ -302,7 +302,15 @@ class VectorSpaceAdmissionService:
             or workload.probe_text is None
         ):
             return
-        if Vector.resolve_vector_type(dataset, session=session) != VectorType.TIDB_ON_QDRANT:
+        if (
+            Vector.resolve_vector_type(
+                dataset,
+                session=session,
+                vector_store=dify_config.VECTOR_STORE,
+                whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+            )
+            != VectorType.TIDB_ON_QDRANT
+        ):
             return
 
         plan = self._get_plan(dataset.tenant_id)

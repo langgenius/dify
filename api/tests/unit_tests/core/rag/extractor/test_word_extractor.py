@@ -1,20 +1,27 @@
 """Primarily used for testing merged cell scenarios"""
 
+from __future__ import annotations
+
 import io
 import logging
 import os
 import tempfile
+from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, cast
+from typing import NoReturn, Protocol, cast
 
 import pytest
 from docx import Document
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.opc.packuri import PackURI
 from docx.opc.part import Part
+from docx.opc.rel import _Relationship
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 from httpx import Response
 from PIL import Image
 from sqlalchemy import select
@@ -43,7 +50,7 @@ def _image_part(name: str, blob: bytes = b"image-bytes") -> Part:
     return Part(PackURI(f"/word/media/{name}"), "image/png", blob)
 
 
-def _generate_table_with_merged_cells():
+def _generate_table_with_merged_cells() -> tuple[Table, list[list[str]]]:
     doc = Document()
 
     """
@@ -80,27 +87,45 @@ def _generate_table_with_merged_cells():
     return doc.tables[0], ground_truth
 
 
-def test_parse_row():
+def test_parse_row() -> None:
     table, gt = _generate_table_with_merged_cells()
     extractor = object.__new__(WordExtractor)
     for idx, row in enumerate(table.rows):
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
-def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+@dataclass(frozen=True)
+class _RemoteFetchCall:
+    """A dispatched ``remote_fetcher.make_request`` call, parsed once at the boundary.
+
+    The ParamSpec stub receives opaque ``P.args``/``P.kwargs``; the positional
+    ``method``/``url`` are narrowed to ``str`` here so the assertions consume typed
+    fields instead of re-unpacking an ad hoc ``tuple``/``dict[str, object]`` record.
+    """
+
+    method: str
+    url: str
+    kwargs: dict[str, object]
+
+
+def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     doc = Document()
     doc.add_paragraph("hello")
     buf = io.BytesIO()
     doc.save(buf)
     docx_bytes = buf.getvalue()
 
-    calls: list[tuple[str, tuple[str, dict[str, object]] | None]] = []
+    calls: list[_RemoteFetchCall] = []
 
     response = Response(200, content=docx_bytes)
 
-    def fake_make_request(method: str, url: str, **kwargs):
-        assert method == "GET"
-        calls.append(("get", (url, kwargs)))
+    def fake_make_request[**P](*args: P.args, **kwargs: P.kwargs) -> Response:
+        # Parse the opaque ParamSpec boundary once: narrow the positional method/url
+        # to str so the recorded call is a typed value, not an ad hoc tuple/dict.
+        method, url, *_rest = args
+        if not isinstance(method, str) or not isinstance(url, str):
+            raise TypeError(f"expected str method and url, got {method!r}, {url!r}")
+        calls.append(_RemoteFetchCall(method=method, url=url, kwargs=kwargs))
         return response
 
     monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
@@ -110,12 +135,10 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
         extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id", session_maker=_NO_DATABASE)
         try:
             assert calls
-            assert calls[0][0] == "get"
-            first_call = calls[0][1]
-            assert first_call is not None
-            url, kwargs = first_call
-            assert url == "https://example.com/test.docx"
-            assert kwargs.get("timeout") is None
+            call = calls[0]
+            assert call.method == "GET"
+            assert call.url == "https://example.com/test.docx"
+            assert "timeout" not in call.kwargs
             assert extractor.web_path == "https://example.com/test.docx"
             assert extractor.file_path != extractor.web_path
             assert temp_file.closed
@@ -129,7 +152,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 @pytest.mark.parametrize("failure_stage", ["write", "close"])
-def test_init_removes_temp_file_on_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failure_stage: str):
+def test_init_removes_temp_file_on_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failure_stage: str) -> None:
     response = Response(200, content=b"partial document")
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda *args, **kwargs: response)
     named_temporary_file = tempfile.NamedTemporaryFile
@@ -139,9 +162,9 @@ def test_init_removes_temp_file_on_failure(monkeypatch: pytest.MonkeyPatch, tmp_
         raise OSError("temporary file failed")
 
     @contextmanager
-    def failing_temp_file(**kwargs):
+    def failing_temp_file(*, delete: bool = True) -> Generator[object]:
         nonlocal path
-        with named_temporary_file(dir=tmp_path, **kwargs) as temp_file:
+        with named_temporary_file(delete=delete) as temp_file:
             path = Path(temp_file.name)
             if failure_stage == "write":
                 monkeypatch.setattr(temp_file, "write", fail_write)
@@ -158,11 +181,11 @@ def test_init_removes_temp_file_on_failure(monkeypatch: pytest.MonkeyPatch, tmp_
     assert not path.exists()
 
 
-def test_init_closes_response_when_temp_creation_fails(monkeypatch: pytest.MonkeyPatch):
+def test_init_closes_response_when_temp_creation_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     response = Response(200, content=b"document")
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda *args, **kwargs: response)
 
-    def fail_creation(**kwargs):
+    def fail_creation(**kwargs: object) -> NoReturn:
         raise OSError("temporary file failed")
 
     monkeypatch.setattr(we.tempfile, "NamedTemporaryFile", fail_creation)
@@ -179,14 +202,14 @@ def test_extract_images_from_docx(
     inject_session: bool,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
-):
+) -> None:
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
 
     # Patch storage.save to capture writes
     saves: list[tuple[str, bytes]] = []
 
-    def save(key: str, data: bytes):
+    def save(key: str, data: bytes) -> None:
         saves.append((key, data))
 
     monkeypatch.setattr(we.storage, "save", save)
@@ -195,7 +218,7 @@ def test_extract_images_from_docx(
     apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     # Patch external image fetcher
-    def fake_make_request(method: str, url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs: object) -> Response:
         assert method == "GET"
         assert url == "https://example.com/image.png"
         return Response(200, headers={"Content-Type": "image/png"}, content=external_bytes)
@@ -232,7 +255,7 @@ def test_extract_images_from_docx(
 
 def test_extract_images_does_not_stage_partial_files_on_storage_failure(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     doc = Document()
     doc.part.rels.add_relationship(RT.IMAGE, _image_part("image1.png", b"first"), "rId1")
     doc.part.rels.add_relationship(RT.IMAGE, _image_part("image2.png", b"second"), "rId2")
@@ -259,7 +282,7 @@ def test_extract_images_does_not_stage_partial_files_on_storage_failure(
     assert sqlite_session.scalars(select(UploadFile)).all() == []
 
 
-def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.MonkeyPatch):
+def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that INTERNAL_FILES_URL takes precedence over FILES_URL for plugin access."""
     # Test the URL generation logic directly
     from configs import dify_config
@@ -279,7 +302,7 @@ def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.Mo
     assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
 
 
-def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
     # Patch db and storage to avoid issues during image extraction (even if no images are present)
     apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
@@ -320,7 +343,7 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Se
             os.remove(tmp_path)
 
 
-def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
     # Mock db and storage
     apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
@@ -378,7 +401,7 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
             os.remove(tmp_path)
 
 
-def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
+def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch) -> None:
     response = Response(404, content=b"")
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda method, url, **kwargs: response)
 
@@ -388,7 +411,7 @@ def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
     assert response.is_closed
 
 
-def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Path):
+def test_init_expands_home_path_and_invalid_local_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     target_file = tmp_path / "expanded.docx"
     target_file.write_bytes(b"docx")
 
@@ -407,7 +430,7 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Pa
         WordExtractor("not-a-file", "tenant", "user", session_maker=_NO_DATABASE)
 
 
-def test_close_removes_temp_file(tmp_path: Path):
+def test_close_removes_temp_file(tmp_path: Path) -> None:
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
     path = tmp_path / "downloaded.docx"
@@ -419,7 +442,7 @@ def test_close_removes_temp_file(tmp_path: Path):
     assert not path.exists()
 
 
-def test_close_is_idempotent(tmp_path: Path):
+def test_close_is_idempotent(tmp_path: Path) -> None:
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
     path = tmp_path / "downloaded.docx"
@@ -435,7 +458,7 @@ def test_close_is_idempotent(tmp_path: Path):
     assert path.read_bytes() == b"replacement"
 
 
-def test_close_tolerates_missing_temp_file(tmp_path: Path):
+def test_close_tolerates_missing_temp_file(tmp_path: Path) -> None:
     extractor = object.__new__(WordExtractor)
     extractor._closed = False
     extractor.temp_file_path = str(tmp_path / "missing.docx")
@@ -443,7 +466,7 @@ def test_close_tolerates_missing_temp_file(tmp_path: Path):
     extractor.close()
 
 
-def test_close_preserves_local_file(tmp_path: Path):
+def test_close_preserves_local_file(tmp_path: Path) -> None:
     path = tmp_path / "local.docx"
     path.write_bytes(b"content")
     extractor = WordExtractor(str(path), "tenant", "user", session_maker=_NO_DATABASE)
@@ -453,14 +476,14 @@ def test_close_preserves_local_file(tmp_path: Path):
     assert path.read_bytes() == b"content"
 
 
-def test_close_logs_cleanup_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):
+def test_close_logs_cleanup_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     """Cleanup failures for an owned download are logged without escaping close."""
     response = Response(200, content=b"document")
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda *args, **kwargs: response)
     extractor = WordExtractor("https://example.com/test.docx", "tenant", "user", session_maker=_NO_DATABASE)
     path = Path(extractor.file_path)
 
-    def fail_unlink(path: str):
+    def fail_unlink(path: str) -> NoReturn:
         raise PermissionError("cannot remove file")
 
     try:
@@ -476,13 +499,13 @@ def test_close_logs_cleanup_failure(monkeypatch: pytest.MonkeyPatch, caplog: pyt
         path.unlink(missing_ok=True)
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch):
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch) -> None:
     doc = Document()
     doc.part.rels.add_relationship(RT.IMAGE, "image-no-url", "r1", is_external=True)
     doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image-error", "r2", is_external=True)
     doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image-unknown", "r3", is_external=True)
 
-    def fake_make_request(method, url, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs: object) -> Response:
         assert method == "GET"
         if "image-error" in url:
             raise RuntimeError("network")
@@ -503,17 +526,19 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     assert result == {}
 
 
-def test_extract_images_accepts_content_type_with_parameters(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_extract_images_accepts_content_type_with_parameters(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     """A Content-Type parameter (e.g. ``; charset=utf-8``) must not hide the media type of the image."""
     saves: list[tuple[str, bytes]] = []
 
-    def save(key: str, data: bytes):
+    def save(key: str, data: bytes) -> None:
         saves.append((key, data))
 
     monkeypatch.setattr(we.storage, "save", save)
     apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
-    def fake_make_request(method: str, url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs: object) -> Response:
         assert method == "GET"
         return Response(200, headers={"Content-Type": "image/png; charset=utf-8"}, content=b"ext-bytes")
 
@@ -538,7 +563,7 @@ def test_extract_images_accepts_content_type_with_parameters(monkeypatch: pytest
     assert saves[0][1] == b"ext-bytes"
 
 
-def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
+def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     extractor = object.__new__(WordExtractor)
 
     doc = Document()
@@ -554,7 +579,7 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/ext.png", "ext", is_external=True)
     doc.part.rels.add_relationship(RT.IMAGE, image_part, "int")
 
-    def populate_paragraph(paragraph) -> None:
+    def populate_paragraph(paragraph: Paragraph) -> None:
         image_run = OxmlElement("w:r")
         for image_id in (None, "ext", "int"):
             blip = OxmlElement("a:blip")
@@ -573,7 +598,7 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
 
 
-def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
+def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch) -> None:
     doc = Document()
     doc.add_paragraph("Before table")
     table = doc.add_table(rows=2, cols=2)
@@ -601,7 +626,7 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
 
 def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
+) -> None:
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"
@@ -621,7 +646,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
 
     relationship_get = rels.get
 
-    def get_relationship(key, default=None):
+    def get_relationship(key: str, default: _Relationship | None = None) -> _Relationship | None:
         if key == "link-bad":
             raise RuntimeError("cannot resolve relation")
         return relationship_get(key, default)
@@ -636,33 +661,33 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
     }
 
     class FakeBlip:
-        def __init__(self, embed_id):
+        def __init__(self, embed_id: str | Part) -> None:
             self.embed_id = embed_id
 
-        def get(self, key):
+        def get(self, key: str) -> str | Part:
             return self.embed_id
 
     class FakeDrawing:
-        def __init__(self, embed_ids):
+        def __init__(self, embed_ids: list[str | Part]) -> None:
             self.embed_ids = embed_ids
 
-        def findall(self, pattern):
+        def findall(self, pattern: str) -> list[FakeBlip]:
             return [FakeBlip(embed_id) for embed_id in self.embed_ids]
 
     class FakeNode:
-        def __init__(self, text=None, attrs=None):
+        def __init__(self, text: str | None = None, attrs: dict[str, str] | None = None) -> None:
             self.text = text
             self._attrs = attrs or {}
 
-        def get(self, key):
+        def get(self, key: str) -> str | None:
             return self._attrs.get(key)
 
     class FakeShape:
-        def __init__(self, bin_id=None, img_id=None):
+        def __init__(self, bin_id: str | None = None, img_id: str | None = None) -> None:
             self.bin_id = bin_id
             self.img_id = img_id
 
-        def find(self, pattern):
+        def find(self, pattern: str) -> FakeNode | None:
             if "binData" in pattern and self.bin_id:
                 return FakeNode(
                     text="shape",
@@ -672,51 +697,66 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
                 return FakeNode(attrs={"id": self.img_id})
             return None
 
+    class FakeFldChar:
+        """Stand-in for a ``w:fldChar`` element: the extractor only reads its field type."""
+
+        def __init__(self, fld_char_type: str | None = None) -> None:
+            self._fld_char_type = fld_char_type
+
+        def get(self, key: str) -> str | None:
+            return self._fld_char_type
+
+    @dataclass
+    class FakeInstrText:
+        """Stand-in for a ``w:instrText`` element: the extractor only reads its text."""
+
+        text: str = ""
+
     class FakeChild:
         def __init__(
             self,
-            tag,
-            text="",
-            fld_chars=None,
-            instr_texts=None,
-            drawings=None,
-            shapes=None,
-            attrs=None,
-            hyperlink_runs=None,
-        ):
+            tag: str,
+            text: str = "",
+            fld_chars: list[FakeFldChar] | None = None,
+            instr_texts: list[FakeInstrText] | None = None,
+            drawings: list[FakeDrawing] | None = None,
+            shapes: list[FakeShape] | None = None,
+            attrs: dict[str, str] | None = None,
+            hyperlink_runs: list[FakeChild] | None = None,
+        ) -> None:
             self.tag = tag
             self.text = text
-            self._fld_chars = fld_chars or []
-            self._instr_texts = instr_texts or []
-            self._drawings = drawings or []
-            self._shapes = shapes or []
+            self._fld_chars: list[FakeFldChar] = fld_chars or []
+            self._instr_texts: list[FakeInstrText] = instr_texts or []
+            self._drawings: list[FakeDrawing] = drawings or []
+            self._shapes: list[FakeShape] = shapes or []
             self._attrs = attrs or {}
-            self._hyperlink_runs = hyperlink_runs or []
+            self._hyperlink_runs: list[FakeChild] = hyperlink_runs or []
 
-        def findall(self, pattern):
+        def findall(self, pattern: str) -> list[FakeChild | FakeDrawing | FakeShape | FakeFldChar | FakeInstrText]:
             if pattern == qn("w:fldChar"):
-                return self._fld_chars
+                return list(self._fld_chars)
             if pattern == qn("w:instrText"):
-                return self._instr_texts
+                return list(self._instr_texts)
             if pattern == qn("w:r"):
-                return self._hyperlink_runs
+                return list(self._hyperlink_runs)
             if pattern.endswith("}drawing"):
-                return self._drawings
+                return list(self._drawings)
             if pattern.endswith("}pict"):
-                return self._shapes
+                return list(self._shapes)
             return []
 
-        def get(self, key):
+        def get(self, key: str) -> str | None:
             return self._attrs.get(key)
 
     class FakeRun:
-        def __init__(self, element, paragraph):
+        def __init__(self, element: FakeChild, paragraph: FakeParagraph) -> None:
             self.element = element
-            self.text = getattr(element, "text", "")
+            self.text = element.text
 
+    @dataclass
     class FakeParagraph:
-        def __init__(self, children):
-            self._element = children
+        _element: list[FakeChild]
 
     class FakeTable:
         rows: list[object] = []
@@ -771,7 +811,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
     assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
-def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
+def test_parse_cell_paragraph_hyperlink_in_table_cell_http() -> None:
     doc = Document()
     table = doc.add_table(rows=1, cols=1)
     cell = table.cell(0, 0)
@@ -812,7 +852,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
             os.remove(tmp_path)
 
 
-def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
+def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto() -> None:
     doc = Document()
     table = doc.add_table(rows=1, cols=1)
     cell = table.cell(0, 0)

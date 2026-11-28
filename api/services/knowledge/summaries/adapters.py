@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
 
+from configs import dify_config
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.model_context import with_credit_usage_created_by
@@ -36,7 +37,12 @@ logger = logging.getLogger(__name__)
 def _delete_summary_vectors(dataset: Dataset, node_ids: list[str], *, session: Session) -> None:
     # Legacy callers own this transaction; committing here breaks session.begin().
     # Document cleanup tasks materialize their inputs before deleting external indexes.
-    vector_type = Vector.resolve_vector_type(dataset, session=session)
+    vector_type = Vector.resolve_vector_type(
+        dataset,
+        session=session,
+        vector_store=dify_config.VECTOR_STORE,
+        whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+    )
     Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(node_ids)
 
 
@@ -242,7 +248,14 @@ class SummaryIndexAdapter:
             if owned_dataset is None or owned_segment is None or owned_document is None:
                 raise LookupError("Summary segment no longer exists in this dataset")
             vector_type = (
-                Vector.resolve_vector_type(owned_dataset, session=read_session) if vector_factory is None else None
+                Vector.resolve_vector_type(
+                    owned_dataset,
+                    session=read_session,
+                    vector_store=dify_config.VECTOR_STORE,
+                    whitelist_enabled=dify_config.VECTOR_STORE_WHITELIST_ENABLE is True,
+                )
+                if vector_factory is None
+                else None
             )
         factory = vector_factory or (lambda: Vector(owned_dataset, session=None, vector_type=vector_type))
         service = SummaryIndexService(
