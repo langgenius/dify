@@ -1,23 +1,24 @@
 from typing import cast
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
-from extensions.ext_database import db
 from graphon.nodes import BuiltinNodeTypes
 from models.dataset import AppDatasetJoin
 from models.workflow import Workflow
 
 
 @app_published_workflow_was_updated.connect
-def handle(sender, **kwargs):
+def handle(sender, *, session: Session, **kwargs) -> None:
+    """Update dataset joins with the caller-provided publish session."""
     app = sender
     published_workflow = kwargs.get("published_workflow")
     published_workflow = cast(Workflow, published_workflow)
 
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
-    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
+    app_dataset_joins = session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
 
     removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:
@@ -31,16 +32,14 @@ def handle(sender, **kwargs):
 
     if removed_dataset_ids:
         for dataset_id in removed_dataset_ids:
-            db.session.execute(
+            session.execute(
                 delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
             )
 
     if added_dataset_ids:
         for dataset_id in added_dataset_ids:
             app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
-            db.session.add(app_dataset_join)
-
-    db.session.commit()
+            session.add(app_dataset_join)
 
 
 def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:
