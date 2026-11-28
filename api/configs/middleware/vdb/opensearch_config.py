@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field, PositiveInt
+from pydantic import Field, PositiveFloat, PositiveInt
 from pydantic_settings import BaseSettings
 
 
@@ -61,4 +61,26 @@ class OpenSearchConfig(BaseSettings):
 
     OPENSEARCH_AWS_SERVICE: Literal["es", "aoss"] | None = Field(
         description="AWS service for OpenSearch (e.g. 'aoss' for OpenSearch Serverless)", default=None
+    )
+
+    OPENSEARCH_REQUEST_TIMEOUT: PositiveFloat = Field(
+        description=(
+            "Request timeout in seconds (opensearch-py default is 10). A cold k-NN search reads the"
+            " shard's graph from disk before it searches, so a large knowledge base can exceed it."
+        ),
+        default=10.0,
+    )
+
+    OPENSEARCH_MAX_RETRIES: int = Field(
+        description=(
+            "Maximum number of retries per request (default is 3, the opensearch-py default)."
+            " Set it to 0 to disable retries, which the client accepts."
+        ),
+        default=3,
+        ge=0,
+    )
+
+    OPENSEARCH_RETRY_ON_TIMEOUT: bool = Field(
+        description="Whether to retry a request that timed out (default is False, the opensearch-py default)",
+        default=False,
     )

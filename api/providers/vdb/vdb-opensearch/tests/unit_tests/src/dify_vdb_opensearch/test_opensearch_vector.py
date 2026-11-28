@@ -93,6 +93,24 @@ class TestOpensearchCases:
         return importlib.reload(module)
 
     class TestOpenSearchConfig:
+        def test_to_opensearch_params_keeps_the_transport_defaults(self, opensearch_module):
+            """An unset timeout keeps the opensearch-py transport defaults."""
+            params = _opensearch_config(opensearch_module).to_opensearch_params()
+
+            assert params["timeout"] == 10.0
+            assert params["max_retries"] == 3
+            assert params["retry_on_timeout"] is False
+
+        def test_to_opensearch_params_passes_a_configured_timeout(self, opensearch_module):
+            """A cold k-NN search over a large knowledge base needs more than the 10 s default."""
+            params = _opensearch_config(
+                opensearch_module, timeout=90.0, max_retries=5, retry_on_timeout=True
+            ).to_opensearch_params()
+
+            assert params["timeout"] == 90.0
+            assert params["max_retries"] == 5
+            assert params["retry_on_timeout"] is True
+
         def test_to_opensearch_params(self, opensearch_module):
             config = _opensearch_config(opensearch_module, secure=True)
             params = config.to_opensearch_params()

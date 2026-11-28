@@ -15,6 +15,10 @@ OPENSEARCH_HOST=${OPENSEARCH_HOST-opensearch}
 OPENSEARCH_SECURE=${OPENSEARCH_SECURE-true}
 # Bundled demo certificates require an explicit false override; use trusted certificates in production.
 OPENSEARCH_VERIFY_CERTS=${OPENSEARCH_VERIFY_CERTS-true}
+# Client transport for a knowledge base whose cold k-NN search outlasts the 10 s default.
+# OPENSEARCH_REQUEST_TIMEOUT=10
+# OPENSEARCH_MAX_RETRIES=3
+# OPENSEARCH_RETRY_ON_TIMEOUT=false
 # OPENSEARCH_AUTH_METHOD=basic
 OPENSEARCH_USER=${OPENSEARCH_USER-admin}
 OPENSEARCH_DISCOVERY_TYPE=${OPENSEARCH_DISCOVERY_TYPE:-single-node}
