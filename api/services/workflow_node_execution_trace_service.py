@@ -10,7 +10,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy.orm import Session
 
-from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from domain.workflow.retry_history import (
+    RETRY_HISTORY_PROCESS_DATA_KEY,
+    WorkflowNodeRetryAttempt,
+    parse_process_data,
+)
 from libs.helper import to_timestamp
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
@@ -103,9 +107,20 @@ def _parse_retry_attempts(
     execution: WorkflowNodeExecutionModel,
     process_data: Mapping[str, Any] | None,
 ) -> list[WorkflowNodeRetryAttempt]:
-    raw_history = (process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY)
-    if not isinstance(raw_history, list):
+    """Parse the persisted retry history, dropping entries that no longer fit."""
+    # Process Data arrives as untrusted JSON from storage, so the boundary parse
+    # is what proves the history key holds a list at all.
+    try:
+        payload = parse_process_data(process_data)
+    except ValidationError:
+        logger.warning(
+            "Skipping retry history with a malformed history key for workflow run %s node execution %s",
+            execution.workflow_run_id,
+            execution.id,
+            exc_info=True,
+        )
         return []
+    raw_history = payload.get(RETRY_HISTORY_PROCESS_DATA_KEY) or []
 
     attempts: list[WorkflowNodeRetryAttempt] = []
     seen_indices: set[int] = set()
