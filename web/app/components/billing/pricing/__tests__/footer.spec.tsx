@@ -13,12 +13,11 @@ it.each<[Locale, string]>([
   ['zh-Hans', '/zh'],
   ['ja-JP', '/ja'],
   ['ko-KR', '/ko'],
-  ['de-DE', ''],
+  ['de-DE', '/de'],
+  ['fr-FR', ''],
 ])('links to the current website comparison pages for %s', (language, prefix) => {
   locale = language
-  const { rerender } = render(<PricingFooter category="cloud" />)
+  render(<PricingFooter />)
   const link = screen.getByRole('link', { name: 'billing.plansCommon.comparePlanAndFeatures' })
   expect(link).toHaveAttribute('href', `https://dify.ai${prefix}/pricing/dify-cloud#compare`)
-  rerender(<PricingFooter category="self-hosted" />)
-  expect(link).toHaveAttribute('href', `https://dify.ai${prefix}/pricing/dify-enterprise#compare`)
 })

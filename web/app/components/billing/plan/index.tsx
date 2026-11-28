@@ -23,8 +23,13 @@ type Props = Readonly<{
   loc: string
 }>
 
-const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
+const selectEducationPlanStatus = ({
+  allow_refresh,
+  can_redeem_discount,
+  is_student,
+}: EducationStatusResponse) => ({
   isAboutToExpire: allow_refresh,
+  canRedeemEducationDiscount: can_redeem_discount,
   isEducationAccount: is_student,
 })
 
@@ -55,7 +60,11 @@ const PlanComp: FC<Props> = ({ loc }) => {
       select: selectEducationPlanStatus,
     }),
   )
-  const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
+  const {
+    isAboutToExpire = false,
+    canRedeemEducationDiscount = false,
+    isEducationAccount = false,
+  } = educationStatus ?? {}
   const type = features.billing.subscription.plan
   const appRunsQuota = getAppRunsQuota(features.api_rate_limit, type)
 
@@ -95,6 +104,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
             {isCloudEdition &&
               enableEducationPlan &&
               isEducationAccount &&
+              canRedeemEducationDiscount &&
               type === 'sandbox' &&
               isCurrentWorkspaceManager && (
                 <Button

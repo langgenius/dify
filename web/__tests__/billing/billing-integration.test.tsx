@@ -34,7 +34,12 @@ let mockFeatures: DeepPartial<GetFeaturesResponse> = {}
 let mockVectorSpace: GetFeaturesVectorSpaceResponse = { size: 0, limit: 50, usage_unknown: false }
 let workspaceRole: 'owner' | 'normal' = 'owner'
 let workspacePermissionKeys: string[] = []
-let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+let mockEducationStatus = {
+  is_student: false,
+  allow_refresh: false,
+  can_redeem_discount: false,
+  expire_at: null,
+}
 
 const renderWithoutPricing = (
   ui: ReactElement,
@@ -85,6 +90,7 @@ const setupBilling = (
   mockEducationStatus = {
     is_student: false,
     allow_refresh: false,
+    can_redeem_discount: false,
     expire_at: null,
     ...educationStatus,
   }
@@ -249,7 +255,7 @@ describe('Plan Type Display Integration', () => {
     setupBilling(
       { billing: { subscription: { plan: 'sandbox' } } },
       { enableEducationPlan: true },
-      { is_student: true },
+      { is_student: true, can_redeem_discount: true },
     )
     setupConsoleState({ role: 'owner', workspacePermissionKeys: [] })
 
@@ -262,7 +268,7 @@ describe('Plan Type Display Integration', () => {
     setupBilling(
       { billing: { subscription: { plan: 'sandbox' } } },
       { enableEducationPlan: true },
-      { is_student: true },
+      { is_student: true, can_redeem_discount: true },
     )
     setupConsoleState({
       role: 'normal',
