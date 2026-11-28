@@ -6,6 +6,8 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
+from dataclasses import dataclass, field
+from queue import SimpleQueue
 from typing import Any, cast
 
 from dify_trace_sdk.events import DatasetRetrieved
@@ -122,6 +124,18 @@ def _is_postgres_deadlock_error(exc: BaseException) -> bool:
     return (hasattr(orig, "sqlstate") and orig.sqlstate == _POSTGRES_DEADLOCK_SQLSTATE) or (
         hasattr(orig, "pgcode") and orig.pgcode == _POSTGRES_DEADLOCK_SQLSTATE
     )
+
+
+class AllDatasetRetrievalsFailedError(RuntimeError):
+    """None of the attempted knowledge base searches completed."""
+
+
+@dataclass
+class _DatasetRetrievalOutcomes:
+    """Thread-safe completion signals shared by all workers for one request."""
+
+    succeeded: threading.Event = field(default_factory=threading.Event)
+    failures: SimpleQueue[Exception] = field(default_factory=SimpleQueue)
 
 
 class DatasetRetrieval:
@@ -808,10 +822,17 @@ class DatasetRetrieval:
         metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
+        """Search the eligible datasets for this text and its attachments.
+
+        Return candidates from available searches, including a successful empty
+        result. If no search completed or left usable candidates, report any
+        recorded failures after all input branches finish.
+        """
         if not available_datasets:
             return []
         all_threads = []
         all_documents: list[Document] = []
+        outcomes = _DatasetRetrievalOutcomes()
         dataset_ids = [dataset.id for dataset in available_datasets]
         index_type_check = all(
             item.indexing_technique == available_datasets[0].indexing_technique for item in available_datasets
@@ -869,6 +890,7 @@ class DatasetRetrieval:
                         "dataset_count": dataset_count,
                         "cancel_event": cancel_event,
                         "thread_exceptions": thread_exceptions,
+                        "outcomes": outcomes,
                     },
                 )
                 all_threads.append(query_thread)
@@ -895,6 +917,7 @@ class DatasetRetrieval:
                             "dataset_count": dataset_count,
                             "cancel_event": cancel_event,
                             "thread_exceptions": thread_exceptions,
+                            "outcomes": outcomes,
                         },
                     )
                     all_threads.append(attachment_thread)
@@ -913,6 +936,11 @@ class DatasetRetrieval:
             if thread_exceptions:
                 raise thread_exceptions[0]
         self._on_query(query, attachment_ids, dataset_ids, app_id, user_from, user_id)
+
+        # Text and attachment workers share outcomes. A successful search may return no documents.
+        if not all_documents and not outcomes.succeeded.is_set() and not outcomes.failures.empty():
+            first_reported_failure = outcomes.failures.get_nowait()
+            raise AllDatasetRetrievalsFailedError("All knowledge base searches failed.") from first_reported_failure
 
         if all_documents:
             # add thread to call _on_retrieval_end
@@ -1170,13 +1198,25 @@ class DatasetRetrieval:
         document_ids_filter: list[str] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
-    ):
+    ) -> bool:
+        """Append hits for an eligible input using the supplied session.
+
+        Return whether a search completed, even with zero hits. Missing datasets
+        and unsupported inputs are skipped; backend errors propagate to the worker.
+        """
         with flask_app.app_context():
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
             dataset = session.scalar(dataset_stmt)
 
             if not dataset:
-                return []
+                return False
+            if not query and (
+                not attachment_ids
+                or dataset.provider == "external"
+                or dataset.indexing_technique == IndexTechniqueType.ECONOMY
+                or not dataset.is_multimodal
+            ):
+                return False
 
             if dataset.provider == "external" and query:
                 external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
@@ -1199,6 +1239,7 @@ class DatasetRetrieval:
                         document.metadata["dataset_id"] = dataset_id
                         document.metadata["dataset_name"] = dataset.name
                     all_documents.append(document)
+                return True
             else:
                 # get retrieval model , if the model is not setting , using default
                 retrieval_model: DefaultRetrievalModelDict = (
@@ -1218,11 +1259,12 @@ class DatasetRetrieval:
                     )
                     if documents:
                         all_documents.extend(documents)
+                    return True
                 else:
-                    if top_k > 0:
-                        # top_k=0 is a legal explicit value (the SINGLE-retrieval
-                        # tool path reads the stored top_k as-is); only a missing
-                        # entry falls back to the default.
+                    if top_k > 0 and (
+                        query or RetrievalMethod.is_support_semantic_search(retrieval_model["search_method"])
+                    ):
+                        # Preserve an explicitly configured per-dataset top_k of zero.
                         dataset_top_k = retrieval_model.get("top_k")
                         # retrieval source
                         documents = RetrievalService.retrieve(
@@ -1243,6 +1285,8 @@ class DatasetRetrieval:
                         )
 
                         all_documents.extend(documents)
+                        return True
+            return False
 
     @trace_span()
     def _run_retriever_thread(
@@ -1256,9 +1300,10 @@ class DatasetRetrieval:
         document_ids_filter: list[str] | None,
         metadata_condition: MetadataFilteringCondition | None,
         attachment_ids: list[str] | None,
-    ) -> None:
+    ) -> bool:
+        """Use a worker-owned session and return whether retrieval completed."""
         with session_factory.create_session() as session:
-            self._retriever(
+            return self._retriever(
                 flask_app=flask_app,
                 session=session,
                 dataset_id=dataset_id,
@@ -1284,10 +1329,15 @@ class DatasetRetrieval:
         cancel_event: threading.Event | None,
         thread_exceptions: list[Exception] | None,
         skip_on_error: bool = False,
+        outcomes: _DatasetRetrievalOutcomes | None = None,
     ) -> None:
-        """Collect errors after tracing, or skip dataset-level failures when requested."""
+        """Record completion or a skipped failure without cancelling sibling searches.
+
+        Without skip-on-error, report a fatal error through the existing worker
+        error list and signal cancellation if a cancellation event was supplied.
+        """
         try:
-            self._run_retriever_thread(
+            searched = self._run_retriever_thread(
                 flask_app=flask_app,
                 dataset_id=dataset_id,
                 query=query,
@@ -1299,6 +1349,8 @@ class DatasetRetrieval:
             )
         except Exception as exc:
             if skip_on_error:
+                if outcomes is not None:
+                    outcomes.failures.put(exc)
                 logger.warning(
                     "Skipping dataset retrieval because retriever failed, dataset_id=%s, error_type=%s, error=%s",
                     dataset_id,
@@ -1321,6 +1373,9 @@ class DatasetRetrieval:
                 cancel_event.set()
             if thread_exceptions is not None:
                 thread_exceptions.append(exc)
+        else:
+            if searched and outcomes is not None:
+                outcomes.succeeded.set()
 
     def to_dataset_retriever_tool(
         self,
@@ -1956,7 +2011,13 @@ class DatasetRetrieval:
         attachment_id: str | None,
         dataset_count: int,
         cancel_event: threading.Event | None = None,
+        outcomes: _DatasetRetrievalOutcomes | None = None,
     ) -> None:
+        """Collect and optionally rerank candidates for a single input.
+
+        When supplied, outcomes records this input's dataset searches for the
+        enclosing request; per-dataset failures do not cancel other inputs.
+        """
         try:
             with flask_app.app_context():
                 threads = []
@@ -1992,6 +2053,7 @@ class DatasetRetrieval:
                             "cancel_event": cancel_event,
                             "thread_exceptions": retrieval_thread_exceptions,
                             "skip_on_error": True,
+                            "outcomes": outcomes,
                         },
                     )
                     threads.append(retrieval_thread)
@@ -2008,6 +2070,9 @@ class DatasetRetrieval:
 
                 if retrieval_thread_exceptions:
                     raise retrieval_thread_exceptions[0]
+
+                if not all_documents_item:
+                    return
 
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:
@@ -2072,8 +2137,9 @@ class DatasetRetrieval:
         dataset_count: int,
         cancel_event: threading.Event | None = None,
         thread_exceptions: list[Exception] | None = None,
+        outcomes: _DatasetRetrievalOutcomes | None = None,
     ) -> None:
-        """Collect errors only after they pass through the traced multi-retrieval method."""
+        """Forward this input's outcomes and collect fatal errors after tracing."""
         try:
             self._multiple_retrieve_thread(
                 flask_app=flask_app,
@@ -2092,6 +2158,7 @@ class DatasetRetrieval:
                 attachment_id=attachment_id,
                 dataset_count=dataset_count,
                 cancel_event=cancel_event,
+                outcomes=outcomes,
             )
         except Exception as exc:
             if cancel_event:
