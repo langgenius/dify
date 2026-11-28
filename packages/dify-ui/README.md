@@ -70,6 +70,7 @@ Upstream behavior remains owned by the [Base UI documentation].
 | ----------------------- | ------------------------------------------------------------------------------------------- |
 | [Date and time pickers] | Value semantics, composition, draft commits, localization and native forms.                 |
 | [Button]                | Action semantics, submit and link choices, loading versus disabled, and content spacing.    |
+| [Coachmark]             | Target readiness, highlight geometry, pending payload snapshots, and modal isolation.       |
 | [Icon Button]           | Accessible names, decorative glyphs, appearance ownership, and primitive composition.       |
 | [Infotip]               | Explanation triggers, concise dialog names, and hint surface ownership.                     |
 | [Input Group]           | Compound input anatomy, shared-surface ownership, DOM order, focus, and interactive addons. |
@@ -96,6 +97,7 @@ For a known contract, go directly to its guide above.
 [Base UI documentation]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
 [Button]: ./src/button/README.md
+[Coachmark]: ./src/coachmark/README.md
 [Date and time pickers]: ./src/date-time/README.md
 [Forms]: ./docs/forms.md
 [Icon Button]: ./src/icon-button/README.md

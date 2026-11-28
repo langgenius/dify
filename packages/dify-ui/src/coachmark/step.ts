@@ -22,18 +22,18 @@ export type Layout = {
   width: number
 }
 
-export type CoachmarkTarget = HTMLElement | string | null
+export type CoachmarkTarget = Element | string | null
 
 export type ShownStep<Payload> = {
   detached: boolean
   glide: boolean
   key: number
   layout: Layout
-  parts: HTMLElement[]
+  parts: Element[]
   payload: Payload
   selectorKey: string
-  target: HTMLElement
-  targetKey: HTMLElement | string
+  target: Element
+  targetKey: Element | string
 }
 
 export type GeometryStore = {
@@ -51,6 +51,9 @@ const LAYOUT_ATTRIBUTES = ['class', 'hidden', 'style']
 const toRect = ({ height, left, top, width }: DOMRect): Rect => ({ height, left, top, width })
 
 export const isVisibleRect = (rect: Rect) => rect.width > 0 && rect.height > 0
+
+export const getSelectorKey = (highlightSelectors: string[] | undefined) =>
+  highlightSelectors?.length ? JSON.stringify(highlightSelectors) : ''
 
 const unionRects = (rects: Rect[]): Rect => {
   const left = Math.min(...rects.map((rect) => rect.left))
@@ -70,7 +73,11 @@ const isSameGeometry = (a: Geometry, b: Geometry) =>
   isSameRect(a.target, b.target) && isSameRect(a.highlight, b.highlight)
 
 const isSameLayout = (a: Layout, b: Layout) =>
-  (Object.keys(a) as Array<keyof Layout>).every((key) => Math.abs(a[key] - b[key]) < 0.5)
+  Math.abs(a.bottom - b.bottom) < 0.5 &&
+  Math.abs(a.left - b.left) < 0.5 &&
+  Math.abs(a.right - b.right) < 0.5 &&
+  Math.abs(a.top - b.top) < 0.5 &&
+  Math.abs(a.width - b.width) < 0.5
 
 const intersectsViewport = ({ height, left, top, width }: Rect) =>
   top < window.innerHeight && top + height > 0 && left < window.innerWidth && left + width > 0
@@ -94,7 +101,33 @@ const getSettlingAnimations = (elements: Element[]) =>
     )
   })
 
-export function measure(target: HTMLElement, parts: HTMLElement[]): Geometry {
+const warnedInvalidSelectors = new Set<string>()
+
+function warnInvalidSelector(selector: string, error: unknown) {
+  if (process.env.NODE_ENV === 'production' || warnedInvalidSelectors.has(selector)) return
+  warnedInvalidSelectors.add(selector)
+  console.warn(`Coachmark: invalid CSS selector "${selector}".`, error)
+}
+
+function querySelectorSafe(selector: string) {
+  try {
+    return document.querySelector(selector)
+  } catch (error) {
+    warnInvalidSelector(selector, error)
+    return null
+  }
+}
+
+function querySelectorAllSafe(selector: string) {
+  try {
+    return Array.from(document.querySelectorAll(selector))
+  } catch (error) {
+    warnInvalidSelector(selector, error)
+    return []
+  }
+}
+
+export function measure(target: Element, parts: Element[]): Geometry {
   const targetRect = toRect(target.getBoundingClientRect())
   const partRects = parts
     .filter((part) => part.isConnected)
@@ -130,7 +163,7 @@ export function createGeometryStore(): GeometryStore {
 
 function findParts(selectors: string[]) {
   const matches = selectors.map((selector) =>
-    Array.from(document.querySelectorAll<HTMLElement>(selector)).filter((element) =>
+    querySelectorAllSafe(selector).filter((element) =>
       isVisibleRect(toRect(element.getBoundingClientRect())),
     ),
   )
@@ -139,7 +172,7 @@ function findParts(selectors: string[]) {
 
 function observeLayout(
   onChange: () => void,
-  resizeElements: HTMLElement[],
+  resizeElements: Element[],
   mutationTargets: Array<[Node, MutationObserverInit]>,
 ) {
   const resizeObserver =
@@ -158,7 +191,7 @@ function observeLayout(
   }
 }
 
-function scheduler(run: () => void) {
+function scheduler(run: () => void, fallbackTimeoutMs = 0) {
   let frame = 0
   let timeout = 0
   const cancel = () => {
@@ -179,10 +212,12 @@ function scheduler(run: () => void) {
         cancel()
         run()
       })
-      timeout = window.setTimeout(() => {
-        cancel()
-        run()
-      }, 100)
+      if (fallbackTimeoutMs > 0) {
+        timeout = window.setTimeout(() => {
+          cancel()
+          run()
+        }, fallbackTimeoutMs)
+      }
     },
   }
 }
@@ -192,10 +227,11 @@ export function useShownStep<Payload>(
   target: CoachmarkTarget,
   highlightSelectors: string[] | undefined,
   payload: Payload,
+  payloadReady: boolean,
   store: GeometryStore,
 ) {
   const [shown, setShown] = React.useState<ShownStep<Payload> | null>(null)
-  const selectorKey = highlightSelectors?.join('\n') ?? ''
+  const selectorKey = getSelectorKey(highlightSelectors)
   const shownTarget = shown?.target
   const shownTargetKey = shown?.targetKey
   const shownSelectorKey = shown?.selectorKey
@@ -206,19 +242,19 @@ export function useShownStep<Payload>(
     if (
       !open ||
       !target ||
+      !payloadReady ||
       (target === shownTargetKey && selectorKey === shownSelectorKey && !shownDetached)
     )
       return
     const targetKey = target
-    const selectors = selectorKey ? selectorKey.split('\n') : []
+    const selectors: string[] = selectorKey ? (JSON.parse(selectorKey) as string[]) : []
     const waitsForAccess = shownDetached
     let active = true
     let scrolled = false
 
     const checker = scheduler(() => {
       if (!active) return
-      const nextTarget =
-        typeof targetKey === 'string' ? document.querySelector<HTMLElement>(targetKey) : targetKey
+      const nextTarget = typeof targetKey === 'string' ? querySelectorSafe(targetKey) : targetKey
       const parts = findParts(selectors)
       if (!nextTarget || !parts) return
       if (waitsForAccess && isBehindHiddenBoundary(nextTarget)) return
@@ -227,9 +263,9 @@ export function useShownStep<Payload>(
       if (elements.some(isStarting)) return
       const animations = getSettlingAnimations(elements)
       if (animations.length > 0) {
-        void Promise.allSettled(animations.map((animation) => animation.finished)).then(
-          checker.schedule,
-        )
+        void Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
+          if (active) checker.schedule()
+        })
         return
       }
 
@@ -259,7 +295,7 @@ export function useShownStep<Payload>(
         target: nextTarget,
         targetKey,
       }))
-    })
+    }, 100)
 
     const stopObserving = observeLayout(
       checker.schedule,
@@ -283,28 +319,41 @@ export function useShownStep<Payload>(
       checker.cancel()
       stopObserving()
     }
-  }, [open, selectorKey, shownDetached, shownSelectorKey, shownTarget, shownTargetKey, target])
+  }, [
+    open,
+    payloadReady,
+    selectorKey,
+    shownDetached,
+    shownSelectorKey,
+    shownTarget,
+    shownTargetKey,
+    target,
+  ])
 
   const shownParts = shown?.parts
   React.useLayoutEffect(() => {
     if (!shownTarget || !shownParts || !shownTargetKey || shownDetached) return
     const step = { parts: shownParts, target: shownTarget, targetKey: shownTargetKey }
+    const detachCurrent = () =>
+      setShown((current) =>
+        current?.target === step.target && !current.detached
+          ? { ...current, detached: true }
+          : current,
+      )
 
     const follower = scheduler(() => {
       if (
         !step.target.isConnected ||
-        !isVisibleRect(toRect(step.target.getBoundingClientRect())) ||
-        (typeof step.targetKey === 'string' &&
-          document.querySelector(step.targetKey) !== step.target)
+        (typeof step.targetKey === 'string' && querySelectorSafe(step.targetKey) !== step.target)
       ) {
-        setShown((current) =>
-          current?.target === step.target && !current.detached
-            ? { ...current, detached: true }
-            : current,
-        )
+        detachCurrent()
         return
       }
       const geometry = measure(step.target, step.parts)
+      if (!isVisibleRect(geometry.target)) {
+        detachCurrent()
+        return
+      }
       store.set(geometry)
       const layout = toLayout(geometry)
       setShown((current) =>
@@ -323,7 +372,7 @@ export function useShownStep<Payload>(
       [
         [document.body, { childList: true, subtree: true }],
         ...[step.target, ...step.parts, ...step.parts.map((part) => part.parentElement)]
-          .filter((node): node is HTMLElement => !!node)
+          .filter((node): node is Element => !!node)
           .map((node): [Node, MutationObserverInit] => [node, attributeOptions]),
       ],
     )
