@@ -1,16 +1,19 @@
 """Composition root for application services used by transport adapters."""
 
+import contextvars
 import json
 import logging
+import threading
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import uuid4
 
 import httpx
-from flask import Flask, current_app
+from flask import Flask, copy_current_request_context, current_app
+from flask.globals import app_ctx
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -95,6 +98,8 @@ from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceToke
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.run_job_result_repository import SQLAlchemyRunResultReader
+from repositories.run_job_store import RedisRunJobStore
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
@@ -229,6 +234,7 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.run_job import READER_THREAD_NAME, RunJobService
 from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock
@@ -308,6 +314,29 @@ def _batch_get_enterprise_webapp_user_permissions(*, user_id: str, app_ids: Sequ
     return {app_id: bool(allowed) for app_id, allowed in permissions.items()}
 
 
+def start_run_job_reader(read: Callable[[], None]) -> None:
+    """Run a run job's reader on a daemon thread, under copies of the request's contexts and an app context of its own.
+
+    Precondition: called inside a request context.
+    Postcondition: the thread started; ``read`` runs with the request's contextvars and request context, and with a
+    session and ``g`` of its own app context, not the request's. Raises, starting nothing, when the thread cannot
+    start, such as ``RuntimeError`` outside a request context.
+    """
+    context = contextvars.copy_context()
+    flask_app = app_ctx.app
+
+    def read_in_app_context() -> None:
+        with flask_app.app_context():
+            read()
+
+    thread = threading.Thread(
+        target=copy_current_request_context(lambda: context.run(read_in_app_context)),
+        name=READER_THREAD_NAME,
+        daemon=True,
+    )
+    thread.start()
+
+
 @dataclass(frozen=True, slots=True)
 class AppScopedEndUserServices:
     commands: AppScopedEndUserService[EndUser]
@@ -385,6 +414,7 @@ class ApplicationServices:
     remote_files: RemoteFileService
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
+    run_jobs: RunJobService
     app_audio: AppAudio
     trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
@@ -488,6 +518,7 @@ def build_application_services(
     initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
+    app_tasks = AppTaskControlService(redis_client=redis)
     installation_state = InstallationStateRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
@@ -895,7 +926,16 @@ def build_application_services(
         saved_messages=SavedMessageService(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
         ),
-        app_tasks=AppTaskControlService(redis_client=redis),
+        app_tasks=app_tasks,
+        run_jobs=RunJobService(
+            store=RedisRunJobStore(redis_client=redis, job_ttl_seconds=dify_config.RUN_JOB_TTL_SECONDS),
+            results=SQLAlchemyRunResultReader(session_factory=database_client),
+            tasks=app_tasks,
+            max_background_runs=dify_config.RUN_JOB_MAX_BACKGROUND_RUNS,
+            max_waiters=dify_config.RUN_JOB_MAX_WAITERS,
+            run_time_limit=timedelta(seconds=dify_config.WORKFLOW_MAX_EXECUTION_TIME),
+            start_reader=start_run_job_reader,
+        ),
         app_audio=AppAudioRuntime(session_factory=database_client, agent_audio=agent_app_repository),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(

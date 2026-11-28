@@ -89,7 +89,7 @@ export const get16Errors = {
   expired: { status: 410, data: zExpiredError },
 }
 
-export const post17Errors = {
+export const post18Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   service_api_disabled: { status: 403, data: zServiceApiDisabledError },
 }

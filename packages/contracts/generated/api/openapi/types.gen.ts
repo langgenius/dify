@@ -930,6 +930,27 @@ export type InvalidInputError = ErrorBody & {
   status: 400
 }
 
+export type JobState = {
+  answer?: string | null
+  conversation_id?: string | null
+  error?: string | null
+  hints?: Array<Hint>
+  id: string
+  message_id?: string | null
+  note?: string | null
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  run_id?: string | null
+  status: JobStatus
+}
+
+export type JobStatus = 'failed' | 'paused' | 'running' | 'stopped' | 'succeeded'
+
+export type JobWaitQuery = {
+  wait_seconds?: number
+}
+
 export type JsonValue = unknown
 
 export type KnowledgeBaseListQuery = {
@@ -1490,6 +1511,8 @@ export type OpenApiErrorCode =
   | 'form_not_found'
   | 'internal_server_error'
   | 'invalid_param'
+  | 'job_capacity_reached'
+  | 'job_not_found'
   | 'knowledge_fs_access_denied'
   | 'knowledge_fs_conflict'
   | 'knowledge_fs_invalid_request'
@@ -3349,6 +3372,57 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses = {
 
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse =
   PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses[keyof PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses]
+
+export type PostAppsByAppIdJobsByJobIdStopData = {
+  body?: never
+  path: {
+    app_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/jobs/{job_id}:stop'
+}
+
+export type PostAppsByAppIdJobsByJobIdStopErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdJobsByJobIdStopError =
+  PostAppsByAppIdJobsByJobIdStopErrors[keyof PostAppsByAppIdJobsByJobIdStopErrors]
+
+export type PostAppsByAppIdJobsByJobIdStopResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdJobsByJobIdStopResponse =
+  PostAppsByAppIdJobsByJobIdStopResponses[keyof PostAppsByAppIdJobsByJobIdStopResponses]
+
+export type GetAppsByAppIdJobsByJobIdWaitData = {
+  body?: never
+  path: {
+    app_id: string
+    job_id: string
+  }
+  query?: {
+    wait_seconds?: number
+  }
+  url: '/apps/{app_id}/jobs/{job_id}:wait'
+}
+
+export type GetAppsByAppIdJobsByJobIdWaitErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdJobsByJobIdWaitError =
+  GetAppsByAppIdJobsByJobIdWaitErrors[keyof GetAppsByAppIdJobsByJobIdWaitErrors]
+
+export type GetAppsByAppIdJobsByJobIdWaitResponses = {
+  200: JobState
+}
+
+export type GetAppsByAppIdJobsByJobIdWaitResponse =
+  GetAppsByAppIdJobsByJobIdWaitResponses[keyof GetAppsByAppIdJobsByJobIdWaitResponses]
 
 export type GetAppsByAppIdReleaseCheckData = {
   body?: never

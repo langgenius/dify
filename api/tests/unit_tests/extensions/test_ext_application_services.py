@@ -1,7 +1,9 @@
 """Tests for application-service dependency wiring."""
 
+import contextvars
 import json
 import logging
+import threading
 from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
@@ -12,7 +14,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from flask import Flask
+from flask import Flask, g, has_request_context
 from redis import Redis
 from sqlalchemy import Connection, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -155,6 +157,7 @@ from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.run_job import READER_THREAD_NAME
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import CeleryTraceEmitter
@@ -2171,3 +2174,48 @@ def test_installed_app_visibility_propagates_access_unavailable_with_original_ca
     assert type(caught.value) is WebAppAccessUnavailableError
     assert caught.value.__cause__ is enterprise_error
     assert enterprise_request.call_count == (2 if failure_stage == "permissions" else 1)
+
+
+_READER_TIMEOUT_SECONDS = 5
+_REQUEST_VALUE: contextvars.ContextVar[str] = contextvars.ContextVar("run_job_reader_request_value")
+
+
+def _run_job_readers() -> list[threading.Thread]:
+    return [thread for thread in threading.enumerate() if thread.name == READER_THREAD_NAME]
+
+
+def test_a_run_job_reader_runs_in_its_own_app_context_under_the_request_contexts() -> None:
+    seen: dict[str, object] = {}
+
+    def read() -> None:
+        seen["g_id"] = id(g._get_current_object())
+        seen["sees_request_marker"] = hasattr(g, "request_marker")
+        seen["has_request"] = has_request_context()
+        seen["request_value"] = _REQUEST_VALUE.get(None)
+        seen["thread"] = threading.current_thread()
+
+    with Flask(__name__).test_request_context():
+        g.request_marker = True
+        request_g_id = id(g._get_current_object())
+        _REQUEST_VALUE.set("copied")
+        ext_application_services.start_run_job_reader(read)
+        for thread in _run_job_readers():
+            thread.join(_READER_TIMEOUT_SECONDS)
+
+    reader = seen["thread"]
+    assert isinstance(reader, threading.Thread)
+    assert (reader.name, reader.daemon) == (READER_THREAD_NAME, True)
+    assert seen["g_id"] != request_g_id
+    assert seen["sees_request_marker"] is False
+    assert seen["has_request"] is True
+    assert seen["request_value"] == "copied"
+
+
+def test_a_run_job_reader_outside_a_request_context_raises_and_starts_nothing() -> None:
+    started: list[bool] = []
+
+    with Flask(__name__).app_context(), pytest.raises(RuntimeError):
+        ext_application_services.start_run_job_reader(lambda: started.append(True))
+
+    assert not _run_job_readers()
+    assert started == []

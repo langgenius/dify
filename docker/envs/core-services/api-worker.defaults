@@ -149,6 +149,15 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # SINGLE_CHUNK_ATTACHMENT_LIMIT=10
 
 # ------------------------------
+# Agents on /openapi/v1: run jobs
+# ------------------------------
+# RUN_JOB_MAX_BACKGROUND_RUNS=10
+# Each waiting job call holds one of SERVER_WORKER_CONNECTIONS for up to 45 s; keep this at about a fifth of it.
+# RUN_JOB_MAX_WAITERS=2
+# How long a job's state is kept after its last change.
+# RUN_JOB_TTL_SECONDS=86400
+
+# ------------------------------
 # File malware scanning
 # ------------------------------
 # Expose file malware scanning. Each knowledge base still turns it on in its own settings.

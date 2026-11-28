@@ -72,7 +72,6 @@ from core.errors.error import (
 )
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs import helper
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import WorkflowStopOutcome
@@ -136,15 +135,22 @@ def _translate_service_errors() -> Generator[None]:
         raise InternalServerError() from caught_error
 
 
-_RUN_GUARDS: Final = (
+# A job is found only by its owner, so the job routes need no web-access check: a draft test has none.
+JOB_GUARDS: Final = (
     CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
-    CheckAppAccess(),
 )
+RUN_GUARDS: Final = (*JOB_GUARDS, CheckAppAccess())
 _DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
-_STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
+_STREAM_RESULT: Final = (
+    200,
+    EventStreamResponse,
+    "Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)",
+)
+REPLY_HINT_SUMMARY: Final = "Reply in this conversation"
+_CONVERSATION_FIELD: Final = "conversation_id"
 
 
 def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, invoke_from: InvokeFrom):
@@ -158,7 +164,7 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, inv
     )
 
 
-def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+def generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
     if payload.files or payload.attachments:
         end_read_transaction(ctx.session)
@@ -168,44 +174,49 @@ def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection
     return args
 
 
-def _stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
+def run_stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
     with _translate_service_errors():
         return _generate(ctx.app, ctx.caller, args, ctx.session, invoke_from)
 
 
-def _require_mode(app: App, *modes: AppMode) -> None:
+def require_mode(app: App, *modes: AppMode) -> None:
     """In the handler, not a guard: an external caller the access check refuses must not learn the app's mode."""
     if app.mode not in modes:
         raise AppModeMismatch()
 
 
-def _respond(ctx: Context, stream: Any):
-    app_model = ctx.app
+def emit_run_audit(ctx: Context) -> None:
+    """Postcondition: the app run audit event for ctx's app and caller is emitted."""
     emit_app_run(
-        app_id=app_model.id,
-        tenant_id=app_model.tenant_id,
+        app_id=ctx.app.id,
+        tenant_id=ctx.app.tenant_id,
         caller_kind=ctx.subject.caller_role,
-        mode=str(app_model.mode),
+        mode=str(ctx.app.mode),
         surface="apps",
     )
-    # response-contract:ignore compact_generate_response
-    return helper.compact_generate_response(stream)
 
 
 class _ChatMessageEnd(MessageEndStreamResponse):
     conversation_id: str
 
 
+def reply_hint(*, op: str, app_id: str, conversation_id: str) -> Hint:
+    """The next step after an answer: run op again in the same conversation.
+
+    Precondition: op takes a conversation (``takes_reply``).
+    Postcondition: a hint whose input names the app and the conversation, with the query unknown and no inputs.
+    """
+    return Hint(
+        summary=REPLY_HINT_SUMMARY,
+        op=op,
+        input={"app_id": app_id, _CONVERSATION_FIELD: conversation_id, "query": None, "inputs": {}},
+    )
+
+
 def with_reply_hints(events: Iterable[str], *, op: str, app_id: str) -> Generator[str]:
     def build(event: Mapping[str, Any]) -> list[Hint]:
         end = _ChatMessageEnd.model_validate(event)
-        return [
-            Hint(
-                summary="Reply in this conversation",
-                op=op,
-                input={"app_id": app_id, "conversation_id": end.conversation_id, "query": None, "inputs": {}},
-            )
-        ]
+        return [reply_hint(op=op, app_id=app_id, conversation_id=end.conversation_id)]
 
     return attach_stream_hints(events, event=StreamEvent.MESSAGE_END.value, build=build)
 
@@ -249,7 +260,7 @@ class _RunRoute:
             return account_app_guards(
                 RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES, modes=self.modes
             )
-        return _RUN_GUARDS
+        return RUN_GUARDS
 
 
 _RUN_ROUTES: Final = (
@@ -400,6 +411,12 @@ _RUN_ROUTES: Final = (
 )
 
 _DRAFT_TEST_ROUTES: Final = {mode: route for route in _RUN_ROUTES if route.draft for mode in route.modes}
+_REPLY_OPS: Final = frozenset(route.op for route in _RUN_ROUTES if _CONVERSATION_FIELD in route.payload.model_fields)
+
+
+def takes_reply(op: str) -> bool:
+    """Postcondition: true when op is a run whose input takes a conversation, so a reply can continue it."""
+    return op in _REPLY_OPS
 
 
 def draft_test_hint(mode: AppMode, *, app_id: str, summary: str) -> Hint:
@@ -420,13 +437,20 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         examples=route.examples,
         returns=_STREAM_RESULT,
     )
-    def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
+    def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase) -> Iterable[str]:
+        """Run the app and hand back its frames.
+
+        Precondition: the route's guards admitted the caller for the app.
+        Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+        the service's errors are raised as HTTP errors and nothing is audited.
+        """
         if not route.draft:
-            _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
+            require_mode(ctx.app, *route.modes)
+        stream = run_stream(ctx, generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)
-        return _respond(ctx, stream)
+        emit_run_audit(ctx)
+        return stream
 
     resource = type(route.resource, (Resource,), {"post": post, "__module__": __name__})
     return openapi_ns.route(f"/apps/<string:app_id>/{route.segment}:run")(resource)
@@ -451,11 +475,11 @@ class AppRunStopApi(Resource):
         effect=Effect.DESTRUCTIVE,
         summary="Stop a running or paused run of a workflow or advanced-chat app",
         examples=(Example(title="Stop a run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         returns=(200, TaskStopResponse, "Run stopped"),
     )
     def post(self, ctx: Context, app_id: str, run_id: str):
-        _require_mode(ctx.app, *GRAPH_MODES)
+        require_mode(ctx.app, *GRAPH_MODES)
         outcome = application_services().app_tasks.stop_workflow_run(
             tenant_id=ctx.app.tenant_id,
             app_id=ctx.app.id,
@@ -483,11 +507,11 @@ class AppTaskStopApi(Resource):
             "`task_id` is the stream's task_id. An unknown task id is accepted"
         ),
         examples=(Example(title="Stop a streaming reply", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
-        _require_mode(ctx.app, *MESSAGE_MODES)
+        require_mode(ctx.app, *MESSAGE_MODES)
         if not application_services().app_tasks.stop_message_task(
             task_id=task_id, caller_role=ctx.subject.caller_role, caller_id=ctx.caller.id
         ):

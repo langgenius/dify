@@ -38,6 +38,7 @@ from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.knowledge.entities.knowledge_entities import RetrievalModel
+from services.run_job import JobResult
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -411,6 +412,12 @@ class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
     """A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class JobState(JobResult, Hinted):
+    note: str | None = Field(
+        default=None, description="A line for the human when the next step is not a call this login can make"
+    )
 
 
 class CompletionRunPayload(RunPayloadBase):

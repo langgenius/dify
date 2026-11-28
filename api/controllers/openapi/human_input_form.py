@@ -288,11 +288,22 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         return _form_submit_response(app_id=ctx.app.id, workflow_run_id=form.workflow_run_id)
 
 
+def is_answerable_over_openapi(response: HumanInputRequiredResponse) -> bool:
+    """Report whether a paused form can be answered on this surface.
+
+    Precondition: response was built for ``HumanInputSurface.OPENAPI``, which gives a form a token only when one of
+    its recipients may answer on that surface.
+    Postcondition: true exactly when the form carries a token.
+    """
+    return bool(response.data.form_token)
+
+
 def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:
-    """One hint per action button of a paused form, its `inputs` blanked to the form's fields."""
+    """One hint per action button of a paused form, its `inputs` blanked to the form's fields; none for a form that
+    cannot be answered on this surface."""
 
     data = response.data
-    if not data.form_token:
+    if not is_answerable_over_openapi(response):
         return []
     fields = [field.model_dump(mode="json") for field in data.inputs]
     blank = {field.output_variable_name: None for field in data.inputs}
