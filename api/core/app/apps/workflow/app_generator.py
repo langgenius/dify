@@ -104,6 +104,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         user: Account | EndUser,
         args: Mapping[str, Any],
+        queue_wait_time: float | None = None,
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
@@ -126,6 +127,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         user: Account | EndUser,
         args: Mapping[str, Any],
+        queue_wait_time: float | None = None,
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
@@ -148,6 +150,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         user: Account | EndUser,
         args: Mapping[str, Any],
+        queue_wait_time: float | None = None,
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
@@ -169,6 +172,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         user: Account | EndUser,
         args: Mapping[str, Any],
+        queue_wait_time: float | None = None,
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
@@ -181,6 +185,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
+        """Generate a workflow response and forward optional dispatch-to-worker seconds.
+
+        None leaves synchronous and legacy runs unmeasured. Queue timing stays
+        separate from active execution duration and survives the worker copy.
+        """
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -246,6 +255,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 allow_human_input=allow_human_input,
                 call_depth=call_depth,
                 trace_scope=trace_scope,
+                queue_wait_time=queue_wait_time,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,
             )

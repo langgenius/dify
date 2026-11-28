@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 import uuid
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
@@ -203,6 +204,11 @@ class AppGenerateService:
         rate_limit: RateLimit,
         request_id: str,
     ):
+        """Dispatch an admitted request for its resolved app mode.
+
+        Streaming workflow requests capture dispatch time only when subscribed
+        and queued, excluding subscriber setup from the worker wait measurement.
+        """
         effective_mode = (
             AppMode.AGENT_CHAT
             if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
@@ -281,10 +287,11 @@ class AppGenerateService:
                         call_depth=0,
                         workflow_run_id=str(uuid.uuid4()),
                     )
-                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
+                        # Measure from dispatch, after the SSE subscriber is ready.
+                        payload.dispatched_at = time.time()
+                        workflow_based_app_execution_task.delay(payload.model_dump_json())
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
@@ -337,10 +344,11 @@ class AppGenerateService:
                         root_node_id=root_node_id,
                         workflow_run_id=str(uuid.uuid4()),
                     )
-                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
+                        # Measure from dispatch, after the SSE subscriber is ready.
+                        payload.dispatched_at = time.time()
+                        workflow_based_app_execution_task.delay(payload.model_dump_json())
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(

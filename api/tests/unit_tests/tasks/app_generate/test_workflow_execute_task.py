@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import queue
+import time
 import uuid
 from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import nullcontext
@@ -12,6 +13,8 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from flask import Flask
 from pydantic import BaseModel
 from redis import Redis
@@ -38,15 +41,18 @@ from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
-from models.model import App, AppMode, Conversation, Message
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowPause, WorkflowRun, WorkflowType
 from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowRunNotPausedError,
     _WorkflowRunError,
 )
+from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.canonical import CanonicalTraceBuilder
 from tasks import async_workflow_tasks
 from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
@@ -1536,3 +1542,134 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         WorkflowStartReason.RESUMPTION,
     )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
+
+
+@pytest.mark.parametrize(
+    ("dispatched_at", "expected", "mode"),
+    [
+        pytest.param(1000.0, 2.5, AppMode.WORKFLOW, id="1000.0-2.5"),
+        pytest.param(1002.5, 0.0, AppMode.WORKFLOW, id="1002.5-0.0"),
+        pytest.param(1005.0, 0.0, AppMode.WORKFLOW, id="1005.0-0.0"),
+        pytest.param(None, None, AppMode.WORKFLOW, id="None-None"),
+        pytest.param(1000.0, 2.5, AppMode.ADVANCED_CHAT, id="chatflow-delayed"),
+        pytest.param(None, None, AppMode.ADVANCED_CHAT, id="chatflow-legacy"),
+    ],
+)
+def test_worker_queue_wait_reaches_workflow_trace(
+    dispatched_at: float | None,
+    expected: float | None,
+    mode: AppMode,
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    response_publisher: _ResponsePublisher,
+) -> None:
+    """Run a serialized Celery request through generation, persistence and trace emission."""
+
+    class RecordingScopes:
+        def __init__(self) -> None:
+            self.events: list[TraceEvent] = []
+
+        def emit(self, event: TraceEvent) -> None:
+            self.events.append(event)
+
+        def for_execution(
+            self,
+            *,
+            tenant_id: str,
+            app_id: str | None,
+            app_tracing: str | None,
+            user_id: str | None,
+            correlation: TraceCorrelation,
+        ) -> TraceScope:
+            assert app_tracing is None
+            return TraceScope(
+                emitter=self, tenant_id=tenant_id, app_id=app_id, user_id=user_id, correlation=correlation
+            )
+
+        def for_app(
+            self,
+            *,
+            tenant_id: str,
+            app_id: str | None,
+            user_id: str | None,
+            correlation: TraceCorrelation,
+        ) -> TraceScope:
+            return self.for_execution(
+                tenant_id=tenant_id, app_id=app_id, app_tracing=None, user_id=user_id, correlation=correlation
+            )
+
+    scopes = RecordingScopes()
+    monkeypatch.setitem(app.extensions, "trace_scopes", scopes)
+    monkeypatch.setitem(workflow_execute_task_module.db._app_engines, app, {None: sqlite_engine})
+    # Freeze the process clock, including the worker-entry measurement.
+    monkeypatch.setattr(time, "time", lambda: 1002.5)
+    app_model = _make_app()
+    app_model.mode = mode
+    workflow = _make_workflow()
+    workflow.type = WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT
+    workflow.graph = json.dumps(
+        {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "end",
+                    "data": {"type": "end", "title": "End", "outputs": []}
+                    if mode == AppMode.WORKFLOW
+                    else {"type": "answer", "title": "Answer", "answer": "Hello"},
+                },
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    user = EndUser(
+        id="queue-user",
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        type=EndUserType.SERVICE_API,
+        name="Queue user",
+        session_id="queue-session",
+    )
+    sqlite_session.add_all([app_model, workflow, user])
+    sqlite_session.commit()
+    payload = AppExecutionParams.new(
+        app_model=app_model,
+        workflow=workflow,
+        user=user,
+        args={"inputs": {}, "query": "hello"},
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id="queue-run",
+    ).model_dump(mode="json")
+    if dispatched_at is not None:
+        payload["dispatched_at"] = dispatched_at
+    else:
+        payload.pop("dispatched_at", None)
+
+    workflow_execute_task_module.workflow_based_app_execution_task.run(json.dumps(payload))
+
+    assert response_publisher.qsize() > 0
+    workflow_events = [event for event in scopes.events if event.payload.kind == "workflow_run"]
+    assert len(workflow_events) == 1
+    timing = workflow_events[0].payload.model_dump(exclude_none=True)
+    assert timing.get("queue_wait_time") == expected
+    assert ("queue_wait_time" in timing) == (expected is not None)
+    run = sqlite_session.get(WorkflowRun, "queue-run")
+    assert run is not None
+    assert run.status == "succeeded"
+
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    records = TraceRecordRepository(
+        sessions,
+        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=(DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions)),
+        files_url="https://files.example.com",
+        enterprise_details=False,
+    )
+    # Exercise the same JSON boundary used by asynchronous trace delivery.
+    event = TraceEvent.model_validate_json(workflow_events[0].model_dump_json())
+    trace = CanonicalTraceBuilder().build(records.assemble(event))
+    assert trace is not None
+    span = next(span for span in trace.spans if span.name == "workflow")
+    assert span.attributes.get("queue_wait_time") == expected
+    assert ("queue_wait_time" in span.attributes) == (expected is not None)

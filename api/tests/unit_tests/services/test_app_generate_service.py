@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 import uuid
 from collections import defaultdict, deque
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -8,7 +9,9 @@ from typing import override
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 import services.app_generate_service as ags_module
@@ -19,6 +22,7 @@ from core.app.features.rate_limiting import rate_limit as rate_limit_module
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
+from extensions.ext_database import db
 from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 from models.account import Account
@@ -31,6 +35,7 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.unit.config_override import apply_config_overrides
 
 """
@@ -1393,3 +1398,50 @@ class TestAppGenerateServiceStreamingIntegrationCases:
         # Verify publish happened and consumer received in order
         assert published_order == ["workflow_started", "workflow_finished"]
         assert [m.get("event") for m in received] == ["workflow_started", "workflow_finished"]
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_streaming_dispatch_timestamp_is_captured_on_subscription(
+    mode: AppMode,
+    app: Flask,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    """The queued JSON measures from actual enqueue, excluding subscriber setup."""
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, PUBSUB_REDIS_CHANNEL_TYPE="streams")
+    monkeypatch.setitem(db._app_engines, app, {None: sqlite_engine})
+    app_model = _make_app(mode)
+    workflow = _make_workflow()
+    workflow._features = "{}"
+    app_model.workflow_id = workflow.id
+    user = _make_user()
+    sqlite_session.add_all([app_model, workflow, user])
+    sqlite_session.commit()
+    callbacks: list[Callable[[], None]] = []
+    dispatched: list[str] = []
+
+    def retrieve_events(*_args: object, on_subscribe: Callable[[], None]):
+        callbacks.append(on_subscribe)
+        return iter(())
+
+    monkeypatch.setattr(MessageBasedAppGenerator, "retrieve_events", retrieve_events)
+    monkeypatch.setattr(ags_module.workflow_based_app_execution_task, "delay", dispatched.append)
+    monkeypatch.setattr(time, "time", lambda: 1000.0)
+    AppGenerateService.generate(
+        app_model=app_model,
+        user=user,
+        args={"inputs": {}, "query": "hi"},
+        invoke_from=InvokeFrom.SERVICE_API,
+        streaming=True,
+        session=sqlite_session,
+    )
+    assert dispatched == []
+    monkeypatch.setattr(time, "time", lambda: 1005.0)
+    callbacks[0]()
+    callbacks[0]()
+    assert len(dispatched) == 1
+    payload = json.loads(dispatched[0])
+    assert payload.get("dispatched_at") == 1005.0
+    assert AppExecutionParams.model_validate_json(dispatched[0]).app_mode == mode

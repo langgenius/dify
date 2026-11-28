@@ -162,6 +162,7 @@ class EnterpriseOtelTrace:
     # ------------------------------------------------------------------
 
     def _workflow_trace(self, info: WorkflowTraceInfo) -> None:
+        """Export run timing, adding queue seconds only for measured dispatches."""
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Span attrs: identity + structure + status + timing + gen_ai scalars --
@@ -181,6 +182,9 @@ class EnterpriseOtelTrace:
             "gen_ai.usage.total_tokens": info.total_tokens,
             "gen_ai.user.id": user_id,
         }
+
+        if metadata.get("queue_wait_time") is not None:
+            span_attrs["dify.workflow.queue_wait_time"] = metadata["queue_wait_time"]
 
         trace_correlation_override, parent_span_id_source = info.resolved_parent_context
 

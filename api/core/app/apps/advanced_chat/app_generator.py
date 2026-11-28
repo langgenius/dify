@@ -93,6 +93,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        queue_wait_time: float | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -108,6 +109,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        queue_wait_time: float | None = None,
     ) -> Generator[Mapping | str]: ...
 
     @overload
@@ -123,6 +125,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        queue_wait_time: float | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
@@ -137,9 +140,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        queue_wait_time: float | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
+
+        ``queue_wait_time`` accepts measured dispatch-to-worker seconds or None
+        for unmeasured runs; it is forwarded unchanged to workflow tracing.
 
         :param app_model: App
         :param workflow: Workflow
@@ -234,6 +241,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 invoke_from=invoke_from,
                 extras=extras,
                 trace_scope=trace_scope,
+                queue_wait_time=queue_wait_time,
                 workflow_run_id=str(workflow_run_id),
             )
             contexts.plugin_tool_providers.set({})

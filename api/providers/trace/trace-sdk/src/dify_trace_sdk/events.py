@@ -40,6 +40,8 @@ class MessageCompleted(BaseModel):
 
 
 class WorkflowRunCompleted(BaseModel):
+    queue_wait_time: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    """Dispatch-to-worker seconds; None for runs without a dispatch timestamp."""
     kind: Literal["workflow_run"] = "workflow_run"
     workflow_run_id: str
     conversation_id: str | None
