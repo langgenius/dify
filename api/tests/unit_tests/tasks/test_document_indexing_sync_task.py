@@ -172,6 +172,7 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
             notion_page_type="page",
             notion_access_token=expected_token,
             tenant_id=document.tenant_id,
+            session_maker=session_factory_module.get_session_maker(),
         )
 
     def test_datasource_credentials_requested_correctly(

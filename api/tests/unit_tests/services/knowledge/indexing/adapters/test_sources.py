@@ -30,6 +30,9 @@ from services.knowledge.indexing.estimate import StoredSource
 from services.knowledge.resource_scope import DatasetRef
 from tests.helpers.unit.config_override import apply_config_overrides
 
+# Unbound, so any query or flush through it fails: for extractors that must not touch the database.
+_NO_DATABASE: sessionmaker[Session] = sessionmaker()
+
 
 def _source(
     source_type: str,
@@ -243,6 +246,7 @@ def test_stored_notion_preview_and_indexing_use_same_integration(
             notion_token_loader=lambda: providers.get_stored_notion_access_token(
                 tenant_id="workspace-1", credential_id=credential_id
             ),
+            session_maker=_NO_DATABASE,
         )
 
     if isinstance(error, CredentialRefreshUnavailableError) and not integration_token:

@@ -107,6 +107,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         notion_page_type=page_type,
         notion_access_token=credential.get("integration_secret"),
         tenant_id=tenant_id,
+        session_maker=get_session_maker(),
     )
 
     last_edited_time = loader.get_notion_last_edited_time()

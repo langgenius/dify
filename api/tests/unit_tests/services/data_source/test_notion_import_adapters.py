@@ -29,6 +29,9 @@ from services.data_source.notion_import_adapters import PluginNotionSourceGatewa
 from services.data_source.notion_import_application_service import NotionImportCredentialUnavailableError
 from tests.helpers.unit.core.datasource.factories import datasource_entity, provider_entity
 
+# Unbound, so any query or flush through it fails: for extractors that must not touch the database.
+_NO_DATABASE: sessionmaker[Session] = sessionmaker()
+
 type CredentialCalls = list[tuple[str, str, str, str, str]]
 
 
@@ -310,6 +313,7 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor(
             notion_access_token=notion_access_token,
             notion_token_loader=notion_token_loader,
             tenant_id=tenant_id,
+            session_maker=_NO_DATABASE,
         )
 
     monkeypatch.setattr(NotionExtractor, "extract", extract)

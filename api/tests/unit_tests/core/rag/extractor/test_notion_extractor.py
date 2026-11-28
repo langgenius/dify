@@ -1,6 +1,6 @@
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from unittest import mock
 
@@ -8,7 +8,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor import notion_extractor
@@ -18,7 +18,29 @@ from models.base import TypeBase
 from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 
+# Unbound, so any query or flush through it fails: for extractors that must not touch the database.
+_NO_DATABASE: sessionmaker[Session] = sessionmaker()
+
 """Unit tests for Notion extraction, HTTP parsing, and persisted metadata updates."""
+
+
+def _stub_last_edited_time(
+    monkeypatch: pytest.MonkeyPatch, last_edited_time: str, on_request: Callable[[], None] | None = None
+) -> None:
+    """Answer the Notion page lookup at the HTTP boundary with ``last_edited_time``."""
+
+    def respond(_request: httpx.Request) -> httpx.Response:
+        if on_request is not None:
+            on_request()
+        return httpx.Response(200, json={"last_edited_time": last_edited_time})
+
+    transport = httpx.MockTransport(respond)
+
+    def send(method: str, url: str, *, headers: dict[str, str], timeout: httpx.Timeout) -> httpx.Response:
+        with httpx.Client(transport=transport) as client:
+            return client.request(method, url, headers=headers, timeout=timeout)
+
+    monkeypatch.setattr(notion_extractor.httpx, "request", send)
 
 
 def _notion_extractor_mock_response(data: object, status_code: int = 200, text: str = "") -> mock.Mock:
@@ -33,10 +55,9 @@ class TestNotionExtractorCases:
     @staticmethod
     @pytest.fixture
     def persisted_document(
-        monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> Iterator[tuple[sessionmaker[Session], DocumentModel]]:
-        """Persist a Notion document and bind the extractor's ``db.session`` to SQLite."""
+        """Persist a Notion document and return a session maker bound to the same SQLite database."""
         TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         document = DocumentModel(
@@ -56,7 +77,6 @@ class TestNotionExtractorCases:
         with session_maker() as sqlite_session:
             sqlite_session.add(document)
             sqlite_session.commit()
-            monkeypatch.setattr(notion_extractor, "db", SimpleNamespace(session=sqlite_session))
             yield session_maker, document
 
     class TestNotionExtractorInitAndPublicMethods:
@@ -68,6 +88,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             assert extractor._notion_access_token == "token"
@@ -81,6 +102,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 credential_id="cred",
                 notion_token_loader=loader,
+                session_maker=_NO_DATABASE,
             )
 
             assert extractor._notion_access_token == "resolved-token"
@@ -96,6 +118,7 @@ class TestNotionExtractorCases:
                     tenant_id="tenant",
                     credential_id="cred",
                     notion_token_loader=loader,
+                    session_maker=_NO_DATABASE,
                 )
 
         def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -106,6 +129,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             update_mock = mock.Mock()
@@ -127,6 +151,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             monkeypatch.setattr(extractor, "_get_notion_block_data", lambda _: ["line1", "line2"])
@@ -174,6 +199,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             assert extractor.get_notion_last_edited_time() == "2024-01-01T00:00:00Z"
@@ -191,6 +217,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             first_page = {
@@ -246,6 +273,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             page = {
@@ -291,6 +319,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             mocker.patch("httpx.post", return_value=_notion_extractor_mock_response({"results": None}))
@@ -307,6 +336,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             mock_post = mocker.patch("httpx.post", return_value=_notion_extractor_mock_response({"results": None}))
@@ -328,6 +358,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
             extractor._notion_access_token = None
 
@@ -345,6 +376,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             first_response = {
@@ -408,6 +440,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             mocker.patch("httpx.request", side_effect=httpx.HTTPError("network"))
@@ -435,6 +468,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             root_payload = {
@@ -491,6 +525,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
             mocker.patch(
                 "httpx.request", return_value=_notion_extractor_mock_response({"results": None, "next_cursor": None})
@@ -506,6 +541,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             page_one = {
@@ -571,6 +607,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             # A cell with mixed formatting arrives as multiple rich text segments.
@@ -614,6 +651,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             page = {
@@ -657,6 +695,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             assert extractor.update_last_edited_time(None) is None
@@ -666,6 +705,7 @@ class TestNotionExtractorCases:
             monkeypatch: pytest.MonkeyPatch,
             persisted_document: tuple[sessionmaker[Session], DocumentModel],
         ) -> None:
+            session_maker, document = persisted_document
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
                 notion_obj_id="obj",
@@ -673,15 +713,17 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
-            monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
-            session_maker, document = persisted_document
+            steps: list[str] = []
+            event.listen(session_maker, "after_begin", lambda *_args: steps.append("database"))
+            _stub_last_edited_time(monkeypatch, "2026-01-01T00:00:00.000Z", on_request=lambda: steps.append("notion"))
 
             snapshot = StoredDocumentExtractionInput.model_validate(document)
             extractor.update_last_edited_time(snapshot)
 
-            # Closing the writer session rolls back an uncommitted update before the independent read below.
-            notion_extractor.db.session.close()
+            # The Notion API call finishes before the database transaction begins.
+            assert steps == ["notion", "database"]
             with session_maker() as verification_session:
                 stored_document = verification_session.get(DocumentModel, document.id)
                 assert stored_document is not None
@@ -703,8 +745,9 @@ class TestNotionExtractorCases:
                 tenant_id=document.tenant_id,
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
-            monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
+            _stub_last_edited_time(monkeypatch, "2026-01-01T00:00:00.000Z")
             snapshot = StoredDocumentExtractionInput.model_validate(document).model_copy(
                 update={"tenant_id": "foreign"}
             )
@@ -722,6 +765,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
             request_mock = mocker.patch(
                 "httpx.request",
@@ -738,6 +782,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
             request_mock = mocker.patch(
                 "httpx.request",
@@ -755,6 +800,7 @@ class TestNotionExtractorCases:
                 tenant_id="tenant",
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
             extractor._notion_access_token = None
 
@@ -793,6 +839,7 @@ def _extractor() -> notion_extractor.NotionExtractor:
         tenant_id="tenant",
         notion_access_token="token",
         notion_token_loader=lambda: "token",
+        session_maker=_NO_DATABASE,
     )
 
 
@@ -850,6 +897,7 @@ def _table_extractor() -> notion_extractor.NotionExtractor:
         notion_page_type="page",
         tenant_id="tenant",
         notion_token_loader=lambda: "synthetic-token",
+        session_maker=_NO_DATABASE,
     )
 
 
@@ -1083,6 +1131,7 @@ def _database_extractor() -> notion_extractor.NotionExtractor:
         notion_page_type="database",
         tenant_id="tenant",
         notion_token_loader=lambda: "synthetic-token",
+        session_maker=_NO_DATABASE,
     )
 
 

@@ -353,6 +353,7 @@ class TestExtractProcessorDatasourceRouting:
         assert docs[0].page_content == "extracted-by-NotionExtractor"
         assert factory.calls[-1][0] == "NotionExtractor"
         assert factory.calls[-1][2]["notion_access_token"] == "secret"
+        assert factory.calls[-1][2]["session_maker"] is get_session_maker()
 
     @pytest.mark.parametrize(
         ("provider", "expected"),

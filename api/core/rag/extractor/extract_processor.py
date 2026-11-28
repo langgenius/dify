@@ -255,6 +255,7 @@ class ExtractProcessor:
                 ).providers.get_stored_notion_access_token(
                     tenant_id=notion_info.tenant_id, credential_id=notion_info.credential_id
                 ),
+                session_maker=get_session_maker(),
             )
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE:
