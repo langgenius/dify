@@ -381,6 +381,150 @@ def test_shell_run_formats_large_non_truncated_output_without_tail_lookup() -> N
     assert commands.tail_calls == []
 
 
+@pytest.mark.parametrize("size_bytes", [4096, 4097, 5000, 8191, 8192])
+def test_shell_run_preserves_non_truncated_output_within_prompt_budget(size_bytes: int) -> None:
+    prefix = "head-"
+    middle = "-MIDDLE-"
+    suffix = "-tail"
+    filler_len = size_bytes - len(prefix) - len(middle) - len(suffix)
+    left_len = filler_len // 2
+    right_len = filler_len - left_len
+    payload = prefix + ("a" * left_len) + middle + ("b" * right_len) + suffix
+    assert len(payload.encode("utf-8")) == size_bytes
+
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: _command_result(
+            "user-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=payload,
+            offset=size_bytes,
+            truncated=False,
+            output_path="/tmp/medium.log",
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    layer.save_state(_runtime_state())
+
+    async def scenario() -> None:
+        result = await layer._tool_run(**{"script": "cat medium.log"})  # pyright: ignore[reportArgumentType]
+        metadata, output = _parse_tagged_observation(result)
+        assert metadata["output_path"] == "/tmp/medium.log"
+        assert output == payload
+        assert "truncated in middle" not in output
+        assert "(check the /tmp/medium.log for full output)" not in output
+
+    asyncio.run(scenario())
+    assert layer.runtime_state.job_offsets == {"user-job": size_bytes}
+    assert commands.tail_calls == []
+
+
+def test_shell_run_preserves_multibyte_output_within_prompt_budget() -> None:
+    # 2048 four-byte emoji characters = exactly 8192 UTF-8 bytes (2 * 4096).
+    payload = "🙂" * 2048
+    size_bytes = len(payload.encode("utf-8"))
+    assert size_bytes == 8192
+
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: _command_result(
+            "user-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=payload,
+            offset=size_bytes,
+            truncated=False,
+            output_path="/tmp/emoji.log",
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    layer.save_state(_runtime_state())
+
+    async def scenario() -> None:
+        result = await layer._tool_run(**{"script": "cat emoji.log"})  # pyright: ignore[reportArgumentType]
+        _metadata, output = _parse_tagged_observation(result)
+        assert output == payload
+        assert "truncated in middle" not in output
+
+    asyncio.run(scenario())
+    assert layer.runtime_state.job_offsets == {"user-job": size_bytes}
+    assert commands.tail_calls == []
+
+
+def test_shell_run_truncates_non_truncated_output_above_8192_bytes_without_overlap() -> None:
+    # 4096 bytes of 'A' + 1 unique middle byte 'M' + 4096 bytes of 'B' = 8193 bytes.
+    payload = ("A" * 4096) + "M" + ("B" * 4096)
+    assert len(payload.encode("utf-8")) == 8193
+
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: _command_result(
+            "user-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=payload,
+            offset=8193,
+            truncated=False,
+            output_path="/tmp/over.log",
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    layer.save_state(_runtime_state())
+
+    async def scenario() -> None:
+        result = await layer._tool_run(**{"script": "cat over.log"})  # pyright: ignore[reportArgumentType]
+        _metadata, output = _parse_tagged_observation(result)
+        assert output == (
+            ("A" * 4096)
+            + "\n... (truncated in middle because the max output size is limited to 8192 bytes) ...\n"
+            + ("B" * 4096)
+            + "\n(check the /tmp/over.log for full output)"
+        )
+        assert "M" not in output
+
+    asyncio.run(scenario())
+    assert layer.runtime_state.job_offsets == {"user-job": 8193}
+    assert commands.tail_calls == []
+
+
+def test_render_prompt_observation_uses_custom_edge_bytes_for_budget_and_banner() -> None:
+    commands = FakeCommands()
+
+    async def scenario() -> None:
+        within = await shell_layer_module.render_prompt_observation_from_result(
+            commands,
+            _command_result("job-1", status="exited", done=True, exit_code=0, output="x" * 32, offset=32),
+            edge_bytes=16,
+        )
+        assert within.text == "x" * 32
+
+        over = await shell_layer_module.render_prompt_observation_from_result(
+            commands,
+            _command_result(
+                "job-2",
+                status="exited",
+                done=True,
+                exit_code=0,
+                output=("a" * 16) + "M" + ("b" * 16),
+                offset=33,
+            ),
+            edge_bytes=16,
+        )
+        assert over.text == (
+            ("a" * 16)
+            + "\n... (truncated in middle because the max output size is limited to 32 bytes) ...\n"
+            + ("b" * 16)
+            + "\n(check the /tmp/output.log for full output)"
+        )
+
+    asyncio.run(scenario())
+    assert commands.tail_calls == []
+
+
 def test_shell_interrupt_succeeds_when_tail_lookup_fails() -> None:
     commands = FakeCommands(
         interrupt_handler=lambda job_id, grace_seconds: _command_status(job_id, offset=22),
