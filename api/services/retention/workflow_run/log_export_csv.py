@@ -1,5 +1,6 @@
 """Generate the CSV for the published runs of one Workflow app."""
 
+import json
 from datetime import UTC
 from typing import TextIO
 
@@ -22,6 +23,18 @@ _LOG_CSV_COLUMNS = (
     "status",
     "trigger_by",
 )
+
+
+def _format_json_cell(value: str | None) -> str | None:
+    """Render escaped Unicode in stored JSON, preserving text that cannot be converted to UTF-8."""
+    if value is None or "\\u" not in value:
+        return value
+    try:
+        rendered = json.dumps(json.loads(value), ensure_ascii=False)
+        rendered.encode("utf-8")
+    except (ValueError, RecursionError):
+        return value
+    return rendered
 
 
 class WorkflowLogCsvWriter:
@@ -64,8 +77,8 @@ class WorkflowLogCsvWriter:
                     "account_name": row.account_name,
                     "run_id": row.run_id,
                     "created_at": ensure_naive_utc(row.created_at).replace(tzinfo=UTC).isoformat(),
-                    "user_input": row.inputs,
-                    "app_response": row.outputs,
+                    "user_input": _format_json_cell(row.inputs),
+                    "app_response": _format_json_cell(row.outputs),
                     "status": row.status,
                     "trigger_by": row.trigger_by,
                 }

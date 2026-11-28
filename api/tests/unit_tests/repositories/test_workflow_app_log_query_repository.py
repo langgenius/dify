@@ -2,6 +2,7 @@ import csv
 import json
 from datetime import UTC, datetime, timedelta
 from io import StringIO
+from pathlib import Path
 
 import pytest
 from psycopg2 import OperationalError as PostgresOperationalError
@@ -190,6 +191,46 @@ def test_export_counts_and_reads_live_runs_once_across_batches(
         )
         == 0
     )
+
+
+def test_workflow_csv_preserves_json_meaning_and_writes_unicode_as_utf8(
+    sqlite_session_factory: sessionmaker[Session], tmp_path: Path
+) -> None:
+    """Decode valid Unicode escapes while retaining text that cannot be safely rewritten."""
+    malformed = r'{"broken": "\u4f60"'
+    lone_surrogate = r'{"value": "\ud800"}'
+    unescaped = ' { "text": "已是中文" } '
+    plain_text = "Plain text, with a comma\nand a line break"
+    data = (
+        ("escaped", r'{"text": "\u4f60\u597d", "literal": "\\u4f60"}', r'{"text": "\ud83d\ude00"}'),
+        ("invalid", malformed, lone_surrogate),
+        ("unchanged", unescaped, plain_text),
+    )
+    with sqlite_session_factory.begin() as session:
+        for log_id, inputs, outputs in data:
+            log = _log(
+                log_id, created_by="actor-1", created_by_role=CreatorUserRole.ACCOUNT, created_at=datetime(2026, 1, 1)
+            )
+            run = _run(log.workflow_run_id)
+            run.inputs, run.outputs = inputs, outputs
+            session.add_all([log, run])
+
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    writer = WorkflowLogCsvWriter(logs=WorkflowAppLogQueryService(logs=repository))
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    path = tmp_path / "logs.csv"
+    with path.open("w", encoding="utf-8", newline="") as output:
+        assert writer.write_scoped_csv(scope=scope, filters=WorkflowLogExportFilters(), output=output) == len(data)
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        rows = {row["run_id"]: row for row in csv.DictReader(stream)}
+
+    escaped = rows["run-escaped"]
+    assert "你好" in escaped["user_input"]
+    assert json.loads(escaped["user_input"]) == {"text": "你好", "literal": r"\u4f60"}
+    assert "😀" in escaped["app_response"]
+    assert json.loads(escaped["app_response"]) == {"text": "😀"}
+    assert (rows["run-invalid"]["user_input"], rows["run-invalid"]["app_response"]) == (malformed, lone_surrogate)
+    assert (rows["run-unchanged"]["user_input"], rows["run-unchanged"]["app_response"]) == (unescaped, plain_text)
 
 
 @pytest.mark.parametrize("standby_disconnect", [False, True], ids=["recovery-conflict", "standby-disconnect"])
