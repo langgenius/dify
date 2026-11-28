@@ -17,6 +17,8 @@ import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { Markdown } from '@/app/components/base/markdown'
 import {
+  isDateFormInput,
+  isDateTimeFormInput,
   isFileFormInput,
   isFileListFormInput,
   isParagraphFormInput,
@@ -49,7 +51,7 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
 
   if (!field || value == null) return null
 
-  if (isParagraphFormInput(field)) {
+  if (isParagraphFormInput(field) || isDateFormInput(field) || isDateTimeFormInput(field)) {
     return (
       <span
         className="body-md-regular wrap-break-word text-text-primary"

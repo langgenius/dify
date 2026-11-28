@@ -234,6 +234,8 @@ export const InputVarType = {
   multiFiles: 'file-list',
   loop: 'loop', // loop input
   checkbox: 'checkbox',
+  date: 'date',
+  datetime: 'datetime',
 } as const
 
 export type InputVarType = (typeof InputVarType)[keyof typeof InputVarType]

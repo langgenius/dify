@@ -6,6 +6,8 @@ from pydantic import Field
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     FormPart,
@@ -67,8 +69,25 @@ class HumanInputFileListResponse(_FileConstraintsResponse):
     number_limits: int
 
 
+class HumanInputDateResponse(ResponseModel):
+    output_variable_name: str
+    type: Literal["date"]
+    default: HumanInputStringSourceResponse | None
+
+
+class HumanInputDateTimeResponse(ResponseModel):
+    output_variable_name: str
+    type: Literal["datetime"]
+    default: HumanInputStringSourceResponse | None
+
+
 type HumanInputResponse = Annotated[
-    HumanInputParagraphResponse | HumanInputSelectResponse | HumanInputFileResponse | HumanInputFileListResponse,
+    HumanInputParagraphResponse
+    | HumanInputSelectResponse
+    | HumanInputFileResponse
+    | HumanInputFileListResponse
+    | HumanInputDateResponse
+    | HumanInputDateTimeResponse,
     Field(discriminator="type"),
 ]
 
@@ -106,12 +125,26 @@ class ResolvedFileListResponse(_FileConstraintsResponse):
     number_limits: int
 
 
+class ResolvedDateResponse(ResponseModel):
+    type: Literal["date_input"]
+    output_variable_name: str
+    default_value: str | None
+
+
+class ResolvedDateTimeResponse(ResponseModel):
+    type: Literal["datetime_input"]
+    output_variable_name: str
+    default_value: str | None
+
+
 type ResolvedPartResponse = Annotated[
     ResolvedMarkdownResponse
     | ResolvedParagraphResponse
     | ResolvedSelectResponse
     | ResolvedFileResponse
-    | ResolvedFileListResponse,
+    | ResolvedFileListResponse
+    | ResolvedDateResponse
+    | ResolvedDateTimeResponse,
     Field(discriminator="type"),
 ]
 
@@ -172,6 +205,18 @@ def _resolved_part_response(part: FormPart) -> ResolvedPartResponse:
                 allowed_file_extensions=list(part.allowed_file_extensions),
                 allowed_file_upload_methods=list(part.allowed_file_upload_methods),
                 number_limits=part.number_limits,
+            )
+        case DateInput():
+            return ResolvedDateResponse(
+                type="date_input",
+                output_variable_name=part.output_variable_name,
+                default_value=part.resolved_default_value,
+            )
+        case DateTimeInput():
+            return ResolvedDateTimeResponse(
+                type="datetime_input",
+                output_variable_name=part.output_variable_name,
+                default_value=part.resolved_default_value,
             )
         case _:
             assert_never(part)

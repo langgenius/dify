@@ -65,6 +65,32 @@ const fileListInput = (
   ...overrides,
 })
 
+const dateInput = (
+  overrides: Partial<Extract<FormInputItem, { type: typeof InputVarType.date }>> = {},
+): FormInputItem => ({
+  type: InputVarType.date,
+  output_variable_name: 'field',
+  default: {
+    type: 'constant',
+    value: '',
+    selector: [],
+  },
+  ...overrides,
+})
+
+const datetimeInput = (
+  overrides: Partial<Extract<FormInputItem, { type: typeof InputVarType.datetime }>> = {},
+): FormInputItem => ({
+  type: InputVarType.datetime,
+  output_variable_name: 'field',
+  default: {
+    type: 'constant',
+    value: '',
+    selector: [],
+  },
+  ...overrides,
+})
+
 const uploadedFile = {
   id: 'file-1',
   name: 'avatar.png',
@@ -232,6 +258,51 @@ describe('human-input utils', () => {
         attachments: [],
       })
     })
+
+    it('should initialize date and datetime fields with constants and variable defaults', () => {
+      const formInputs: FormInputItem[] = [
+        dateInput({
+          output_variable_name: 'due_date',
+          default: {
+            type: 'constant',
+            value: '2026-11-25',
+            selector: [],
+          },
+        }),
+        datetimeInput({
+          output_variable_name: 'meeting_at',
+          default: {
+            type: 'variable',
+            value: '2026-11-25T10:00:00Z',
+            selector: ['start', 'meeting_at'],
+          },
+        }),
+        dateInput({
+          output_variable_name: 'missing_date',
+          default: {
+            type: 'variable',
+            value: '2026-11-01',
+            selector: ['start', 'missing_date'],
+          },
+        }),
+        dateInput({
+          output_variable_name: 'null_default_date',
+          default: null,
+        }),
+      ]
+
+      expect(
+        initializeInputs(formInputs, {
+          meeting_at: '2026-12-01T14:30:00.000Z',
+          missing_date: 123,
+        }),
+      ).toEqual({
+        due_date: '2026-11-25',
+        meeting_at: '2026-12-01T14:30:00.000Z',
+        missing_date: '2026-11-01',
+        null_default_date: '',
+      })
+    })
   })
 
   describe('required input checks', () => {
@@ -296,6 +367,38 @@ describe('human-input utils', () => {
             attachments: [uploadedFile],
           },
         ),
+      ).toBe(false)
+    })
+
+    it('should validate empty and non-empty date and datetime values', () => {
+      const inputs = [
+        dateInput({ output_variable_name: 'due_date' }),
+        datetimeInput({ output_variable_name: 'meeting_at' }),
+      ]
+
+      expect(
+        hasInvalidSelectOrFileInput(inputs, { due_date: '', meeting_at: '2026-11-25T14:30:00Z' }),
+      ).toBe(true)
+      expect(hasInvalidSelectOrFileInput(inputs, { due_date: '2026-11-25', meeting_at: '' })).toBe(
+        true,
+      )
+      expect(
+        hasInvalidRequiredHumanInput(inputs, {
+          due_date: '   ',
+          meeting_at: '2026-11-25T14:30:00Z',
+        }),
+      ).toBe(true)
+      expect(
+        hasInvalidSelectOrFileInput(inputs, {
+          due_date: '2026-11-25',
+          meeting_at: '2026-11-25T14:30:00Z',
+        }),
+      ).toBe(false)
+      expect(
+        hasInvalidRequiredHumanInput(inputs, {
+          due_date: '2026-11-25',
+          meeting_at: '2026-11-25T14:30:00Z',
+        }),
       ).toBe(false)
     })
   })

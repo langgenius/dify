@@ -1251,6 +1251,8 @@ export default interface Resources {
     'variableConfig.both': 'Both'
     'variableConfig.checkbox': 'Checkbox'
     'variableConfig.content': 'Content'
+    'variableConfig.date': 'Date'
+    'variableConfig.datetime': 'Date & Time'
     'variableConfig.defaultValue': 'Default Value'
     'variableConfig.defaultValuePlaceholder': 'Enter default value to pre-populate the field'
     'variableConfig.displayName': 'Display Name'

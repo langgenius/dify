@@ -1258,6 +1258,12 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+  | ({
+      type: 'date'
+    } & DateInputConfig)
+  | ({
+      type: 'datetime'
+    } & DateTimeInputConfig)
 
 export type HitTestingChildChunk = {
   content: string
@@ -1350,6 +1356,18 @@ export type HumanInputContent = {
   submitted: boolean
   type?: ExecutionContentType
   workflow_run_id: string
+}
+
+export type HumanInputDateResponse = {
+  default: HumanInputStringSourceResponse | null
+  output_variable_name: string
+  type: 'date'
+}
+
+export type HumanInputDateTimeResponse = {
+  default: HumanInputStringSourceResponse | null
+  output_variable_name: string
+  type: 'datetime'
 }
 
 export type HumanInputFileListResponse = {
@@ -1454,6 +1472,12 @@ export type HumanInputResponse =
   | ({
       type: 'file-list'
     } & HumanInputFileListResponse)
+  | ({
+      type: 'date'
+    } & HumanInputDateResponse)
+  | ({
+      type: 'datetime'
+    } & HumanInputDateTimeResponse)
 
 export type HumanInputSelectResponse = {
   option_source: HumanInputStringListSourceResponse
@@ -3534,6 +3558,18 @@ export type NotWorkflowAppError = ErrorResponse & {
 
 export type OptionalServiceApiUserPayload = {
   user?: string
+}
+
+export type DateInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'date'
+}
+
+export type DateTimeInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'datetime'
 }
 
 export type ParagraphInputConfig = {

@@ -16,6 +16,8 @@ from core.repositories.human_input_repository import (
 )
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.nodes.human_input.entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -24,6 +26,8 @@ from core.workflow.nodes.human_input.entities import (
     ParagraphInputConfig,
     SelectInputConfig,
     UserActionConfig,
+    validate_iso_date,
+    validate_iso_datetime,
 )
 from core.workflow.nodes.human_input.entities import (
     validate_human_input_submission as graphon_validate_human_input_submission,
@@ -404,6 +408,10 @@ class HumanInputService:
                     f"Invalid value for paragraph input '{form_input.output_variable_name}': expected string"
                 )
             return value
+        if isinstance(form_input, DateInputConfig):
+            return cls._normalize_date_value(form_input=form_input, value=value, validator=validate_iso_date)
+        if isinstance(form_input, DateTimeInputConfig):
+            return cls._normalize_date_value(form_input=form_input, value=value, validator=validate_iso_datetime)
         if isinstance(form_input, SelectInputConfig):
             return cls._normalize_select_value(form_input=form_input, value=value)
         if isinstance(form_input, FileInputConfig):
@@ -419,6 +427,25 @@ class HumanInputService:
                 value=value,
             )
         return _JsonValueAdapter.validate_python(value)
+
+    @classmethod
+    def _normalize_date_value(
+        cls,
+        *,
+        form_input: DateInputConfig | DateTimeInputConfig,
+        value: Any,
+        validator: Any,
+    ) -> JsonValue:
+        if not isinstance(value, str):
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for {form_input.type} input '{form_input.output_variable_name}': expected string"
+            )
+        try:
+            return validator(value)
+        except ValueError as exc:
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for {form_input.type} input '{form_input.output_variable_name}': {exc}"
+            ) from exc
 
     @classmethod
     def _normalize_select_value(

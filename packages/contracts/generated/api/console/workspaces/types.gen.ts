@@ -3719,6 +3719,12 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+  | ({
+      type: 'date'
+    } & DateInputConfig)
+  | ({
+      type: 'datetime'
+    } & DateTimeInputConfig)
 
 export type RetryConfig = {
   max_retries?: number
@@ -4020,6 +4026,18 @@ export type InstantMessageDeliveryConfig = {
   message?: string | null
   provider: InstantMessageProvider
   recipients?: InstantMessageRecipients
+}
+
+export type DateInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'date'
+}
+
+export type DateTimeInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'datetime'
 }
 
 export type ParagraphInputConfig = {

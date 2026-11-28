@@ -15,7 +15,7 @@
             "retry_interval": 0,
             "retry_enabled": false
           },
-          "form_content": "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}",
+          "form_content": "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}{{#$output.due_date#}}{{#$output.meeting_at#}}",
           "inputs": [
             {
               "output_variable_name": "reason",
@@ -58,6 +58,24 @@
               "allowed_file_upload_methods": ["remote_url", "local_file"],
               "type": "file-list",
               "number_limits": 7
+            },
+            {
+              "output_variable_name": "due_date",
+              "type": "date",
+              "default": {
+                "type": "constant",
+                "selector": [],
+                "value": "2026-11-25"
+              }
+            },
+            {
+              "output_variable_name": "meeting_at",
+              "type": "datetime",
+              "default": {
+                "type": "variable",
+                "selector": ["start", "meeting_at"],
+                "value": ""
+              }
             }
           ],
           "user_actions": [
@@ -151,7 +169,7 @@
             "enabled": false,
             "channels": []
           },
-          "form_content": "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}",
+          "form_content": "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}{{#$output.due_date#}}{{#$output.meeting_at#}}",
           "inputs": [
             {
               "output_variable_name": "reason",
@@ -194,6 +212,24 @@
               "allowed_file_upload_methods": ["remote_url", "local_file"],
               "type": "file-list",
               "number_limits": 7
+            },
+            {
+              "output_variable_name": "due_date",
+              "type": "date",
+              "default": {
+                "type": "constant",
+                "selector": [],
+                "value": "2026-11-25"
+              }
+            },
+            {
+              "output_variable_name": "meeting_at",
+              "type": "datetime",
+              "default": {
+                "type": "variable",
+                "selector": ["start", "meeting_at"],
+                "value": ""
+              }
             }
           ],
           "user_actions": [

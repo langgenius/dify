@@ -16,7 +16,13 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
-import { isFileFormInput, isFileListFormInput, isSelectFormInput } from '../types'
+import {
+  isDateFormInput,
+  isDateTimeFormInput,
+  isFileFormInput,
+  isFileListFormInput,
+  isSelectFormInput,
+} from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g
@@ -256,6 +262,21 @@ export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) =
   const defaultValue = input.default
   const isVariable = defaultValue?.type === 'variable'
   const newPath = defaultValue ? sourceToVariablePath(defaultValue, nodeName) : ''
+  if (isDateFormInput(input) || isDateTimeFormInput(input)) {
+    const placeholder = isDateTimeFormInput(input) ? 'YYYY-MM-DD HH:mm' : 'YYYY-MM-DD'
+    return (
+      <div className="my-3 flex items-center justify-between rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
+        {isVariable ? (
+          <Variable path={newPath} />
+        ) : (
+          <span className={defaultValue?.value ? '' : 'text-text-quaternary'}>
+            {defaultValue?.value || placeholder}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
       {isVariable ? <Variable path={newPath} /> : <span>{defaultValue?.value ?? ''}</span>}

@@ -8,6 +8,8 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import utc from 'dayjs/plugin/utc'
 import { fileIsUploaded, getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import {
+  isDateFormInput,
+  isDateTimeFormInput,
   isFileFormInput,
   isFileListFormInput,
   isParagraphFormInput,
@@ -52,8 +54,13 @@ export const initializeInputs = (
 ) => {
   const initialInputs: Record<string, HumanInputFieldValue> = {}
   formInputs.forEach((item) => {
-    if (isParagraphFormInput(item)) {
+    if (isParagraphFormInput(item) || isDateFormInput(item) || isDateTimeFormInput(item)) {
       const resolvedValue = defaultValues[item.output_variable_name]
+      if (!item.default) {
+        initialInputs[item.output_variable_name] =
+          typeof resolvedValue === 'string' ? resolvedValue : ''
+        return
+      }
       initialInputs[item.output_variable_name] =
         item.default.type === 'variable' && typeof resolvedValue === 'string'
           ? resolvedValue
@@ -95,7 +102,8 @@ export const hasInvalidSelectOrFileInput = (
 
     const value = values[input.output_variable_name]
 
-    if (isSelectFormInput(input)) return typeof value !== 'string' || value.length === 0
+    if (isSelectFormInput(input) || isDateFormInput(input) || isDateTimeFormInput(input))
+      return typeof value !== 'string' || value.length === 0
 
     if (isFileFormInput(input))
       return Array.isArray(value)
@@ -117,7 +125,8 @@ export const hasInvalidRequiredHumanInput = (
 
     const value = values[input.output_variable_name]
 
-    if (isParagraphFormInput(input)) return typeof value !== 'string' || value.trim().length === 0
+    if (isParagraphFormInput(input) || isDateFormInput(input) || isDateTimeFormInput(input))
+      return typeof value !== 'string' || value.trim().length === 0
 
     if (isSelectFormInput(input)) return typeof value !== 'string' || value.length === 0
 

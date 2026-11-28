@@ -74,6 +74,16 @@ const fields: FormInputItem[] = [
     allowed_file_upload_methods: [],
     number_limits: 5,
   },
+  {
+    type: InputVarType.date,
+    output_variable_name: 'due_date',
+    default: { type: 'constant', selector: [], value: '' },
+  },
+  {
+    type: InputVarType.datetime,
+    output_variable_name: 'meeting_at',
+    default: { type: 'constant', selector: [], value: '' },
+  },
 ]
 
 const baseForm: HumanInputFilledFormData = {
@@ -91,19 +101,25 @@ it('renders submitted values in their original readonly form layout', async () =
       formData={{
         ...baseForm,
         form_content:
-          'Summary: {{#$output.summary#}} {{#$output.decision#}} {{#$output.attachment#}} {{#$output.evidence#}}',
+          'Summary: {{#$output.summary#}} {{#$output.decision#}} {{#$output.attachment#}} {{#$output.evidence#}} {{#$output.due_date#}} {{#$output.meeting_at#}}',
         inputs: fields,
         submitted_data: {
           summary: 'Approved after review',
           decision: 'approve',
           attachment,
           evidence,
+          due_date: '2026-11-25',
+          meeting_at: '2026-11-25T14:30:00.000Z',
         },
       }}
     />,
   )
 
   await expect.element(page.getByText('Approved after review')).toBeVisible()
+  await expect.element(page.getByTestId('submitted-field-due_date')).toHaveTextContent('2026-11-25')
+  await expect
+    .element(page.getByTestId('submitted-field-meeting_at'))
+    .toHaveTextContent('2026-11-25T14:30:00.000Z')
   const decision = page.getByRole('combobox', { name: 'decision' })
   await expect.element(decision).toBeDisabled()
   await expect.element(decision).toHaveTextContent('approve')

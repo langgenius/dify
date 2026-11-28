@@ -14,8 +14,29 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { useTranslation } from 'react-i18next'
 import {
+  DatePicker,
+  DatePickerClear,
+  DatePickerContent,
+  DatePickerLabel,
+  DatePickerTrigger,
+  DatePickerValue,
+} from '@/app/components/base/date-time-picker/date-picker'
+import {
+  DateTimePicker,
+  DateTimePickerClear,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+  DateTimePickerValue,
+} from '@/app/components/base/date-time-picker/date-time-picker'
+import { parseDateValue } from '@/app/components/base/date-time-picker/date-value'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { parseFormInstant } from '@/app/components/base/markdown-blocks/date-values'
+import {
+  isDateFormInput,
+  isDateTimeFormInput,
   isFileFormInput,
   isFileListFormInput,
   isParagraphFormInput,
@@ -27,11 +48,15 @@ export type HumanInputFieldValue = string | FileEntity | FileEntity[] | null
 type Props = Readonly<{
   field: FormInputItem
   label?: string
+  labelId?: string
   value?: HumanInputFieldValue
   onChange: (value: HumanInputFieldValue) => void
 }>
 
-const HumanInputFieldRenderer = ({ field, label, value, onChange }: Props) => {
+const HumanInputFieldRenderer = ({ field, label, labelId, value, onChange }: Props) => {
+  const { t } = useTranslation(['common'])
+  const clearLabel = t(($) => $['operation.clear'], { ns: 'common' })
+
   if (isParagraphFormInput(field)) {
     return (
       <Textarea
@@ -113,6 +138,48 @@ const HumanInputFieldRenderer = ({ field, label, value, onChange }: Props) => {
           number_limits: field.number_limits || 5,
         }}
       />
+    )
+  }
+
+  if (isDateFormInput(field)) {
+    const accessibleLabel = label || field.output_variable_name
+    return (
+      <DatePicker
+        value={typeof value === 'string' ? (parseDateValue(value) ?? null) : null}
+        onValueChange={(next) => onChange(next ?? '')}
+      >
+        {!labelId && <DatePickerLabel className="sr-only">{accessibleLabel}</DatePickerLabel>}
+        <div className="flex w-full items-center gap-1">
+          <DatePickerTrigger aria-labelledby={labelId} className="min-w-0 flex-1">
+            <DatePickerValue className="min-w-0 flex-1 truncate" />
+          </DatePickerTrigger>
+          <DatePickerClear aria-label={clearLabel} />
+        </div>
+        <DatePickerContent aria-labelledby={labelId} />
+      </DatePicker>
+    )
+  }
+
+  if (isDateTimeFormInput(field)) {
+    const accessibleLabel = label || field.output_variable_name
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    return (
+      <DateTimePicker
+        value={parseFormInstant(value) ?? null}
+        timeZone={timeZone}
+        onValueChange={(next) => onChange(next ? next.toISOString() : '')}
+      >
+        {!labelId && (
+          <DateTimePickerLabel className="sr-only">{accessibleLabel}</DateTimePickerLabel>
+        )}
+        <div className="flex w-full items-center gap-1">
+          <DateTimePickerTrigger aria-labelledby={labelId} className="min-w-0 flex-1">
+            <DateTimePickerValue className="min-w-0 flex-1 truncate" />
+          </DateTimePickerTrigger>
+          <DateTimePickerClear aria-label={clearLabel} />
+        </div>
+        <DateTimePickerContent aria-labelledby={labelId} />
+      </DateTimePicker>
     )
   }
 

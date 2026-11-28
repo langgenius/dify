@@ -40,6 +40,8 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
     LarkIMProviderAdapter,
 )
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     FormPart,
@@ -240,6 +242,10 @@ def _intent(input_type: str = "paragraph") -> ResolvedForm:
         input_block: FormPart = SelectInput(
             output_variable_name="comment", options=("Approve", "Reject"), resolved_default_value="Approve"
         )
+    elif input_type == "date":
+        input_block = DateInput(output_variable_name="comment", resolved_default_value="2026-11-25")
+    elif input_type == "datetime":
+        input_block = DateTimeInput(output_variable_name="comment", resolved_default_value="2026-11-25T14:30:00Z")
     elif input_type == "file":
         input_block = FileInput(
             output_variable_name="comment",
@@ -1302,7 +1308,7 @@ def test_text_send_rejects_non_integer_success_code(
     assert len([call for call in gateway.calls if call[0] == "create_message"]) == 1
 
 
-@pytest.mark.parametrize("input_type", ["file", "file-list"])
+@pytest.mark.parametrize("input_type", ["file", "file-list", "date", "datetime"])
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_file_controls_make_whole_card_unrepresentable_without_mutation(
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],

@@ -159,6 +159,24 @@ export const zResolvedParagraphResponse = z.object({
 })
 
 /**
+ * ResolvedDateResponse
+ */
+export const zResolvedDateResponse = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('date_input'),
+})
+
+/**
+ * ResolvedDateTimeResponse
+ */
+export const zResolvedDateTimeResponse = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('datetime_input'),
+})
+
+/**
  * ResolvedSelectResponse
  */
 export const zResolvedSelectResponse = z.object({
@@ -212,6 +230,8 @@ export const zResolvedPartResponse = z.discriminatedUnion('type', [
   zResolvedSelectResponse,
   zResolvedFileResponse,
   zResolvedFileListResponse,
+  zResolvedDateResponse,
+  zResolvedDateTimeResponse,
 ])
 
 /**

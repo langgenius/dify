@@ -34,6 +34,8 @@ from core.human_input_v2.im_integration.adapters import (
     feishu_lark,
 )
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     MarkdownFragment,
     ParagraphInput,
@@ -475,6 +477,24 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
         (
             ResolvedForm(
                 title="",
+                parts=(DateInput(output_variable_name="due_date", resolved_default_value=None),),
+                actions=(),
+                legacy_form_content="unused",
+            ),
+            "Feishu/Lark cards cannot represent date or datetime inputs.",
+        ),
+        (
+            ResolvedForm(
+                title="",
+                parts=(DateTimeInput(output_variable_name="meeting_at", resolved_default_value=None),),
+                actions=(),
+                legacy_form_content="unused",
+            ),
+            "Feishu/Lark cards cannot represent date or datetime inputs.",
+        ),
+        (
+            ResolvedForm(
+                title="",
                 parts=(SelectInput(output_variable_name="decision", options=(), resolved_default_value=None),),
                 actions=(),
                 legacy_form_content="unused",
@@ -527,6 +547,8 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
         "empty-card",
         "empty-markdown",
         "file-input",
+        "date-input",
+        "datetime-input",
         "empty-select",
         "blank-select-option",
         "duplicate-select-options",

@@ -7,6 +7,8 @@ from typing import assert_never
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     FormPart,
@@ -19,6 +21,8 @@ from core.human_input_v2.resolved_form import (
 )
 from core.workflow.nodes.human_input.entities import (
     OUTPUT_VARIABLE_PATTERN,
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -96,12 +100,15 @@ def _resolve_input(
     *,
     variable_pool: ReadOnlyVariablePool,
     resolved_default: object,
-) -> ParagraphInput | SelectInput | FileInput | FileListInput:
+) -> ParagraphInput | SelectInput | FileInput | FileListInput | DateInput | DateTimeInput:
     match input_config:
         case ParagraphInputConfig():
-            default_value = _resolve_paragraph_default(input_config.default, variable_pool)
-            if default_value is None and resolved_default is not None:
-                default_value = _resolved_text(resolved_default, field_name=input_config.output_variable_name)
+            default_value = _resolve_string_default(
+                input_config.default,
+                variable_pool=variable_pool,
+                resolved_default=resolved_default,
+                field_name=input_config.output_variable_name,
+            )
             source = input_config.default
             return ParagraphInput(
                 output_variable_name=input_config.output_variable_name,
@@ -111,6 +118,28 @@ def _resolve_input(
                     if source is not None
                     else None
                 ),
+            )
+        case DateInputConfig():
+            default_value = _resolve_string_default(
+                input_config.default,
+                variable_pool=variable_pool,
+                resolved_default=resolved_default,
+                field_name=input_config.output_variable_name,
+            )
+            return DateInput(
+                output_variable_name=input_config.output_variable_name,
+                resolved_default_value=default_value or None,
+            )
+        case DateTimeInputConfig():
+            default_value = _resolve_string_default(
+                input_config.default,
+                variable_pool=variable_pool,
+                resolved_default=resolved_default,
+                field_name=input_config.output_variable_name,
+            )
+            return DateTimeInput(
+                output_variable_name=input_config.output_variable_name,
+                resolved_default_value=default_value or None,
             )
         case SelectInputConfig():
             options = _resolve_select_options(input_config.option_source, variable_pool)
@@ -141,6 +170,20 @@ def _resolve_input(
             )
         case _:
             assert_never(input_config)
+
+
+def _resolve_string_default(
+    source: StringSource | None,
+    *,
+    variable_pool: ReadOnlyVariablePool,
+    resolved_default: object,
+    field_name: str,
+) -> str | None:
+    """Resolve a configured default from static source, variable pool, or fallback default."""
+    default_value = _resolve_paragraph_default(source, variable_pool)
+    if default_value is None and resolved_default is not None:
+        return _resolved_text(resolved_default, field_name=field_name)
+    return default_value
 
 
 def _resolve_paragraph_default(source: StringSource | None, variable_pool: ReadOnlyVariablePool) -> str | None:

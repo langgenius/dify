@@ -891,10 +891,28 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+  | ({
+      type: 'date'
+    } & DateInputConfig)
+  | ({
+      type: 'datetime'
+    } & DateTimeInputConfig)
 
 export type JsonValue = unknown
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type DateInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'date'
+}
+
+export type DateTimeInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'datetime'
+}
 
 export type ParagraphInputConfig = {
   default?: StringSource | null

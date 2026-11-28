@@ -76,7 +76,31 @@ export type FileListFormInput = BaseFormInputItem &
     number_limits?: UploadFileSetting['number_limits']
   }
 
-export type FormInputItem = ParagraphFormInput | SelectFormInput | FileFormInput | FileListFormInput
+export type DateFormInput = BaseFormInputItem & {
+  type: typeof InputVarType.date
+  default: StringDefault | null
+}
+
+export type DateTimeFormInput = BaseFormInputItem & {
+  type: typeof InputVarType.datetime
+  default: StringDefault | null
+}
+
+export type FormInputItem =
+  | ParagraphFormInput
+  | SelectFormInput
+  | FileFormInput
+  | FileListFormInput
+  | DateFormInput
+  | DateTimeFormInput
+
+const normalizeStringDefault = (
+  source?: { type?: 'variable' | 'constant'; value?: string; selector?: ValueSelector } | null,
+): StringDefault => ({
+  type: source?.type ?? 'constant',
+  value: source?.value ?? '',
+  selector: source?.selector ?? [],
+})
 
 /** Normalize API nullability and string discriminators at the shared form boundary. */
 export const normalizeHumanInputFormInput = (input: FormInputConfig): FormInputItem => {
@@ -84,11 +108,19 @@ export const normalizeHumanInputFormInput = (input: FormInputConfig): FormInputI
     return {
       type: InputVarType.paragraph,
       output_variable_name: input.output_variable_name,
-      default: {
-        type: input.default?.type ?? 'constant',
-        value: input.default?.value ?? '',
-        selector: input.default?.selector ?? [],
-      },
+      default: normalizeStringDefault(input.default),
+    }
+  if (input.type === 'date')
+    return {
+      type: InputVarType.date,
+      output_variable_name: input.output_variable_name,
+      default: input.default ? normalizeStringDefault(input.default) : null,
+    }
+  if (input.type === 'datetime')
+    return {
+      type: InputVarType.datetime,
+      output_variable_name: input.output_variable_name,
+      default: input.default ? normalizeStringDefault(input.default) : null,
     }
   if (input.type === 'select')
     return {
@@ -131,6 +163,14 @@ export const isFileListFormInput = (input: FormInputItem): input is FileListForm
   return input.type === InputVarType.multiFiles
 }
 
+export const isDateFormInput = (input: FormInputItem): input is DateFormInput => {
+  return input.type === InputVarType.date
+}
+
+export const isDateTimeFormInput = (input: FormInputItem): input is DateTimeFormInput => {
+  return input.type === InputVarType.datetime
+}
+
 export const createDefaultParagraphFormInput = (output_variable_name = ''): ParagraphFormInput => ({
   type: InputVarType.paragraph,
   output_variable_name,
@@ -168,6 +208,18 @@ const createDefaultFileListFormInput = (output_variable_name = ''): FileListForm
   number_limits: 5,
 })
 
+const createDefaultDateFormInput = (output_variable_name = ''): DateFormInput => ({
+  type: InputVarType.date,
+  output_variable_name,
+  default: null,
+})
+
+const createDefaultDateTimeFormInput = (output_variable_name = ''): DateTimeFormInput => ({
+  type: InputVarType.datetime,
+  output_variable_name,
+  default: null,
+})
+
 export const createDefaultFormInputByType = (
   type: FormInputItem['type'],
   output_variable_name = '',
@@ -179,6 +231,10 @@ export const createDefaultFormInputByType = (
       return createDefaultFileFormInput(output_variable_name)
     case InputVarType.multiFiles:
       return createDefaultFileListFormInput(output_variable_name)
+    case InputVarType.date:
+      return createDefaultDateFormInput(output_variable_name)
+    case InputVarType.datetime:
+      return createDefaultDateTimeFormInput(output_variable_name)
     case InputVarType.paragraph:
     default:
       return createDefaultParagraphFormInput(output_variable_name)

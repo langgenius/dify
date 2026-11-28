@@ -874,6 +874,12 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+  | ({
+      type: 'date'
+    } & DateInputConfig)
+  | ({
+      type: 'datetime'
+    } & DateTimeInputConfig)
 
 export type FormSubmitResponse = {
   hints?: Array<Hint>
@@ -1558,6 +1564,18 @@ export type OpenApiFormSubmitPayload = {
 export type PaidPlanRequiredError = ErrorBody & {
   code: 'paid_plan_required'
   status: 403
+}
+
+export type DateInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'date'
+}
+
+export type DateTimeInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'datetime'
 }
 
 export type ParagraphInputConfig = {

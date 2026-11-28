@@ -154,3 +154,48 @@ it('removes one item from a full file list and makes the native picker available
     .toHaveTextContent('report-1.pdf,report-2.pdf')
   await expect.element(uploadButton).toBeEnabled()
 })
+
+it('selects and clears a date field value in its controlled owner', async () => {
+  await renderField(
+    {
+      type: InputVarType.date,
+      output_variable_name: 'due_date',
+      default: { type: 'constant', selector: [], value: '' },
+    },
+    '2026-01-10',
+  )
+
+  await page.getByRole('button', { name: /^due_date/ }).click()
+  await page.getByRole('grid').getByRole('button', { name: /^11:/ }).click()
+  await expect
+    .element(page.getByRole('status', { name: 'due_date saved value' }))
+    .toHaveTextContent('2026-01-11')
+
+  await page.getByRole('button', { name: 'common.operation.clear' }).click()
+  await expect
+    .element(page.getByRole('status', { name: 'due_date saved value' }))
+    .toHaveTextContent('')
+})
+
+it('selects and clears a datetime field value in its controlled owner', async () => {
+  await renderField(
+    {
+      type: InputVarType.datetime,
+      output_variable_name: 'meeting_at',
+      default: { type: 'constant', selector: [], value: '' },
+    },
+    '2026-01-10T09:30:00.000Z',
+  )
+
+  await page.getByRole('button', { name: /^meeting_at/ }).click()
+  await page.getByRole('grid').getByRole('button', { name: /^11:/ }).click()
+  await page.getByRole('button', { name: 'time.operation.ok' }).click()
+  await expect
+    .element(page.getByRole('status', { name: 'meeting_at saved value' }))
+    .toHaveTextContent('2026-01-11T09:30:00.000Z')
+
+  await page.getByRole('button', { name: 'common.operation.clear' }).click()
+  await expect
+    .element(page.getByRole('status', { name: 'meeting_at saved value' }))
+    .toHaveTextContent('')
+})

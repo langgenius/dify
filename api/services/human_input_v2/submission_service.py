@@ -13,9 +13,18 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.file_access import DatabaseFileAccessController
 from core.app.file_access.scope import get_current_file_access_scope, grant_upload_file_access
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.resolved_form import FileInput, FileListInput, MarkdownFragment, ParagraphInput, SelectInput
+from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
+    FileInput,
+    FileListInput,
+    MarkdownFragment,
+    ParagraphInput,
+    SelectInput,
+)
 from core.human_input_v2.shared.values import AccountId, TenantId, WorkspaceScope
 from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.nodes.human_input.entities import validate_iso_date, validate_iso_datetime
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from factories.file_factory import build_from_mapping
 from factories.human_input_v2_form_presentation import refresh_form_file_urls
@@ -903,6 +912,12 @@ def _normalize_inputs(
                     normalized[name] = build_segment(value)
                 else:
                     normalized[name] = StringSegment(value=_STRING.validate_python(value, strict=True))
+            case DateInput():
+                text = validate_iso_date(_STRING.validate_python(value, strict=True))
+                normalized[name] = StringSegment(value=text)
+            case DateTimeInput():
+                text = validate_iso_datetime(_STRING.validate_python(value, strict=True))
+                normalized[name] = StringSegment(value=text)
             case SelectInput():
                 text = _STRING.validate_python(value, strict=True)
                 if text not in part.options:

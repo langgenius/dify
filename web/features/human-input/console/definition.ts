@@ -32,6 +32,32 @@ export const normalizeConsoleFormDefinition = (
           )
           if (part.default_value !== null) resolvedDefaultValues[name] = part.default_value
           break
+        case 'date_input':
+          inputs.push(
+            normalizeHumanInputFormInput({
+              type: 'date',
+              output_variable_name: name,
+              default:
+                part.default_value === null
+                  ? null
+                  : { type: 'constant', value: part.default_value },
+            }),
+          )
+          if (part.default_value !== null) resolvedDefaultValues[name] = part.default_value
+          break
+        case 'datetime_input':
+          inputs.push(
+            normalizeHumanInputFormInput({
+              type: 'datetime',
+              output_variable_name: name,
+              default:
+                part.default_value === null
+                  ? null
+                  : { type: 'constant', value: part.default_value },
+            }),
+          )
+          if (part.default_value !== null) resolvedDefaultValues[name] = part.default_value
+          break
         case 'select_input':
           inputs.push(
             normalizeHumanInputFormInput({

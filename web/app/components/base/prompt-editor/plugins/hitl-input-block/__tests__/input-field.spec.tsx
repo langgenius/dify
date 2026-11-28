@@ -883,4 +883,94 @@ describe('InputField', () => {
       }),
     )
   })
+
+  it('should save a date field with default null and constant default value', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="human"
+        isEdit={false}
+        payload={createPayload({ default: { type: 'constant', selector: [], value: '' } })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
+      }),
+    )
+    await user.click(
+      await screen.findByRole('option', { name: /appDebug\.variableConfig\.date\b/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
+      }),
+    )
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      type: InputVarType.date,
+      output_variable_name: 'valid_name',
+      default: null,
+    })
+
+    await user.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.staticContent'),
+    )
+    await user.type(screen.getByRole('textbox', { name: /staticContent/ }), '2026-11-25')
+    await user.click(
+      screen.getByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
+      }),
+    )
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      type: InputVarType.date,
+      output_variable_name: 'valid_name',
+      default: { type: 'constant', selector: [], value: '2026-11-25' },
+    })
+  })
+
+  it('should save a datetime field with a constant default value', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="human"
+        isEdit={false}
+        payload={createPayload({ default: { type: 'constant', selector: [], value: '' } })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
+      }),
+    )
+    await user.click(
+      await screen.findByRole('option', { name: /appDebug\.variableConfig\.datetime\b/ }),
+    )
+    await user.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.staticContent'),
+    )
+    await user.type(screen.getByRole('textbox', { name: /staticContent/ }), '2026-11-25T14:30:00Z')
+    await user.click(
+      screen.getByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
+      }),
+    )
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      type: InputVarType.datetime,
+      output_variable_name: 'valid_name',
+      default: { type: 'constant', selector: [], value: '2026-11-25T14:30:00Z' },
+    })
+  })
 })

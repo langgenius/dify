@@ -90,6 +90,8 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMWebhookHandler,
 )
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     MarkdownFragment,
@@ -568,6 +570,8 @@ class _SlackCardCodec(IMCardEventDecoder):
                         for option in options
                         if isinstance(option, dict) and option["value"] == block.resolved_default_value
                     )
+            elif isinstance(block, DateInput | DateTimeInput):
+                raise DynamicCardMessagingError("Slack cards cannot represent date or datetime inputs.")
             else:
                 raise DynamicCardMessagingError("Slack cards cannot represent file inputs.")
             blocks.append(
@@ -641,6 +645,8 @@ class _SlackCardCodec(IMCardEventDecoder):
                     continue
                 case FileInput() | FileListInput():
                     return "Slack cards cannot represent file inputs."
+                case DateInput() | DateTimeInput():
+                    return "Slack cards cannot represent date or datetime inputs."
                 case ParagraphInput(output_variable_name=input_name, resolved_default_value=default_value):
                     if len(input_name) > cls._MAX_ACTION_ID_LENGTH or len(input_name) > cls._MAX_INPUT_LABEL_LENGTH:
                         return "Slack cannot preserve one card input identifier."

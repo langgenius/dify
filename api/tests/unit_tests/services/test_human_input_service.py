@@ -22,6 +22,8 @@ from core.repositories.human_input_repository import (
 )
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -461,6 +463,99 @@ def test_submit_form_by_token_invalid_action(
 
     assert "Invalid action" in str(exc_info.value)
     cast(MagicMock, repo.mark_submitted).assert_not_called()
+
+
+def test_submit_form_by_token_accepts_valid_date_and_datetime(
+    form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+) -> None:
+    definition = FormDefinition(
+        form_content="hello",
+        inputs=[
+            DateInputConfig(output_variable_name="due_date"),
+            DateTimeInputConfig(output_variable_name="meeting_at"),
+        ],
+        user_actions=[UserActionConfig(id="submit", title="Submit")],
+        rendered_content="<p>hello</p>",
+        expiration_time=sample_form_record.expiration_time,
+    )
+    repo = form_repository(dataclasses.replace(sample_form_record, definition=definition))
+    service = HumanInputService(unbound_session_factory, form_repository=repo)
+    mocker.patch.object(service, "enqueue_resume")
+
+    service.submit_form_by_token(
+        recipient_type=RecipientType.STANDALONE_WEB_APP,
+        form_token="token",
+        selected_action_id="submit",
+        form_data={
+            "due_date": "2026-11-25",
+            "meeting_at": "2026-11-25T14:30:00.000Z",
+        },
+    )
+
+    persisted = repo.get_by_form_id(sample_form_record.form_id)
+    assert persisted is not None
+    assert persisted.submitted_data == {
+        "due_date": "2026-11-25",
+        "meeting_at": "2026-11-25T14:30:00.000Z",
+    }
+
+
+@pytest.mark.parametrize(
+    ("form_data", "match_pattern"),
+    [
+        (
+            {"due_date": "2026-02-30", "meeting_at": "2026-11-25T14:30:00.000Z"},
+            "Invalid value for date input 'due_date'",
+        ),
+        (
+            {"due_date": 20261125, "meeting_at": "2026-11-25T14:30:00.000Z"},
+            "Invalid value for date input 'due_date': expected string",
+        ),
+        (
+            {"due_date": "2026-11-25", "meeting_at": "2026-11-25"},
+            "Invalid value for datetime input 'meeting_at'",
+        ),
+        (
+            {"due_date": "2026-11-25", "meeting_at": 123},
+            "Invalid value for datetime input 'meeting_at': expected string",
+        ),
+    ],
+)
+def test_submit_form_by_token_rejects_invalid_date_and_datetime(
+    form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+    form_data: dict[str, JsonValue],
+    match_pattern: str,
+) -> None:
+    definition = FormDefinition(
+        form_content="hello",
+        inputs=[
+            DateInputConfig(output_variable_name="due_date"),
+            DateTimeInputConfig(output_variable_name="meeting_at"),
+        ],
+        user_actions=[UserActionConfig(id="submit", title="Submit")],
+        rendered_content="<p>hello</p>",
+        expiration_time=sample_form_record.expiration_time,
+    )
+    repo = form_repository(dataclasses.replace(sample_form_record, definition=definition))
+    service = HumanInputService(unbound_session_factory, form_repository=repo)
+
+    with pytest.raises(InvalidFormDataError, match=match_pattern):
+        service.submit_form_by_token(
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+            form_token="token",
+            selected_action_id="submit",
+            form_data=form_data,
+        )
+
+    persisted = repo.get_by_form_id(sample_form_record.form_id)
+    assert persisted is not None
+    assert persisted.status == HumanInputFormStatus.WAITING
+    assert persisted.submitted_data is None
 
 
 def test_submit_form_by_token_missing_inputs(

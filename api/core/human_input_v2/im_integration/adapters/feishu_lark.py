@@ -85,6 +85,8 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMWebhookHandler,
 )
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     MarkdownFragment,
@@ -1026,6 +1028,8 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                     continue
                 case FileInput() | FileListInput():
                     return "Feishu/Lark cards cannot represent file inputs."
+                case DateInput() | DateTimeInput():
+                    return "Feishu/Lark cards cannot represent date or datetime inputs."
                 case ParagraphInput(output_variable_name=input_name):
                     pass
                 case SelectInput(
@@ -1095,6 +1099,8 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
                     select_element["initial_option"] = block.resolved_default_value
                 rendered_elements.append(select_element)
                 continue
+            if isinstance(block, DateInput | DateTimeInput):
+                raise DynamicCardMessagingError("Feishu/Lark cards cannot represent date or datetime inputs.")
             raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
 
         if intent.actions:
