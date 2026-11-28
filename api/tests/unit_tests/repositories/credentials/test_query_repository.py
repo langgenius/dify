@@ -24,6 +24,7 @@ from repositories.credentials.query_repository import (
     CredentialQueryRepository,
     apply_credential_visibility_filter_for_actor,
 )
+from services.credentials.query import ToolCredentialMetadata
 
 
 @pytest.fixture
@@ -552,6 +553,80 @@ class TestApplyVisibilityFilter:
         )
 
         assert sqlite_session.scalars(query).all() == []
+
+
+def test_builder_actual_model_credential_id_cannot_borrow_visible_alternate(
+    sqlite_session: Session,
+    repository: CredentialQueryRepository,
+) -> None:
+    tenant, actor, other = (str(uuid4()) for _ in range(3))
+    visible = ProviderCredential(
+        tenant_id=tenant,
+        provider_name="openai",
+        credential_name="team",
+        encrypted_config="encrypted",
+        user_id=other,
+        visibility=PermissionEnum.ALL_TEAM,
+    )
+    hidden = ProviderCredential(
+        tenant_id=tenant,
+        provider_name="openai",
+        credential_name="private",
+        encrypted_config="encrypted",
+        user_id=other,
+        visibility=PermissionEnum.ONLY_ME,
+    )
+    sqlite_session.add_all([visible, hidden])
+    sqlite_session.commit()
+    assert repository.model_credentials_visible(
+        workspace_id=tenant,
+        actor_id=actor,
+        provider="langgenius/openai/openai",
+        provider_credential_ids=[visible.id],
+        model_credential_ids=[],
+    )
+    assert not repository.model_credentials_visible(
+        workspace_id=tenant,
+        actor_id=actor,
+        provider="openai",
+        provider_credential_ids=[hidden.id],
+        model_credential_ids=[],
+    )
+    assert not repository.model_credentials_visible(
+        workspace_id=str(uuid4()),
+        actor_id=actor,
+        provider="openai",
+        provider_credential_ids=[visible.id],
+        model_credential_ids=[],
+    )
+
+
+def test_builder_tool_lookup_does_not_substitute_for_a_private_default(
+    sqlite_session: Session, repository: CredentialQueryRepository, tenant_id: str, user_id: str, other_user_id: str
+) -> None:
+    provider = "langgenius/search/search"
+    private = BuiltinToolProvider(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        provider=provider,
+        name="Private default",
+        visibility=PermissionEnum.ONLY_ME,
+        is_default=True,
+    )
+    shared = BuiltinToolProvider(tenant_id=tenant_id, user_id=user_id, provider="search", name="Shared")
+    sqlite_session.add_all([private, shared])
+    sqlite_session.commit()
+
+    lookup = {"workspace_id": tenant_id, "provider": provider, "legacy_provider": "search"}
+    assert repository.list_visible_tool_provider_ids(workspace_id=tenant_id, actor_id=None) == {"search"}
+    assert repository.list_visible_tool_provider_ids(workspace_id=tenant_id, actor_id=user_id) == {provider, "search"}
+    assert repository.resolve_tool_credential_metadata(**lookup, actor_id=other_user_id, credential_id=None) is None
+    assert repository.resolve_tool_credential_metadata(
+        **lookup, actor_id=user_id, credential_id=None
+    ) == ToolCredentialMetadata(id=private.id, provider=provider)
+    assert repository.resolve_tool_credential_metadata(
+        **lookup, actor_id=other_user_id, credential_id=shared.id
+    ) == ToolCredentialMetadata(id=shared.id, provider="search")
 
 
 @pytest.fixture

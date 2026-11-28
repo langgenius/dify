@@ -1,0 +1,873 @@
+"""Installed cached MCP definitions reach Builder and the ordinary native Tool adapter.
+
+The database and schema converter are real. Discovery forbids network/decryption;
+native execution uses a recording local transport, never a live MCP service.
+"""
+
+import json
+from collections.abc import Mapping, Sequence
+from copy import deepcopy
+from typing import NoReturn, NotRequired, TypedDict
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import delete, insert, update
+from sqlalchemy.engine import Engine
+
+from core.tools.tool_manager import ToolManager
+from core.workflow.generator.tool_catalogue import (
+    ToolCatalogueEntry,
+    build_tool_catalogue,
+    find_tool_entry,
+    format_tool_builder_context,
+    format_tool_catalogue,
+)
+from core.workflow.generator.types import GraphDict
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
+from models.tools import MCPToolProvider
+from services.dify_builder.agent import resources
+from services.dify_builder.effect_disclosure import disclose
+from services.dify_builder.resource_grounding import (
+    ResourceBindingError,
+    resource_fingerprint,
+    validate_changed_resources,
+)
+from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+    ACCOUNT_A,
+    ACCOUNT_B,
+    OTHER_TENANT_ID,
+    TENANT_ID,
+    FakeToolDaemon,
+    bind_database,
+    install_fake_daemon,
+    record_sql,
+)
+
+SERVER = "owned-microsoft-docs"
+ACTION = "microsoft_docs_search"
+OUTPUT: dict[str, object] = {
+    "type": "object",
+    "properties": {"results": {"type": "array", "items": {"type": "string"}}},
+}
+
+
+class CachedDeclaration(TypedDict):
+    name: str
+    title: str
+    description: str
+    inputSchema: dict[str, object]
+    outputSchema: NotRequired[dict[str, object]]
+
+
+def definition() -> CachedDeclaration:
+    return {
+        "name": ACTION,
+        "title": "Microsoft documentation search",
+        "description": "Search Microsoft documentation using the user's question.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "The user's documentation question."}},
+            "required": ["query"],
+        },
+        "outputSchema": deepcopy(OUTPUT),
+    }
+
+
+def add_provider(
+    engine: Engine,
+    *,
+    tenant_id: str = TENANT_ID,
+    authed: bool = True,
+    tools: object = None,
+    server_identifier: str = SERVER,
+) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            insert(MCPToolProvider).values(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                user_id=ACCOUNT_B,
+                name="Microsoft Docs (display only)",
+                server_identifier=server_identifier,
+                server_url="encrypted-url-marker",
+                server_url_hash="synthetic-hash",
+                encrypted_headers='{"secret":"encrypted-header-marker"}',
+                encrypted_credentials='{"secret":"encrypted-credential-marker"}',
+                icon="docs.svg",
+                authed=authed,
+                tools=json.dumps([definition()] if tools is None else tools),
+            )
+        )
+
+
+@pytest.fixture
+def inventory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Engine:
+    from core.entities.mcp_provider import MCPProviderEntity
+    from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+    bind_database(monkeypatch, sqlite_engine)
+    install_fake_daemon(monkeypatch, FakeToolDaemon())
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant, _account: [])
+
+    def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
+        raise AssertionError("Discovery cannot decrypt, resolve credentials or contact MCP")
+
+    for name in ("decrypt_server_url", "decrypt_headers", "decrypt_credentials", "retrieve_tokens"):
+        monkeypatch.setattr(MCPProviderEntity, name, forbidden)
+    monkeypatch.setattr(MCPToolManageService, "list_provider_tools", forbidden)
+    monkeypatch.setattr(ToolManager, "get_mcp_provider_controller", forbidden)
+    return sqlite_engine
+
+
+def test_cached_mcp_discovery_reads_only_public_columns_and_exact_native_identity(inventory: Engine) -> None:
+    add_provider(inventory)
+    statements = record_sql(inventory)
+    entries = build_tool_catalogue(TENANT_ID)
+    entry = find_tool_entry(entries, SERVER, ACTION)
+    assert entry is not None
+    assert entry["provider_type"] == "mcp"
+    assert entry["provider_label"] == "Microsoft Docs (display only)"
+    assert entry["tool_label"] == "Microsoft documentation search"
+    assert entry["output_schema"] == OUTPUT
+    assert entry["input_schema"] == definition()["inputSchema"]
+    assert json.dumps(definition()["inputSchema"]) in format_tool_builder_context(entry)
+    assert [(p["name"], p["type"], p["required"]) for p in entry["parameters"]] == [("query", "string", True)]
+    assert entry["parameters"][0]["llm_description"] == "The user's documentation question."
+    prompt = format_tool_catalogue([entry])
+    assert 'provider_type="mcp"' in prompt
+    assert f'provider_id="{SERVER}"' in prompt
+    queries = [sql.lower() for sql in statements if "tool_mcp_providers" in sql.lower()]
+    assert queries
+    assert all("tenant_id =" in sql for sql in queries)
+    assert all(
+        not any(secret in sql for secret in ("server_url", "encrypted_headers", "encrypted_credentials"))
+        for sql in queries
+    )
+    assert "encrypted-" not in repr(entry)
+
+
+def test_mcp_configuration_does_not_borrow_builtin_credentials(
+    inventory: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    add_provider(inventory)
+
+    def forbidden(*_args: object) -> NoReturn:
+        raise AssertionError("MCP cannot use builtin credential visibility")
+
+    monkeypatch.setattr(resources, "_authorized_providers", forbidden)
+    refs = resources.list_tenant_resources(TENANT_ID).tools
+    ref = next(ref for ref in refs if ref.id == f"mcp:{SERVER}/{ACTION}")
+    assert ref.readiness == "ready"
+    assert ref.binding["provider_type"] == "mcp"
+    assert ref.availability["runtime"] == "unverified"
+    with inventory.begin() as connection:
+        connection.execute(update(MCPToolProvider).values(authed=False))
+    current = resources.list_tenant_resources(TENANT_ID)
+    revoked = next(item for item in current.tools if item.id == ref.id)
+    assert revoked.readiness == "missing_config"
+    assert resource_fingerprint(revoked) != resource_fingerprint(ref)
+
+
+@pytest.mark.parametrize("mutation", ["foreign", "deleted", "schema", "input_schema", "revoked"])
+def test_selected_mcp_binding_rejects_stale_or_foreign_declarations(inventory: Engine, mutation: str) -> None:
+    add_provider(inventory)
+    catalogue = resources.list_tenant_resources(TENANT_ID)
+    ref = next((item for item in catalogue.tools if item.id == f"mcp:{SERVER}/{ACTION}"), None)
+    assert ref is not None
+    graph = bound_graph(build_tool_catalogue(TENANT_ID))
+    with inventory.begin() as connection:
+        if mutation == "foreign":
+            connection.execute(update(MCPToolProvider).values(tenant_id=OTHER_TENANT_ID))
+        elif mutation == "deleted":
+            connection.execute(delete(MCPToolProvider))
+        elif mutation == "revoked":
+            connection.execute(update(MCPToolProvider).values(authed=False))
+        else:
+            changed = definition()
+            if mutation == "input_schema":
+                changed["inputSchema"]["additionalProperties"] = False
+            else:
+                changed["outputSchema"] = {"type": "object", "properties": {"unexpected": {"type": "string"}}}
+            connection.execute(update(MCPToolProvider).values(tools=json.dumps([changed])))
+    with pytest.raises(ResourceBindingError) as caught:
+        validate_changed_resources(
+            {"nodes": []},
+            dict(graph),
+            resources.list_tenant_resources(TENANT_ID),
+            confirmed_ids=[f"tool:{ref.id}"],
+            expected_fingerprints={f"tool:{ref.id}": resource_fingerprint(ref)},
+        )
+    assert caught.value.reason_code == (
+        "resource_not_in_catalogue" if mutation in {"foreign", "deleted"} else "resource_catalogue_changed"
+    )
+
+
+def bound_graph(entries: list[ToolCatalogueEntry]) -> GraphDict:
+    from services.workflow_generation.runner import WorkflowGenerator
+
+    graph: GraphDict = {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [
+                        {
+                            "variable": "question",
+                            "label": "Question",
+                            "type": "text-input",
+                            "required": True,
+                            "max_length": 200,
+                        }
+                    ],
+                },
+            },
+            {
+                "id": "search",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {
+                    "type": "tool",
+                    "title": "Search docs",
+                    "tool_configurations": {},
+                    "tool_parameters": {"query": {"type": "mixed", "value": "{{#start.question#}}"}},
+                },
+            },
+            {
+                "id": "end",
+                "type": "custom",
+                "position": {"x": 600, "y": 0},
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [{"variable": "results", "value_selector": ["search", "results"]}],
+                },
+            },
+        ],
+        "edges": [
+            {"id": "start-search", "type": "custom", "source": "start", "target": "search"},
+            {"id": "search-end", "type": "custom", "source": "search", "target": "end"},
+        ],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
+    }
+    WorkflowGenerator._hydrate_tool_nodes(
+        graph=graph,
+        plan_nodes=[{"id": "search", "node_type": "tool", "tool": {"provider_id": SERVER, "tool_name": ACTION}}],
+        tool_catalogue_entries=entries,
+    )
+    return graph
+
+
+def test_mcp_catalogue_constructs_bound_graph_without_schema_or_identity_guesses(inventory: Engine) -> None:
+    add_provider(inventory)
+    graph = bound_graph(build_tool_catalogue(TENANT_ID))
+    data = graph["nodes"][1]["data"]
+    assert data["provider_type"] == "mcp"
+    assert data["provider_id"] == SERVER
+    assert data["tool_name"] == ACTION
+    assert data["output_schema"] == OUTPUT
+    assert data["tool_parameters"]["query"] == {"type": "mixed", "value": "{{#start.question#}}"}
+    validate_changed_resources({"nodes": []}, dict(graph), resources.list_tenant_resources(TENANT_ID))
+    data["tool_parameters"] = {"invented": {"type": "constant", "value": "wrong"}}
+    with pytest.raises(ResourceBindingError, match="resource_configuration_incompatible"):
+        validate_changed_resources({"nodes": []}, dict(graph), resources.list_tenant_resources(TENANT_ID))
+
+
+def test_search_named_mcp_still_requires_explicit_confirmation() -> None:
+    graph = {
+        "nodes": [
+            {
+                "id": "search",
+                "data": {"type": "tool", "provider_type": "mcp", "provider_id": SERVER, "tool_name": ACTION},
+            }
+        ]
+    }
+    disclosure = disclose(graph)
+    assert disclosure.items[0].tier == "side_effect"
+    assert disclosure.mocked_node_ids({}) == frozenset({"search"})
+    assert disclosure.mocked_node_ids(disclosure.confirmation(["search"])) == frozenset()
+
+
+def test_bound_mcp_graph_uses_native_tool_adapter_and_end_returns_transport_output(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import time
+    from typing import Self
+
+    import core.tools.mcp_tool.tool as mcp_module
+    from core.entities.mcp_provider import MCPProviderEntity
+    from core.mcp.types import CallToolResult, TextContent
+    from core.workflow.node_factory import DifyNodeFactory
+    from extensions import ext_database
+    from graphon.enums import WorkflowNodeExecutionStatus
+    from graphon.graph.graph import Graph
+    from graphon.node_events import StreamCompletedEvent
+    from graphon.nodes.end.end_node import EndNode
+    from graphon.nodes.start.start_node import StartNode
+    from graphon.nodes.tool.tool_node import ToolNode
+    from graphon.runtime import RuntimeState, VariablePool
+    from services.dify_builder.agent.build import bind_resources
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import InventoryDatabase
+    from tests.workflow_test_utils import build_test_graph_init_params
+
+    bind_database(monkeypatch, sqlite_engine)
+    monkeypatch.setattr(ext_database, "db", InventoryDatabase(sqlite_engine))
+    install_fake_daemon(monkeypatch, FakeToolDaemon())
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant, _account: [])
+    add_provider(sqlite_engine)
+    plan = bind_resources(None, TENANT_ID, ["Search Microsoft documentation"], [f"mcp:{SERVER}/{ACTION}"])
+    assert f"[mcp:{SERVER}/{ACTION}]" in plan[0]
+    graph_config = bound_graph(build_tool_catalogue(TENANT_ID))
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    class RecordingMCPTransport:
+        def __init__(self, *, server_url: str, headers: dict[str, str], **_kwargs: object) -> None:
+            assert server_url == "https://controlled-transport.invalid/mcp"
+            assert headers == {}
+
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            pass
+
+        def invoke_tool(self, *, tool_name: str, tool_args: dict[str, object]) -> CallToolResult:
+            calls.append((tool_name, tool_args))
+            return CallToolResult(
+                content=[TextContent(type="text", text="Controlled documentation match")],
+                structuredContent={"results": ["Controlled result from native MCP transport"]},
+            )
+
+    monkeypatch.setattr(mcp_module, "MCPClientWithAuthRetry", RecordingMCPTransport)
+    monkeypatch.setattr(
+        MCPProviderEntity, "decrypt_server_url", lambda _self: "https://controlled-transport.invalid/mcp"
+    )
+    monkeypatch.setattr(MCPProviderEntity, "decrypt_headers", lambda _self: {})
+    monkeypatch.setattr(MCPProviderEntity, "retrieve_tokens", lambda _self: None)
+    pool = VariablePool()
+    pool.add(["start", "question"], "How does Azure work?")
+    state = RuntimeState(workflow_id="controlled-workflow", variable_pool=pool, start_at=time.perf_counter())
+    init = build_test_graph_init_params(tenant_id=TENANT_ID, user_id=ACCOUNT_A, graph_config=graph_config)
+    factory = DifyNodeFactory(init_params=init, runtime_state=state)
+    graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+    start_node = graph.nodes["start"]
+    assert isinstance(start_node, StartNode)
+    start = start_node._run()
+    assert start.outputs["question"] == "How does Azure work?"
+    search = graph.nodes["search"]
+    assert isinstance(search, ToolNode)
+    search.bind_execution_id("controlled-search-execution")
+    completed = [event.node_run_result for event in search._run() if isinstance(event, StreamCompletedEvent)]
+    assert len(completed) == 1
+    assert completed[0].status == WorkflowNodeExecutionStatus.SUCCEEDED, completed[0].error
+    assert calls == [(ACTION, {"query": "How does Azure work?"})]
+    assert completed[0].outputs["results"] == ["Controlled result from native MCP transport"]
+    for name, value in completed[0].outputs.items():
+        pool.add(["search", name], value)
+    end_node = graph.nodes["end"]
+    assert isinstance(end_node, EndNode)
+    end = end_node._run()
+    assert end.outputs == {"results": ["Controlled result from native MCP transport"]}
+
+
+@pytest.mark.parametrize(
+    "bad_tools", [None, [], [{"name": "bad", "inputSchema": {"type": "object", "properties": []}}]]
+)
+def test_empty_or_malformed_mcp_cache_never_fabricates_tools(inventory: Engine, bad_tools: object) -> None:
+    add_tools = "null" if bad_tools is None else json.dumps(bad_tools)
+    add_provider(inventory, tools=[])
+    with inventory.begin() as connection:
+        connection.execute(update(MCPToolProvider).values(tools=add_tools))
+    assert all(entry["provider_type"] != "mcp" for entry in build_tool_catalogue(TENANT_ID))
+
+
+@pytest.mark.usefixtures("inventory")
+def test_mcp_inventory_failure_is_reported_without_losing_other_tool_sources(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import core.workflow.generator.tool_catalogue as catalogue_module
+
+    def unavailable(_tenant: str) -> NoReturn:
+        raise RuntimeError("controlled metadata source failure")
+
+    monkeypatch.setattr(catalogue_module, "list_mcp_tool_metadata", unavailable)
+    failures: list[str] = []
+    entries = build_tool_catalogue(TENANT_ID, on_source_error=failures.append)
+    assert failures == ["mcp_tool_inventory"]
+    assert any(entry["provider_name"] == "time" for entry in entries)
+    current = resources.list_tenant_resources(TENANT_ID)
+    assert current.tool_source_error == "inventory_unavailable"
+
+
+@pytest.mark.parametrize("mutation", ["foreign", "deleted", "revoked"])
+def test_native_mcp_adapter_rechecks_current_owned_provider_before_dispatch(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+) -> None:
+    from core.workflow.node_runtime import DifyToolNodeRuntime
+    from graphon.nodes.tool.entities import ToolNodeData
+    from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+    from graphon.runtime import VariablePool
+    from tests.workflow_test_utils import build_test_run_context
+
+    bind_database(monkeypatch, sqlite_engine)
+    add_provider(sqlite_engine)
+    runtime = DifyToolNodeRuntime(build_test_run_context(tenant_id=TENANT_ID, user_id=ACCOUNT_A))
+    node_data = ToolNodeData.model_validate(
+        {
+            "type": "tool",
+            "title": "Search docs",
+            "provider_id": SERVER,
+            "provider_name": SERVER,
+            "provider_type": "mcp",
+            "tool_name": ACTION,
+            "tool_label": "Search docs",
+            "tool_parameters": {},
+            "tool_configurations": {},
+        }
+    )
+    # The ordinary native owner can initially resolve this exact installed action.
+    runtime.get_runtime(node_id="search", node_data=node_data, variable_pool=VariablePool())
+    with sqlite_engine.begin() as connection:
+        if mutation == "foreign":
+            connection.execute(update(MCPToolProvider).values(tenant_id=OTHER_TENANT_ID))
+        elif mutation == "deleted":
+            connection.execute(delete(MCPToolProvider))
+        else:
+            # Native revoke clears cached actions as well as cached auth state.
+            connection.execute(update(MCPToolProvider).values(authed=False, tools="[]"))
+    with pytest.raises(ToolRuntimeResolutionError):
+        runtime.get_runtime(node_id="search", node_data=node_data, variable_pool=VariablePool())
+
+
+def test_mcp_without_output_declaration_keeps_native_generic_outputs(inventory: Engine) -> None:
+    tool = definition()
+    tool.pop("outputSchema")
+    add_provider(inventory, tools=[tool])
+    entry = find_tool_entry(build_tool_catalogue(TENANT_ID), SERVER, ACTION)
+    assert entry is not None
+    assert entry["output_schema"] == {}
+    ref = next(item for item in resources.list_tenant_resources(TENANT_ID).tools if item.id == f"mcp:{SERVER}/{ACTION}")
+    assert ref.output_schema_state == "absent"
+    assert bound_graph([entry])["nodes"][1]["data"]["output_schema"] == {}
+
+
+def test_mcp_destructive_evidence_remains_unconfirmable() -> None:
+    graph = {
+        "nodes": [
+            {
+                "id": "delete",
+                "data": {
+                    "type": "tool",
+                    "provider_type": "mcp",
+                    "provider_id": SERVER,
+                    "tool_name": "delete_documents",
+                },
+            }
+        ]
+    }
+    disclosure = disclose(graph)
+    assert disclosure.items[0].tier == "destructive"
+    assert disclosure.confirmation(["delete"]) == {}
+    assert disclosure.mocked_node_ids({}) == frozenset({"delete"})
+
+
+def test_malformed_mcp_action_does_not_hide_other_cached_actions(inventory: Engine) -> None:
+    add_provider(inventory, tools=[{"name": "bad", "inputSchema": {"type": "impossible"}}, definition()])
+    entries = [entry for entry in build_tool_catalogue(TENANT_ID) if entry["provider_type"] == "mcp"]
+    assert [entry["tool_name"] for entry in entries] == [ACTION]
+
+
+@pytest.fixture
+def native_inventory(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Engine:
+    bind_database(monkeypatch, sqlite_engine)
+    install_fake_daemon(monkeypatch, FakeToolDaemon())
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant, _account: [])
+    return sqlite_engine
+
+
+def test_native_identity_collision_keeps_selected_mcp_binding_and_provider(native_inventory: Engine) -> None:
+    from core.tools.entities.tool_entities import ToolProviderType
+    from core.tools.mcp_tool.tool import MCPTool
+    from services.dify_builder.agent.build import _installed_tool_refs, bind_resources
+    from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    refs = resources.list_tenant_resources(TENANT_ID).tools
+    collided = [
+        ref
+        for ref in refs
+        if ref.binding.get("provider_id") == "time" and ref.binding.get("tool_name") == "current_time"
+    ]
+    assert {ref.id for ref in collided} == {"time/current_time", "mcp:time/current_time"}
+    selected = next(ref for ref in collided if ref.id == "mcp:time/current_time")
+    assert selected.binding["provider_type"] == "mcp"
+    plan = bind_resources(None, TENANT_ID, ["Use selected MCP"], [selected.id])
+    assert "[mcp:time/current_time]" in plan[0]
+    assert _installed_tool_refs(TENANT_ID, None)[("time", "current_time")].binding["provider_type"] == "builtin"
+    selector = {
+        "id": "search",
+        "node_type": "tool",
+        "tool": {"provider_id": "time", "tool_name": "current_time", "provider_type": "mcp"},
+    }
+    entry = _find_planned_tool_entry(selector, entries)
+    assert entry is not None
+    assert entry["provider_type"] == "mcp"
+    graph = bound_graph(entries)
+    graph["nodes"][1]["data"].update({"provider_id": "time", "tool_name": "current_time", "provider_type": "mcp"})
+    WorkflowGenerator._hydrate_tool_nodes(graph=graph, plan_nodes=[selector], tool_catalogue_entries=entries)
+    assert graph["nodes"][1]["data"]["provider_type"] == "mcp"
+    assert graph["nodes"][1]["data"]["output_schema"] == OUTPUT
+    validate_changed_resources(
+        {"nodes": []}, dict(graph), resources.list_tenant_resources(TENANT_ID), confirmed_ids=[f"tool:{selected.id}"]
+    )
+    native = ToolManager.get_tool_runtime(ToolProviderType.MCP, "time", "current_time", TENANT_ID)
+    assert isinstance(native, MCPTool)
+    assert native.server_identifier == "time"
+    assert native.entity.output_schema == OUTPUT
+
+
+def test_colliding_untyped_lookup_refuses_and_routed_catalogue_retains_native_types(native_inventory: Engine) -> None:
+    from core.workflow.generator.tool_catalogue import select_tool_candidates
+    from services.workflow_generation.runner import _find_planned_tool_entry
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    assert find_tool_entry(entries, "time", "current_time") is None
+    assert (
+        _find_planned_tool_entry(
+            {"tool": {"provider_id": "time", "tool_name": "current_time"}, "purpose": "time/current_time"}, entries
+        )
+        is None
+    )
+    selected = select_tool_candidates(entries, [{"capability": "current time", "keywords": []}])
+    assert {
+        entry["provider_type"]
+        for entry in selected.entries
+        if entry["provider_name"] == "time" and entry["tool_name"] == "current_time"
+    } == {"builtin", "mcp"}
+
+
+def test_valid_mcp_sibling_reaches_native_resolver_with_boolean_property_schema(native_inventory: Engine) -> None:
+    from core.tools.entities.tool_entities import ToolProviderType
+    from core.tools.mcp_tool.tool import MCPTool
+    from services.dify_builder.agent.build import bind_resources
+
+    add_provider(
+        native_inventory,
+        tools=[definition(), {"name": "other_action", "inputSchema": {"type": "object", "properties": {"flag": True}}}],
+    )
+    entry = find_tool_entry(build_tool_catalogue(TENANT_ID), SERVER, ACTION)
+    assert entry is not None
+    plan = bind_resources(None, TENANT_ID, ["Search docs"], [f"mcp:{SERVER}/{ACTION}"])
+    assert f"[mcp:{SERVER}/{ACTION}]" in plan[0]
+    graph = bound_graph(build_tool_catalogue(TENANT_ID))
+    validate_changed_resources({"nodes": []}, dict(graph), resources.list_tenant_resources(TENANT_ID))
+    native = ToolManager.get_tool_runtime(ToolProviderType.MCP, SERVER, ACTION, TENANT_ID)
+    assert isinstance(native, MCPTool)
+    assert native.entity.identity.name == ACTION
+    assert native.entity.output_schema == OUTPUT
+    with pytest.raises(ValueError, match="not found"):
+        ToolManager.get_mcp_provider_controller(TENANT_ID, SERVER).get_tool("other_action")
+
+
+def test_collision_namespaced_pinning_and_explicit_type_remain_authoritative(native_inventory: Engine) -> None:
+    from core.workflow.generator.tool_catalogue import resolve_tool_entry, select_tool_candidates
+    from services.dify_builder.api_tool_output_context import format_plugin_tool_output_context
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    pinned = select_tool_candidates(entries, [], explicit_text="Use mcp:time/current_time")
+    assert [(entry["provider_type"], entry["provider_name"], entry["tool_name"]) for entry in pinned.entries] == [
+        ("mcp", "time", "current_time")
+    ]
+    selector = {"provider_id": "time", "tool_name": "current_time", "provider_type": "mcp"}
+    selected = resolve_tool_entry(entries, selector, purpose="Use time/current_time")
+    assert selected is not None
+    assert selected["provider_type"] == "mcp"
+    builtin = resolve_tool_entry(entries, {**selector, "provider_type": "builtin"}, purpose="Use mcp:time/current_time")
+    assert builtin is not None
+    assert builtin["provider_type"] == "builtin"
+    assert (
+        resolve_tool_entry(entries, {**selector, "provider_type": "api"}, purpose="Use mcp:time/current_time") is None
+    )
+    plan = {
+        "nodes": [{"id": "search", "node_type": "tool", "tool": selector}, {"id": "end", "node_type": "end"}],
+        "edges": [{"source": "search", "target": "end"}],
+    }
+    context = format_plugin_tool_output_context(plan_json=json.dumps(plan), target_node_id="end", entries=entries)
+    assert '"results"' in context
+    assert '"output_schema_state":"declared"' in context
+
+
+def alternate_builtin_graph() -> GraphDict:
+    """A complete installed alternate that ordinary structural checks accept."""
+    return {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start", "variables": []},
+            },
+            {
+                "id": "clock",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {
+                    "type": "tool",
+                    "title": "Clock",
+                    "provider_id": "time",
+                    "provider_name": "time",
+                    "provider_type": "builtin",
+                    "tool_name": "current_time",
+                    "tool_label": "Clock",
+                    "tool_configurations": {
+                        "format": {"type": "constant", "value": "%Y"},
+                        "timezone": {"type": "constant", "value": "UTC"},
+                    },
+                    "tool_parameters": {},
+                },
+            },
+            {
+                "id": "end",
+                "type": "custom",
+                "position": {"x": 600, "y": 0},
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [{"variable": "text", "value_selector": ["clock", "text"]}],
+                },
+            },
+        ],
+        "edges": [
+            {"id": "a", "type": "custom", "source": "start", "target": "clock"},
+            {"id": "b", "type": "custom", "source": "clock", "target": "end"},
+        ],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
+    }
+
+
+class AlternateBuiltinModel:
+    """Injected cognition transport returning a valid alternate Tool configuration."""
+
+    def __init__(self, selector: Mapping[str, object] | None, *, purpose: str = "Choose an installed clock") -> None:
+        self.graph = alternate_builtin_graph()
+        self.builder_calls: list[str] = []
+        self.planner_calls = 0
+        nodes: list[dict[str, object]] = [
+            {"id": "start", "label": "Start", "node_type": "start", "purpose": "Start"},
+            {"id": "clock", "label": "Clock", "node_type": "tool", "purpose": purpose},
+            {"id": "end", "label": "End", "node_type": "end", "purpose": "Return the clock output"},
+        ]
+        if selector is not None:
+            nodes[1]["tool"] = dict(selector)
+        self.plan: dict[str, object] = {
+            "title": "Clock",
+            "description": "Return the clock output",
+            "nodes": nodes,
+            "edges": [{"source": "start", "target": "clock"}, {"source": "clock", "target": "end"}],
+        }
+
+    def invoke_llm(self, *, prompt_messages: Sequence[PromptMessage], stream: bool, **_kwargs: object) -> LLMResult:
+
+        assert stream is False
+        if "workflow planner" in str(prompt_messages[0].content).lower():
+            self.planner_calls += 1
+            payload = self.plan
+        else:
+            prompt = "\n".join(str(message.content) for message in prompt_messages)
+            node = next(node for node in self.graph["nodes"] if f"id={node['id']}, type=" in prompt)
+            self.builder_calls.append(node["id"])
+            payload = {
+                "config": {
+                    key: deepcopy(value)
+                    for key, value in node["data"].items()
+                    if key not in {"type", "title", "desc", "selected"}
+                }
+            }
+        return LLMResult(
+            model="controlled",
+            prompt_messages=prompt_messages,
+            message=AssistantPromptMessage(content=json.dumps(payload)),
+            usage=LLMUsage.empty_usage(),
+        )
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"provider_id": "time", "tool_name": "current_time", "provider_type": "api"},
+        {"provider_id": "time", "tool_name": "current_time"},
+    ],
+    ids=["explicit_unavailable", "ambiguous_untyped"],
+)
+def test_authoritative_selector_refuses_complete_alternate_graph_before_hydration(
+    native_inventory: Engine, selector: dict[str, str]
+) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator, _StageSchemaError
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    graph = alternate_builtin_graph()
+    before = deepcopy(graph)
+    assert (
+        WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools={("time", "current_time")})
+        == []
+    )
+    with pytest.raises(_StageSchemaError, match="unavailable or ambiguous"):
+        WorkflowGenerator._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=[{"id": "clock", "node_type": "tool", "tool": selector}],
+            tool_catalogue_entries=build_tool_catalogue(TENANT_ID),
+        )
+    assert graph == before
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"provider_id": "time", "tool_name": "current_time", "provider_type": "api"},
+        {"provider_id": "time", "tool_name": "current_time"},
+    ],
+    ids=["explicit_unavailable", "ambiguous_untyped"],
+)
+def test_generation_refuses_authoritative_selector_before_alternate_builder(
+    native_inventory: Engine, selector: dict[str, str]
+) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    model = AlternateBuiltinModel(selector)
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="controlled",
+        model_name="controlled",
+        model_mode="chat",
+        mode="workflow",
+        instruction="Use the selected tool",
+        tool_catalogue_entries=build_tool_catalogue(TENANT_ID),
+        installed_tools={("time", "current_time")},
+    )
+    assert result["error"]
+    assert [(error["code"], error.get("node_id")) for error in result["errors"]] == [("UNKNOWN_TOOL", "clock")]
+    assert result["graph"]["nodes"] == []
+    assert model.planner_calls == 1
+    assert model.builder_calls == []
+
+
+def test_generic_tool_choice_without_selector_still_generates_installed_tool(native_inventory: Engine) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    model = AlternateBuiltinModel(None)
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="controlled",
+        model_name="controlled",
+        model_mode="chat",
+        mode="workflow",
+        instruction="Choose an installed clock",
+        tool_catalogue_entries=build_tool_catalogue(TENANT_ID),
+        installed_tools={("time", "current_time")},
+    )
+    assert result["error"] == ""
+    assert result["errors"] == []
+    clock = next(node for node in result["graph"]["nodes"] if node["data"].get("type") == "tool")
+    assert (clock["data"]["provider_type"], clock["data"]["provider_id"], clock["data"]["tool_name"]) == (
+        "builtin",
+        "time",
+        "current_time",
+    )
+    assert set(model.builder_calls) == {"start", "clock", "end"}
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"provider_id": " time ", "tool_name": " current_time "},
+        {"provider_id": "time", "tool_name": "weekday", "provider_type": None},
+        {"provider_id": "time", "tool_name": "weekday", "provider_type": "  "},
+        {"provider_id": "time", "tool_name": "weekday", "provider_type": ["builtin"]},
+    ],
+    ids=["whitespace_ambiguous", "null_type", "blank_type", "non_string_type"],
+)
+def test_normalized_authoritative_selectors_never_fall_back_to_prose(
+    native_inventory: Engine, selector: dict[str, object]
+) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry, _StageSchemaError
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    assert find_tool_entry(entries, "time", "weekday", provider_type="builtin") is not None
+    node = {"id": "clock", "node_type": "tool", "tool": selector, "purpose": "Use time/weekday"}
+    graph = alternate_builtin_graph()
+    before = deepcopy(graph)
+    with pytest.raises(_StageSchemaError, match="unavailable or ambiguous"):
+        WorkflowGenerator._hydrate_tool_nodes(graph=graph, plan_nodes=[node], tool_catalogue_entries=entries)
+    assert graph == before
+    assert _find_planned_tool_entry(node, entries) is None
+    model = AlternateBuiltinModel(selector, purpose="Use time/weekday")
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="controlled",
+        model_name="controlled",
+        model_mode="chat",
+        mode="workflow",
+        instruction="Use the selected tool",
+        tool_catalogue_entries=entries,
+        installed_tools={("time", "current_time"), ("time", "weekday")},
+    )
+    assert [(error["code"], error.get("node_id")) for error in result["errors"]] == [("UNKNOWN_TOOL", "clock")]
+    assert result["graph"]["nodes"] == []
+    assert model.builder_calls == []
+
+
+def test_normalized_valid_typed_selector_binds_exact_identity_despite_unrelated_prose(native_inventory: Engine) -> None:
+    from services.workflow_generation.runner import (
+        WorkflowGenerator,
+        _find_planned_tool_entry,
+        _planned_tool_selector_errors,
+    )
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    selector = {"provider_id": " time ", "tool_name": " current_time ", "provider_type": " mcp "}
+    node = {"id": "clock", "node_type": "tool", "tool": selector, "purpose": "Use time/weekday"}
+    assert _planned_tool_selector_errors([node], entries) == []
+    entry = _find_planned_tool_entry(node, entries)
+    assert entry is not None
+    assert (entry["provider_type"], entry["provider_name"], entry["tool_name"]) == ("mcp", "time", "current_time")
+    graph = alternate_builtin_graph()
+    WorkflowGenerator._hydrate_tool_nodes(graph=graph, plan_nodes=[node], tool_catalogue_entries=entries)
+    clock = graph["nodes"][1]["data"]
+    assert (clock["provider_type"], clock["provider_id"], clock["tool_name"]) == ("mcp", "time", "current_time")
+    assert clock["output_schema"] == OUTPUT

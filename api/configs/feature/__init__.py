@@ -1052,6 +1052,18 @@ class WorkflowConfig(BaseSettings):
         default=10,
     )
 
+    DIFY_BUILDER_MAX_ADVANCE_SECONDS: PositiveInt = Field(
+        description=(
+            "Max wall-clock seconds for one dify_builder advance; also the advance-lock TTL and Celery soft_time_limit."
+        ),
+        default=600,
+    )
+
+    DIFY_BUILDER_ENABLED: bool = Field(
+        description="Expose the Dify Builder feature (console routes + UI flag). Off by default; opt-in.",
+        default=False,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
@@ -1661,6 +1673,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
         default=60 * 60,
+    )
+
+    ENABLE_DIFY_BUILDER_RECONCILER: bool = Field(
+        description="Enable the dify-builder interrupted-session reconciler (beat sweeper)",
+        default=False,
+    )
+    DIFY_BUILDER_RECONCILE_INTERVAL: PositiveInt = Field(
+        description="Minutes between dify-builder reconciler sweeps",
+        default=5,
     )
 
 

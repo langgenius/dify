@@ -1,10 +1,14 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
+import { useWorkflowAppSelector as useStore } from '@/app/components/workflow-app/store/workflow'
 import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import Header from '@/app/components/workflow/header'
-import { useStore } from '@/app/components/workflow/store'
+import { DifyBuilderChecklist } from '@/features/dify-builder/editor/checklist'
+import DifyBuilderPanelToggle from '@/features/dify-builder/editor/panel-toggle'
+import { useWorkflowDifyBuilderEnabled } from '@/features/dify-builder/editor/use-enabled'
 import { workflowVersionHistoryKey } from '@/service/workflow-queries'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
@@ -18,6 +22,7 @@ const WorkflowHeader = () => {
     [queryClient, resource],
   )
   const isChatflow = useAtomValue(isChatflowAtom)
+  const difyBuilderEnabled = useWorkflowDifyBuilderEnabled()
 
   const handleClearLogAndMessageModal = useCallback(() => {
     setMessageLogItem(undefined)
@@ -35,11 +40,18 @@ const WorkflowHeader = () => {
         components: {
           middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
+          actions: difyBuilderEnabled && (
+            <>
+              <Separator decorative orientation="vertical" className="mx-0 h-4" />
+              <DifyBuilderPanelToggle />
+            </>
+          ),
         },
         runAndHistoryProps: {
           showRunButton: !isChatflow,
           showPreviewButton: isChatflow,
           viewHistoryProps,
+          components: { Checklist: DifyBuilderChecklist },
         },
       },
       viewHistory: {
@@ -49,7 +61,7 @@ const WorkflowHeader = () => {
         onRestoreSettled: resetWorkflowVersionHistory,
       },
     }
-  }, [resetWorkflowVersionHistory, isChatflow, viewHistoryProps])
+  }, [difyBuilderEnabled, resetWorkflowVersionHistory, isChatflow, viewHistoryProps])
   return <Header {...headerProps} />
 }
 

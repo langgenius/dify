@@ -1,0 +1,98 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "QA News Search",
+    "version": "0.0.1",
+    "description": "ENG-1106 synthetic API-tool metadata fixture. No live service, credentials, or real-provider compatibility claim."
+  },
+  "servers": [
+    {
+      "url": "https://eng1106-fixture.invalid"
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/news": {
+      "get": {
+        "operationId": "qa_news_search",
+        "summary": "QA News Search",
+        "description": "Synthetic test action. Bind Tool query to runtime Start.keyword; fixed timespan=24h/maxrecords=5. Declared response root news; project title/url and limit to five. Test transport only, no live requests.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "timespan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "24h"
+              ],
+              "default": "24h"
+            }
+          },
+          {
+            "name": "maxrecords",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                5
+              ],
+              "default": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Controlled response deliberately includes extra fields and more than five records.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "news"
+                  ],
+                  "properties": {
+                    "news": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "title",
+                          "url"
+                        ],
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "published_at": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

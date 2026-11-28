@@ -1,3 +1,7 @@
+"""
+Unit tests for human input node entities.
+"""
+
 from __future__ import annotations
 
 import datetime as _human_input_form_filled_event_datetime
@@ -64,9 +68,7 @@ from core.workflow.human_input_adapter import (
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.nodes.human_input._exc import ExtensionsNotSetErrorValueError
 from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -241,11 +243,6 @@ def test_custom_file_input_requires_extensions() -> None:
             allowed_file_types=[FileType.CUSTOM],
             allowed_file_extensions=[],
         )
-
-
-"""
-Unit tests for human input node entities.
-"""
 
 
 @dataclass

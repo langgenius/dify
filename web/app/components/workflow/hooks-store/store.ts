@@ -1,4 +1,5 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
+import type { ReactNode } from 'react'
 import type { FileUpload } from '../../base/features/types'
 import type {
   BlockEnum,
@@ -51,6 +52,9 @@ export const fullWorkflowAccessControl: WorkflowAccessControl = {
 }
 
 type CommonHooksFnMap = {
+  onViewportInteraction: () => void
+  onWorkflowHistoryOpen: () => void
+  renderNodeDecoration?: (nodeId: string) => ReactNode
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
@@ -111,6 +115,9 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
+  onViewportInteraction = noop,
+  onWorkflowHistoryOpen = noop,
+  renderNodeDecoration,
   doSyncWorkflowDraft = async () => null,
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
@@ -152,6 +159,9 @@ export const createHooksStore = ({
 }: Partial<Shape>) => {
   return createStore<Shape>((set) => ({
     refreshAll: (props) => set((state) => ({ ...state, ...props })),
+    onViewportInteraction,
+    onWorkflowHistoryOpen,
+    renderNodeDecoration,
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
     handleRefreshWorkflowDraft,

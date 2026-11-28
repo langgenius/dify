@@ -15,6 +15,7 @@ export const passthroughRequestErrorCodes = [
   'archive_too_large',
   'audio_too_large',
   'binding_file_download_unavailable',
+  'builder_policy_conflict',
   'cannot_operate_self',
   'child_chunk_delete_index_error',
   'child_chunk_indexing_error',

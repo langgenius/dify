@@ -1,9 +1,10 @@
+import type { ResultPanelProps } from '../run/result-panel'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useEffect, useId, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
@@ -26,9 +27,12 @@ import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
-const WorkflowPreview = () => {
+type WorkflowPreviewProps = Pick<ResultPanelProps, 'renderFailureActions'>
+
+const WorkflowPreview = ({ renderFailureActions }: WorkflowPreviewProps) => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
   const appId = useAtomValue(editorAppIdAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
@@ -84,8 +88,8 @@ const WorkflowPreview = () => {
 
   const resize = useCallback(
     (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidth = window.innerWidth - e.clientX
+      if (isResizing && panelRef.current) {
+        const newWidth = panelRef.current.getBoundingClientRect().right - e.clientX
         if (newWidth >= 400 && newWidth <= maxPanelWidth) setPreviewPanelWidth(newWidth)
       }
     },
@@ -121,6 +125,7 @@ const WorkflowPreview = () => {
 
   return (
     <div
+      ref={panelRef}
       id={panelId}
       className="relative flex h-full flex-col rounded-s-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
@@ -150,7 +155,9 @@ const WorkflowPreview = () => {
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
-            <div
+            <button
+              type="button"
+              aria-pressed={currentTab === 'INPUT'}
               className={cn(
                 'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
@@ -158,47 +165,47 @@ const WorkflowPreview = () => {
               onClick={() => switchTab('INPUT')}
             >
               {t(($) => $.input, { ns: 'runLog' })}
-            </div>
+            </button>
           )}
-          <div
+          <button
+            type="button"
+            aria-pressed={currentTab === 'RESULT'}
+            disabled={!workflowRunningData}
             className={cn(
               'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('RESULT')
-            }}
+            onClick={() => switchTab('RESULT')}
           >
             {t(($) => $.result, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'DETAIL'}
+            disabled={!workflowRunningData}
             className={cn(
               'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('DETAIL')
-            }}
+            onClick={() => switchTab('DETAIL')}
           >
             {t(($) => $.detail, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'TRACING'}
+            disabled={!workflowRunningData}
             className={cn(
               'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('TRACING')
-            }}
+            onClick={() => switchTab('TRACING')}
           >
             {t(($) => $.tracing, { ns: 'runLog' })}
-          </div>
+          </button>
         </div>
         <div
           className={cn(
@@ -287,6 +294,7 @@ const WorkflowPreview = () => {
                   : undefined
               }
               onOpenTracingTab={handleOpenTracingTab}
+              renderFailureActions={renderFailureActions}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (

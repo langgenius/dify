@@ -12,7 +12,7 @@ from libs.datetime_utils import naive_utc_now
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceProvider
-from models.provider import ProviderCredential
+from models.provider import ProviderCredential, ProviderModelCredential
 from models.provider_ids import ModelProviderID
 from models.tools import BuiltinToolProvider
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
@@ -20,6 +20,7 @@ from services.credentials.query import (
     CredentialQuery,
     DatasourceCredentialListItem,
     ModelCredentialRecord,
+    ToolCredentialMetadata,
     ToolCredentialRecord,
     ToolCredentialSnapshot,
     TriggerSubscriptionRecord,
@@ -70,6 +71,126 @@ class CredentialQueryRepository(CredentialQuery):
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def model_credentials_visible(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        provider: str,
+        provider_credential_ids: Sequence[str],
+        model_credential_ids: Sequence[str],
+    ) -> bool:
+        names = {provider}
+        provider_id = ModelProviderID(provider)
+        if provider_id.is_langgenius():
+            names.add(provider_id.provider_name if "/" in provider else str(provider_id))
+        provider_ids = set(provider_credential_ids)
+        query = select(ProviderCredential.id).where(
+            ProviderCredential.tenant_id == workspace_id,
+            ProviderCredential.provider_name.in_(names),
+            ProviderCredential.id.in_(provider_ids),
+        )
+        query = apply_credential_visibility_filter_for_actor(
+            query,
+            tenant_id=workspace_id,
+            actor_id=actor_id,
+            model_id_column=ProviderCredential.id,
+            model_user_id_column=ProviderCredential.user_id,
+            model_visibility_column=ProviderCredential.visibility,
+            credential_type=CredentialType.PROVIDER_CREDENTIAL,
+        )
+        with self._session_factory() as session:
+            if set(session.scalars(query)) != provider_ids:
+                return False
+            # Native custom-model credential rows are tenant shared (the native
+            # schema has no actor visibility fields); still verify exact IDs.
+            model_ids = set(model_credential_ids)
+            visible = set(
+                session.scalars(
+                    select(ProviderModelCredential.id).where(
+                        ProviderModelCredential.tenant_id == workspace_id,
+                        ProviderModelCredential.provider_name.in_(names),
+                        ProviderModelCredential.id.in_(model_ids),
+                    )
+                )
+            )
+            return visible == model_ids
+
+    @override
+    def list_visible_tool_provider_ids(self, *, workspace_id: str, actor_id: str | None) -> set[str]:
+        query = select(BuiltinToolProvider.provider).where(BuiltinToolProvider.tenant_id == workspace_id)
+        if actor_id is None:
+            query = query.where(
+                or_(
+                    BuiltinToolProvider.visibility == PermissionEnum.ALL_TEAM,
+                    BuiltinToolProvider.user_id.is_(None),
+                )
+            )
+        else:
+            query = apply_credential_visibility_filter_for_actor(
+                query,
+                tenant_id=workspace_id,
+                model_id_column=BuiltinToolProvider.id,
+                model_user_id_column=BuiltinToolProvider.user_id,
+                model_visibility_column=BuiltinToolProvider.visibility,
+                credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
+                actor_id=actor_id,
+            )
+        with self._session_factory() as session:
+            return set(session.scalars(query))
+
+    @override
+    def resolve_tool_credential_metadata(
+        self,
+        *,
+        workspace_id: str,
+        provider: str,
+        legacy_provider: str | None,
+        actor_id: str | None,
+        credential_id: str | None,
+    ) -> ToolCredentialMetadata | None:
+        """Read scalar native selection without borrowing a different visible row."""
+        providers = (provider, legacy_provider) if legacy_provider is not None else (provider,)
+        owner = (BuiltinToolProvider.tenant_id == workspace_id, BuiltinToolProvider.provider.in_(providers))
+        query = select(BuiltinToolProvider.id, BuiltinToolProvider.provider).where(*owner)
+        if credential_id is not None:
+            query = query.where(BuiltinToolProvider.id == credential_id)
+        else:
+            # Native orders only by default/creation time. Refuse tied winners:
+            # a visible row must never mask a hidden equally ranked native row.
+            candidates = (
+                select(
+                    BuiltinToolProvider.id,
+                    BuiltinToolProvider.is_default,
+                    BuiltinToolProvider.created_at,
+                )
+                .where(*owner)
+                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                .limit(2)
+            )
+            with self._session_factory() as session:
+                rows = session.execute(candidates).all()
+            if not rows or (len(rows) > 1 and rows[0][1:] == rows[1][1:]):
+                return None
+            query = query.where(BuiltinToolProvider.id == rows[0][0])
+        if actor_id is None:
+            query = query.where(
+                or_(BuiltinToolProvider.visibility == PermissionEnum.ALL_TEAM, BuiltinToolProvider.user_id.is_(None))
+            )
+        else:
+            query = apply_credential_visibility_filter_for_actor(
+                query,
+                tenant_id=workspace_id,
+                model_id_column=BuiltinToolProvider.id,
+                model_user_id_column=BuiltinToolProvider.user_id,
+                model_visibility_column=BuiltinToolProvider.visibility,
+                credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
+                actor_id=actor_id,
+            )
+        with self._session_factory() as session:
+            row = session.execute(query).first()
+            return ToolCredentialMetadata(id=row[0], provider=row[1]) if row is not None else None
 
     def get_tool_credential(
         self, *, workspace_id: str, providers: tuple[str, ...], credential_id: str | None

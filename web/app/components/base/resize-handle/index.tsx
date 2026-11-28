@@ -7,7 +7,15 @@ import { getKeyboardResizeValue } from './keyboard'
 
 type ResizeHandleProps = Pick<
   ComponentProps<'div'>,
-  'ref' | 'className' | 'children' | 'onMouseDown' | 'onPointerDown'
+  | 'ref'
+  | 'className'
+  | 'children'
+  | 'onMouseDown'
+  | 'onPointerDown'
+  | 'onPointerMove'
+  | 'onPointerUp'
+  | 'onPointerCancel'
+  | 'onLostPointerCapture'
 > & {
   side: 'left' | 'right' | 'top' | 'bottom'
   value: number

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { CommonEdgeType } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -21,22 +22,27 @@ import { useStore } from '../../store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
-type WorkflowChecklistProps = {
+export type WorkflowChecklistProps = {
   disabled: boolean
   showGoTo?: boolean
   onItemClick?: (item: ChecklistItem) => void
 }
 
-const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowChecklistProps) => {
+export const ChecklistView = ({
+  disabled,
+  showGoTo = true,
+  onItemClick,
+  items: needWarningNodes,
+  renderActions,
+}: WorkflowChecklistProps & {
+  items: ChecklistItem[]
+  renderActions?: (close: () => void) => ReactNode
+}) => {
   const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
-  const edges = useEdges<CommonEdgeType>()
-  const nodes = useNodes()
-  const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
-
   const { pluginItems, nodeItems } = useMemo(() => {
     const plugins: ChecklistItem[] = []
     const regular: ChecklistItem[] = []
@@ -46,7 +52,6 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
     }
     return { pluginItems: plugins, nodeItems: regular }
   }, [needWarningNodes])
-
   const handleItemClick = (item: ChecklistItem) => {
     if (onItemClick) onItemClick(item)
     else {
@@ -136,6 +141,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                   onItemClick={handleItemClick}
                 />
               ))}
+              {renderActions?.(() => setOpen(false))}
             </div>
           ) : (
             <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
@@ -147,6 +153,13 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
       </PopoverContent>
     </Popover>
   )
+}
+
+const WorkflowChecklist = (props: WorkflowChecklistProps) => {
+  const edges = useEdges<CommonEdgeType>()
+  const nodes = useNodes()
+  const items = useChecklist(nodes, edges)
+  return <ChecklistView {...props} items={items} />
 }
 
 export default memo(WorkflowChecklist)

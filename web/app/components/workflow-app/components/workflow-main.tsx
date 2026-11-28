@@ -11,12 +11,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { Workflow } from '@/app/components/workflow'
+import {
+  useWorkflowAppSelector,
+  useWorkflowAppStore as useWorkflowStore,
+} from '@/app/components/workflow-app/store/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
@@ -26,10 +31,15 @@ import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { DifyBuilderProvider } from '@/features/dify-builder/editor'
+import { DifyBuilderNodeDecoration } from '@/features/dify-builder/editor/node-decoration'
+import { useWorkflowDifyBuilderEnabled } from '@/features/dify-builder/editor/use-enabled'
+import { useDifyBuilderViewportInteraction } from '@/features/dify-builder/editor/use-viewport-interaction'
 import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -40,7 +50,10 @@ import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
 import WorkflowChildren from './workflow-children'
+import { WorkflowEditorLayout } from './workflow-editor-layout'
 import WorkflowPanel from './workflow-panel'
+
+const DifyBuilderPanel = dynamic(() => import('@/features/dify-builder/panel'), { ssr: false })
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 type WorkflowDataUpdatePayload = Pick<
@@ -61,6 +74,22 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const builderEnabled = useWorkflowDifyBuilderEnabled()
+  const showBuilder =
+    useWorkflowAppSelector((state) => state.showDifyBuilderPanel) && builderEnabled
+  const onViewportInteraction = useDifyBuilderViewportInteraction()
+  const renderNodeDecoration = useCallback(
+    (nodeId: string) => <DifyBuilderNodeDecoration nodeId={nodeId} />,
+    [],
+  )
+  const onWorkflowHistoryOpen = useCallback(() => {
+    workflowStore.getState().setShowDifyBuilderPanel(false)
+  }, [workflowStore])
+  useEffect(() => {
+    if (showBuilder) return
+    workflowStore.getState().setWorkflowDraftSyncPhase('idle')
+  }, [showBuilder, workflowStore])
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -111,6 +140,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const isCollaborationGraphLoading =
     isCollaborationEnabled &&
     (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady)
+  const isWorkflowDataLoaded = useStore((state) => state.isWorkflowDataLoaded)
   const loadingPanelInset = useStore((state) =>
     isCollaborationGraphLoading ? state.rightPanelWidth : undefined,
   )
@@ -406,7 +436,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       }
 
       const isCurrent = () => !disposed && collaborationManager.isGraphReloadCurrent(request)
-      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply: isCurrent })
+      const refreshed = await handleRefreshWorkflowDraft(false, {
+        shouldApply: isCurrent,
+        preserveViewport: builderEnabled && workflowStore.getState().builderViewportManuallyChanged,
+      })
       if (!isCurrent()) return
 
       if (refreshed) {
@@ -429,7 +462,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       if (retryTimer) clearTimeout(retryTimer)
       unsubscribe()
     }
-  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled])
+  }, [appId, builderEnabled, handleRefreshWorkflowDraft, isCollaborationEnabled, workflowStore])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
@@ -464,6 +497,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   const hooksStore = useMemo(() => {
     return {
+      onViewportInteraction,
+      renderNodeDecoration,
+      onWorkflowHistoryOpen,
       syncWorkflowDraftWhenPageClose,
       doSyncWorkflowDraft,
       handleRefreshWorkflowDraft,
@@ -507,6 +543,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       fileSettings,
     }
   }, [
+    onViewportInteraction,
+    renderNodeDecoration,
+    onWorkflowHistoryOpen,
     syncWorkflowDraftWhenPageClose,
     doSyncWorkflowDraft,
     handleRefreshWorkflowDraft,
@@ -545,69 +584,127 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     fileSettings,
   ])
 
+  const getCanvasSnapshot = useCallback(
+    () => ({
+      nodes: reactFlow.getNodes(),
+      edges: reactFlow.getEdges(),
+      isChatflow: appDetail.mode === 'advanced-chat',
+    }),
+    [appDetail.mode, reactFlow],
+  )
+  const prepareBuilderDraft = useCallback(
+    async (saveDraft: boolean, signal: AbortSignal) => {
+      signal.throwIfAborted()
+      const state = workflowStore.getState()
+      state.debouncedSyncWorkflowDraft.cancel?.()
+      if (saveDraft) {
+        const saved = await doSyncWorkflowDraft(true, { onError: () => {} })
+        signal.throwIfAborted()
+        if (!saved) throw new Error(t(($) => $['common.draftSaveFailed']))
+      }
+      state.setWorkflowDraftSyncPhase('builder')
+    },
+    [doSyncWorkflowDraft, t, workflowStore],
+  )
+  const refreshBuilderCanvas = useCallback(
+    async (shouldApply: () => boolean) => {
+      const previousHash = workflowStore.getState().syncWorkflowDraftHash
+      const refreshed = await handleRefreshWorkflowDraft(false, {
+        shouldApply,
+        preserveViewport: true,
+      })
+      if (!shouldApply()) return 'superseded'
+      if (!refreshed) return 'failed'
+      const state = workflowStore.getState()
+      if (isCollaborationEnabled && state.syncWorkflowDraftHash !== previousHash)
+        collaborationManager.emitWorkflowUpdate(appId)
+      state.setWorkflowDraftSyncPhase('idle')
+      return 'refreshed'
+    },
+    [appId, handleRefreshWorkflowDraft, isCollaborationEnabled, workflowStore],
+  )
+
   return (
-    <div ref={containerRef} className="relative size-full">
-      <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
-        <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
-          <Workflow
-            nodes={nodes}
-            edges={edges}
-            viewport={viewport}
-            onWorkflowDataUpdate={handleWorkflowDataUpdate}
-            isCollaborationEnabled={isCollaborationEnabled}
-            cursors={filteredCursors}
-            myUserId={myUserId}
-            onlineUsers={onlineUsers}
-            sidePanel={<WorkflowPanel />}
-          >
-            <WorkflowChildren />
-            {isCollaborationGraphLoading && (
-              <div
-                data-testid="collaboration-graph-loading"
-                className={cn(
-                  'absolute inset-0 flex items-start justify-center pt-16 transition-[opacity,visibility] delay-300 duration-150 motion-reduce:duration-0 starting:invisible starting:opacity-0',
-                  !joinFailure && 'cursor-wait',
-                )}
-                style={{ paddingInlineEnd: loadingPanelInset }}
-              >
+    <DifyBuilderProvider
+      appId={appId}
+      canEdit={appACLCapabilities.canEdit}
+      creationReady={
+        isWorkflowDataLoaded &&
+        (!isCollaborationEnabled ||
+          (!isCollaborationGraphLoading && collaborationManager.canPersistLocalGraph()))
+      }
+      getCanvasSnapshot={getCanvasSnapshot}
+      onSyncDraft={prepareBuilderDraft}
+      onRefreshCanvas={refreshBuilderCanvas}
+      tenantId={currentWorkspaceId}
+      userId={currentUserId}
+    >
+      <WorkflowEditorLayout
+        builderPanel={showBuilder ? DifyBuilderPanel : undefined}
+        canvasRef={containerRef}
+      >
+        <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
+          <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
+            <Workflow
+              nodes={nodes}
+              edges={edges}
+              viewport={viewport}
+              onWorkflowDataUpdate={handleWorkflowDataUpdate}
+              isCollaborationEnabled={isCollaborationEnabled}
+              cursors={filteredCursors}
+              myUserId={myUserId}
+              onlineUsers={onlineUsers}
+              sidePanel={<WorkflowPanel />}
+            >
+              <WorkflowChildren />
+              {isCollaborationGraphLoading && (
                 <div
-                  role="status"
-                  aria-live="polite"
-                  className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-                >
-                  {joinFailure ? (
-                    <>
-                      <span>
-                        {joinFailure === 'denied'
-                          ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
-                          : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
-                      </span>
-                      {joinFailure !== 'session_unavailable' && (
-                        <Button
-                          size="small"
-                          variant="secondary"
-                          onClick={() => window.location.reload()}
-                        >
-                          {t(($) => $['collaboration.reloadPage'], { ns: 'workflow' })}
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span
-                        aria-hidden="true"
-                        className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
-                      />
-                      <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
-                    </>
+                  data-testid="collaboration-graph-loading"
+                  className={cn(
+                    'absolute inset-0 flex items-start justify-center pt-16 transition-[opacity,visibility] delay-300 duration-150 motion-reduce:duration-0 starting:invisible starting:opacity-0',
+                    !joinFailure && 'cursor-wait',
                   )}
+                  style={{ paddingInlineEnd: loadingPanelInset }}
+                >
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+                  >
+                    {joinFailure ? (
+                      <>
+                        <span>
+                          {joinFailure === 'denied'
+                            ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
+                            : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
+                        </span>
+                        {joinFailure !== 'session_unavailable' && (
+                          <Button
+                            size="small"
+                            variant="secondary"
+                            onClick={() => window.location.reload()}
+                          >
+                            {t(($) => $['collaboration.reloadPage'], { ns: 'workflow' })}
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+                        />
+                        <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </Workflow>
-        </HumanInputMigrationProvider>
-      </HooksStoreContextProvider>
-    </div>
+              )}
+            </Workflow>
+          </HumanInputMigrationProvider>
+        </HooksStoreContextProvider>
+      </WorkflowEditorLayout>
+    </DifyBuilderProvider>
   )
 }
 

@@ -25,7 +25,6 @@ type RunProps = {
   runOwner: WorkflowRunOwner
   runId?: string
 }
-
 type RunTab = NonNullable<RunProps['activeTab']>
 type RequestLifetime = {
   active: boolean
@@ -182,7 +181,7 @@ function RunSession({
             value="RESULT"
             className="py-3 system-sm-semibold-uppercase!"
             onClick={() => {
-              if (currentTab === 'RESULT') switchTab('RESULT')
+              if (currentTab === 'RESULT') void switchTab('RESULT')
             }}
           >
             {t(($) => $.result, { ns: 'runLog' })}
@@ -192,7 +191,7 @@ function RunSession({
           value="DETAIL"
           className="py-3 system-sm-semibold-uppercase!"
           onClick={() => {
-            if (currentTab === 'DETAIL') switchTab('DETAIL')
+            if (currentTab === 'DETAIL') void switchTab('DETAIL')
           }}
         >
           {t(($) => $.detail, { ns: 'runLog' })}
@@ -201,7 +200,7 @@ function RunSession({
           value="TRACING"
           className="py-3 system-sm-semibold-uppercase!"
           onClick={() => {
-            if (currentTab === 'TRACING') switchTab('TRACING')
+            if (currentTab === 'TRACING') void switchTab('TRACING')
           }}
         >
           {t(($) => $.tracing, { ns: 'runLog' })}
@@ -244,7 +243,7 @@ function RunSession({
               externalTrace={
                 appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
               }
-              onOpenTracingTab={() => switchTab('TRACING')}
+              onOpenTracingTab={() => void switchTab('TRACING')}
             />
           )}
           {!loading && !runDetail && isListening && (

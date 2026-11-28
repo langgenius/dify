@@ -409,3 +409,37 @@ def test_delete_removes_every_matching_workflow_binding_and_preserves_other_scop
     assert repository.get(tenant_id=other.tenant_id, subscription_id=other.id) == other
     with sqlite_session_factory() as session:
         assert set(session.scalars(select(WorkflowPluginTrigger.id))) == {row.id for row in decoys}
+
+
+def test_delete_rolls_back_workflow_bindings_when_subscription_delete_fails(
+    repository: TriggerSubscriptionRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+) -> None:
+    subscription = _snapshot()
+    _persist(sqlite_session_factory, subscription)
+    trigger = WorkflowPluginTrigger(
+        app_id=str(uuid4()),
+        node_id="trigger",
+        tenant_id=subscription.tenant_id,
+        provider_id=subscription.provider_id,
+        event_name="push",
+        subscription_id=subscription.id,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(trigger)
+    with sqlite_engine.begin() as connection:
+        connection.exec_driver_sql("""
+            CREATE TRIGGER prevent_subscription_delete
+            BEFORE DELETE ON trigger_subscriptions
+            BEGIN
+                SELECT RAISE(ABORT, 'subscription delete failed');
+            END
+        """)
+
+    with pytest.raises(IntegrityError, match="subscription delete failed"):
+        repository.delete(expected=subscription)
+
+    assert repository.get(tenant_id=subscription.tenant_id, subscription_id=subscription.id) == subscription
+    with sqlite_session_factory() as session:
+        assert session.get(WorkflowPluginTrigger, trigger.id) is not None

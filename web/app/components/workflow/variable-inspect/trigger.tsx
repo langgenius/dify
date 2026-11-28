@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -37,11 +37,13 @@ const VariableInspectTrigger: FC = () => {
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const nodes = useNodes<CommonNodeType>()
-  const isStepRunning = useMemo(
-    () => nodes.some((node) => node.data._singleRunningStatus === NodeRunningStatus.Running),
-    [nodes],
-  )
+  const isStepRunning = useReactFlowStore((state) => {
+    for (const node of state.nodeInternals.values()) {
+      if ((node.data as CommonNodeType)._singleRunningStatus === NodeRunningStatus.Running)
+        return true
+    }
+    return false
+  })
   const isPreviewRunning = useMemo(() => {
     if (!workflowRunningData) return false
     return workflowRunningData.result.status === WorkflowRunningStatus.Running

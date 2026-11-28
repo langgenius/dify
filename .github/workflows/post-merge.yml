@@ -109,7 +109,7 @@ jobs:
               - 'web/app/components/workflow/block-selector/**'
               - 'web/app/components/workflow/hooks/use-node-keyboard-interactions.ts'
               - 'web/app/components/workflow/hooks/use-nodes-interactions.ts'
-              - 'web/app/components/workflow/hooks/use-nodes-sync-draft.ts'
+              - 'web/app/components/workflow/hooks/use-schedule-draft-save.ts'
               - 'web/app/components/workflow/nodes/_base/**'
               - 'web/app/components/workflow/nodes/agent-v2/**'
               - 'web/i18n/locales/en-US/agent-v-2.json'

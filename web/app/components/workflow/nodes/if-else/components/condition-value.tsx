@@ -13,7 +13,7 @@ type ConditionValueProps = {
   variableSelector: string[]
   labelName?: string
   operator: ComparisonOperator
-  value: string | string[] | boolean
+  value: string | string[] | boolean | number | null | undefined
 }
 const ConditionValue = ({ variableSelector, labelName, operator, value }: ConditionValueProps) => {
   const { t } = useTranslation(['workflow', 'workflowLogic'])
@@ -36,9 +36,12 @@ const ConditionValue = ({ variableSelector, labelName, operator, value }: Condit
 
     if (Array.isArray(value))
       // transfer method
-      return value[0]
+      return typeof value[0] === 'string' ? value[0] : ''
 
     if (value === true || value === false) return value ? 'True' : 'False'
+
+    if (typeof value === 'number') return String(value)
+    if (typeof value !== 'string') return ''
 
     return value.replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
       const arr: string[] = b.split('.')

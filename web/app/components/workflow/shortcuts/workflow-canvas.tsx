@@ -14,6 +14,7 @@ export function WorkflowCanvas({
   onEdgeContextMenu,
   onNodeDragStart,
   onSelectionStart,
+  onMoveStart,
   ...props
 }: Omit<ReactFlowProps, 'panOnScroll' | 'zoomOnScroll' | 'zoomOnPinch'>) {
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -87,6 +88,11 @@ export function WorkflowCanvas({
       onSelectionStart={(event) => {
         focusCanvas()
         onSelectionStart?.(event)
+      }}
+      onMoveStart={(event, viewport) => {
+        // Wheel navigation must not blur inputs in adjacent panels.
+        if (event?.type === 'mousedown' || event?.type === 'touchstart') focusCanvas()
+        onMoveStart?.(event, viewport)
       }}
     />
   )

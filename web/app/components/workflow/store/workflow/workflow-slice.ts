@@ -26,6 +26,7 @@ export type WorkflowSliceShape = {
   setIsListening: (listening: boolean) => void
   canvasReadOnly: boolean
   setCanvasReadOnly: (readOnly: boolean) => void
+  autoFollowExecution: boolean
   listeningTriggerType: TriggerNodeType | null
   setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
   listeningTriggerNodeId: string | null
@@ -73,6 +74,7 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
   setIsListening: (listening) => set(() => ({ isListening: listening })),
   canvasReadOnly: false,
   setCanvasReadOnly: (canvasReadOnly) => set(() => ({ canvasReadOnly })),
+  autoFollowExecution: true,
   listeningTriggerType: null,
   setListeningTriggerType: (triggerType) => set(() => ({ listeningTriggerType: triggerType })),
   listeningTriggerNodeId: null,

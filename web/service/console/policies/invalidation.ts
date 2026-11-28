@@ -125,7 +125,12 @@ const namedPolicies: ConsolePolicies = {
   ruleGenerate: { post: skip },
   ruleCodeGenerate: { post: skip },
   ruleStructuredOutputGenerate: { post: skip },
-  workflowGenerate: { post: skip, stream: { post: skip }, suggestions: { post: skip } },
+  workflowGenerate: {
+    post: skip,
+    improve: { post: skip },
+    stream: { post: skip },
+    suggestions: { post: skip },
+  },
   // Binding a tag changes the tag's usage counts and the tagged resource's list row.
   tagBindings: { post: tagBinding, remove: { post: tagBinding } },
   agent: {

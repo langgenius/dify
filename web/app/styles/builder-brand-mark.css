@@ -1,0 +1,38 @@
+@utility builder-brand-mark {
+  @apply i-custom-public-app-builder-builder-mark;
+
+  background: radial-gradient(
+    ellipse closest-side in srgb,
+    var(--color-components-brand-mark-ink),
+    var(--color-components-brand-mark-ink-deep) 55%,
+    var(--color-components-brand-mark-ink) 80%
+  );
+}
+
+@utility builder-brand-mark-24 {
+  position: relative;
+  display: block;
+
+  &::before,
+  &::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+  }
+
+  &::before {
+    @apply i-custom-public-app-builder-builder-mark-24 size-full;
+
+    background-color: var(--color-components-brand-mark-ink);
+  }
+
+  &::after {
+    @apply i-custom-public-app-builder-builder-mark-24-center size-full;
+
+    background: radial-gradient(
+      ellipse 21.9% 22.2% at 50% 50.4% in srgb,
+      var(--color-components-brand-mark-ink-deep) 13.9%,
+      var(--color-components-brand-mark-ink)
+    );
+  }
+}
