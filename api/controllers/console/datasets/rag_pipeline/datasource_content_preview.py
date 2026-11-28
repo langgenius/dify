@@ -34,9 +34,9 @@ class DataSourceContentPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_rag_pipeline
     @with_current_user
     @with_session
+    @get_rag_pipeline
     @model_validate(DatasourceContentPreviewPayload)
     def post(
         self,
