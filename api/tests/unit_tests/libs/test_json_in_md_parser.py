@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -137,3 +139,67 @@ def test_parse_and_check_json_markdown_rejects_non_dict_object() -> None:
     """A JSON string that merely contains an expected key as a substring must not pass."""
     with pytest.raises(OutputParserError):
         parse_and_check_json_markdown('```json\n"the generated prompt text"\n```', ["prompt"])
+
+
+def test_parse_json_markdown_returns_first_unfenced_json_object() -> None:
+    """Two unfenced objects must not be concatenated into one json.loads() call."""
+    src = '{"a": 1}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"a": 1}
+
+
+def test_parse_json_markdown_returns_first_unfenced_json_array() -> None:
+    src = "[1, 2]\n[3, 4]"
+    assert parse_json_markdown(src) == [1, 2]
+
+
+def test_parse_json_markdown_first_unfenced_value_keeps_nested_objects() -> None:
+    src = '{"a": {"b": [1, {"c": 2}]}}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"a": {"b": [1, {"c": 2}]}}
+
+
+def test_parse_json_markdown_brackets_inside_string_values() -> None:
+    """Brackets inside string values must not terminate the value early."""
+    src = '{"s": "{not json} [nor this]"}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"s": "{not json} [nor this]"}
+
+
+def test_parse_json_markdown_first_value_followed_by_prose() -> None:
+    src = '{"a": 1}\nThat is the answer.'
+    assert parse_json_markdown(src) == {"a": 1}
+
+
+def test_parse_json_markdown_malformed_first_value_still_fails() -> None:
+    with pytest.raises(json.JSONDecodeError):
+        parse_json_markdown('{"a": }\n{"a": 2}')
+
+
+def test_parse_and_check_json_markdown_multiple_unfenced_objects() -> None:
+    """The reported failure mode now resolves to the first value instead of raising."""
+    src = '{"keywords": ["a"], "category_id": "1", "category_name": "x"}\n{"category_id": "2"}'
+    obj = parse_and_check_json_markdown(src, ["keywords", "category_id", "category_name"])
+    assert obj == {"keywords": ["a"], "category_id": "1", "category_name": "x"}
+
+
+def test_parse_json_markdown_backtick_in_string_value_followed_by_second_unfenced_value() -> None:
+    """A backtick inside a string value must not disable the first-value-only fix.
+
+    Regression case from PR review: a single stray backtick anywhere in the
+    input previously fell back to anchoring on the *last* bracket, which
+    reintroduces the original "Extra data" bug from #42006 once a second
+    unfenced value follows.
+    """
+    src = '{"code":"use `print` function","n":1}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"code": "use `print` function", "n": 1}
+
+
+def test_parse_json_markdown_multiple_backticks_in_string_value() -> None:
+    """Several backtick pairs inside one string value are still just data."""
+    src = '{"code": "`a` and `b` and `c`", "n": 1}\n{"a": 2}'
+    assert parse_json_markdown(src) == {"code": "`a` and `b` and `c`", "n": 1}
+
+
+def test_parse_json_markdown_fenced_block_with_backtick_in_string_value() -> None:
+    """A real ``` fence still uses the bracket-anchored fenced path, even
+    when the fenced JSON itself contains a backtick in a string value."""
+    src = '```json\n{"code": "use `print` function", "n": 1}\n```'
+    assert parse_json_markdown(src) == {"code": "use `print` function", "n": 1}
