@@ -10,11 +10,13 @@ from redis import Redis
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from graphon.nodes import BuiltinNodeTypes
+from graphon.variables import StringVariable
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowKind
+from models.workflow import Workflow, WorkflowContentDict, WorkflowKind
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.snippet_dsl_service import (
     IMPORT_INFO_REDIS_EXPIRY,
@@ -113,8 +115,7 @@ def _snippet(
     name: str = "Snippet",
     description: str | None = None,
     snippet_type: SnippetType = SnippetType.NODE,
-    icon_info: dict | None = None,
-    input_fields: list[dict] | None = None,
+    input_fields: str | None = None,
 ) -> CustomizedSnippet:
     return CustomizedSnippet(
         id=snippet_id,
@@ -122,14 +123,18 @@ def _snippet(
         name=name,
         description=description,
         type=snippet_type.value,
-        icon_info=icon_info,
-        input_fields=json.dumps(input_fields) if input_fields else None,
+        input_fields=input_fields,
         created_by="account-1",
     )
 
 
-def _workflow(*, graph: dict | None = None) -> Workflow:
-    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", kind=WorkflowKind.SNIPPET, graph=graph)
+def _workflow(*, content: WorkflowContentDict | None = None) -> Workflow:
+    return make_workflow(
+        workflow_id="workflow-1",
+        app_id="snippet-1",
+        kind=WorkflowKind.SNIPPET,
+        graph=content["graph"] if content is not None else None,
+    )
 
 
 @pytest.mark.parametrize(
@@ -140,7 +145,7 @@ def _workflow(*, graph: dict | None = None) -> Workflow:
         ("0.1.0", ImportStatus.COMPLETED_WITH_WARNINGS),
     ],
 )
-def test_check_version_compatibility_special_cases(version, expected):
+def test_check_version_compatibility_special_cases(version: str, expected: ImportStatus) -> None:
     assert _check_version_compatibility(version) == expected
 
 
@@ -148,12 +153,12 @@ def test_check_version_compatibility_returns_pending_for_older_major() -> None:
     assert _check_version_compatibility("0.0.9") == ImportStatus.COMPLETED_WITH_WARNINGS
 
 
-def test_import_snippet_rejects_invalid_mode(service: SnippetDslService):
+def test_import_snippet_rejects_invalid_mode(service: SnippetDslService) -> None:
     with pytest.raises(ValueError, match="Invalid import_mode"):
         service.import_snippet(account=_account(), import_mode="bad-mode")
 
 
-def test_import_snippet_requires_yaml_content(service: SnippetDslService):
+def test_import_snippet_requires_yaml_content(service: SnippetDslService) -> None:
     result = service.import_snippet(
         account=_account(),
         import_mode=ImportMode.YAML_CONTENT.value,
@@ -303,7 +308,9 @@ def test_import_snippet_rejects_oversized_yaml_content(
         ("version: 0.1.0\nkind: snippet\n", "Missing snippet data in YAML content"),
     ],
 )
-def test_import_snippet_rejects_invalid_yaml_shapes(service: SnippetDslService, yaml_content, expected_error) -> None:
+def test_import_snippet_rejects_invalid_yaml_shapes(
+    service: SnippetDslService, yaml_content: str, expected_error: str
+) -> None:
     result = service.import_snippet(
         account=_account(),
         import_mode=ImportMode.YAML_CONTENT.value,
@@ -336,7 +343,7 @@ def test_import_snippet_returns_failed_for_invalid_yaml_syntax(service: SnippetD
     assert result.error.startswith("Invalid YAML format:")
 
 
-def test_import_snippet_rejects_forbidden_nodes(service: SnippetDslService):
+def test_import_snippet_rejects_forbidden_nodes(service: SnippetDslService) -> None:
     yaml_content = """
 version: 0.3.0
 kind: snippet
@@ -405,7 +412,7 @@ workflow:
     assert pending.description == "Override description"
 
 
-def test_import_snippet_returns_failed_when_update_target_missing(service: SnippetDslService):
+def test_import_snippet_returns_failed_when_update_target_missing(service: SnippetDslService) -> None:
     yaml_content = """
 version: 0.1.0
 kind: snippet
@@ -430,9 +437,15 @@ workflow:
 
 def test_import_snippet_passes_dependencies_to_create_or_update(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     snippet = _snippet()
-    create_or_update = Mock(return_value=snippet)
+    received_dependencies: list[list[PluginDependency] | None] = []
+
+    def create_or_update(*, dependencies: list[PluginDependency] | None, **_kwargs: object) -> CustomizedSnippet:
+        """Record the parsed dependencies passed to creation and return the fixture snippet."""
+        received_dependencies.append(dependencies)
+        return snippet
+
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
     yaml_content = """
 version: 0.1.0
@@ -457,13 +470,19 @@ workflow:
 
     assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
-    dependencies = create_or_update.call_args.kwargs["dependencies"]
-    assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
+    assert received_dependencies == [
+        [
+            PluginDependency(
+                type=PluginDependencyType.Marketplace,
+                value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/openai:0.0.1"),
+            )
+        ]
+    ]
 
 
 def test_import_snippet_rolls_back_when_create_or_update_raises(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     rollback_events: list[str] = []
     event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
     sqlite_session.begin()
@@ -481,7 +500,7 @@ def test_import_snippet_rolls_back_when_create_or_update_raises(
 
 
 @pytest.mark.usefixtures("pending_cache")
-def test_confirm_import_returns_failed_when_pending_data_missing(service: SnippetDslService):
+def test_confirm_import_returns_failed_when_pending_data_missing(service: SnippetDslService) -> None:
     result = service.confirm_import(import_id="missing", account=_account())
 
     assert result.status == ImportStatus.FAILED
@@ -490,7 +509,7 @@ def test_confirm_import_returns_failed_when_pending_data_missing(service: Snippe
 
 def test_confirm_import_returns_failed_for_invalid_pending_payload(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=object()))
 
     result = service.confirm_import(import_id="bad", account=_account())
@@ -603,7 +622,7 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(
     assert rollback_events == ["rollback"]
 
 
-def test_check_dependencies_returns_empty_without_draft_workflow(service: SnippetDslService):
+def test_check_dependencies_returns_empty_without_draft_workflow(service: SnippetDslService) -> None:
     result = service.check_dependencies(_snippet())
 
     assert result.leaked_dependencies == []
@@ -612,12 +631,12 @@ def test_check_dependencies_returns_empty_without_draft_workflow(service: Snippe
 def test_check_dependencies_returns_generated_dependencies(
     service: SnippetDslService, sqlite_session: Session, plugin_catalog: list[dict[str, object]]
 ) -> None:
-    workflow = _workflow(
-        graph={
-            "nodes": [{"data": {"type": BuiltinNodeTypes.LLM, "model": {"provider": "langgenius/openai/openai"}}}],
-            "edges": [],
-        }
-    )
+    workflow_content = _workflow().to_dict()
+    workflow_content["graph"] = {
+        "nodes": [{"data": {"type": BuiltinNodeTypes.LLM, "model": {"provider": "langgenius/openai/openai"}}}],
+        "edges": [],
+    }
+    workflow = _workflow(content=workflow_content)
     sqlite_session.add(workflow)
     sqlite_session.commit()
     plugin_catalog.append(
@@ -658,11 +677,10 @@ def test_check_dependencies_returns_generated_dependencies(
 
 def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     snippet = _snippet(
         name="Old",
         description="Old",
-        icon_info=None,
     )
     sqlite_session.add(snippet)
     sqlite_session.commit()
@@ -726,7 +744,9 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     ]
 
 
-def test_create_or_update_snippet_creates_new_snippet_and_flushes(service: SnippetDslService, sqlite_session: Session):
+def test_create_or_update_snippet_creates_new_snippet_and_flushes(
+    service: SnippetDslService, sqlite_session: Session
+) -> None:
     result = service._create_or_update_snippet(
         snippet=None,
         data={
@@ -752,19 +772,18 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(service: Snipp
     assert result.input_fields_list == [{"variable": "query"}]
 
 
-def test_export_snippet_dsl_raises_without_draft_workflow(service: SnippetDslService):
+def test_export_snippet_dsl_raises_without_draft_workflow(service: SnippetDslService) -> None:
     with pytest.raises(ValueError, match="Missing draft workflow"):
         service.export_snippet_dsl(_snippet())
 
 
 @pytest.mark.usefixtures("plugin_catalog")
-def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_session: Session):
+def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_session: Session) -> None:
     workflow = _workflow()
     snippet = _snippet(
         name="Exported",
         description=None,
-        icon_info=None,
-        input_fields=[{"variable": "query"}],
+        input_fields=json.dumps([{"variable": "query"}]),
     )
     sqlite_session.add_all([snippet, workflow])
     sqlite_session.commit()
@@ -774,13 +793,20 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_sess
     assert "kind: snippet" in result
     assert "name: Exported" in result
     assert "input_fields:" in result
+    assert yaml.safe_load(result)["snippet"]["input_fields"] == [{"variable": "query"}]
 
 
 @pytest.mark.usefixtures("plugin_catalog")
-def test_export_snippet_dsl_uses_requested_published_workflow(service: SnippetDslService, sqlite_session: Session):
-    workflow = _workflow(graph={"nodes": [], "edges": []})
+def test_export_snippet_dsl_uses_requested_published_workflow(
+    service: SnippetDslService, sqlite_session: Session
+) -> None:
+    workflow_content: WorkflowContentDict = _workflow().to_dict()
+    workflow_content["graph"] = {"nodes": [], "edges": []}
+    workflow = _workflow(content=workflow_content)
     workflow.version = "published-1"
-    draft_workflow = _workflow(graph={"nodes": [], "edges": [], "draft_only": True})
+    draft_workflow_content: WorkflowContentDict = _workflow().to_dict()
+    draft_workflow_content["graph"] = {"nodes": [], "edges": [], "draft_only": True}
+    draft_workflow = _workflow(content=draft_workflow_content)
     draft_workflow.id = "draft-1"
     snippet = _snippet(name="Exported")
     sqlite_session.add_all([snippet, workflow, draft_workflow])
@@ -868,9 +894,14 @@ def test_extract_dependencies_from_workflow_graph_covers_model_variants(service:
 
 
 @pytest.mark.usefixtures("plugin_catalog")
-def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(service: SnippetDslService):
-    workflow_dict = {
-        "graph": {
+def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(
+    service: SnippetDslService,
+) -> None:
+    workflow = make_workflow(
+        workflow_id="workflow-1",
+        app_id="snippet-1",
+        kind=WorkflowKind.SNIPPET,
+        graph={
             "nodes": [
                 {"data": {}},
                 {
@@ -898,10 +929,17 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
                 },
             ]
         },
-        "environment_variables": [{"name": "SECRET"}],
-        "conversation_variables": [{"name": "memory"}],
-    }
-    workflow = _workflow(graph=workflow_dict["graph"])
+        environment_variables=[
+            StringVariable(id="env-1", name="REGION", value="test-west", selector=["env", "REGION"])
+        ],
+        conversation_variables=[
+            StringVariable(id="conversation-1", name="memory", value="test-topic", selector=["conversation", "memory"])
+        ],
+    )
+    original_workflow = workflow.to_dict(include_secret=False)
+    assert [item["value"] for item in original_workflow["environment_variables"]] == ["test-west"]
+    assert [item["value"] for item in original_workflow["conversation_variables"]] == ["test-topic"]
+
     export_data = {}
 
     service._append_workflow_export_data(
@@ -911,9 +949,10 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
         include_secret=False,
     )
 
-    nodes = export_data["workflow"]["graph"]["nodes"]
-    assert export_data["workflow"]["environment_variables"] == []
-    assert export_data["workflow"]["conversation_variables"] == []
+    exported_workflow: WorkflowContentDict = export_data["workflow"]
+    nodes = exported_workflow["graph"]["nodes"]
+    assert exported_workflow["environment_variables"] == []
+    assert exported_workflow["conversation_variables"] == []
     assert "credential_id" not in nodes[1]["data"]
     assert "credential_id" not in nodes[2]["data"]["agent_parameters"]["tools"]["value"][0]
 
@@ -921,20 +960,19 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
 @pytest.mark.usefixtures("plugin_catalog")
 def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
-):
-    workflow_dict = {
-        "graph": {
-            "nodes": [
-                {
-                    "data": {
-                        "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-                        "dataset_ids": ["dataset-1", "dataset-2"],
-                    }
+) -> None:
+    workflow_content: WorkflowContentDict = _workflow().to_dict()
+    workflow_content["graph"] = {
+        "nodes": [
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "dataset_ids": ["dataset-1", "dataset-2"],
                 }
-            ]
-        },
+            }
+        ]
     }
-    workflow = _workflow(graph=workflow_dict["graph"])
+    workflow = _workflow(content=workflow_content)
     monkeypatch.setattr(
         service,
         "_encrypt_dataset_id",
