@@ -6,13 +6,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
+from core.schemas.resolver import SchemaType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
@@ -28,6 +29,55 @@ class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseMod
     code: int
     message: str
     data: T | None = None
+
+
+_PLUGIN_DAEMON_JSON_VALUE_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+
+
+class PluginDaemonRawResponse(BaseModel):
+    """Parsed JSON envelope passed to plugin-daemon response transformers.
+
+    The raw boundary accepts an omitted or null ``data`` field because legacy
+    daemon responses can omit it; the final typed response still owns the
+    existing success/error semantics. Unknown fields are retained so
+    transformation does not silently discard future daemon data.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    code: int
+    message: str
+    data: JsonValue | None = None
+
+
+def validate_plugin_daemon_json_value(value: SchemaType) -> JsonValue:
+    """Validate a transformed plugin-daemon JSON value at its Pydantic boundary.
+
+    Preconditions: ``value`` is a schema produced by the plugin-schema resolver.
+    Postcondition: the result is a JSON-compatible value suitable for a JSON
+    field in the raw response model; invalid resolver output raises Pydantic's validation error.
+    """
+    return _PLUGIN_DAEMON_JSON_VALUE_ADAPTER.validate_python(value)
+
+
+def as_plugin_daemon_json_object(value: JsonValue) -> dict[str, JsonValue]:
+    """Return a mutable object or a detached empty object for malformed branches.
+
+    Preconditions: ``value`` is JSON data parsed by the raw response model.
+    Postcondition: valid objects are returned by identity; mutating a fallback
+    cannot affect the response envelope.
+    """
+    return value if isinstance(value, dict) else {}
+
+
+def as_plugin_daemon_json_array(value: JsonValue) -> list[JsonValue]:
+    """Return an array or an empty array for malformed branches.
+
+    Preconditions: ``value`` is JSON data parsed by the raw response model.
+    Postcondition: valid arrays are returned by identity; invalid values iterate
+    as empty arrays and do not affect the response envelope.
+    """
+    return value if isinstance(value, list) else []
 
 
 class InstallPluginMessage(BaseModel):

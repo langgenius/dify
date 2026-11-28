@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDaemonBasicResponse,
     PluginDaemonError,
     PluginDaemonInnerError,
+    PluginDaemonRawResponse,
     PluginListResponse,
 )
 from core.plugin.impl.exc import (
@@ -118,10 +119,28 @@ def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[o
 
 
 class BasePluginClient:
-    def __init__(self, *, plugin_unique_identifier: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        plugin_unique_identifier: str | None = None,
+        httpx_client: httpx.Client | None = None,
+    ) -> None:
+        """
+        :param plugin_unique_identifier: identifier forwarded to the plugin dispatch headers
+        :param httpx_client: real ``httpx.Client`` to use for plugin daemon calls. Callers that
+            need to observe the wire traffic (tests, custom transports) inject one here instead
+            of relying on the module level pooled client.
+        """
         if plugin_unique_identifier == "":
             raise ValueError("Plugin unique identifier must not be empty")
         self._plugin_unique_identifier = plugin_unique_identifier
+        self._httpx_client_override = httpx_client
+
+    @property
+    def _http_client(self) -> httpx.Client:
+        """The client used to talk to the plugin daemon: injected one, else the pooled one."""
+
+        return self._httpx_client_override if self._httpx_client_override is not None else _httpx_client
 
     def _request(
         self,
@@ -151,7 +170,7 @@ class BasePluginClient:
             request_kwargs["content"] = prepared_data
 
         try:
-            response = _httpx_client.request(**request_kwargs)
+            response = self._http_client.request(**request_kwargs)
         except httpx.RequestError as caught_error:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from caught_error
@@ -253,12 +272,12 @@ class BasePluginClient:
             stream_kwargs["content"] = prepared_data
 
         try:
-            with _httpx_client.stream(**stream_kwargs) as response:
+            with self._http_client.stream(**stream_kwargs) as response:
+                # httpx.Response.iter_lines() yields already decoded str; decode nothing here.
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
-                    line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
-                    line = line.strip()
+                    line = raw_line.strip()
                     if line.startswith("data:"):
                         line = line[5:].strip()
                     if line:
@@ -308,10 +327,18 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        transformer: Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse] | None = None,
     ) -> T:
-        """
+        """Request and validate a plugin-daemon response.
+
         Make a request to the plugin daemon inner API and return the response as a model.
+
+        Preconditions: ``type_`` is the expected final payload type; when a transformer
+        is supplied, the response body is a JSON object with a plugin-daemon envelope.
+        Postconditions: responses with transformers are parsed into
+        ``PluginDaemonRawResponse`` once before mutation, then validated as the requested
+        final response; extra JSON fields and the existing data-null error behavior are
+        preserved. Without a transformer, legacy normalization is unchanged.
 
         Nonzero codes expect a JSON-encoded daemon error. An invalid error message raises
         ValueError with the original message and code.
@@ -332,8 +359,10 @@ class BasePluginClient:
 
         try:
             json_response = response.json()
-            if transformer:
-                json_response = transformer(json_response)
+            if transformer is not None:
+                parsed_response = PluginDaemonRawResponse.model_validate(json_response)
+                transformed_response = transformer(parsed_response)
+                json_response = transformed_response.model_dump(mode="json")
             json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore

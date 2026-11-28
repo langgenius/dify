@@ -4,6 +4,9 @@ from typing import Any
 from core.agent.entities import AgentInvokeMessage
 from core.plugin.entities.plugin_daemon import (
     PluginAgentProviderEntity,
+    PluginDaemonRawResponse,
+    as_plugin_daemon_json_array,
+    as_plugin_daemon_json_object,
 )
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.base import BasePluginClient
@@ -17,12 +20,15 @@ class PluginAgentClient(BasePluginClient):
         Fetch agent providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]):
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
-                for strategy in declaration.get("strategies", []):
-                    strategy["identity"]["provider"] = provider_name
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Precondition: validated envelope. Postcondition: enrich valid identities and return it."""
+            for provider_value in as_plugin_daemon_json_array(json_response.data):
+                provider = as_plugin_daemon_json_object(provider_value)
+                declaration = as_plugin_daemon_json_object(provider.get("declaration"))
+                provider_name = as_plugin_daemon_json_object(declaration.get("identity")).get("name")
+                for strategy_value in as_plugin_daemon_json_array(declaration.get("strategies")):
+                    strategy = as_plugin_daemon_json_object(strategy_value)
+                    as_plugin_daemon_json_object(strategy.get("identity"))["provider"] = provider_name
 
             return json_response
 
@@ -49,13 +55,14 @@ class PluginAgentClient(BasePluginClient):
         """
         agent_provider_id = GenericProviderID(provider)
 
-        def transformer(json_response: dict[str, Any]):
-            # skip if error occurs
-            if json_response.get("data") is None or json_response.get("data", {}).get("declaration") is None:
-                return json_response
-
-            for strategy in json_response.get("data", {}).get("declaration", {}).get("strategies", []):
-                strategy["identity"]["provider"] = agent_provider_id.provider_name
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Precondition: validated envelope. Postcondition: enrich valid identities and return it."""
+            declaration = as_plugin_daemon_json_object(
+                as_plugin_daemon_json_object(json_response.data).get("declaration")
+            )
+            for strategy_value in as_plugin_daemon_json_array(declaration.get("strategies")):
+                strategy = as_plugin_daemon_json_object(strategy_value)
+                as_plugin_daemon_json_object(strategy.get("identity"))["provider"] = agent_provider_id.provider_name
 
             return json_response
 

@@ -1,12 +1,18 @@
 from collections.abc import Callable
 from types import SimpleNamespace
 
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 
+from core.plugin.entities.plugin_daemon import PluginDaemonRawResponse
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.agent import PluginAgentClient
 
-_Transformer = Callable[[dict[str, object]], dict[str, object]]
+_Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
+
+
+def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
+    return PluginDaemonRawResponse(code=0, message="", data=data)
 
 
 def _agent_provider(name: str = "agent") -> SimpleNamespace:
@@ -27,8 +33,8 @@ class TestPluginAgentClient:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> list[SimpleNamespace]:
-            payload: dict[str, object] = {
-                "data": [
+            payload = _raw_response(
+                [
                     {
                         "declaration": {
                             "identity": {"name": "remote"},
@@ -36,17 +42,16 @@ class TestPluginAgentClient:
                         }
                     }
                 ]
-            }
-            assert transformer(payload) == {
-                "data": [
-                    {
-                        "declaration": {
-                            "identity": {"name": "remote"},
-                            "strategies": [{"identity": {"provider": "remote"}}],
-                        }
+            )
+            transformed = transformer(payload)
+            assert transformed.data == [
+                {
+                    "declaration": {
+                        "identity": {"name": "remote"},
+                        "strategies": [{"identity": {"provider": "remote"}}],
                     }
-                ]
-            }
+                }
+            ]
             return [provider]
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -64,11 +69,11 @@ class TestPluginAgentClient:
         def fake_request(
             method: str, path: str, type_: object, *, transformer: _Transformer, **kwargs: object
         ) -> SimpleNamespace:
-            skipped: dict[str, object] = {"data": None}
+            skipped = _raw_response(None)
             assert transformer(skipped) == skipped
-            payload: dict[str, object] = {"data": {"declaration": {"strategies": [{"identity": {"provider": "old"}}]}}}
-            assert transformer(payload) == {
-                "data": {"declaration": {"strategies": [{"identity": {"provider": "provider"}}]}}
+            payload = _raw_response({"declaration": {"strategies": [{"identity": {"provider": "old"}}]}})
+            assert transformer(payload).data == {
+                "declaration": {"strategies": [{"identity": {"provider": "provider"}}]}
             }
             return provider
 

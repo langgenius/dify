@@ -3,9 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 from flask import Request
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonRawResponse
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
@@ -62,6 +63,10 @@ def _subscription_call_kwargs(method_name: str) -> dict[str, object]:
     }
 
 
+def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
+    return PluginDaemonRawResponse(code=0, message="", data=data)
+
+
 class TestPluginTriggerClient:
     def test_fetch_trigger_providers(self, mocker: MockerFixture) -> None:
         client = PluginTriggerClient()
@@ -70,17 +75,23 @@ class TestPluginTriggerClient:
         def fake_request[**P](*args: P.args, **kwargs: P.kwargs) -> object:
             transformer = kwargs["transformer"]
             assert callable(transformer)
-            payload = {
-                "data": [
+            payload = _raw_response(
+                [
                     {
                         "plugin_id": "org/plugin",
                         "provider": "remote",
                         "declaration": {"events": [{"identity": {"provider": "old"}}]},
                     }
                 ]
-            }
+            )
             transformed = transformer(payload)
-            assert transformed["data"][0]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/remote"
+            assert transformed.data == [
+                {
+                    "plugin_id": "org/plugin",
+                    "provider": "remote",
+                    "declaration": {"events": [{"identity": {"provider": "org/plugin/remote"}}]},
+                }
+            ]
             return [provider]
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -98,9 +109,9 @@ class TestPluginTriggerClient:
         def fake_request[**P](*args: P.args, **kwargs: P.kwargs) -> object:
             transformer = kwargs["transformer"]
             assert callable(transformer)
-            payload = {"data": {"declaration": {"events": [{"identity": {"provider": "old"}}]}}}
+            payload = _raw_response({"declaration": {"events": [{"identity": {"provider": "old"}}]}})
             transformed = transformer(payload)
-            assert transformed["data"]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/provider"
+            assert transformed.data == {"declaration": {"events": [{"identity": {"provider": "org/plugin/provider"}}]}}
             return provider
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)

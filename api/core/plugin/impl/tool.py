@@ -6,7 +6,15 @@ from pydantic import BaseModel
 from configs import dify_config
 
 # from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
-from core.plugin.entities.plugin_daemon import CredentialType, PluginBasicBooleanResponse, PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import (
+    CredentialType,
+    PluginBasicBooleanResponse,
+    PluginDaemonRawResponse,
+    PluginToolProviderEntity,
+    as_plugin_daemon_json_array,
+    as_plugin_daemon_json_object,
+    validate_plugin_daemon_json_value,
+)
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.schemas.resolver import resolve_dify_schema_refs
@@ -20,15 +28,20 @@ class PluginToolManager(BasePluginClient):
         Fetch tool providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]):
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
-                for tool in declaration.get("tools", []):
-                    tool["identity"]["provider"] = provider_name
-                    # resolve refs
-                    if tool.get("output_schema"):
-                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Precondition: validated envelope. Postcondition: enrich identities/schemas; resolver errors propagate."""
+            for provider_value in as_plugin_daemon_json_array(json_response.data):
+                provider = as_plugin_daemon_json_object(provider_value)
+                declaration = as_plugin_daemon_json_object(provider.get("declaration"))
+                provider_name = as_plugin_daemon_json_object(declaration.get("identity")).get("name")
+                for tool_value in as_plugin_daemon_json_array(declaration.get("tools")):
+                    tool = as_plugin_daemon_json_object(tool_value)
+                    as_plugin_daemon_json_object(tool.get("identity"))["provider"] = provider_name
+                    output_schema = as_plugin_daemon_json_object(tool.get("output_schema"))
+                    if output_schema:
+                        tool["output_schema"] = validate_plugin_daemon_json_value(
+                            resolve_dify_schema_refs(output_schema)
+                        )
 
             return json_response
 
@@ -55,14 +68,17 @@ class PluginToolManager(BasePluginClient):
         """
         tool_provider_id = ToolProviderID(provider)
 
-        def transformer(json_response: dict[str, Any]):
-            data = json_response.get("data")
-            if data:
-                for tool in data.get("declaration", {}).get("tools", []):
-                    tool["identity"]["provider"] = tool_provider_id.provider_name
-                    # resolve refs
-                    if tool.get("output_schema"):
-                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
+        def transformer(json_response: PluginDaemonRawResponse) -> PluginDaemonRawResponse:
+            """Precondition: validated envelope. Postcondition: enrich identities/schemas; resolver errors propagate."""
+            declaration = as_plugin_daemon_json_object(
+                as_plugin_daemon_json_object(json_response.data).get("declaration")
+            )
+            for tool_value in as_plugin_daemon_json_array(declaration.get("tools")):
+                tool = as_plugin_daemon_json_object(tool_value)
+                as_plugin_daemon_json_object(tool.get("identity"))["provider"] = tool_provider_id.provider_name
+                output_schema = as_plugin_daemon_json_object(tool.get("output_schema"))
+                if output_schema:
+                    tool["output_schema"] = validate_plugin_daemon_json_value(resolve_dify_schema_refs(output_schema))
 
             return json_response
 

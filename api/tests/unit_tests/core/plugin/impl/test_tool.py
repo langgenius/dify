@@ -1,9 +1,10 @@
 from collections.abc import Callable
 from types import SimpleNamespace
 
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonRawResponse
 from core.plugin.impl.tool import PluginToolManager
 
 
@@ -17,6 +18,13 @@ def _tool_provider(name: str = "provider") -> SimpleNamespace:
     )
 
 
+_Transformer = Callable[[PluginDaemonRawResponse], PluginDaemonRawResponse]
+
+
+def _raw_response(data: JsonValue) -> PluginDaemonRawResponse:
+    return PluginDaemonRawResponse(code=0, message="", data=data)
+
+
 class TestPluginToolManager:
     def test_fetch_tool_providers(self, mocker: MockerFixture) -> None:
         manager = PluginToolManager()
@@ -27,11 +35,12 @@ class TestPluginToolManager:
             method: str,
             path: str,
             type_: object,
-            transformer: Callable[[dict[str, object]], dict[str, object]],
+            *,
+            transformer: _Transformer,
             **kwargs: object,
         ) -> list[SimpleNamespace]:
-            payload: dict[str, object] = {
-                "data": [
+            payload = _raw_response(
+                [
                     {
                         "declaration": {
                             "identity": {"name": "remote"},
@@ -39,15 +48,16 @@ class TestPluginToolManager:
                         }
                     }
                 ]
-            }
+            )
             transformed = transformer(payload)
-            data = transformed["data"]
-            assert isinstance(data, list)
-            declaration = data[0]["declaration"]
-            assert isinstance(declaration, dict)
-            tools = declaration["tools"]
-            assert isinstance(tools, list)
-            assert tools[0]["output_schema"] == {"resolved": True}
+            assert transformed.data == [
+                {
+                    "declaration": {
+                        "identity": {"name": "remote"},
+                        "tools": [{"identity": {"provider": "remote"}, "output_schema": {"resolved": True}}],
+                    }
+                }
+            ]
             return [provider]
 
         request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -67,22 +77,17 @@ class TestPluginToolManager:
             method: str,
             path: str,
             type_: object,
-            transformer: Callable[[dict[str, object]], dict[str, object]],
+            *,
+            transformer: _Transformer,
             **kwargs: object,
         ) -> SimpleNamespace:
-            payload: dict[str, object] = {
-                "data": {
-                    "declaration": {"tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]}
-                }
-            }
+            payload = _raw_response(
+                {"declaration": {"tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]}}
+            )
             transformed = transformer(payload)
-            data = transformed["data"]
-            assert isinstance(data, dict)
-            declaration = data["declaration"]
-            assert isinstance(declaration, dict)
-            tools = declaration["tools"]
-            assert isinstance(tools, list)
-            assert tools[0]["output_schema"] == {"resolved": True}
+            assert transformed.data == {
+                "declaration": {"tools": [{"identity": {"provider": "provider"}, "output_schema": {"resolved": True}}]}
+            }
             return provider
 
         request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
