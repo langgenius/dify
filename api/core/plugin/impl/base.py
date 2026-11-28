@@ -311,8 +311,9 @@ class BasePluginClient:
         transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     ) -> T:
         """
-        Make a request to the plugin daemon inner API and return the response as a model.
+        Request a daemon envelope and return its validated success data.
 
+        The optional transformer receives only successful envelopes, before data validation.
         Nonzero codes expect a JSON-encoded daemon error. An invalid error message raises
         ValueError with the original message and code.
         """
@@ -332,7 +333,7 @@ class BasePluginClient:
 
         try:
             json_response = response.json()
-            if transformer:
+            if transformer and PluginDaemonBasicResponse[Any].model_validate(json_response).code == 0:
                 json_response = transformer(json_response)
             json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
