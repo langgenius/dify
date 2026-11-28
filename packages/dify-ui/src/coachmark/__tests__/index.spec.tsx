@@ -6,6 +6,7 @@ import {
   Coachmark,
   CoachmarkArrow,
   CoachmarkClose,
+  CoachmarkDescription,
   CoachmarkPopup,
   CoachmarkPortal,
   CoachmarkPositioner,
@@ -159,7 +160,7 @@ it('blocks the page but lets the target through when modal allows the target', a
   await expect.element(screen.getByRole('dialog', { name: 'Start here' })).toBeVisible()
 
   const target = screen.getByRole('button', { name: 'First target' }).element()
-  const outside = screen.getByRole('button', { name: 'Outside' }).element()
+  const outside = screen.getByRole('button', { name: 'Outside', includeHidden: true }).element()
   expect(pointAt(target)).toBe(target)
   expect(pointAt(outside)).not.toBe(outside)
 })
@@ -328,7 +329,10 @@ it('keeps focus in the popup when the dimmed page is clicked', async () => {
   const next = screen.getByRole('button', { name: 'Next' })
   await expect.element(next).toHaveFocus()
 
-  const outside = screen.getByRole('button', { name: 'Outside' }).element().getBoundingClientRect()
+  const outside = screen
+    .getByRole('button', { name: 'Outside', includeHidden: true })
+    .element()
+    .getBoundingClientRect()
   await userEvent.click(document.body, {
     position: { x: outside.left + outside.width / 2, y: outside.top + outside.height / 2 },
   })
@@ -903,4 +907,189 @@ it('stays above a dialog that opens with the next target inside it', async () =>
   await expect.element(coachmark).toBeVisible()
   const skip = screen.getByRole('button', { name: 'Skip' }).element()
   await expect.poll(() => pointAt(skip)).toBe(skip)
+})
+
+it('announces step changes via a polite live region when focus stays on the action button and keeps title id stable', async () => {
+  type StepId = 'one' | 'two' | 'three'
+  const copy: Record<StepId, { title: string; description: string; hasAction: boolean }> = {
+    one: { title: 'Step one', description: 'First detail', hasAction: true },
+    two: { title: 'Step two', description: 'Second detail', hasAction: true },
+    three: { title: 'Step three', description: 'Use the control', hasAction: false },
+  }
+
+  function LiveDemo({ step }: { step: StepId }) {
+    const actionRef = React.useRef<HTMLButtonElement>(null)
+    return (
+      <React.Fragment>
+        <button type="button" data-live-target="one" style={{ margin: 20 }}>
+          One
+        </button>
+        <button type="button" data-live-target="two" style={{ margin: 20 }}>
+          Two
+        </button>
+        <button type="button" data-live-target="three" style={{ margin: 20 }}>
+          Three
+        </button>
+        <Coachmark
+          open
+          target={`[data-live-target="${step}"]`}
+          modal={copy[step].hasAction ? true : 'allow-target'}
+          payload={copy[step]}
+        >
+          {({ payload }) => (
+            <CoachmarkPortal>
+              <CoachmarkSpotlight />
+              <CoachmarkPositioner>
+                <CoachmarkPopup initialFocus={payload.hasAction ? actionRef : undefined}>
+                  <CoachmarkTitle>{payload.title}</CoachmarkTitle>
+                  <CoachmarkDescription>{payload.description}</CoachmarkDescription>
+                  <CoachmarkClose>Skip</CoachmarkClose>
+                  {payload.hasAction && (
+                    <button ref={actionRef} type="button">
+                      Next
+                    </button>
+                  )}
+                </CoachmarkPopup>
+              </CoachmarkPositioner>
+            </CoachmarkPortal>
+          )}
+        </Coachmark>
+      </React.Fragment>
+    )
+  }
+
+  const screen = await render(<LiveDemo step="one" />)
+  const dialog = screen.getByRole('dialog', { name: 'Step one' })
+  await expect.element(dialog).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Next' })).toHaveFocus()
+  const initialLabelId = dialog.element().getAttribute('aria-labelledby')
+  expect(initialLabelId).toBeTruthy()
+  const status = screen.getByRole('status')
+  await expect.element(status).toHaveTextContent('')
+
+  await screen.rerender(<LiveDemo step="two" />)
+  const dialogTwo = screen.getByRole('dialog', { name: 'Step two' })
+  await expect.element(dialogTwo).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Next' })).toHaveFocus()
+  expect(dialogTwo.element().getAttribute('aria-labelledby')).toBe(initialLabelId)
+  await expect.element(status).toHaveTextContent('Step two. Second detail')
+
+  await screen.rerender(<LiveDemo step="three" />)
+  const dialogThree = screen.getByRole('dialog', { name: 'Step three' })
+  await expect.element(dialogThree).toBeVisible()
+  await expect.element(dialogThree).toHaveFocus()
+  await expect.element(status).toHaveTextContent('')
+})
+
+it('marks outside controls inert in allow-target mode and restores them when covered by a dialog', async () => {
+  function AllowTargetCoveredDemo({ covered }: { covered: boolean }) {
+    return (
+      <React.Fragment>
+        <Demo modal="allow-target" />
+        <Dialog open={covered}>
+          <DialogContent>
+            <DialogTitle>Editor</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      </React.Fragment>
+    )
+  }
+
+  const screen = await render(<AllowTargetCoveredDemo covered={false} />)
+  await expect.element(screen.getByRole('dialog', { name: 'Start here' })).toBeVisible()
+
+  const outside = screen.getByRole('button', { name: 'Outside', includeHidden: true }).element()
+  const target = screen.getByRole('button', { name: 'First target' }).element()
+  expect(outside.closest('[inert]')).not.toBeNull()
+  expect(outside.closest('[aria-hidden="true"]')).not.toBeNull()
+  expect(target.closest('[inert]')).toBeNull()
+  expect(target.closest('[aria-hidden="true"]')).toBeNull()
+
+  await screen.rerender(<AllowTargetCoveredDemo covered />)
+  await expect.element(screen.getByRole('dialog', { name: 'Editor' })).toBeVisible()
+  await expect.element(screen.getByRole('dialog', { name: 'Start here' })).not.toBeInTheDocument()
+  expect(outside.closest('[inert]')).toBeNull()
+
+  await screen.rerender(<AllowTargetCoveredDemo covered={false} />)
+  await expect.element(screen.getByRole('dialog', { name: 'Start here' })).toBeVisible()
+  expect(outside.closest('[inert]')).not.toBeNull()
+  expect(outside.closest('[aria-hidden="true"]')).not.toBeNull()
+})
+
+it('keeps the previous payload rendered while closing when payload becomes undefined', async () => {
+  const flags = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
+  const animationsDisabled = flags.BASE_UI_ANIMATIONS_DISABLED
+  flags.BASE_UI_ANIMATIONS_DISABLED = false
+  onTestFinished(() => {
+    flags.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+  })
+
+  type StepData = { title: string }
+
+  function NullablePayloadDemo({ step }: { step: StepData | undefined }) {
+    const [target, setTarget] = React.useState<HTMLElement | null>(null)
+    return (
+      <React.Fragment>
+        <button ref={setTarget} type="button" style={{ margin: 40 }}>
+          Action
+        </button>
+        <Coachmark open={step !== undefined} target={step ? target : null} payload={step}>
+          {({ payload }) => (
+            <CoachmarkPortal>
+              <CoachmarkSpotlight />
+              <CoachmarkPositioner>
+                <CoachmarkPopup>
+                  <CoachmarkTitle>{payload.title}</CoachmarkTitle>
+                  <CoachmarkClose>Skip</CoachmarkClose>
+                </CoachmarkPopup>
+              </CoachmarkPositioner>
+            </CoachmarkPortal>
+          )}
+        </Coachmark>
+      </React.Fragment>
+    )
+  }
+
+  const screen = await render(<NullablePayloadDemo step={{ title: 'First step' }} />)
+  const dialog = screen.getByRole('dialog', { name: 'First step' })
+  await expect.element(dialog).toBeVisible()
+
+  await screen.rerender(<NullablePayloadDemo step={undefined} />)
+  await expect.element(dialog).not.toBeInTheDocument()
+})
+
+it('keeps descendants of the target interactive when highlightSelectors matches inside the target', async () => {
+  function NestedHighlightDemo() {
+    const [target, setTarget] = React.useState<HTMLElement | null>(null)
+    return (
+      <React.Fragment>
+        <div ref={setTarget} style={{ margin: 40, padding: 8 }}>
+          <button type="button" data-nested-part="">
+            Inner action
+          </button>
+        </div>
+        <Coachmark
+          open
+          target={target}
+          modal="allow-target"
+          highlightSelectors={['[data-nested-part]']}
+        >
+          <CoachmarkPortal>
+            <CoachmarkSpotlight />
+            <CoachmarkPositioner>
+              <CoachmarkPopup>
+                <CoachmarkTitle>Nested step</CoachmarkTitle>
+                <CoachmarkClose>Skip</CoachmarkClose>
+              </CoachmarkPopup>
+            </CoachmarkPositioner>
+          </CoachmarkPortal>
+        </Coachmark>
+      </React.Fragment>
+    )
+  }
+
+  const screen = await render(<NestedHighlightDemo />)
+  await expect.element(screen.getByRole('dialog', { name: 'Nested step' })).toBeVisible()
+  const inner = screen.getByRole('button', { name: 'Inner action' }).element()
+  expect(inner.closest('[inert]')).toBeNull()
 })

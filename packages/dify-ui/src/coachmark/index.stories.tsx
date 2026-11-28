@@ -147,7 +147,7 @@ function SettingsTour() {
         onOpenChange={() => setIndex(null)}
         target={step ? (targets[step.id] ?? null) : null}
         modal={step?.action ? true : 'allow-target'}
-        payload={{ index: index ?? 0, step: step ?? steps[0]! }}
+        payload={step && index !== null ? { index, step } : undefined}
       >
         {({ payload: { index: shownIndex, step: shown } }) => (
           <CoachmarkPortal>
