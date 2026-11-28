@@ -29,7 +29,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Select, select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.file_access.controller import DatabaseFileAccessController
@@ -52,11 +51,7 @@ from models.tools import ToolFile
 from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
-from services.skill_management_service import (
-    RuntimeAgentSkillPayload,
-    SkillManagementService,
-    SkillManagementServiceError,
-)
+from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
 class AgentConfigMutationSurface(StrEnum):
@@ -106,147 +101,6 @@ class ConfigPushPayload(BaseModel):
     skills: list[ConfigPushSkillItem] = Field(default_factory=list)
     env_text: str | None = None
     note: str | None = None
-
-
-class AgentConfigVersionPayload(TypedDict, closed=True):
-    """Identity of the config version a read or mutation answered for."""
-
-    id: str
-    kind: str
-    writable: bool
-
-
-class AgentConfigSkillItemPayload(TypedDict, closed=True):
-    """One skill binding rendered for read APIs, whether stored or workspace-published."""
-
-    id: str
-    name: str
-    file_id: str
-    is_missing: bool
-    description: str
-    size: int | None
-    hash: str | None
-    mime_type: str | None
-
-
-class AgentConfigFileItemPayload(TypedDict, closed=True):
-    """One file binding rendered for read APIs."""
-
-    id: str
-    name: str
-    file_id: str
-    is_missing: bool
-    size: int | None
-    hash: str | None
-    mime_type: str | None
-
-
-class AgentConfigSkillItemsPayload(TypedDict, closed=True):
-    items: list[AgentConfigSkillItemPayload]
-
-
-class AgentConfigFileItemsPayload(TypedDict, closed=True):
-    items: list[AgentConfigFileItemPayload]
-
-
-class AgentConfigManifestPayload(TypedDict, closed=True):
-    """Full config manifest: version identity plus every skill and file binding."""
-
-    agent_id: str
-    config_version: AgentConfigVersionPayload
-    skills: AgentConfigSkillItemsPayload
-    files: AgentConfigFileItemsPayload
-    env_keys: list[str]
-    note: str
-
-
-class AgentConfigSkillListPayload(TypedDict, closed=True):
-    agent_id: str
-    config_version: AgentConfigVersionPayload
-    items: list[AgentConfigSkillItemPayload]
-
-
-class AgentConfigFileListPayload(TypedDict, closed=True):
-    agent_id: str
-    config_version: AgentConfigVersionPayload
-    items: list[AgentConfigFileItemPayload]
-
-
-class AgentConfigSkillBindingPayload(TypedDict, closed=True):
-    skill: AgentConfigSkillItemPayload
-    config_version: AgentConfigVersionPayload
-
-
-class AgentConfigFileBindingPayload(TypedDict, closed=True):
-    file: AgentConfigFileItemPayload
-    config_version: AgentConfigVersionPayload
-
-
-class AgentConfigFilesBindingPayload(TypedDict, closed=True):
-    files: list[AgentConfigFileItemPayload]
-    config_version: AgentConfigVersionPayload
-
-
-class AgentConfigEnvKeysPayload(TypedDict, closed=True):
-    env_keys: list[str]
-
-
-class AgentConfigNotePayload(TypedDict, closed=True):
-    note: str
-
-
-class AgentConfigFilePreviewPayload(TypedDict, closed=True):
-    """Text or binary preview of a payload addressed by archive path."""
-
-    path: str
-    size: int | None
-    truncated: bool
-    binary: bool
-    text: str | None
-
-
-class AgentConfigNamedFilePreviewPayload(TypedDict, closed=True):
-    """Text or binary preview of a payload addressed by file name."""
-
-    name: str
-    size: int | None
-    truncated: bool
-    binary: bool
-    text: str | None
-
-
-class AgentConfigSkillArchiveEntryType(StrEnum):
-    """File or directory in a skill archive, serialized using the existing wire values."""
-
-    FILE = "file"
-    DIRECTORY = "directory"
-
-
-class AgentConfigSkillArchiveEntryPayload(TypedDict, closed=True):
-    """One entry of a skill archive file tree."""
-
-    path: str
-    name: str
-    type: AgentConfigSkillArchiveEntryType
-    previewable: bool
-    downloadable: bool
-
-
-class AgentConfigSkillInspectPayload(TypedDict, closed=True):
-    """Skill binding plus the file tree and SKILL.md preview of its archive."""
-
-    id: str
-    name: str
-    file_id: str
-    is_missing: bool
-    description: str
-    size: int | None
-    hash: str | None
-    mime_type: str | None
-    source: str
-    files: list[AgentConfigSkillArchiveEntryPayload]
-    skill_md: AgentConfigFilePreviewPayload
-    warnings: list[str]
 
 
 @dataclass(slots=True)
@@ -333,7 +187,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None = None,
-    ) -> AgentConfigManifestPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -351,7 +205,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None = None,
-    ) -> AgentConfigSkillListPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -373,7 +227,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None = None,
-    ) -> AgentConfigFileListPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -486,7 +340,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
-    ) -> AgentConfigSkillInspectPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -518,14 +372,21 @@ class AgentConfigService:
             archive_bytes = workspace_archive.payload
             skill_item = next(
                 (
-                    self._runtime_skill_item_payload(item)
+                    item
                     for item in SkillManagementService().list_runtime_agent_skills(
                         tenant_id=tenant_id,
                         agent_id=agent_id,
                     )
                     if item["name"] == name
                 ),
-                self._missing_skill_item_payload(name),
+                {
+                    "id": name,
+                    "name": name,
+                    "description": "",
+                    "size": None,
+                    "hash": None,
+                    "mime_type": "application/zip",
+                },
             )
         try:
             archive_items, skill_md = self._inspect_skill_archive(archive_bytes)
@@ -553,7 +414,7 @@ class AgentConfigService:
         name: str,
         path: str,
         user_id: str | None = None,
-    ) -> AgentConfigFilePreviewPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -569,7 +430,7 @@ class AgentConfigService:
             file_id=file_id,
             path=member_path,
         )
-        return self._path_preview_payload(path=member_path, size=len(payload), payload=payload)
+        return self._preview_bytes(path=member_path, size=len(payload), payload=payload)
 
     def pull_skill_file(
         self,
@@ -690,7 +551,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         content: bytes,
         filename: str,
-    ) -> AgentConfigSkillBindingPayload:
+    ) -> dict[str, object]:
         return self._upload_skill(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -712,7 +573,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         content: bytes,
         filename: str,
-    ) -> AgentConfigSkillBindingPayload:
+    ) -> dict[str, object]:
         return self._upload_skill(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -735,7 +596,7 @@ class AgentConfigService:
         content: bytes,
         filename: str,
         surface: AgentConfigMutationSurface,
-    ) -> AgentConfigSkillBindingPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -789,7 +650,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         payload: ConfigPushPayload,
-    ) -> AgentConfigManifestPayload:
+    ) -> dict[str, object]:
         return self._push(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -809,7 +670,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         payload: ConfigPushPayload,
-    ) -> AgentConfigManifestPayload:
+    ) -> dict[str, object]:
         return self._push(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -829,7 +690,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         upload_file_id: str,
-    ) -> AgentConfigFileBindingPayload:
+    ) -> dict[str, object]:
         with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
@@ -865,7 +726,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         upload_file_ids: list[str],
-    ) -> AgentConfigFilesBindingPayload:
+    ) -> dict[str, object]:
         """Bind a validated batch atomically, replacing same-name files in input order.
 
         Lock the parent Agent before its draft, as every other draft writer does.
@@ -913,7 +774,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         payload: ConfigPushPayload,
         surface: AgentConfigMutationSurface,
-    ) -> AgentConfigManifestPayload:
+    ) -> dict[str, object]:
         prepared_skills: list[tuple[str, AgentConfigSkillRefConfig | None]] = []
         if payload.skills:
             target = self.resolve_target(
@@ -967,7 +828,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
-    ) -> AgentConfigNamedFilePreviewPayload:
+    ) -> dict[str, object]:
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -982,7 +843,9 @@ class AgentConfigService:
             file_kind=file_ref.file_kind,
             file_id=file_id,
         )
-        return self._named_preview_payload(name=filename or file_ref.name, size=file_ref.size, payload=payload)
+        return self._preview_bytes(
+            path=filename or file_ref.name, size=file_ref.size, payload=payload, field_name="name"
+        )
 
     def update_env(
         self,
@@ -993,7 +856,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         env_text: str,
-    ) -> AgentConfigEnvKeysPayload:
+    ) -> dict[str, object]:
         return self._update_env(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -1014,7 +877,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         env_text: str,
         surface: AgentConfigMutationSurface,
-    ) -> AgentConfigEnvKeysPayload:
+    ) -> dict[str, object]:
         with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
@@ -1041,7 +904,7 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         note: str,
-    ) -> AgentConfigNotePayload:
+    ) -> dict[str, object]:
         return self._update_note(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -1062,7 +925,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         note: str,
         surface: AgentConfigMutationSurface,
-    ) -> AgentConfigNotePayload:
+    ) -> dict[str, object]:
         with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
@@ -1524,7 +1387,7 @@ class AgentConfigService:
             raise AgentConfigServiceError("invalid_env_file", f"invalid env key {normalized!r}", status_code=400)
 
     @staticmethod
-    def _manifest_for_target(target: AgentConfigTarget) -> AgentConfigManifestPayload:
+    def _manifest_for_target(target: AgentConfigTarget) -> dict[str, object]:
         return {
             "agent_id": target.agent_id,
             "config_version": AgentConfigService._config_version_payload(target),
@@ -1543,12 +1406,12 @@ class AgentConfigService:
     @staticmethod
     def _skill_items_for_target(
         target: AgentConfigTarget, *, include_runtime_workspace_skills: bool
-    ) -> list[AgentConfigSkillItemPayload]:
+    ) -> list[dict[str, object]]:
         items = [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
         if not include_runtime_workspace_skills:
             return items
 
-        seen_names = {item["name"] for item in items}
+        seen_names = {str(item["name"]) for item in items}
         for item in SkillManagementService().list_runtime_agent_skills(
             tenant_id=target.tenant_id,
             agent_id=target.agent_id,
@@ -1557,48 +1420,11 @@ class AgentConfigService:
             if item["name"] in seen_names:
                 continue
             seen_names.add(str(item["name"]))
-            items.append(AgentConfigService._runtime_skill_item_payload(item))
+            items.append(item)
         return items
 
     @staticmethod
-    def _runtime_skill_item_payload(item: RuntimeAgentSkillPayload) -> AgentConfigSkillItemPayload:
-        """Render one workspace-published skill as a config skill item.
-
-        ``SkillManagementService.list_runtime_agent_skills`` reports stored archives only, so the
-        returned binding always carries a file and is therefore never missing. The mapping is
-        already parsed at the source boundary, so every field is copied verbatim.
-        """
-        return {
-            "id": item["id"],
-            "name": item["name"],
-            "file_id": item["file_id"],
-            "is_missing": False,
-            "description": item["description"],
-            "size": item["size"],
-            "hash": item["hash"],
-            "mime_type": item["mime_type"],
-        }
-
-    @staticmethod
-    def _missing_skill_item_payload(name: str) -> AgentConfigSkillItemPayload:
-        """Render a skill whose archive exists in neither the Soul nor workspace storage.
-
-        The response still has to describe a skill item, so this is the one variant that reports
-        ``is_missing`` and carries no file id; the caller fails later when it reads the archive.
-        """
-        return {
-            "id": name,
-            "name": name,
-            "file_id": "",
-            "is_missing": True,
-            "description": "",
-            "size": None,
-            "hash": None,
-            "mime_type": "application/zip",
-        }
-
-    @staticmethod
-    def _config_version_payload(target: AgentConfigTarget) -> AgentConfigVersionPayload:
+    def _config_version_payload(target: AgentConfigTarget) -> dict[str, object]:
         return {
             "id": target.version_id,
             "kind": target.kind.value,
@@ -1610,7 +1436,7 @@ class AgentConfigService:
         return target.writable or target.kind == AgentConfigVersionKind.DRAFT
 
     @staticmethod
-    def _serialize_skill_item(skill: AgentConfigSkillRefConfig) -> AgentConfigSkillItemPayload:
+    def _serialize_skill_item(skill: AgentConfigSkillRefConfig) -> dict[str, object]:
         return {
             "id": skill.name,
             "name": skill.name,
@@ -1623,7 +1449,7 @@ class AgentConfigService:
         }
 
     @staticmethod
-    def _serialize_file_item(file_ref: AgentConfigFileRefConfig) -> AgentConfigFileItemPayload:
+    def _serialize_file_item(file_ref: AgentConfigFileRefConfig) -> dict[str, object]:
         return {
             "id": file_ref.name,
             "name": file_ref.name,
@@ -1635,41 +1461,29 @@ class AgentConfigService:
         }
 
     @classmethod
-    def _preview_sample(cls, payload: bytes) -> tuple[bool, bool, str | None]:
-        """Classify one payload sample.
-
-        Returns ``(truncated, binary, text)``. Text is ``None`` exactly when the sample does not
-        decode as UTF-8 within ``PREVIEW_MAX_BYTES``; truncated multi-byte tails are dropped before
-        the final decode so a large text file is still reported as text.
-        """
+    def _preview_bytes(
+        cls,
+        *,
+        path: str,
+        size: int | None,
+        payload: bytes,
+        field_name: Literal["name", "path"] = "path",
+    ) -> dict[str, object]:
         truncated = len(payload) > cls.PREVIEW_MAX_BYTES
         sample = payload[: cls.PREVIEW_MAX_BYTES]
         if b"\x00" in sample:
-            return truncated, True, None
+            return {field_name: path, "size": size, "truncated": truncated, "binary": True, "text": None}
         try:
             text = sample.decode("utf-8")
         except UnicodeDecodeError:
-            if not truncated:
-                return truncated, True, None
-            try:
-                text = sample[:-3].decode("utf-8", errors="strict")
-            except UnicodeDecodeError:
-                return truncated, True, None
-        return truncated, False, text
-
-    @classmethod
-    def _path_preview_payload(cls, *, path: str, size: int | None, payload: bytes) -> AgentConfigFilePreviewPayload:
-        """Preview a payload addressed by archive path (skill archive members and SKILL.md)."""
-        truncated, binary, text = cls._preview_sample(payload)
-        return {"path": path, "size": size, "truncated": truncated, "binary": binary, "text": text}
-
-    @classmethod
-    def _named_preview_payload(
-        cls, *, name: str, size: int | None, payload: bytes
-    ) -> AgentConfigNamedFilePreviewPayload:
-        """Preview a payload addressed by config file name (Soul file bindings)."""
-        truncated, binary, text = cls._preview_sample(payload)
-        return {"name": name, "size": size, "truncated": truncated, "binary": binary, "text": text}
+            if truncated:
+                try:
+                    text = sample[:-3].decode("utf-8", errors="strict")
+                except UnicodeDecodeError:
+                    return {field_name: path, "size": size, "truncated": truncated, "binary": True, "text": None}
+            else:
+                return {field_name: path, "size": size, "truncated": truncated, "binary": True, "text": None}
+        return {field_name: path, "size": size, "truncated": truncated, "binary": False, "text": text}
 
     @classmethod
     def _normalize_archive_member_path(cls, path: str) -> str:
@@ -1690,13 +1504,11 @@ class AgentConfigService:
         return "/".join(segments)
 
     @classmethod
-    def _inspect_skill_archive(
-        cls, archive_bytes: bytes
-    ) -> tuple[list[AgentConfigSkillArchiveEntryPayload], AgentConfigFilePreviewPayload]:
+    def _inspect_skill_archive(cls, archive_bytes: bytes) -> tuple[list[dict[str, object]], dict[str, object]]:
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-            members: list[AgentConfigSkillArchiveEntryPayload] = []
+            members: list[dict[str, object]] = []
             directories: set[str] = set()
-            skill_md_preview: AgentConfigFilePreviewPayload | None = None
+            skill_md_preview: dict[str, object] | None = None
             for info in archive.infolist():
                 normalized_path = cls._normalize_archive_member_path(info.filename)
                 segments = normalized_path.split("/")
@@ -1708,22 +1520,22 @@ class AgentConfigService:
                     {
                         "path": normalized_path,
                         "name": segments[-1],
-                        "type": AgentConfigSkillArchiveEntryType.FILE,
+                        "type": "file",
                         "previewable": True,
                         "downloadable": True,
                     }
                 )
                 if normalized_path == "SKILL.md":
                     payload = archive.read(info)
-                    skill_md_preview = cls._path_preview_payload(path="SKILL.md", size=info.file_size, payload=payload)
+                    skill_md_preview = cls._preview_bytes(path="SKILL.md", size=info.file_size, payload=payload)
             if skill_md_preview is None or skill_md_preview["binary"]:
                 raise ValueError("skill archive is missing a text SKILL.md")
 
-        directory_items: list[AgentConfigSkillArchiveEntryPayload] = [
+        directory_items: list[dict[str, object]] = [
             {
                 "path": path,
                 "name": path.rsplit("/", 1)[-1],
-                "type": AgentConfigSkillArchiveEntryType.DIRECTORY,
+                "type": "directory",
                 "previewable": False,
                 "downloadable": False,
             }

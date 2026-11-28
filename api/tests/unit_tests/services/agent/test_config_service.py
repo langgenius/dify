@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import json
 import zipfile
 from collections.abc import Callable
 from datetime import datetime
@@ -34,10 +33,6 @@ from models.agent_config_entities import (
     AgentEnvVariableConfig,
     AgentFileRefConfig,
     AgentSoulConfig,
-    AgentSoulEnvConfig,
-    AgentSoulModelConfig,
-    AgentSoulModelSettings,
-    AgentSoulPromptConfig,
 )
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -52,7 +47,6 @@ from services.agent.config_service import (
     ConfigPushSkillItem,
 )
 from services.agent.skill_package_service import SkillPackageError
-from services.skill_management_service import RuntimeAgentSkillPayload
 
 MODULE = "services.agent.config_service"
 TENANT = "11111111-1111-1111-1111-111111111111"
@@ -79,30 +73,10 @@ class _PromptTarget(TypedDict, closed=True):
     config_version_kind: AgentConfigVersionKind
 
 
-def _soul(
-    *,
-    prompt: AgentSoulPromptConfig | None = None,
-    config_note: str | None = None,
-    config_files: list[AgentConfigFileRefConfig] | None = None,
-    config_skills: list[AgentConfigSkillRefConfig] | None = None,
-    env: AgentSoulEnvConfig | None = None,
-    model: AgentSoulModelConfig | None = None,
-) -> AgentSoulConfig:
-    """Build an Agent Soul config, overriding only the fields the test cares about."""
-    soul = AgentSoulConfig()
-    if prompt is not None:
-        soul.prompt = prompt
-    if config_note is not None:
-        soul.config_note = config_note
-    if config_files is not None:
-        soul.config_files = config_files
-    if config_skills is not None:
-        soul.config_skills = config_skills
-    if env is not None:
-        soul.env = env
-    if model is not None:
-        soul.model = model
-    return soul
+def _soul(**updates) -> AgentSoulConfig:
+    payload = AgentSoulConfig().model_dump(mode="json")
+    payload.update(updates)
+    return AgentSoulConfig.model_validate(payload)
 
 
 def _agent(*, tenant_id: str = TENANT) -> Agent:
@@ -161,8 +135,13 @@ def _persist_target(
     sqlite_session.commit()
 
 
-def _version(*, version_id: str = "version-1", snapshot: AgentSoulConfig | None = None) -> AgentConfigDraft:
-    return _draft(version_id=version_id, soul=snapshot)
+def _version(*, version_id: str = "version-1", snapshot: AgentSoulConfig | None = None) -> SimpleNamespace:
+    agent_soul = snapshot or _soul()
+    return SimpleNamespace(
+        id=version_id,
+        config_snapshot_dict=agent_soul.model_dump(mode="json"),
+        config_snapshot=agent_soul,
+    )
 
 
 def _target(
@@ -190,7 +169,7 @@ def test_get_prompt_returns_raw_text_for_each_visible_version(
     kind: AgentConfigVersionKind, sqlite_session: Session
 ) -> None:
     prompt = "  请参考 [§skill:research:Research§] 和 [§file:guide.md:Guide§]。\r\n\n"
-    soul = _soul(prompt=AgentSoulPromptConfig(system_prompt=prompt))
+    soul = _soul(prompt={"system_prompt": prompt})
     version = (
         _snapshot(soul=soul)
         if kind == AgentConfigVersionKind.SNAPSHOT
@@ -222,17 +201,17 @@ def test_update_prompt_persists_only_system_prompt_and_keeps_built_requests(
     prompt: str, sqlite_session: Session
 ) -> None:
     original = _soul(
-        prompt=AgentSoulPromptConfig(system_prompt="Original instructions"),
+        prompt={"system_prompt": "Original instructions"},
         config_note="Keep this note",
         config_files=[AgentConfigFileRefConfig(name="guide.md", file_kind="upload_file", file_id=UPLOAD_FILE)],
         config_skills=[AgentConfigSkillRefConfig(name="research", file_id=SKILL_FILE, description="Research")],
-        env=AgentSoulEnvConfig(variables=[AgentEnvVariableConfig(name="API_KEY", value="configured")]),
-        model=AgentSoulModelConfig(
-            plugin_id="langgenius/openai",
-            model_provider="openai",
-            model="gpt-test",
-            model_settings=AgentSoulModelSettings(temperature=0.2),
-        ),
+        env={"variables": [{"name": "API_KEY", "value": "configured"}]},
+        model={
+            "plugin_id": "langgenius/openai",
+            "model_provider": "openai",
+            "model": "gpt-test",
+            "model_settings": {"temperature": 0.2},
+        },
     )
     _persist_target(
         sqlite_session,
@@ -288,7 +267,7 @@ def test_update_prompt_persists_only_system_prompt_and_keeps_built_requests(
 @pytest.mark.parametrize("kind", [AgentConfigVersionKind.SNAPSHOT, AgentConfigVersionKind.DRAFT])
 @pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
 def test_update_prompt_rejects_read_only_versions(kind: AgentConfigVersionKind, sqlite_session: Session) -> None:
-    soul = _soul(prompt=AgentSoulPromptConfig(system_prompt="unchanged"))
+    soul = _soul(prompt={"system_prompt": "unchanged"})
     version = _snapshot(soul=soul) if kind == AgentConfigVersionKind.SNAPSHOT else _draft(soul=soul)
     _persist_target(sqlite_session, version)
 
@@ -317,7 +296,7 @@ def test_prompt_access_requires_complete_owner_chain(operation: str, mismatch: s
         version_id=BUILD_DRAFT,
         draft_type=AgentConfigDraftType.DEBUG_BUILD,
         account_id=USER,
-        soul=_soul(prompt=AgentSoulPromptConfig(system_prompt="private")),
+        soul=_soul(prompt={"system_prompt": "private"}),
     )
     if mismatch == "version_tenant":
         version.tenant_id = OTHER_TENANT
@@ -975,16 +954,12 @@ def test_request_download_falls_back_to_workspace_runtime_skill() -> None:
         patch(f"{MODULE}.SkillManagementService") as skill_management_service,
         patch.object(service, "_resolve_download_request", return_value=expected) as resolve_download_request,
     ):
-        workspace_skill: RuntimeAgentSkillPayload = {
-            "id": "workspace-skill",
-            "name": "workspace-skill",
-            "file_id": "workspace-archive-id",
-            "description": "",
-            "size": 0,
-            "hash": "",
-            "mime_type": "application/zip",
-        }
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = [workspace_skill]
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "name": "workspace-skill",
+                "file_id": "workspace-archive-id",
+            }
+        ]
         download = service.request_download(
             tenant_id=TENANT,
             agent_id=AGENT,
@@ -1022,16 +997,16 @@ def test_inspect_skill_falls_back_to_workspace_runtime_skill() -> None:
         patch(f"{MODULE}.SkillManagementService") as skill_management_service,
     ):
         skill_management_service.return_value.pull_runtime_agent_skill.return_value = SimpleNamespace(payload=archive)
-        workspace_skill: RuntimeAgentSkillPayload = {
-            "id": "skill-1",
-            "name": "workspace-skill",
-            "file_id": "skill-1-file",
-            "description": "Workspace skill.",
-            "size": len(archive),
-            "hash": "hash",
-            "mime_type": "application/zip",
-        }
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = [workspace_skill]
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "skill-1",
+                "name": "workspace-skill",
+                "description": "Workspace skill.",
+                "size": len(archive),
+                "hash": "hash",
+                "mime_type": "application/zip",
+            }
+        ]
         result = service.inspect_skill(
             tenant_id=TENANT,
             agent_id=AGENT,
@@ -1045,7 +1020,6 @@ def test_inspect_skill_falls_back_to_workspace_runtime_skill() -> None:
     assert result["source"] == "config_skill_zip"
     assert result["skill_md"]["text"] == "---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace"
     assert [item["path"] for item in result["files"]] == ["SKILL.md", "references", "references/policy.md"]
-    assert json.dumps([item["type"] for item in result["files"]]) == '["file", "directory", "file"]'
 
 
 def test_manifest_uses_items_shape_without_download_urls() -> None:
@@ -1060,8 +1034,7 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
     )
 
     with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
-        no_runtime_skills: list[RuntimeAgentSkillPayload] = []
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = no_runtime_skills
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
         manifest = AgentConfigService._manifest_for_target(target)
 
     assert manifest == {
@@ -1106,8 +1079,8 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
 @pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
 def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqlite_session: Session) -> None:
     soul = _soul(
-        config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="", is_missing=True)],
-        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id="", is_missing=True)],
+        config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
+        config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
     )
     _persist_target(sqlite_session, _draft(soul=soul))
     service = _service(sqlite_session)
@@ -1120,11 +1093,11 @@ def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqli
     )
 
     with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = list[RuntimeAgentSkillPayload]()
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
         manifest = service._manifest_for_target(target)
 
-    assert manifest["skills"]["items"][0]["is_missing"] is True
-    assert manifest["files"]["items"][0]["is_missing"] is True
+    assert manifest["skills"]["items"][0]["is_missing"] is True  # type: ignore[index]
+    assert manifest["files"]["items"][0]["is_missing"] is True  # type: ignore[index]
     with pytest.raises(AgentConfigServiceError) as skill_error:
         service.request_download(
             tenant_id=TENANT,
@@ -1181,27 +1154,25 @@ def test_manifest_appends_published_workspace_skills() -> None:
     )
 
     with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
-        workspace_skill: RuntimeAgentSkillPayload = {
-            "id": "workspace-skill-id",
-            "name": "beta",
-            "file_id": "tool-file-2",
-            "description": "Beta workspace skill",
-            "size": 123,
-            "hash": "sha256:beta",
-            "mime_type": "application/zip",
-        }
-        duplicate_skill: RuntimeAgentSkillPayload = {
-            "id": "duplicate",
-            "name": "alpha",
-            "file_id": "tool-file-ignored",
-            "description": "Duplicate workspace skill",
-            "size": 456,
-            "hash": "sha256:ignored",
-            "mime_type": "application/zip",
-        }
         skill_management_service.return_value.list_runtime_agent_skills.return_value = [
-            workspace_skill,
-            duplicate_skill,
+            {
+                "id": "workspace-skill-id",
+                "name": "beta",
+                "file_id": "tool-file-2",
+                "description": "Beta workspace skill",
+                "size": 123,
+                "hash": "sha256:beta",
+                "mime_type": "application/zip",
+            },
+            {
+                "id": "duplicate",
+                "name": "alpha",
+                "file_id": "tool-file-ignored",
+                "description": "Duplicate workspace skill",
+                "size": 456,
+                "hash": "sha256:ignored",
+                "mime_type": "application/zip",
+            },
         ]
         manifest = AgentConfigService._manifest_for_target(target)
 
@@ -1223,16 +1194,17 @@ def test_list_skills_excludes_workspace_skill_bindings() -> None:
         patch.object(service, "resolve_target", return_value=target),
         patch(f"{MODULE}.SkillManagementService") as skill_management_service,
     ):
-        workspace_skill: RuntimeAgentSkillPayload = {
-            "id": "workspace-skill-id",
-            "name": "beta",
-            "file_id": "tool-file-2",
-            "description": "Beta workspace skill",
-            "size": 123,
-            "hash": "sha256:beta",
-            "mime_type": "application/zip",
-        }
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = [workspace_skill]
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "workspace-skill-id",
+                "name": "beta",
+                "file_id": "tool-file-2",
+                "description": "Beta workspace skill",
+                "size": 123,
+                "hash": "sha256:beta",
+                "mime_type": "application/zip",
+            }
+        ]
         result = service.list_skills(
             tenant_id=target.tenant_id,
             agent_id=target.agent_id,
@@ -1431,9 +1403,9 @@ def test_push_files_for_console_merges_batch_atomically_with_last_same_name_winn
     sqlite_session: Session, build_draft: bool
 ) -> None:
     original = _soul(
-        prompt=AgentSoulPromptConfig(system_prompt="Keep these instructions"),
+        prompt={"system_prompt": "Keep these instructions"},
         config_note="Keep note",
-        env=AgentSoulEnvConfig(variables=[AgentEnvVariableConfig(name="TOKEN", value="keep")]),
+        env={"variables": [{"name": "TOKEN", "value": "keep"}]},
         config_files=[AgentConfigFileRefConfig(name="keep.txt", file_kind="upload_file", file_id="kept")],
     )
     draft = _draft(

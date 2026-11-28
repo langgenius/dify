@@ -49,14 +49,7 @@ from services.agent.agent_config_contracts import (
     AgentConfigWorkflowMissingError,
 )
 from services.agent.config_service import (
-    AgentConfigFileBindingPayload,
-    AgentConfigFileListPayload,
-    AgentConfigFilePreviewPayload,
-    AgentConfigManifestPayload,
-    AgentConfigNamedFilePreviewPayload,
     AgentConfigServiceError,
-    AgentConfigSkillBindingPayload,
-    AgentConfigSkillListPayload,
     ConfigPushFileItem,
     ConfigPushPayload,
     ConfigPushSkillItem,
@@ -397,7 +390,7 @@ def _with_app_route_target[T](
         _handle(exc)
 
 
-def _manifest_response(target: AgentConfigSelection) -> AgentConfigManifestPayload:
+def _manifest_response(target: AgentConfigSelection) -> dict[str, object]:
     return application_services().agent_apps.config_assets.manifest(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -407,7 +400,7 @@ def _manifest_response(target: AgentConfigSelection) -> AgentConfigManifestPaylo
     )
 
 
-def _skill_list_response(target: AgentConfigSelection) -> AgentConfigSkillListPayload:
+def _skill_list_response(target: AgentConfigSelection) -> dict[str, object]:
     return application_services().agent_apps.config_assets.list_skills(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -417,7 +410,7 @@ def _skill_list_response(target: AgentConfigSelection) -> AgentConfigSkillListPa
     )
 
 
-def _file_list_response(target: AgentConfigSelection) -> AgentConfigFileListPayload:
+def _file_list_response(target: AgentConfigSelection) -> dict[str, object]:
     return application_services().agent_apps.config_assets.list_files(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -436,7 +429,7 @@ def _read_single_upload() -> tuple[bytes, str]:
     return upload.stream.read(), upload.filename or ""
 
 
-def _skill_upload_response(target: AgentConfigSelection) -> tuple[AgentConfigSkillBindingPayload, int]:
+def _skill_upload_response(target: AgentConfigSelection) -> tuple[dict[str, object], int]:
     assert target.account_id is not None
     return _upload_skill_for_target(
         tenant_id=target.tenant_id,
@@ -456,7 +449,7 @@ def _upload_skill_for_target(
     version_kind: AgentConfigVersionKind,
     content: bytes | None = None,
     filename: str = "",
-) -> tuple[AgentConfigSkillBindingPayload, int]:
+) -> tuple[dict[str, object], int]:
     if content is None:
         content, filename = _read_single_upload()
     manifest = application_services().agent_apps.config_assets.upload_skill_for_console(
@@ -473,7 +466,7 @@ def _upload_skill_for_target(
 
 def _file_upload_response(
     target: AgentConfigSelection, payload: AgentConfigFileUploadPayload
-) -> tuple[AgentConfigFileBindingPayload, int]:
+) -> tuple[dict[str, object], int]:
     assert target.account_id is not None
     manifest = application_services().agent_apps.config_assets.push_file_for_console(
         tenant_id=target.tenant_id,
@@ -529,7 +522,7 @@ def _skill_download_response(target: AgentConfigSelection, name: str) -> Respons
     )
 
 
-def _skill_file_preview_response(target: AgentConfigSelection, name: str, path: str) -> AgentConfigFilePreviewPayload:
+def _skill_file_preview_response(target: AgentConfigSelection, name: str, path: str) -> dict[str, object]:
     return application_services().agent_apps.config_assets.preview_skill_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -601,7 +594,7 @@ def _skill_delete_response(target: AgentConfigSelection, name: str) -> dict[str,
     return {"result": "success", "removed_names": [name]}
 
 
-def _file_preview_response(target: AgentConfigSelection, name: str) -> AgentConfigNamedFilePreviewPayload:
+def _file_preview_response(target: AgentConfigSelection, name: str) -> dict[str, object]:
     return application_services().agent_apps.config_assets.preview_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -649,7 +642,7 @@ class AgentConfigManifestByAgentApi(Resource):
         HTTPStatus.OK, "Agent config manifest", console_ns.models[AgentConfigManifestResponse.__name__]
     )
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
-    def get(self, context: RequestContext, agent_id: UUID) -> AgentConfigManifestPayload:
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Get the selected Agent configuration asset for the admitted account."""
         return _with_agent_route_target(
             context=context,
@@ -667,7 +660,7 @@ class AgentConfigManifestApi(Resource):
         HTTPStatus.OK, "Agent config manifest", console_ns.models[AgentConfigManifestResponse.__name__]
     )
     @console_account_admission()
-    def get(self, context: RequestContext, app_id: UUID) -> AgentConfigManifestPayload:
+    def get(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Get the selected workflow Agent configuration asset."""
         return _with_app_route_target(context=context, app_id=app_id, action=_manifest_response)
 
@@ -688,7 +681,7 @@ class AgentConfigSkillUploadByAgentApi(Resource):
         HTTPStatus.CREATED, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__]
     )
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_EDIT, AgentId())])
-    def post(self, context: RequestContext, agent_id: UUID) -> tuple[AgentConfigSkillBindingPayload, int]:
+    def post(self, context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], int]:
         """Post the selected Agent configuration asset for the admitted account."""
         return _with_agent_route_target(
             context=context,
@@ -713,7 +706,7 @@ class AgentConfigSkillUploadApi(Resource):
         HTTPStatus.CREATED, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__]
     )
     @console_account_admission(allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())])
-    def post(self, context: RequestContext, app_id: UUID) -> tuple[AgentConfigSkillBindingPayload, int]:
+    def post(self, context: RequestContext, app_id: UUID) -> tuple[dict[str, object], int]:
         """Post the selected workflow Agent configuration asset."""
         return _with_app_route_target(context=context, app_id=app_id, action=_skill_upload_response)
 
@@ -725,7 +718,7 @@ class AgentConfigSkillsByAgentApi(Resource):
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.response(HTTPStatus.OK, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
-    def get(self, context: RequestContext, agent_id: UUID) -> AgentConfigSkillListPayload:
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Get the selected Agent configuration asset for the admitted account."""
         return _with_agent_route_target(
             context=context,
@@ -741,7 +734,7 @@ class AgentConfigSkillsApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(HTTPStatus.OK, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
     @console_account_admission()
-    def get(self, context: RequestContext, app_id: UUID) -> AgentConfigSkillListPayload:
+    def get(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Get the selected workflow Agent configuration asset."""
         return _with_app_route_target(context=context, app_id=app_id, action=_skill_list_response)
 
@@ -753,7 +746,7 @@ class AgentConfigFilesByAgentApi(Resource):
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.response(HTTPStatus.OK, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
-    def get(self, context: RequestContext, agent_id: UUID) -> AgentConfigFileListPayload:
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Get the selected Agent configuration asset for the admitted account."""
         return _with_agent_route_target(
             context=context,
@@ -775,7 +768,7 @@ class AgentConfigFilesByAgentApi(Resource):
         req_data: AgentConfigFileUploadPayload,
         context: RequestContext,
         agent_id: UUID,
-    ) -> tuple[AgentConfigFileBindingPayload, int]:
+    ) -> tuple[dict[str, object], int]:
         """Post the selected Agent configuration asset for the admitted account."""
         return _with_agent_route_target(
             context=context,
@@ -791,7 +784,7 @@ class AgentConfigFilesApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(HTTPStatus.OK, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
     @console_account_admission()
-    def get(self, context: RequestContext, app_id: UUID) -> AgentConfigFileListPayload:
+    def get(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Get the selected workflow Agent configuration asset."""
         return _with_app_route_target(context=context, app_id=app_id, action=_file_list_response)
 
@@ -806,7 +799,7 @@ class AgentConfigFilesApi(Resource):
     @model_validate(AgentConfigFileUploadPayload)
     def post(
         self, req_data: AgentConfigFileUploadPayload, context: RequestContext, app_id: UUID
-    ) -> tuple[AgentConfigFileBindingPayload, int]:
+    ) -> tuple[dict[str, object], int]:
         """Post the selected workflow Agent configuration asset."""
         return _with_app_route_target(
             context=context,
@@ -917,7 +910,7 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
         HTTPStatus.OK, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__]
     )
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
-    def get(self, context: RequestContext, agent_id: UUID, name: str) -> AgentConfigFilePreviewPayload:
+    def get(self, context: RequestContext, agent_id: UUID, name: str) -> dict[str, object]:
         """Get the selected Agent configuration asset for the admitted account."""
         query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
         try:
@@ -946,7 +939,7 @@ class AgentConfigSkillFilePreviewApi(Resource):
         HTTPStatus.OK, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__]
     )
     @console_account_admission()
-    def get(self, context: RequestContext, app_id: UUID, name: str) -> AgentConfigFilePreviewPayload:
+    def get(self, context: RequestContext, app_id: UUID, name: str) -> dict[str, object]:
         """Get the selected workflow Agent configuration asset."""
         query = query_params_from_request(AgentConfigSkillFileQuery)
         try:
@@ -1146,7 +1139,7 @@ class AgentConfigFilePreviewByAgentApi(Resource):
     )
     @console_ns.response(HTTPStatus.OK, "Preview", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
-    def get(self, context: RequestContext, agent_id: UUID, name: str) -> AgentConfigNamedFilePreviewPayload:
+    def get(self, context: RequestContext, agent_id: UUID, name: str) -> dict[str, object]:
         """Get the selected Agent configuration asset for the admitted account."""
         return _with_agent_route_target(
             context=context,
@@ -1164,7 +1157,7 @@ class AgentConfigFilePreviewApi(Resource):
     )
     @console_ns.response(HTTPStatus.OK, "Preview", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @console_account_admission()
-    def get(self, context: RequestContext, app_id: UUID, name: str) -> AgentConfigNamedFilePreviewPayload:
+    def get(self, context: RequestContext, app_id: UUID, name: str) -> dict[str, object]:
         """Get the selected workflow Agent configuration asset."""
         return _with_app_route_target(
             context=context,

@@ -1040,10 +1040,10 @@ def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[D
         runtime_skills = []
     return [
         DifyConfigSkillConfig(
-            name=item["name"],
-            description=item["description"],
-            size=item["size"],
-            mime_type=item["mime_type"],
+            name=str(item["name"]),
+            description=str(item.get("description") or ""),
+            size=cast(int | None, item.get("size")),
+            mime_type=cast(str | None, item.get("mime_type")),
         )
         for item in runtime_skills
     ]

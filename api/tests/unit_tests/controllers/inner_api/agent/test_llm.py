@@ -261,7 +261,7 @@ def test_post_preserves_preflight_quota_failure() -> None:
             "controllers.inner_api.agent.llm.AgentLLMInnerService.prepare",
             side_effect=AgentLLMInnerServiceError(
                 "agent_llm_quota_exceeded",
-                "Insufficient Message Credits.",
+                "Insufficient AI Credits.",
                 status_code=429,
             ),
         ),
@@ -279,7 +279,7 @@ def test_post_preserves_preflight_quota_failure() -> None:
     assert response.status_code == 429
     assert response.get_json() == {
         "code": "agent_llm_quota_exceeded",
-        "message": "Insufficient Message Credits.",
+        "message": "Insufficient AI Credits.",
         "status": 429,
     }
 
