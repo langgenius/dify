@@ -72,7 +72,7 @@ class _WorkflowGraphNodePayload(BaseModel):
 
     @field_validator("data", mode="before")
     @classmethod
-    def _normalize_data(cls, raw_data: object) -> object:
+    def _normalize_data(cls, raw_data: object) -> dict[str, object]:
         """Normalize node data before Pydantic validates its JSON values.
 
         Preconditions: raw_data is a value from the persisted graph.
