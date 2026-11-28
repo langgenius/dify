@@ -1,6 +1,8 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services.errors.base
@@ -160,6 +162,39 @@ class TestParseArgs:
 
 
 class TestPerformHitTesting:
+    def test_ends_the_request_transaction_before_retrieval(
+        self, sqlite_session: Session, dataset: Dataset, account: Account, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Retrieval waits on the embedding model and the vector store, and opens sessions of its own.
+
+        The request session has read the dataset by then; if it stayed in that transaction, every
+        concurrent retrieval would keep one pooled connection and need a second one.
+        """
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+        assert sqlite_session.scalar(select(Dataset.id).where(Dataset.id == dataset.id)) == dataset.id
+        assert sqlite_session.in_transaction()
+        in_transaction_during_retrieval: list[bool] = []
+        searched_datasets: list[object] = []
+
+        def retrieve(*, session: Session, **kwargs: object) -> dict[str, object]:
+            in_transaction_during_retrieval.append(session.in_transaction())
+            searched_datasets.append(kwargs["dataset"])
+            return {"query": {"content": "hello"}, "records": list[object]()}
+
+        monkeypatch.setattr(HitTestingService, "retrieve", retrieve)
+
+        result = DatasetsHitTestingBase.perform_hit_testing(
+            sqlite_session, dataset, {"query": "hello"}, account, "tenant-1"
+        )
+
+        assert result["query"] == {"content": "hello"}
+        assert in_transaction_during_retrieval == [False]
+        assert searched_datasets == [dataset]
+        # The dataset the caller loaded stays readable without going back to the database.
+        assert dataset.name == "Dataset"
+        assert not sqlite_session.in_transaction()
+
     def test_success(self, dataset: Dataset, account: Account) -> None:
         response = {
             "query": {"content": "hello"},

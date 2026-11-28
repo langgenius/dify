@@ -7,8 +7,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account
 from models.dataset import Dataset, DatasetQuery
@@ -101,6 +103,63 @@ class TestHitTestingServiceRetrieveTransaction:
         assert query_log is not None
         assert query_log.dataset_id == dataset.id
         assert query_log.created_by == account.id
+
+
+class TestHitTestingServiceConnectionUse:
+    def test_retrieve_reads_metadata_filters_through_a_session_of_its_own(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The caller's session must not be in a transaction while retrieval waits on a model or a vector store.
+
+        A metadata lookup made through the caller's session would begin one, so the lookup uses a
+        session that is closed before retrieval starts.
+        """
+        dataset = Dataset(
+            id="dataset-123",
+            tenant_id="tenant-123",
+            provider="vendor",
+            retrieval_model=None,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        )
+        account = Account(name="Test User", email="test@example.com")
+        account.id = "user-789"
+        retrieval_model = {
+            "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+            "reranking_enable": False,
+            "score_threshold_enabled": False,
+            "top_k": 4,
+            "metadata_filtering_conditions": {
+                "logical_operator": "and",
+                "conditions": [{"name": "author", "comparison_operator": "is", "value": "someone"}],
+            },
+        }
+        filter_sessions: list[Session] = []
+        caller_in_transaction_during_retrieval: list[bool] = []
+        document_filters: list[object] = []
+        filtered_dataset_ids: list[object] = []
+
+        def get_metadata_filter_condition(
+            _self: DatasetRetrieval, *, session: Session, **kwargs: object
+        ) -> tuple[dict[str, list[str]], None]:
+            filter_sessions.append(session)
+            filtered_dataset_ids.append(kwargs["dataset_ids"])
+            return {dataset.id: ["document-1"]}, None
+
+        def retrieve(**kwargs: object) -> list[Document]:
+            caller_in_transaction_during_retrieval.append(sqlite_session.in_transaction())
+            document_filters.append(kwargs["document_ids_filter"])
+            return []
+
+        monkeypatch.setattr(DatasetRetrieval, "get_metadata_filter_condition", get_metadata_filter_condition)
+        monkeypatch.setattr(RetrievalService, "retrieve", retrieve)
+
+        HitTestingService.retrieve(dataset, "test query", account, retrieval_model, {}, session=sqlite_session)
+
+        assert len(filter_sessions) == 1
+        assert filter_sessions[0] is not sqlite_session
+        assert filtered_dataset_ids == [[dataset.id]]
+        assert caller_in_transaction_during_retrieval == [False]
+        assert document_filters == [["document-1"]]
 
 
 class TestHitTestingServiceRetrievalMethod:
