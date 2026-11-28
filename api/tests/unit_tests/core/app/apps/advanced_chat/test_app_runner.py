@@ -38,12 +38,14 @@ VAR_1_ID = "33333333-3333-3333-3333-333333333333"
 VAR_2_ID = "33333333-3333-3333-3333-333333333334"
 
 
-def _variable(variable_id: str, name: str, value: str) -> VariableBase:
+def _variable(
+    variable_id: str, name: str, value: str | int | float, value_type: SegmentType = SegmentType.STRING
+) -> VariableBase:
     return variable_factory.build_conversation_variable_from_mapping(
         {
             "id": variable_id,
             "name": name,
-            "value_type": SegmentType.STRING,
+            "value_type": value_type,
             "value": value,
         }
     )
@@ -146,6 +148,76 @@ class TestAppRunnerConversationVariablesCases:
         assert [variable.id for variable in variables] == [VAR_1_ID, VAR_2_ID]
         persisted = sqlite_session.scalars(select(ConversationVariable)).all()
         assert len(persisted) == 2
+
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+    def test_renamed_conversation_variable_keeps_value(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        stored_variable = _variable(VAR_1_ID, "customer_name", "Alice")
+        renamed_variable = _variable(VAR_1_ID, "client_name", "")
+        _persist_variable(sqlite_session, variable=stored_variable)
+        _bind_runner_sessions(monkeypatch, sqlite_session)
+
+        variables = _runner([renamed_variable])._initialize_conversation_variables()
+
+        assert [variable.id for variable in variables] == [VAR_1_ID]
+        assert variables[0].name == "client_name"
+        assert list(variables[0].selector) == ["conversation", "client_name"]
+        assert variables[0].value == "Alice"
+        persisted = sqlite_session.scalars(
+            select(ConversationVariable).where(ConversationVariable.conversation_id == CONVERSATION_ID)
+        ).all()
+        assert len(persisted) == 1
+        assert persisted[0].id == VAR_1_ID
+        assert persisted[0].to_variable().name == "client_name"
+        assert persisted[0].to_variable().value == "Alice"
+
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+    def test_type_changed_conversation_variable_resets_to_default(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        stored_variable = _variable(VAR_1_ID, "customer_name", "Alice")
+        changed_variable = _variable(VAR_1_ID, "client_name", 0, SegmentType.NUMBER)
+        _persist_variable(sqlite_session, variable=stored_variable)
+        _bind_runner_sessions(monkeypatch, sqlite_session)
+
+        variables = _runner([changed_variable])._initialize_conversation_variables()
+
+        assert [variable.id for variable in variables] == [VAR_1_ID]
+        assert variables[0].name == "client_name"
+        assert variables[0].value_type == SegmentType.INTEGER
+        assert variables[0].value == 0
+        persisted = sqlite_session.scalars(
+            select(ConversationVariable).where(ConversationVariable.conversation_id == CONVERSATION_ID)
+        ).all()
+        assert len(persisted) == 1
+        assert persisted[0].to_variable().value == 0
+
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+    def test_renamed_non_uuid_conversation_variable_keeps_value(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        author_id = "opt-comp-prompt-var"
+        stored_variable = _variable(author_id, "customer_name", "Alice")
+        renamed_variable = _variable(author_id, "client_name", "")
+        _persist_variable(sqlite_session, variable=stored_variable)
+        _bind_runner_sessions(monkeypatch, sqlite_session)
+
+        variables = _runner([renamed_variable])._initialize_conversation_variables()
+
+        assert [variable.id for variable in variables] == [author_id]
+        assert variables[0].name == "client_name"
+        assert list(variables[0].selector) == ["conversation", "client_name"]
+        assert variables[0].value == "Alice"
+        persisted = sqlite_session.scalars(
+            select(ConversationVariable).where(ConversationVariable.conversation_id == CONVERSATION_ID)
+        ).all()
+        assert len(persisted) == 1
+        assert persisted[0].id == ConversationVariable.storage_id(renamed_variable)
+        assert persisted[0].to_variable().value == "Alice"
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
