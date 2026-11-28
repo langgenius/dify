@@ -5,6 +5,18 @@ import StreamdownWrapper from '../streamdown-wrapper'
 
 const TILDE_RANGE_RE = /0\.3~8mm/
 
+let mockAllowUnsafeDataScheme = false
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  const mocked = { ...actual }
+  Object.defineProperty(mocked, 'ALLOW_UNSAFE_DATA_SCHEME', {
+    get: () => mockAllowUnsafeDataScheme,
+    enumerable: true,
+  })
+  return mocked
+})
+
 vi.mock('@/app/components/base/markdown-blocks/code-block', () => ({
   CodeBlock: ({ children }: PropsWithChildren) => <code>{children}</code>,
 }))
@@ -12,6 +24,11 @@ vi.mock('@/app/components/base/markdown-blocks/code-block', () => ({
 describe('StreamdownWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAllowUnsafeDataScheme = false
+  })
+
+  afterEach(() => {
+    mockAllowUnsafeDataScheme = false
   })
 
   describe('Strikethrough rendering', () => {
@@ -150,6 +167,44 @@ describe('StreamdownWrapper', () => {
       // Assert - rehype-sanitize strips the tag but keeps inner text
       expect(screen.getByText('content'))!.toBeInTheDocument()
       expect(document.querySelector('custom-element')).toBeNull()
+    })
+  })
+
+  describe('Data URI scheme handling', () => {
+    const dataImageUrl = 'data:image/png;base64,iVBORw0KGgo='
+
+    it('should render data: image src when ALLOW_UNSAFE_DATA_SCHEME is enabled', () => {
+      mockAllowUnsafeDataScheme = true
+
+      render(
+        <StreamdownWrapper
+          latexContent={`![sample](${dataImageUrl})\n\n<img src="${dataImageUrl}" alt="html-sample" />`}
+        />,
+      )
+
+      const images = screen.getAllByTestId('gallery-image')
+      expect(images).toHaveLength(2)
+      expect(images[0]).toHaveAttribute('src', dataImageUrl)
+      expect(images[1]).toHaveAttribute('src', dataImageUrl)
+    })
+
+    it('should block data: image src when ALLOW_UNSAFE_DATA_SCHEME is disabled', () => {
+      mockAllowUnsafeDataScheme = false
+
+      render(<StreamdownWrapper latexContent={`![sample](${dataImageUrl})`} />)
+
+      expect(screen.queryByTestId('gallery-image')?.getAttribute('src') ?? '').not.toContain(
+        'data:',
+      )
+    })
+
+    it('should still block unsafe data: link href when ALLOW_UNSAFE_DATA_SCHEME is enabled', () => {
+      mockAllowUnsafeDataScheme = true
+
+      render(<StreamdownWrapper latexContent="[click](data:text/html,<script>alert(1)</script>)" />)
+
+      expect(screen.queryByRole('link', { name: 'click' })).toBeNull()
+      expect(screen.getByText('click [blocked]')).toBeInTheDocument()
     })
   })
 })

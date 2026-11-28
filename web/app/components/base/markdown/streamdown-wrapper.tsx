@@ -17,7 +17,7 @@ import {
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
-import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import { ALLOW_INLINE_STYLES, ALLOW_UNSAFE_DATA_SCHEME, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
@@ -29,6 +29,7 @@ type AttributeDefinition = string | [string, ...(string | boolean | RegExp)[]]
 type SanitizeSchema = {
   tagNames?: string[]
   attributes?: Record<string, AttributeDefinition[]>
+  protocols?: Record<string, string[]>
   required?: Record<string, Record<string, unknown>>
   clobber?: string[]
   clobberPrefix?: string
@@ -144,10 +145,21 @@ function buildRehypePlugins(extraPlugins?: PluggableList, isPlugin = false): Plu
     mergedAttributes['*'] = [...globalAttrs, 'style']
   }
 
+  const baseProtocols = defaultSanitizeSchema.protocols
+  const srcProtocols = baseProtocols?.src ?? []
+  const mergedProtocols =
+    ALLOW_UNSAFE_DATA_SCHEME && baseProtocols
+      ? {
+          ...baseProtocols,
+          src: srcProtocols.includes('data') ? srcProtocols : [...srcProtocols, 'data'],
+        }
+      : baseProtocols
+
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
     tagNames: [...tagNamesSet],
     attributes: mergedAttributes,
+    ...(mergedProtocols ? { protocols: mergedProtocols } : {}),
     required: requiredRest,
     clobber,
   }
