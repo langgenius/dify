@@ -4,8 +4,9 @@ Exercises the decorators in isolation (not through a real controller): a plain
 view function decorated with @accepts/@returns, driven inside a request context.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import wraps
+from inspect import signature
 from io import BytesIO
 from typing import Any, cast
 
@@ -29,6 +30,7 @@ from controllers.openapi._contract import (
 from controllers.openapi._errors import RequestOverRouteLimits
 from controllers.openapi._models import Hint, PaginationEnvelope
 from controllers.openapi._upload import UploadPart
+from controllers.openapi.auth.context import Context
 from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
 
 
@@ -54,7 +56,7 @@ class ContractResp(BaseModel):
 
 
 @pytest.fixture(autouse=True, scope="module")
-def _register_contract_test_models():
+def _register_contract_test_models() -> Iterator[None]:
     # Register for @accepts(body=)/@returns name lookups; drop on teardown so these
     # test-only models don't leak into the shared openapi_ns / generated spec.
     register_schema_model(openapi_ns, ContractBody)
@@ -66,11 +68,15 @@ def _register_contract_test_models():
     openapi_ns.models.pop(ContractResp.__name__, None)
 
 
-def _guard_like(view):
-    """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer."""
+def _guard_like[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer.
+
+    The ``ParamSpec`` keeps the wrapped view's own parameters *and* its return type:
+    the guard layer only forwards, so it must not widen either.
+    """
 
     @wraps(view)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return view(*args, **kwargs)
 
     return wrapper
@@ -80,34 +86,37 @@ class _Page(PaginationEnvelope[int]):
     pass
 
 
-def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_alone():
+def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_alone() -> None:
+    ctx = make_ctx(Session())
+
     @paginated("thing.list")
-    def view(*, ctx, workspace_id, query):
+    def view(*, ctx: Context, workspace_id: str, query: ContractQuery) -> _Page:
         return _Page.build(page=query.page, limit=query.limit, total=50, items=[])
 
-    result = view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=1, limit=20))
+    result = view(ctx=ctx, workspace_id="ws-1", query=ContractQuery(page=1, limit=20))
     assert result.hints == [
         Hint(summary="Next page", op="thing.list", input={"workspace_id": "ws-1", "page": 2, "limit": 20})
     ]
-    assert view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=3, limit=20)).hints == []
+    assert view(ctx=ctx, workspace_id="ws-1", query=ContractQuery(page=3, limit=20)).hints == []
 
     @paginated("thing.get")
-    def plain(*, ctx):
+    def plain(*, ctx: Context) -> ContractResp:
         return ContractResp(value=1)
 
-    assert plain(ctx=object()) == ContractResp(value=1)
+    assert plain(ctx=ctx) == ContractResp(value=1)
 
 
 def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
     setup = Hint(summary="Set up", op="thing.describe", input={})
+    ctx = make_ctx(Session())
 
     @paginated("thing.list")
-    def view(*, ctx: object, query: ContractQuery) -> _Page:
+    def view(*, ctx: Context, query: ContractQuery) -> _Page:
         page = _Page.build(page=query.page, limit=query.limit, total=50, items=[])
         page.hints = [setup]
         return page
 
-    assert [h.op for h in view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints] == [
+    assert [h.op for h in view(ctx=ctx, query=ContractQuery(page=1, limit=20)).hints] == [
         "thing.describe",
         "thing.list",
     ]
@@ -115,17 +124,18 @@ def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
     own = Hint(summary="Next page", op="thing.list", input={"cursor": "c2"})
 
     @paginated("thing.list")
-    def cursor_view(*, ctx: object, query: ContractQuery) -> _Page:
+    def cursor_view(*, ctx: Context, query: ContractQuery) -> _Page:
         page = _Page.build(page=query.page, limit=query.limit, total=50, items=[])
         page.hints = [own]
         return page
 
-    assert cursor_view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints == [own]
+    assert cursor_view(ctx=ctx, query=ContractQuery(page=1, limit=20)).hints == [own]
 
 
-def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
+def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app: Flask) -> None:
     @accepts(query=ContractQuery)
-    def view(*, query):
+    def view(*, query: ContractQuery | None = None) -> ContractQuery:
+        assert query is not None
         return query
 
     with app.test_request_context("/?page=3"):
@@ -136,6 +146,24 @@ def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
     assert result.limit == 20
 
 
+def test_accepts_preserves_signature_and_forwards_non_injected_arguments() -> None:
+    app = Flask(__name__)
+
+    def view(workspace_id: str, *, query: ContractQuery | None = None) -> tuple[str, ContractQuery]:
+        assert query is not None
+        return workspace_id, query
+
+    decorated = accepts(query=ContractQuery)(view)
+    assert signature(decorated) == signature(view)
+
+    with app.test_request_context("/?page=3"):
+        workspace_id, query = decorated("ws-1")
+
+    assert workspace_id == "ws-1"
+    assert query.page == 3
+    assert query.limit == 20
+
+
 class ContractListQuery(BaseModel):
     tag: list[str] | None = None
     word: str | None = None
@@ -143,7 +171,8 @@ class ContractListQuery(BaseModel):
 
 def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Flask) -> None:
     @accepts(query=ContractListQuery)
-    def view(*, query: ContractListQuery) -> ContractListQuery:
+    def view(*, query: ContractListQuery | None = None) -> ContractListQuery:
+        assert query is not None
         return query
 
     with app.test_request_context("/?tag=a&tag=b&word=x&word=y"):
@@ -154,9 +183,10 @@ def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Fla
 
 
 @pytest.mark.parametrize("query_string", ["page=abc", "unknown=1"])
-def test_accepts_rejects_invalid_query_with_422(app, query_string):
+def test_accepts_rejects_invalid_query_with_422(app: Flask, query_string: str) -> None:
     @accepts(query=ContractQuery)
-    def view(*, query):
+    def view(*, query: ContractQuery | None = None) -> ContractQuery:
+        assert query is not None
         return query
 
     with app.test_request_context(f"/?{query_string}"):
@@ -164,11 +194,12 @@ def test_accepts_rejects_invalid_query_with_422(app, query_string):
             view()
 
 
-def test_accepts_validation_error_is_sanitized_and_structured(app):
+def test_accepts_validation_error_is_sanitized_and_structured(app: Flask) -> None:
     """422 body is structured and leaks neither the pydantic docs url nor the user input."""
 
     @accepts(body=ContractBody)
-    def view(*, body):
+    def view(*, body: ContractBody | None = None) -> ContractBody:
+        assert body is not None
         return body
 
     with app.test_request_context("/", method="POST", json={"secret": "leak-me"}):
@@ -186,9 +217,10 @@ def test_accepts_validation_error_is_sanitized_and_structured(app):
     assert "leak-me" not in str(data)
 
 
-def test_accepts_injects_validated_body(app):
+def test_accepts_injects_validated_body(app: Flask) -> None:
     @accepts(body=ContractBody)
-    def view(*, body):
+    def view(*, body: ContractBody | None = None) -> ContractBody:
+        assert body is not None
         return body
 
     with app.test_request_context("/", method="POST", json={"name": "x"}):
@@ -198,9 +230,9 @@ def test_accepts_injects_validated_body(app):
     assert result.name == "x"
 
 
-def test_returns_serializes_model_with_decorator_status(app):
+def test_returns_serializes_model_with_decorator_status(app: Flask) -> None:
     @returns(200, ContractResp)
-    def view():
+    def view() -> ContractResp:
         return ContractResp(value=7)
 
     with app.test_request_context("/"):
@@ -211,9 +243,9 @@ def test_returns_serializes_model_with_decorator_status(app):
 
 
 @pytest.mark.parametrize("trailing", [(201,), (202, {"X-Test": "1"})], ids=["status", "status_and_headers"])
-def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app, trailing):
+def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app: Flask, trailing: tuple[object, ...]) -> None:
     @returns(200, ContractResp)
-    def view():
+    def view() -> tuple[object, ...]:
         return ContractResp(value=9), *trailing
 
     with app.test_request_context("/"):
@@ -223,11 +255,11 @@ def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app, trailin
     assert tuple(rest) == trailing
 
 
-def test_returns_passes_through_non_model(app):
-    sentinel = object()
+def test_returns_passes_through_non_model(app: Flask) -> None:
+    sentinel = "not a model"
 
     @returns(200, ContractResp)
-    def view():
+    def view() -> str:
         return sentinel
 
     with app.test_request_context("/"):
@@ -239,11 +271,11 @@ def test_returns_passes_through_non_model(app):
 # Swagger metadata (read off __apidoc__) must survive @wraps up through the guard layer.
 
 
-def test_accepts_returns_emit_apidoc_through_guard_stack():
+def test_accepts_returns_emit_apidoc_through_guard_stack() -> None:
     @_guard_like
     @returns(200, ContractResp)
     @accepts(query=ContractQuery, body=ContractBody)
-    def view(*, query, body):
+    def view(*, query: ContractQuery | None = None, body: ContractBody | None = None) -> ContractResp:
         return ContractResp(value=1)
 
     apidoc = getattr(view, "__apidoc__", {})
@@ -263,7 +295,8 @@ def _post(app: Flask, size: int, **extra: str) -> RequestContext:
 @pytest.fixture
 def view() -> Callable[[], str]:
     @accepts(body=ContractUploadBody)
-    def handler(*, body: ContractUploadBody) -> str:
+    def handler(*, body: ContractUploadBody | None = None) -> str:
+        assert body is not None
         return "ok"
 
     return handler

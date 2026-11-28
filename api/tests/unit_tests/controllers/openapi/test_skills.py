@@ -437,7 +437,8 @@ def test_import_part_cap_counts_files_and_fields(
     assert _skill_upload_parts() == 4
 
     @accepts(body=SkillImportPayload)
-    def handler(*, body: SkillImportPayload) -> int:
+    def handler(*, body: SkillImportPayload | None = None) -> int:
+        assert body is not None
         return len(body.files)
 
     def post(*paths: str) -> FlaskRequestContext:

@@ -18,7 +18,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, Final, cast, get_args, get_origin, override
+from typing import Any, Final, ParamSpec, TypeVar, get_args, get_origin, override
 
 from flask import request
 from flask_restx import abort
@@ -59,15 +59,23 @@ __all__ = [
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 MULTIPART_HEADER_BYTES_PER_PART: Final = 1024
 
+# These decorators wrap a view without changing how it is called, so the signature
+# travels through them as ``P``: the decorated name keeps the view's own parameters,
+# and the checker stops seeing ``*args, **kwargs`` at every call site.
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
-def paginated(op: str) -> Callable:
+
+def paginated(op: str) -> Callable[[Callable[_P, Any]], Callable[_P, Any]]:
     """Add the ``Next page`` hint to a ``PaginationEnvelope`` result, unless the view already
     built one for this op. Sits inside ``accepts`` so it sees the validated ``query`` and the
     path kwargs the hint echoes; only this layer knows both those and the op id.
     """
 
-    def decorator(view: Callable) -> Callable:
+    def decorator(view: Callable[_P, Any]) -> Callable[_P, Any]:
         @wraps(view)
+        # ``kwargs`` is read by name here (the injected ``query``, the path args), so the
+        # wrapper stays generic over it; the decorator still hands back ``Callable[P, Any]``.
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
             if not isinstance(result, PaginationEnvelope) or any(h.op == op for h in result.hints):
@@ -122,15 +130,28 @@ def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
     )
 
 
-def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
-    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
+def accepts(
+    *, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    """Validate request models and inject their values into the wrapped view.
 
-    def decorator(view: Callable) -> Callable:
+    Precondition: a Flask request context is active when invoking the wrapper if either
+    model is configured. Postcondition: the view's ParamSpec and return type are preserved;
+    validated ``query``/``body`` values replace those kwargs, and validation errors abort
+    with a sanitized 422 response.
+
+    Because a ParamSpec cannot subtract named keywords, callers can omit injected parameters
+    only when the view declares them optional with a default (for example, ``Model | None = None``).
+    The wrapper replaces that default with validated request data before invoking the view;
+    other required route parameters remain required.
+    """
+
+    def decorator(view: Callable[_P, _R]) -> Callable[_P, _R]:
         body_file_fields = file_fields(body) if body is not None else frozenset()
         query_list_fields = _list_fields(query) if query is not None else ()
 
         @wraps(view)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             try:
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
@@ -156,7 +177,9 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
     return decorator
 
 
-def returns(code: int, model: type[BaseModel], description: str | None = None) -> Callable:
+def returns(
+    code: int, model: type[BaseModel], description: str | None = None
+) -> Callable[[Callable[_P, Any]], Callable[_P, Any]]:
     """Serialise the handler's returned model and emit the response schema.
 
     Accepts a ``BaseModel`` (serialised with ``code``) or a ``(model, status[, headers])``
@@ -164,9 +187,9 @@ def returns(code: int, model: type[BaseModel], description: str | None = None) -
     ``Response`` — pass through untouched.
     """
 
-    def decorator(view: Callable) -> Callable:
+    def decorator(view: Callable[_P, Any]) -> Callable[_P, Any]:
         @wraps(view)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> Any:
             result = view(*args, **kwargs)
             if isinstance(result, BaseModel):
                 return result.model_dump(mode="json", by_alias=True), code
@@ -194,8 +217,8 @@ def _normalize_returns(returns: ReturnSpec | Sequence[ReturnSpec] | None) -> tup
     if returns is None:
         return ()
     if isinstance(returns[0], int):
-        return (cast(ReturnSpec, returns),)  # pyrefly: ignore[redundant-cast]
-    return tuple(cast(Sequence[ReturnSpec], returns))  # pyrefly: ignore[redundant-cast]
+        return (returns,)
+    return tuple(returns)
 
 
 def op_of(view: Any) -> str:
