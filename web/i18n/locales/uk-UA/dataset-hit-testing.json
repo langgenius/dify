@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Кількість вкладень у вигляді одного блоку не може перевищувати {{limit}}",
   "imageUploader.tip": "Завантажте або перетягніть зображення (Макс. {{batchCount}}, {{size}} МБ кожне)",
   "imageUploader.tooltip": "Завантажте зображення (Макс. {{batchCount}}, {{size}} МБ кожне)",
-  "input.countWarning": "До 200 символів.",
+  "input.countWarning": "До 16000 символів.",
   "input.placeholder": "Будь ласка, введіть текст, рекомендується коротке декларативне речення.",
   "input.testing": "Тестування",
   "input.title": "Вихідний текст",

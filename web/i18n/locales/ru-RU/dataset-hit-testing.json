@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Количество одноэлементных вложений не может превышать {{limit}}",
   "imageUploader.tip": "Загрузите или перетащите изображения (Макс. {{batchCount}}, {{size}} МБ каждое)",
   "imageUploader.tooltip": "Загрузите изображения (макс. {{batchCount}}, {{size}} МБ каждое)",
-  "input.countWarning": "До 200 символов.",
+  "input.countWarning": "До 16000 символов.",
   "input.placeholder": "Пожалуйста, введите текст, рекомендуется использовать короткое повествовательное предложение.",
   "input.testing": "Тестирование",
   "input.title": "Исходный текст",

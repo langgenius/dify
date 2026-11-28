@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "El número de archivos adjuntos de un solo bloque no puede superar {{limit}}",
   "imageUploader.tip": "Sube o arrastra imágenes (Máx. {{batchCount}}, {{size}}MB cada una)",
   "imageUploader.tooltip": "Sube imágenes (Máx. {{batchCount}}, {{size}} MB cada una)",
-  "input.countWarning": "Hasta 200 caracteres.",
+  "input.countWarning": "Hasta 16000 caracteres.",
   "input.placeholder": "Por favor ingrese un texto, se recomienda una oración declarativa corta.",
   "input.testing": "Prueba",
   "input.title": "Texto fuente",

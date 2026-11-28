@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Numărul de atașamente într-un singur pachet nu poate depăși {{limit}}",
   "imageUploader.tip": "Încarcă sau plasează imagini (Maxim {{batchCount}}, {{size}}MB fiecare)",
   "imageUploader.tooltip": "Încarcă imagini (Max {{batchCount}}, {{size}}MB fiecare)",
-  "input.countWarning": "Până la 200 de caractere.",
+  "input.countWarning": "Până la 16000 de caractere.",
   "input.placeholder": "Vă rugăm să introduceți un text, se recomandă o propoziție declarativă scurtă.",
   "input.testing": "Testare",
   "input.title": "Text sursă",

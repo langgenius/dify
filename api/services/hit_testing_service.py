@@ -274,8 +274,8 @@ class HitTestingService:
 
         if not attachment_ids and not query:
             raise ValueError("Query or attachment_ids is required")
-        if query and len(query) > 250:
-            raise ValueError("Query cannot exceed 250 characters")
+        if query and len(query) > 16000:
+            raise ValueError("Query cannot exceed 16000 characters")
         if attachment_ids and not isinstance(attachment_ids, list):
             raise ValueError("Attachment_ids must be a list")
 

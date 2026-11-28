@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "單個區塊附件的數量不能超過 {{limit}}",
   "imageUploader.tip": "上傳或拖曳圖片（每張最多 {{batchCount}}，{{size}}MB）",
   "imageUploader.tooltip": "上傳圖片（每張最大 {{batchCount}}，{{size}}MB）",
-  "input.countWarning": "不超過 200 個字元",
+  "input.countWarning": "不超過 16000 個字元",
   "input.placeholder": "請輸入文字，建議使用簡短的陳述句。",
   "input.testing": "測試",
   "input.title": "來源文字",
