@@ -7,7 +7,7 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -74,16 +74,21 @@ const WebsiteCrawl = ({
 
   const dataSourceStore = useDataSourceStore()
 
-  const preProcessingParamsOptions = {
-    input: { params: { pipeline_id: pipelineId! }, query: { node_id: nodeId } },
-    enabled: !!pipelineId && !!nodeId,
-    select: selectPipelineStepParameters,
-  }
+  const preProcessingParamsInput =
+    pipelineId && nodeId
+      ? { params: { pipeline_id: pipelineId }, query: { node_id: nodeId } }
+      : skipToken
   const workflows = consoleQuery.rag.pipelines.byPipelineId.workflows
   const { data: paramsConfig, isFetching: isFetchingParams } = useQuery(
     isInPipeline
-      ? workflows.draft.preProcessing.parameters.get.queryOptions(preProcessingParamsOptions)
-      : workflows.published.preProcessing.parameters.get.queryOptions(preProcessingParamsOptions),
+      ? workflows.draft.preProcessing.parameters.get.queryOptions({
+          input: preProcessingParamsInput,
+          select: selectPipelineStepParameters,
+        })
+      : workflows.published.preProcessing.parameters.get.queryOptions({
+          input: preProcessingParamsInput,
+          select: selectPipelineStepParameters,
+        }),
   )
 
   const isInit = step === CrawlStep.init

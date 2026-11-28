@@ -19,7 +19,7 @@ import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/console'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createDeferred as createDeferredPromise } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
@@ -55,7 +55,7 @@ const composerPutMutationFn = vi.hoisted(() =>
 )
 
 const composerPutRequestContexts = vi.hoisted(
-  () => [] as Array<{ keepalive?: boolean; silent?: boolean } | undefined>,
+  () => [] as Array<{ keepalive?: boolean } | undefined>,
 )
 
 const composerPutMutationOptions = vi.hoisted(() =>
@@ -63,7 +63,6 @@ const composerPutMutationOptions = vi.hoisted(() =>
     (options?: {
       context?: {
         keepalive?: boolean
-        silent?: boolean
       }
       onSuccess?: (
         data: { agent_soul: Record<string, unknown> },
@@ -115,9 +114,6 @@ const publishAgentMutationFn = vi.hoisted(() =>
 const publishAgentMutationOptions = vi.hoisted(() =>
   vi.fn(
     (options?: {
-      context?: {
-        silent?: boolean
-      }
       onSuccess?: (data: PublishAgentResponse, variables: PublishAgentVariables) => void
     }) => ({
       ...options,
@@ -550,7 +546,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
       'body.agent_soul.config_files',
     )
-    expect(composerPutRequestContexts).toEqual([{ keepalive: true, silent: true }])
+    expect(composerPutRequestContexts).toEqual([{ keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenCalledWith(
       expect.objectContaining({
         params: {
@@ -662,10 +658,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -712,10 +705,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
 
     await act(async () => {
       saveDeferred.resolve({ agent_soul: {} })
@@ -960,7 +950,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Unsaved autosave prompt')
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(composerPutRequestContexts).toEqual([{ silent: true }])
+    expect(composerPutRequestContexts).toEqual([undefined])
   })
 
   it('should save the latest draft immediately when requested', async () => {
@@ -1007,9 +997,28 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.saveDraft()).rejects.toThrow('Failed to save agent composer draft.')
+    await expect(result.current.saveDraft()).rejects.toThrow('save failed')
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Run prompt')
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+  })
+
+  it('should show the translated reason when an explicit save fails', async () => {
+    const error = createHttpError(new Response(null, { status: 409 }), {
+      code: 'agent_version_conflict_error',
+      message: 'Server says why',
+    })
+    composerPutMutationFn.mockRejectedValueOnce(error)
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...store.get(agentComposerDraftAtom),
+        prompt: 'Run prompt',
+      })
+    })
+
+    await expect(result.current.saveDraft()).rejects.toBe(error)
+    expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.agent_version_conflict_error')
   })
 
   it('should not save the draft immediately when the composer draft is unchanged', async () => {
@@ -1567,10 +1576,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({

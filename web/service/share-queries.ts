@@ -2,7 +2,7 @@ import type { WebAppAddress } from './webapp-address'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { ORPCError } from '@orpc/client'
-import { mutationOptions, queryOptions } from '@tanstack/react-query'
+import { mutationOptions, queryOptions, skipToken } from '@tanstack/react-query'
 import {
   AppSourceType,
   fetchAppInfo,
@@ -71,8 +71,7 @@ export const shareQueryKeys = {
 export const webAppAccessModeQueryOptions = (code: string | null) =>
   queryOptions({
     queryKey: shareQueryKeys.appAccessMode(resolveWebAppAddress(), code),
-    queryFn: () => getAppAccessModeByAppCode(code!),
-    enabled: !!code,
+    queryFn: code ? () => getAppAccessModeByAppCode(code) : skipToken,
     staleTime: 0, // backend change the access mode may cause the logic error. Because /permission API is no cached.
     gcTime: 0,
   })

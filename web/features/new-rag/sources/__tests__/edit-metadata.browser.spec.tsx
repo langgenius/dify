@@ -1,6 +1,7 @@
 import type { SourceSyncPolicy } from '../source-models'
 import type { SourceApi } from './source-server'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { createDeferred } from '@/test/deferred'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render, settle } from './source-browser-env'
 import { firecrawlDatasourcePlugin, notionDatasourcePlugin, source } from './source-fixtures'
@@ -120,16 +121,51 @@ describe('Sources: edit-metadata', () => {
       .toBeInTheDocument()
   }
 
-  it.each(['upload'] as const)(
+  it.each(['upload', 'web'] as const)(
     'edits a %s source name and sync policy without previewing',
     editsSourceMetadata,
   )
-  // Skipped: flaky in CI. The save request is sometimes sent with the old name before the
-  // renamed value is committed. Re-enable as part of `it.each` above once that is fixed.
-  it.skip.each(['web'] as const)(
-    'edits a %s source name and sync policy without previewing',
-    editsSourceMetadata,
-  )
+
+  it('keeps typing in the web source name while the provider declaration loads', async () => {
+    const plugins = createDeferred<[typeof firecrawlDatasourcePlugin]>()
+    fake.console.rag.pipelines.datasourcePlugins.get.mockReturnValue(plugins.promise)
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+              type: 'web',
+              uri: 'https://docs.example.com/',
+            }),
+          ],
+        },
+      ],
+    }
+
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      })
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
+    await expect.element(page.getByRole('status', { name: 'common.loading' })).toBeVisible()
+    const nameInput = page.getByRole('textbox', { name: 'knowledgeSources.sourceName' })
+    await nameInput.fill('Renamed')
+    plugins.resolve([firecrawlDatasourcePlugin])
+    await expect
+      .element(page.getByRole('status', { name: 'common.loading' }))
+      .not.toBeInTheDocument()
+    await expect.element(nameInput).toHaveFocus()
+    await userEvent.keyboard(' documentation')
+    await expect.element(nameInput).toHaveValue('Renamed documentation')
+  })
 
   it.each(['missing required parameter', 'out-of-range parameter'] as const)(
     'saves metadata without previewing despite a provider constraint: %s',
@@ -399,7 +435,9 @@ describe('Sources: edit-metadata', () => {
       await page.getByRole('button', { name: /knowledgeSources.sourceActions/ }).click()
       await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
       const dialog = page.getByRole('dialog')
-      await expect.element(dialog.getByText('knowledgeSpace.providerLoadFailed')).toBeVisible()
+      await expect
+        .element(dialog.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' }))
+        .toBeVisible()
       connectionResponses.nextPageError = false
       await dialog.getByRole('button', { name: 'common.operation.retry' }).click()
       await expect
@@ -408,7 +446,7 @@ describe('Sources: edit-metadata', () => {
         )
         .toBeVisible()
       await expect
-        .element(dialog.getByText('knowledgeSpace.providerLoadFailed'))
+        .element(dialog.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' }))
         .not.toBeInTheDocument()
     },
   )

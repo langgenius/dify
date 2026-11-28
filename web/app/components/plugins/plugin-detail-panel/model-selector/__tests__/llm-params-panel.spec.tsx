@@ -6,7 +6,10 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import LLMParamsPanel from '../llm-params-panel'
 
@@ -47,6 +50,23 @@ beforeEach(() => {
 })
 
 describe('LLM parameter panel', () => {
+  it('reports parameter rules that fail to load instead of showing an empty panel', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    getRules.mockRejectedValue(
+      createHttpError(
+        { status: 500, statusText: '', headers: new Headers() },
+        { message: 'Model provider unavailable' },
+      ),
+    )
+    renderWithConsoleQuery(<LLMParamsPanel {...defaults} />, {
+      queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+    })
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Model provider unavailable'),
+    )
+  })
+
   it('loads rules for each model and replaces stale inputs when switching models', async () => {
     const first = createDeferred<{ data: ModelParameterRule[] }>()
     const second = createDeferred<{ data: ModelParameterRule[] }>()

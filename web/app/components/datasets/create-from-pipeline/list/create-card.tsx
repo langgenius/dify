@@ -1,5 +1,5 @@
 import { RiAddCircleLine } from '@remixicon/react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,12 +14,10 @@ const CreateCard = () => {
   const { push } = useRouter()
 
   const { mutateAsync: createEmptyDataset } = useMutation(
-    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
-  const queryClient = useQueryClient()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
 
   const handleCreate = useCallback(async () => {
     await createEmptyDataset(undefined, {
@@ -27,7 +25,6 @@ const CreateCard = () => {
         if (data) {
           const { id } = data
           toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-          invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
             dataset_id: id,
           })
@@ -40,7 +37,7 @@ const CreateCard = () => {
         )
       },
     })
-  }, [createEmptyDataset, push, invalidDatasetList, t])
+  }, [createEmptyDataset, push, t])
 
   return (
     <div

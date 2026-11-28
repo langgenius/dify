@@ -3,7 +3,7 @@
 import type { UIEvent } from 'react'
 import type { SkillGridState } from './grid'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
@@ -13,11 +13,11 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
 import { useSkillPermissions } from '../permissions'
 import { SkillGrid } from './grid'
 import { ImportSkillDialogForm } from './import-dialog'
-import { invalidateSkillListQueries } from './query'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillsToolbar } from './toolbar'
 
@@ -34,8 +34,8 @@ const SKILLS_PAGE_SIZE = 20
 export default function SkillsPage() {
   const titleId = useId()
   const { t } = useTranslation(['skill'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()
   const [importOpen, setImportOpen] = useState(false)
   const listViewportRef = useRef<HTMLDivElement>(null)
@@ -45,12 +45,12 @@ export default function SkillsPage() {
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
   const createMutation = useMutation(
     consoleQuery.workspaces.current.skills.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const importMutation = useMutation(
     consoleQuery.workspaces.current.skills.import.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const skillsQuery = useInfiniteQuery({
@@ -82,14 +82,16 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: (error) => {
           toast.error(
             getSkillErrorCode(error) === 'skill_limit_exceeded'
               ? t(($) => $['skillManagement.errors.workspaceLimit'])
-              : t(($) => $['skillManagement.createFailed']),
+              : describeRequestError(
+                  error,
+                  t(($) => $['skillManagement.createFailed']),
+                ),
           )
         },
       },
@@ -108,7 +110,6 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           setImportOpen(false)
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: (error) => {
@@ -129,7 +130,12 @@ export default function SkillsPage() {
             toast.error(t(($) => $['skillManagement.errors.missingSkillMd']))
             return
           }
-          toast.error(t(($) => $['skillManagement.importFailed']))
+          toast.error(
+            describeRequestError(
+              error,
+              t(($) => $['skillManagement.importFailed']),
+            ),
+          )
         },
       },
     )
@@ -271,7 +277,6 @@ export default function SkillsPage() {
         type="skill"
         show={showTagManagementDialog}
         onClose={() => setShowTagManagementDialog(false)}
-        onTagsChange={() => invalidateSkillListQueries(queryClient)}
       />
     </div>
   )

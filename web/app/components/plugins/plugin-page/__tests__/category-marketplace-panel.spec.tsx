@@ -125,6 +125,7 @@ it.each([Category.trigger, Category.agent, Category.extension])(
           category,
           query: 'calendar',
           tags: ['search'],
+          exclude: [installed.plugin_id],
           page: 1,
           page_size: 30,
           sort_by: 'install_count',

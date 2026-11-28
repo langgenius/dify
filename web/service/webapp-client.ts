@@ -1,7 +1,8 @@
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { OnUploadProgress } from './xhr-fetch'
-import { contract as webAppContract } from '@dify/contracts/api/web/orpc.gen'
+import { contract as generatedWebAppContract } from '@dify/contracts/api/web/orpc.gen'
+import { webAppSsoContract } from '@dify/contracts/sso'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
@@ -10,12 +11,18 @@ import { request } from './base'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 
 type WebAppClientContext = {
-  silent?: boolean
   /** The response is an event stream: no time limit on its first frame. */
   stream?: boolean
+  /** `false` lifts the time limit, e.g. for uploads the server finishes only after fetching a remote file. */
+  timeout?: false
   headers?: Record<string, string>
   /** Reports request-body upload progress; the call is sent over XHR without the default timeout. */
   onUploadProgress?: OnUploadProgress
+}
+
+const webAppContract = {
+  ...generatedWebAppContract,
+  enterprise: { sso: webAppSsoContract },
 }
 
 const getPublicApiBaseURL = () => new URL(PUBLIC_API_PREFIX, window.location.origin)
@@ -59,9 +66,8 @@ export const webAppClient: JsonifiedClient<
         isPublicAPI: true,
         fetchCompat: true,
         request: await withURL(input, publicURL),
-        silent: context.silent,
         onUploadProgress: context.onUploadProgress,
-        timeout: context.stream ? false : undefined,
+        timeout: context.stream || context.timeout === false ? false : undefined,
       })
     },
   }),

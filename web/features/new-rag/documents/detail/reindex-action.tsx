@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
+import { ReindexConfirmDialog } from '../reindex-confirm-dialog'
+import { useReindexConfirmation } from '../use-reindex-confirmation'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import {
   cancelDocumentReindexAtom,
@@ -60,16 +62,20 @@ export function DocumentReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (result.errorMessage ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
     },
   })
   const guardBusy = startReindexMutation.isPending
+  // The button only asks while it is neither disabled nor busy; a reindex that starts, or a
+  // document that stops allowing one, while the dialog is open takes the dialog with it.
+  const confirmation = useReindexConfirmation(!inProgress && !disabled && !guardBusy && !reindexing)
 
   const stopReindex = async () => {
     const result = await cancelReindex(refreshWritePermission)
-    if (result === 'failed') toast.error(t(($) => $.taskActionFailed))
+    if (result.status === 'failed') toast.error(result.message ?? t(($) => $.taskActionFailed))
   }
 
   return (
@@ -79,7 +85,7 @@ export function DocumentReindexAction() {
         className="gap-1 ps-3"
         disabled={inProgress ? !canCancel : disabled}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
-        onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}
+        onClick={() => (inProgress ? void stopReindex() : confirmation.setOpen(true))}
       >
         {!inProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
         {t(
@@ -92,6 +98,11 @@ export function DocumentReindexAction() {
           { ns: 'knowledgeDocuments' },
         )}
       </Button>
+      <ReindexConfirmDialog
+        open={confirmation.open}
+        onOpenChange={confirmation.setOpen}
+        onConfirm={() => startReindexMutation.mutate()}
+      />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
         readiness={modelReadiness}

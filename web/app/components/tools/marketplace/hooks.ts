@@ -1,10 +1,12 @@
+import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
 import {
+  MARKETPLACE_PANEL_CACHE_OPTIONS,
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
-} from '@/app/components/plugins/marketplace/hooks'
+} from '@/app/components/plugins/marketplace/query'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
@@ -21,21 +23,39 @@ export const useToolMarketplace = (
     }),
   )
   const exclude = installedPluginIds?.plugin_ids
-  const {
-    isLoading,
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-    queryMarketplaceCollectionsAndPlugins,
-  } = useMarketplaceCollectionsAndPlugins()
-  const {
-    plugins,
-    resetQueryParams,
-    queryPlugins,
-    isLoading: isPluginsLoading,
-    fetchNextPage,
-    hasNextPage,
-    page: pluginsPage,
-  } = useMarketplacePlugins(enabled)
+  const isSearching = !!searchPluginText || filterPluginTags.length > 0
+  // Collections are the default view; a search or tag filter switches to the paged plugin search.
+  const collectionsQuery = useMarketplaceCollectionsAndPlugins(
+    {
+      category: PluginCategoryEnum.tool,
+      condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
+      exclude,
+      type: 'plugin',
+    },
+    enabled && isSuccess && !isSearching,
+    MARKETPLACE_PANEL_CACHE_OPTIONS,
+  )
+  const pluginsSearchParams: PluginsSearchParams | undefined =
+    isSearching && isSuccess
+      ? {
+          category: PluginCategoryEnum.tool,
+          query: searchPluginText,
+          tags: filterPluginTags,
+          exclude,
+          type: 'plugin',
+        }
+      : undefined
+  const pluginsQuery = useMarketplacePlugins(pluginsSearchParams, {
+    enabled,
+    keepPreviousResults: false,
+    ...MARKETPLACE_PANEL_CACHE_OPTIONS,
+  })
+  const { fetchNextPage, hasNextPage } = pluginsQuery
+  // A failed search shows no results rather than the collections.
+  const plugins = pluginsSearchParams
+    ? (pluginsQuery.data?.pages.flatMap((page) => page.plugins) ??
+      (pluginsQuery.isError ? [] : undefined))
+    : undefined
   const searchPluginTextRef = useRef(searchPluginText)
   const filterPluginTagsRef = useRef(filterPluginTags)
 
@@ -43,48 +63,6 @@ export const useToolMarketplace = (
     searchPluginTextRef.current = searchPluginText
     filterPluginTagsRef.current = filterPluginTags
   }, [searchPluginText, filterPluginTags])
-  useEffect(() => {
-    if (!enabled) return
-
-    if ((searchPluginText || filterPluginTags.length) && isSuccess) {
-      if (searchPluginText) {
-        queryPlugins({
-          category: PluginCategoryEnum.tool,
-          query: searchPluginText,
-          tags: filterPluginTags,
-          exclude,
-          type: 'plugin',
-        })
-        return
-      }
-      queryPlugins({
-        category: PluginCategoryEnum.tool,
-        query: searchPluginText,
-        tags: filterPluginTags,
-        exclude,
-        type: 'plugin',
-      })
-    } else {
-      if (isSuccess) {
-        queryMarketplaceCollectionsAndPlugins({
-          category: PluginCategoryEnum.tool,
-          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
-          exclude,
-          type: 'plugin',
-        })
-        resetQueryParams()
-      }
-    }
-  }, [
-    searchPluginText,
-    filterPluginTags,
-    queryPlugins,
-    queryMarketplaceCollectionsAndPlugins,
-    resetQueryParams,
-    exclude,
-    enabled,
-    isSuccess,
-  ])
 
   const handleScroll = useCallback(
     (e: Event) => {
@@ -94,18 +72,18 @@ export const useToolMarketplace = (
         const searchPluginText = searchPluginTextRef.current
         const filterPluginTags = filterPluginTagsRef.current
         if (enabled && hasNextPage && (!!searchPluginText || !!filterPluginTags.length))
-          fetchNextPage()
+          void fetchNextPage()
       }
     },
     [enabled, fetchNextPage, hasNextPage],
   )
 
   return {
-    isLoading: enabled && (isLoading || isPluginsLoading),
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
+    isLoading: enabled && (collectionsQuery.isLoading || pluginsQuery.isLoading),
+    marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
+    marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
     plugins,
     handleScroll,
-    page: Math.max(pluginsPage || 0, 1),
+    page: Math.max(pluginsQuery.data?.pages.length ?? 0, 1),
   }
 }

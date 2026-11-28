@@ -109,6 +109,7 @@ import {
   zPatchConversationsByCIdPinResponse,
   zPatchConversationsByCIdUnpinPath,
   zPatchConversationsByCIdUnpinResponse,
+  zPostAudioToTextBody,
   zPostAudioToTextResponse,
   zPostChatMessagesBody,
   zPostChatMessagesByTaskIdStopPath,
@@ -167,7 +168,6 @@ import {
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
   zPostSavedMessagesBody,
-  zPostSavedMessagesQuery,
   zPostSavedMessagesResponse,
   zPostTextToAudioBody,
   zPostTextToAudioResponse,
@@ -192,6 +192,7 @@ export const post = oc
     summary: 'Convert audio to text',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
   .errors({
     app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -1456,7 +1457,7 @@ export const post26 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
+  .input(z.object({ body: zPostSavedMessagesBody }))
   .output(zPostSavedMessagesResponse)
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 

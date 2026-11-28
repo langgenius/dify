@@ -133,7 +133,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
       })
       if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
     } catch {
-      // The request layer reports the error; allow retry without an unhandled rejection.
+      // The mutation cache reports the error; allow retry without an unhandled rejection.
     }
   }
 

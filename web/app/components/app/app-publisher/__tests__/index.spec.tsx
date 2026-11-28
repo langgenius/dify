@@ -13,10 +13,7 @@ import { createWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
-import {
-  appWorkflowQueryOptions,
-  appWorkflowVersionsInfiniteQueryOptions,
-} from '@/service/workflow-queries'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -54,9 +51,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'apps.byAppId.publishToCreatorsPlatform.post': api.marketplace,
+    'workspaces.current.toolProvider.workflow.create.post': api.createTool,
+  })
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'apps.byAppId.workflows.byWorkflowId.patch': api.patch,
       'apps.byAppId.workflows.publish.get': api.published,
       'enterprise.appDeploy.deploymentService.listAppEnvironments': api.environments,
@@ -74,10 +76,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.mcp.get': async () => [],
       'rag.pipelines.datasourcePlugins.get': async () => [],
     }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.publishToCreatorsPlatform.post': api.marketplace,
-      'workspaces.current.toolProvider.workflow.create.post': api.createTool,
-    }),
+    consoleClient,
   }
 })
 vi.mock('@/service/share', async (importOriginal) => ({
@@ -130,7 +129,7 @@ function renderPublisher({
     }),
   )
   const store = createWorkflowStore({})
-  renderWithConsoleQuery(
+  const { unmount } = renderWithConsoleQuery(
     <WorkflowContext value={store}>
       <button type="button">Outside control</button>
       <AppPublisher appId="app-1" publishedAt={1_710_000_100_000} {...props} />
@@ -141,7 +140,7 @@ function renderPublisher({
       systemFeatures: { webapp_auth: { enabled: true }, ...systemFeatures },
     },
   )
-  return { queryClient, store }
+  return { queryClient, store, unmount }
 }
 const trigger = () => screen.getByRole('button', { name: 'workflow.common.publish' })
 const publishUpdate = () => screen.getByRole('button', { name: 'workflow.common.publishUpdate' })
@@ -196,29 +195,6 @@ it('publishes once per open session and permits another update after reopening',
   await user.click(trigger())
   await user.click(publishUpdate())
   await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2))
-})
-
-it('refreshes workflow and deployment caches after publishing with deployment access', async () => {
-  const user = userEvent.setup()
-  const { queryClient } = renderPublisher({
-    app: { mode: 'workflow', permission_keys: [AppACLPermission.Deploy] },
-    props: { onPublish: vi.fn().mockResolvedValue(undefined) },
-  })
-  const versionsKey = appWorkflowVersionsInfiniteQueryOptions('app-1').queryKey
-  const deploymentsKey =
-    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-      input: { params: { app_id: 'app-1' } },
-    }).queryKey
-  queryClient.setQueryData(versionsKey, { pages: [], pageParams: [] })
-  queryClient.setQueryData(deploymentsKey, { environment_deployments: [] })
-  await user.click(trigger())
-  expect(await screen.findByText('Release 5')).toBeInTheDocument()
-  const updated = createWorkflowResponseFixture({ marked_name: 'Release 6' })
-  api.published.mockResolvedValue(updated)
-  await user.click(publishUpdate())
-  expect(await screen.findByText('Release 6')).toBeInTheDocument()
-  expect(queryClient.getQueryState(versionsKey)?.isInvalidated).toBe(true)
-  expect(queryClient.getQueryState(deploymentsKey)?.isInvalidated).toBe(true)
 })
 
 it('edits a published workflow version and shows the saved title and notes when reopened', async () => {
@@ -393,12 +369,9 @@ it.each(['publish', 'create'] as const)(
         screen.queryByRole('dialog', { name: 'navigation.common.workflowAsTool' }),
       ).not.toBeInTheDocument(),
     )
-    expect(api.createTool).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
-      },
-      { context: { silent: true } },
-    )
+    expect(api.createTool).toHaveBeenCalledWith({
+      body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
+    })
     expect(success).toHaveBeenCalledOnce()
   },
 )
@@ -449,7 +422,7 @@ it('opens the marketplace redirect after a successful submission', async () => {
   )
   expect(api.marketplace).toHaveBeenCalledExactlyOnceWith(
     { params: { app_id: 'app-1' } },
-    { context: { silent: true } },
+    expect.anything(),
   )
 })
 
@@ -464,6 +437,38 @@ it('shows a marketplace error and lets the user retry', async () => {
   expect(window.open).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
   await waitFor(() => expect(window.open).toHaveBeenCalledOnce())
+})
+
+it('still opens the marketplace redirect when the editor unmounts before publishing finishes', async () => {
+  const user = userEvent.setup()
+  const response = createDeferred<{ redirect_url: string }>()
+  api.marketplace.mockReturnValueOnce(response.promise)
+  const { unmount } = renderPublisher({ systemFeatures: { enable_creators_platform: true } })
+  await user.click(trigger())
+  await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
+  await waitFor(() => expect(api.marketplace).toHaveBeenCalledOnce())
+  unmount()
+  response.resolve({ redirect_url: 'https://marketplace.example.com/publish?code=late' })
+  await waitFor(() =>
+    expect(window.open).toHaveBeenCalledWith(
+      'https://marketplace.example.com/publish?code=late',
+      '_blank',
+    ),
+  )
+})
+
+it('still reports a marketplace failure when the editor unmounts before publishing finishes', async () => {
+  const user = userEvent.setup()
+  const error = vi.spyOn(toast, 'error')
+  const response = createDeferred<{ redirect_url: string }>()
+  api.marketplace.mockReturnValueOnce(response.promise)
+  const { unmount } = renderPublisher({ systemFeatures: { enable_creators_platform: true } })
+  await user.click(trigger())
+  await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
+  await waitFor(() => expect(api.marketplace).toHaveBeenCalledOnce())
+  unmount()
+  response.reject(new Error('network error'))
+  await waitFor(() => expect(error).toHaveBeenCalledWith('network error'))
 })
 
 it('disables marketplace submission until a version is published', async () => {

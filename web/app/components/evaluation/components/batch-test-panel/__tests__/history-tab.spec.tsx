@@ -4,10 +4,25 @@ import type {
 } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEvaluationStore } from '../../../store'
 import HistoryTab from '../history-tab'
+
+const cancelRun = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.evaluation.runs.byRunId.cancel.post': cancelRun,
+    }),
+  }
+})
 
 const resourceId = 'dataset-1'
 
@@ -173,7 +188,12 @@ describe('evaluation history run status', () => {
       { completed_items: 3, failed_items: 0 },
       'evaluation.history.status.completed',
     ],
-  ] as const)('labels a completed run when %s', (_, counts, expectedLabel) => {
+    [
+      'the run stopped before finishing',
+      { status: 'failed', completed_items: 1, failed_items: 0 },
+      'evaluation.history.status.notCompleted',
+    ],
+  ] as const)('labels the run when %s', (_, counts, expectedLabel) => {
     const queryClient = createConsoleQueryClient()
     queryClient.setQueryData(
       consoleQuery.datasets.byDatasetId.evaluation.logs.get.queryKey({
@@ -203,7 +223,7 @@ describe('evaluation history run status', () => {
 })
 
 describe('evaluation history run details', () => {
-  it('shows the time of each run and why a run failed', async () => {
+  it('shows the time of each run and why a run could not be completed', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     queryClient.setQueryData(
@@ -237,11 +257,56 @@ describe('evaluation history run details', () => {
 
     expect(screen.getByRole('row', { name: /2026-11-0\d \d{2}:\d{2}/ })).toBeInTheDocument()
     const status = screen.getByRole('button', {
-      name: 'evaluation.history.status.failed: Judge model quota exceeded',
+      name: 'evaluation.history.status.notCompleted: Judge model quota exceeded',
     })
     await user.hover(status)
     expect(
-      await screen.findByText('evaluation.history.status.failed: Judge model quota exceeded'),
+      await screen.findByText('evaluation.history.status.notCompleted: Judge model quota exceeded'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('evaluation history run actions', () => {
+  it('reports a failed cancellation with its translated failure, not the server text', async () => {
+    const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error')
+    cancelRun.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 404 }), {
+        code: 'not_found',
+        message: 'Server says why',
+      }),
+    )
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.evaluation.logs.get.queryKey({
+        input: {
+          params: { dataset_id: resourceId },
+          query: { page: 1, page_size: 16 },
+        },
+      }),
+      {
+        data: [{ ...createRun('run-1', 1793894400), status: 'running' }],
+        page: 1,
+        page_size: 16,
+        total: 1,
+      },
+    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [],
+    })
+    act(() => useEvaluationStore.getState().ensureResource('datasets', resourceId))
+
+    renderWithConsoleQuery(<HistoryTab resourceType="datasets" resourceId={resourceId} />, {
+      queryClient,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'evaluation.history.actions.open' }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'evaluation.history.actions.cancel' }),
+    )
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('evaluation.history.cancelFailed'),
+    )
   })
 })

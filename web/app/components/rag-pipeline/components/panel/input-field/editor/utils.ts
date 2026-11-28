@@ -1,6 +1,7 @@
 import type { FormData } from './form/types'
 import type { InputVar } from '@/models/pipeline'
 import { VAR_ITEM_TEMPLATE_IN_PIPELINE } from '@/config'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 const getNewInputVarInRagPipeline = (): InputVar => {
   return {
@@ -72,7 +73,7 @@ export const convertFormDataToINputField = (data: FormData): InputVar => {
     label,
     variable,
     max_length: maxLength,
-    default_value: defaultValue,
+    default_value: type === PipelineInputVarType.checkbox ? defaultValue === true : defaultValue,
     required,
     tooltips,
     options,

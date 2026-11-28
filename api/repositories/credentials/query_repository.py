@@ -99,15 +99,19 @@ class CredentialQueryRepository(CredentialQuery):
     def update_tool_credential_if_unchanged(
         self, *, record: ToolRuntimeCredential, encrypted_credentials: str, expires_at: int
     ) -> bool:
+        """Update the matching snapshot and confirm the new values before committing an unreported write."""
+        owner = (
+            BuiltinToolProvider.id == record.id,
+            BuiltinToolProvider.tenant_id == record.workspace_id,
+            BuiltinToolProvider.provider == record.provider,
+            BuiltinToolProvider.user_id == record.owner_id,
+            BuiltinToolProvider.credential_type == record.credential_type,
+        )
         with self._session_factory.begin() as session:
             result = session.execute(
                 update(BuiltinToolProvider)
                 .where(
-                    BuiltinToolProvider.id == record.id,
-                    BuiltinToolProvider.tenant_id == record.workspace_id,
-                    BuiltinToolProvider.provider == record.provider,
-                    BuiltinToolProvider.user_id == record.owner_id,
-                    BuiltinToolProvider.credential_type == record.credential_type,
+                    *owner,
                     BuiltinToolProvider.encrypted_credentials == record.encrypted_credentials,
                     BuiltinToolProvider.expires_at == record.expires_at,
                 )
@@ -118,7 +122,20 @@ class CredentialQueryRepository(CredentialQuery):
                 )
             )
             assert isinstance(result, CursorResult)
-            return result.rowcount == 1
+            rowcount = result.rowcount
+            if rowcount in (0, 1):
+                return rowcount == 1
+            if rowcount == -1:
+                persisted = session.execute(
+                    select(BuiltinToolProvider.encrypted_credentials, BuiltinToolProvider.expires_at).where(*owner)
+                ).one_or_none()
+                if (
+                    persisted is not None
+                    and persisted.encrypted_credentials == encrypted_credentials
+                    and persisted.expires_at == expires_at
+                ):
+                    return True
+            raise ValueError("Tool credential refresh affected-row count is uncertain.")
 
     def get_tool(self, *, workspace_id: str, provider: str, credential_id: str | None) -> ToolCredentialSnapshot | None:
         """Load one credential, using the configured default when its ID is absent or empty."""

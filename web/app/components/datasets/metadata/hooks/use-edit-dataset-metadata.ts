@@ -2,7 +2,7 @@ import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/ap
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { isShowManageMetadataLocalStorageKey } from '../types'
@@ -25,11 +25,10 @@ const useEditDatasetMetadata = ({
       localStorage.removeItem(isShowManageMetadataLocalStorageKey)
     }
   }, [])
-  const { data: datasetMetaData } = useQuery(
-    consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
-      input: { params: { dataset_id: datasetId } },
-    }),
-  )
+  const datasetMetaDataQueryOptions = consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
+    input: { params: { dataset_id: datasetId } },
+  })
+  const { data: datasetMetaData } = useQuery(datasetMetaDataQueryOptions)
   const { mutateAsync: createMetaData } = useMutation(
     consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
   )
@@ -73,10 +72,6 @@ const useEditDatasetMetadata = ({
     },
     [deleteMetaData, datasetId, onUpdateDocList],
   )
-  const [builtInEnabled, setBuiltInEnabled] = useState(datasetMetaData?.built_in_field_enabled)
-  useEffect(() => {
-    setBuiltInEnabled(datasetMetaData?.built_in_field_enabled)
-  }, [datasetMetaData])
   const { mutateAsync: updateBuiltInStatus } = useMutation(
     consoleQuery.datasets.byDatasetId.metadata.builtIn.byAction.post.mutationOptions(),
   )
@@ -92,12 +87,12 @@ const useEditDatasetMetadata = ({
     handleRename,
     handleDeleteMetaData,
     builtInMetaData: builtInMetaData?.fields,
-    builtInEnabled,
+    builtInEnabled: datasetMetaData?.built_in_field_enabled,
     setBuiltInEnabled: async (enable: boolean) => {
+      // The policy shows the new state at once, then reloads the metadata.
       await updateBuiltInStatus({
         params: { dataset_id: datasetId, action: enable ? 'enable' : 'disable' },
       })
-      setBuiltInEnabled(enable)
     },
   }
 }

@@ -23,6 +23,7 @@ class CreditUsageCreatedBy(StrEnum):
     AUDIO = "audio"
     MODERATION = "moderation"
     PLUGIN_API = "plugin_api"
+    EVALUATION = "evaluation"
     UNKNOWN = "unknown"
 
 

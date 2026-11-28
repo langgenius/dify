@@ -1,9 +1,11 @@
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { WorkflowRunOwner } from '@/service/log'
 import { act, screen, waitFor } from '@testing-library/react'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { useReactFlow } from 'reactflow'
 import { EventEmitterContext } from '@/context/event-emitter'
+import { getRunOwnerId } from '@/service/log'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import Record from '../record'
@@ -14,22 +16,22 @@ let latestGetResultCallback: ((res: WorkflowRunDetailResponse) => void) | undefi
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({
     appId,
-    runDetailUrl,
-    tracingListUrl,
+    runOwner,
+    runId,
     getResultCallback,
   }: {
     appId?: string
-    runDetailUrl: string
-    tracingListUrl: string
+    runOwner: WorkflowRunOwner
+    runId?: string
     getResultCallback: (res: WorkflowRunDetailResponse) => void
   }) => {
     latestGetResultCallback = getResultCallback
     return (
       <div
         data-app-id={appId}
-        data-run-detail-url={runDetailUrl}
+        data-run-id={runId}
+        data-run-owner={`${runOwner.kind}:${getRunOwnerId(runOwner)}`}
         data-testid="run"
-        data-tracing-list-url={tracingListUrl}
       />
     )
   },
@@ -61,31 +63,44 @@ describe('Record', () => {
     latestGetResultCallback = undefined
   })
 
-  it('renders the run title and passes run and trace URLs to the run panel', () => {
-    const getWorkflowRunAndTraceUrl = vi.fn((runId?: string) => ({
-      runUrl: `/runs/${runId}`,
-      traceUrl: `/traces/${runId}`,
-    }))
-
-    renderWorkflowFlowComponent(<Record />, {
-      resource: { kind: 'app', appId: 'history-app', mode: 'workflow' },
-      initialStoreState: {
-        historyWorkflowData: {
-          id: 'run-1',
-          status: 'succeeded',
-          finished_at: 1_700_000_000,
+  it.each([
+    {
+      resource: { kind: 'app', appId: 'history-app', mode: 'workflow' } as const,
+      owner: 'app:history-app',
+      appId: 'history-app',
+    },
+    {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' } as const,
+      owner: 'knowledge-pipeline:pipeline-1',
+      appId: undefined,
+    },
+    {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' } as const,
+      owner: 'snippet:snippet-1',
+      appId: undefined,
+    },
+  ])(
+    'renders the run title and passes the $owner run to the run panel',
+    ({ resource, owner, appId }) => {
+      renderWorkflowFlowComponent(<Record />, {
+        resource,
+        initialStoreState: {
+          historyWorkflowData: {
+            id: 'run-1',
+            status: 'succeeded',
+            finished_at: 1_700_000_000,
+          },
         },
-      },
-      hooksStoreProps: {
-        getWorkflowRunAndTraceUrl,
-      },
-    })
+      })
 
-    expect(screen.getByText(/^Test Run/)).toBeInTheDocument()
-    expect(screen.getByTestId('run')).toHaveAttribute('data-app-id', 'history-app')
-    expect(screen.getByTestId('run')).toHaveAttribute('data-run-detail-url', '/runs/run-1')
-    expect(screen.getByTestId('run')).toHaveAttribute('data-tracing-list-url', '/traces/run-1')
-  })
+      expect(screen.getByText(/^Test Run/)).toBeInTheDocument()
+      const run = screen.getByTestId('run')
+      if (appId) expect(run).toHaveAttribute('data-app-id', appId)
+      else expect(run).not.toHaveAttribute('data-app-id')
+      expect(run).toHaveAttribute('data-run-owner', owner)
+      expect(run).toHaveAttribute('data-run-id', 'run-1')
+    },
+  )
 
   it('renders paused history without a finished timestamp', () => {
     renderWorkflowFlowComponent(<Record />, {
@@ -129,9 +144,6 @@ describe('Record', () => {
       {
         initialStoreState: { historyWorkflowData: { id: 'run-1', status: 'succeeded' } },
         reactFlowProps: { fitView: false, defaultViewport: { x: 40, y: 50, zoom: 0.5 } },
-        hooksStoreProps: {
-          getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
-        },
       },
     )
     act(() => latestGetResultCallback?.(createRunDetail({ graph: { nodes, edges, viewport } })))

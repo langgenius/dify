@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FakeXMLHttpRequest } from '@/test/fake-xhr'
-import { fetchSkillArchiveBlob, fetchSkillFileBlob, uploadSkillFile } from '../client'
+import {
+  fetchSkillArchiveBlob,
+  fetchSkillFileBlob,
+  sendSkillAssistMessage,
+  uploadSkillFile,
+} from '../client'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
@@ -116,5 +121,67 @@ describe('Skill file downloads', () => {
 
     expect(blob).toBeInstanceOf(Blob)
     expect(await blob.text()).toBe('zip')
+  })
+})
+
+describe('Skill assist messages', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const eventStream = (...frames: unknown[]) =>
+    new Response(frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    })
+
+  it('streams assistant frames from the assist route', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        eventStream(
+          { event: 'message', answer: 'Hello', id: 'message-1' },
+          { event: 'message_end' },
+        ),
+      )
+    const onData = vi.fn()
+    const onCompleted = vi.fn()
+    const onError = vi.fn()
+
+    sendSkillAssistMessage({
+      message: 'Write a skill',
+      onCompleted,
+      onData,
+      onError,
+      skillId: 'skill-1',
+      targetPath: 'SKILL.md',
+    })
+
+    await vi.waitFor(() =>
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith(undefined, undefined),
+    )
+    const request = fetchSpy.mock.calls[0]![0] as Request
+    expect(new URL(request.url).pathname).toMatch(
+      /\/workspaces\/current\/skills\/skill-1\/assist\/messages$/,
+    )
+    expect(onData).toHaveBeenCalledExactlyOnceWith(
+      'Hello',
+      true,
+      expect.objectContaining({ messageId: 'message-1' }),
+    )
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('reports an error frame once and completes without a second error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      eventStream({ event: 'error', message: 'Model unavailable', code: 'model_error' }),
+    )
+    const onCompleted = vi.fn()
+    const onError = vi.fn()
+
+    sendSkillAssistMessage({ message: 'Hi', onCompleted, onError, skillId: 'skill-1' })
+
+    await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce())
+    expect(onError).toHaveBeenCalledExactlyOnceWith('Model unavailable', 'model_error')
+    expect(onCompleted).toHaveBeenCalledWith(false, 'Model unavailable')
   })
 })

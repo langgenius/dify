@@ -11,7 +11,7 @@ from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.feature_service import FeatureService
+from services.feature_service import FeatureService, ProviderCatalogBilling
 from services.system_feature_service import SystemFeatureService
 from tests.helpers import billing_builders as builders
 
@@ -76,13 +76,16 @@ def test_workflow_collaboration_feature_and_upgrade_use_the_loaded_plan(
 
 
 @pytest.mark.parametrize(
-    ("edition", "plan", "expected", "upgrade_available"),
+    ("edition", "plan", "enabled", "expected", "upgrade_available"),
     [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, True),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, False),
-        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, False),
-        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, False),
-        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, False, False, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, False, False),
     ],
 )
 def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
@@ -90,10 +93,11 @@ def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     plan: CloudPlan,
+    enabled: bool,
     expected: bool,
     upgrade_available: bool,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition)
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=enabled)
 
     def fill_billing(features: FeatureModel, *_args: object, **_kwargs: object) -> None:
         features.billing.subscription.plan = plan
@@ -109,26 +113,28 @@ def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
 
     assert features.evaluation_enabled is expected
     assert features.evaluation_upgrade_available is upgrade_available
-    assert FeatureService.is_evaluation_supported() is (edition != DeploymentEdition.COMMUNITY)
+    assert FeatureService.is_evaluation_supported() is (enabled and edition != DeploymentEdition.COMMUNITY)
 
 
 @pytest.mark.parametrize(
-    ("edition", "plan", "expected"),
+    ("edition", "plan", "enabled", "expected"),
     [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
-        (DeploymentEdition.ENTERPRISE, None, True),
-        (DeploymentEdition.COMMUNITY, None, False),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, False, False),
+        (DeploymentEdition.ENTERPRISE, None, True, True),
+        (DeploymentEdition.COMMUNITY, None, True, False),
     ],
 )
-def test_can_use_evaluation_looks_up_the_plan_only_on_cloud(
+def test_can_use_evaluation_looks_up_the_plan_only_when_enabled_on_cloud(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     plan: CloudPlan | None,
+    enabled: bool,
     expected: bool,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition)
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=enabled)
     plan_lookups: list[str] = []
 
     def get_workspace_plan(tenant_id: str) -> CloudPlan:
@@ -139,7 +145,7 @@ def test_can_use_evaluation_looks_up_the_plan_only_on_cloud(
     monkeypatch.setattr(FeatureService, "get_workspace_plan", get_workspace_plan)
 
     assert FeatureService.can_use_evaluation("tenant-1") is expected
-    assert plan_lookups == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
+    assert plan_lookups == (["tenant-1"] if enabled and edition == DeploymentEdition.CLOUD else [])
 
 
 @pytest.mark.parametrize("plan", list(CloudPlan))
@@ -500,11 +506,10 @@ def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(
     ("plan", "expected"),
     [
         (CloudPlan.SANDBOX, [HostedTrialProvider.OPENAI.value]),
-        (CloudPlan.PROFESSIONAL, [HostedTrialProvider.OPENAI.value, HostedTrialProvider.X.value]),
+        (CloudPlan.PROFESSIONAL, [HostedTrialProvider.X.value]),
     ],
 )
 def test_get_trial_models_filters_providers_by_workspace_plan(
-    monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     plan: CloudPlan,
     expected: list[str],
@@ -519,13 +524,37 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
         HOSTED_XAI_PAID_ENABLED=True,
     )
     config_overrides(**values)
-    get_workspace_plan = Mock(return_value=plan)
-    monkeypatch.setattr(feature_service_module.FeatureService, "get_workspace_plan", get_workspace_plan)
-
-    result = FeatureService.get_trial_models("tenant_1")
+    with patch.object(
+        billing, "subscription_get_subscription_info", return_value=builders.subscription_info(plan)
+    ) as subscription:
+        result = FeatureService.get_trial_models("tenant_1")
 
     assert result == expected
-    get_workspace_plan.assert_called_once_with("tenant_1")
+    subscription.assert_called_once_with(tenant_id="tenant_1", exclude_vector_space=True)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_non_cloud_provider_settings_do_not_require_billing(
+    config_overrides: Callable[..., None], enabled: bool
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, MODEL_LB_ENABLED=enabled)
+    with patch.object(
+        billing, "subscription_get_subscription_info", side_effect=AssertionError("unexpected Billing read")
+    ):
+        catalog = ProviderCatalogBilling("workspace")
+        assert catalog.load_balancing_enabled is enabled
+        assert catalog.balance is None
+
+
+def test_trial_models_hide_hosted_credits_when_billing_is_unavailable(config_overrides: Callable[..., None]) -> None:
+    """Unknown eligibility must not expose either of the deployment's enabled credit pools."""
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_OPENAI_TRIAL_ENABLED=True, HOSTED_OPENAI_PAID_ENABLED=True
+    )
+    with patch.object(
+        billing, "subscription_get_subscription_info", side_effect=billing.BillingSubscriptionUpstreamUnavailableError()
+    ):
+        assert FeatureService.get_trial_models("tenant-1") == []
 
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:

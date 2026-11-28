@@ -3,6 +3,8 @@ from typing import Any, override
 
 from ragas.embeddings.base import BaseRagasEmbedding
 
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
+
 
 class DifyEmbeddingsWrapper(BaseRagasEmbedding):
     """Bridge modern Ragas metrics to the tenant's default embedding model."""
@@ -19,6 +21,7 @@ class DifyEmbeddingsWrapper(BaseRagasEmbedding):
         return DifyEmbeddingsWrapper(self.tenant_id, self.user_id, single_text_is_query=True)
 
     def _get_model_instance(self) -> Any:
+        """Resolve and cache the tenant's default embedding model with Evaluation attribution."""
         from core.model_manager import ModelManager
         from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -26,6 +29,7 @@ class DifyEmbeddingsWrapper(BaseRagasEmbedding):
             self._model_instance = ModelManager.for_tenant(
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
+                request_metadata=get_evaluation_credit_usage_metadata(),
             ).get_default_model_instance(
                 tenant_id=self.tenant_id,
                 model_type=ModelType.TEXT_EMBEDDING,

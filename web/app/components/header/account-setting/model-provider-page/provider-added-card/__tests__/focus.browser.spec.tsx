@@ -57,7 +57,7 @@ it('restores visible keyboard focus to the grid action after its model list disa
     }),
   )
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
-    workspacePermissionKeys: ['plugin.plugin_preferences'],
+    workspacePermissionKeys: ['plugin.model_config'],
     systemFeatures: { deployment_edition: 'COMMUNITY' },
     features: {},
   })

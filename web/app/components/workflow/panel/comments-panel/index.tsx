@@ -55,8 +55,7 @@ const CommentsPanel = () => {
   // after it.
   const { data: comments = EMPTY_COMMENTS, isLoading: loading } = useQuery({
     ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
-      input: appId ? { params: { app_id: appId } } : skipToken,
-      enabled: isCollaborationEnabled,
+      input: isCollaborationEnabled && appId ? { params: { app_id: appId } } : skipToken,
       staleTime: () => (appId && isWritingComments(queryClient, appId) ? Infinity : 0),
     }),
     select: (list) => list.data,

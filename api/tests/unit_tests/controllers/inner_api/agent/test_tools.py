@@ -8,6 +8,7 @@ import pytest
 from flask import Flask
 from redis.exceptions import LockNotOwnedError, RedisError
 from redis.lock import Lock
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from controllers.inner_api import bp as inner_api_bp
@@ -19,8 +20,9 @@ from extensions.application_services.tools import resolve_tool_credentials
 from extensions.ext_redis import RedisClientWrapper
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider
+from repositories.credentials.query_repository import CredentialQueryRepository
 from services.credentials.refresh import CredentialRefreshUnavailableError
-from services.credentials.tool_runtime import ToolCredentialRefreshError
+from services.credentials.tool_runtime import RefreshedToolCredential, ToolCredentialRefreshError
 from services.credentials.tool_runtime_adapters import ProviderToolCredentialRuntime
 from services.entities.agent_tool_inner import AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
@@ -140,7 +142,7 @@ def test_post_preserves_service_error_status_code_and_description() -> None:
 
 
 @pytest.mark.parametrize("credential_id", [None, "1a1db43c-e9d8-4ef2-af8f-38b25424a4ad"])
-@pytest.mark.parametrize("failure", ["busy", "redis", "lost", "rejected"])
+@pytest.mark.parametrize("failure", ["busy", "redis", "lost", "rejected", "persist"])
 def test_post_preserves_refresh_error_classification_through_real_credential_resolution(
     sqlite_session: Session,
     redis_transport: tuple[RedisClientWrapper, MagicMock],
@@ -230,7 +232,18 @@ def test_post_preserves_refresh_error_classification_through_real_credential_res
         ),
         patch.object(Lock, "reacquire", side_effect=LockNotOwnedError("expired") if failure == "lost" else None),
         patch.object(Lock, "release"),
-        patch.object(ProviderToolCredentialRuntime, "refresh", side_effect=rejected) as refresh,
+        patch.object(
+            ProviderToolCredentialRuntime,
+            "refresh",
+            return_value=RefreshedToolCredential({"access_token": "refreshed-token"}, expires_at=2_000_000_000),
+            side_effect=rejected if failure == "rejected" else None,
+        ) as refresh,
+        patch.object(ProviderToolCredentialRuntime, "encrypt", return_value='{"access_token":"encrypted"}'),
+        patch.object(
+            CredentialQueryRepository,
+            "update_tool_credential_if_unchanged",
+            side_effect=OperationalError(None, None, RuntimeError("database unavailable")),
+        ) as persist,
     ):
         response = app.test_client().post(
             "/inner/api/agent/tools/invoke",
@@ -245,7 +258,8 @@ def test_post_preserves_refresh_error_classification_through_real_credential_res
         "message": str(rejected) if failure == "rejected" else str(CredentialRefreshUnavailableError()),
         "status": expected_status,
     }
-    assert refresh.call_count == (1 if failure == "rejected" else 0)
+    assert refresh.call_count == (1 if failure in {"rejected", "persist"} else 0)
+    assert persist.call_count == (1 if failure == "persist" else 0)
     sqlite_session.refresh(credential)
     assert credential.encrypted_credentials == "{}"
     assert credential.expires_at == 1

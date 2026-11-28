@@ -1329,6 +1329,8 @@ class KnowledgeFSExternalAccessPayload(BaseModel):
     agent_enabled: bool
     workflow_enabled: bool
     mcp_enabled: bool = False
+    # Omitted by older clients: the stored value is kept.
+    personal_agent_enabled: bool | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -1338,6 +1340,8 @@ class KnowledgeFSExternalAccessResponse(ResponseModel):
     agent_enabled: bool
     workflow_enabled: bool
     mcp_enabled: bool
+    # Whether members may read this knowledge base from their personal agents (Claude Code, Codex).
+    personal_agent_enabled: bool = True
     revision: int
 
 

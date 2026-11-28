@@ -59,7 +59,7 @@ describe('uninstallPlugin', () => {
 })
 
 describe('uploadFile', () => {
-  const options = { context: { silent: true, onUploadProgress: expect.any(Function) } }
+  const options = { context: { onUploadProgress: expect.any(Function) } }
 
   it('uploads a plugin package as the pkg field', async () => {
     const file = new File(['pkg'], 'tool.difypkg')

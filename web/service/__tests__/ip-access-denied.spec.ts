@@ -13,8 +13,9 @@ import {
 } from '@/features/app-access-error/state'
 import { markAppDeletionFailed, markAppDeletionStarted } from '../app-deletion'
 // oxlint-disable-next-line no-restricted-imports -- This integration spec exercises public WebApp transport error handling.
-import { request, ssePost, upload } from '../base'
+import { request } from '../base'
 import { consoleClient } from '../console'
+import { isErrorHandled } from '../handled-error'
 import * as webAppAuth from '../webapp-auth'
 
 const refreshAccessTokenOrReLogin = vi.hoisted(() => vi.fn())
@@ -45,22 +46,6 @@ const createPendingResponse = () => {
   })
   return { promise, resolve }
 }
-
-const createXhr = (data: unknown, status = 403) =>
-  ({
-    open: vi.fn(),
-    setRequestHeader: vi.fn(),
-    getAllResponseHeaders: vi.fn(() => 'Content-Type: application/json'),
-    send: vi.fn(function (this: { onreadystatechange?: () => void }) {
-      this.onreadystatechange?.()
-    }),
-    status,
-    response: data,
-    readyState: 4,
-    upload: {},
-    withCredentials: false,
-    responseType: '',
-  }) as unknown as XMLHttpRequest
 
 const transitionWhileRequestIsPending = async (transition: 'denied' | 'navigated') => {
   if (transition === 'denied') {
@@ -204,58 +189,6 @@ describe('WebApp IP access denial transport', () => {
         expect(completeRecovery).not.toHaveBeenCalled()
       },
     )
-
-    it.each([
-      { transition: 'denied' as const, stream: ssePost, name: 'POST' },
-      { transition: 'navigated' as const, stream: ssePost, name: 'POST' },
-    ])(
-      'settles a late SSE $name authorization failure after the page is $transition',
-      async ({ transition, stream }) => {
-        const pending = createPendingResponse()
-        vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(pending.promise)
-        const beginRecovery = vi.spyOn(webAppAuth, 'beginWebAppAuthorizationRecovery')
-        const onError = vi.fn()
-        const onNotifyError = vi.fn()
-        await stream('/chat-messages', {}, { isPublicAPI: true, onError, onNotifyError })
-
-        await transitionWhileRequestIsPending(transition)
-        const url = window.location.href
-        pending.resolve(createResponse({ code: 'unauthorized', message: 'Late stream error' }, 401))
-
-        await waitFor(() =>
-          expect(onError).toHaveBeenCalledExactlyOnceWith('Late stream error', 'unauthorized'),
-        )
-        expect(window.location.href).toBe(url)
-        expect(beginRecovery).not.toHaveBeenCalled()
-        expect(onNotifyError).not.toHaveBeenCalled()
-        expect(toast.error).not.toHaveBeenCalled()
-      },
-    )
-
-    it.each([
-      { transition: 'denied' as const, status: 401 },
-      { transition: 'navigated' as const, status: 401 },
-      { transition: 'denied' as const, status: 500 },
-      { transition: 'navigated' as const, status: 500 },
-    ])(
-      'silently aborts late XHR $status errors after the page is $transition',
-      async ({ transition, status }) => {
-        const beginRecovery = vi.spyOn(webAppAuth, 'beginWebAppAuthorizationRecovery')
-        const xhr = createXhr({ code: 'unauthorized', message: 'Late upload error' }, status)
-        xhr.send = vi.fn()
-        const response = upload({ xhr, data: new FormData() }, true).catch(
-          (error: unknown) => error,
-        )
-
-        await transitionWhileRequestIsPending(transition)
-        const url = window.location.href
-        xhr.onreadystatechange?.(new Event('readystatechange'))
-
-        expect(await response).toMatchObject({ name: 'AbortError' })
-        expect(window.location.href).toBe(url)
-        expect(beginRecovery).not.toHaveBeenCalled()
-      },
-    )
   })
 
   it.each([
@@ -276,72 +209,12 @@ describe('WebApp IP access denial transport', () => {
       expect(isAppAccessError(error)).toBe(false)
       expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
       expect((error as ORPCError<string, unknown>).data).toEqual(data)
-      expect(toast.error).toHaveBeenCalledWith(data.message)
-      expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-    },
-  )
-
-  it.each([{ name: 'POST', stream: ssePost, path: '/chat-messages' }])(
-    'settles a denied SSE $name before reading a stream without duplicate notifications',
-    async ({ stream, path }) => {
-      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(denial))
-      const onData = vi.fn()
-      const onError = vi.fn()
-      const onCompleted = vi.fn()
-      const onNotifyError = vi.fn()
-      const url = window.location.href
-
-      await stream(path, {}, { isPublicAPI: true, onData, onError, onCompleted, onNotifyError })
-
-      await waitFor(() => {
-        expect(onError).toHaveBeenCalledExactlyOnceWith(denial.message, denial.code)
-      })
-      expect(onCompleted).not.toHaveBeenCalled()
-      expect(onData).not.toHaveBeenCalled()
-      expect(onNotifyError).not.toHaveBeenCalled()
+      // The transport leaves ordinary errors for the query cache to report.
+      expect(isErrorHandled(error)).toBe(false)
       expect(toast.error).not.toHaveBeenCalled()
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-      expect(fetch).toHaveBeenCalledOnce()
-      expect(window.location.href).toBe(url)
     },
   )
-
-  it('settles a denied stream through its completion callback when it has no error callback', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(denial))
-    const onCompleted = vi.fn()
-
-    await ssePost('/chat-messages', {}, { isPublicAPI: true, onCompleted })
-
-    await waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith(true, denial.message))
-    expect(toast.error).not.toHaveBeenCalled()
-  })
-
-  it.each([
-    { route: '/chat/ip-restricted-app', path: '/files/upload' },
-    { route: '/form/ip-restricted-form', path: '/human-input-forms/files' },
-  ])(
-    'marks denied XHR uploads on $route for the uploader to suppress duplicate errors',
-    async ({ route, path }) => {
-      window.history.replaceState({}, '', route)
-      const xhr = createXhr(denial)
-
-      const error = await upload({ xhr, data: new FormData() }, true, path).catch((error) => error)
-
-      expect(error).toBeInstanceOf(ORPCError)
-      expect(isAppAccessError(error)).toBe(true)
-      expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-      expect(toast.error).not.toHaveBeenCalled()
-    },
-  )
-
-  it('preserves unrelated XHR errors', async () => {
-    const xhr = createXhr({ code: 'file_too_large', message: 'File too large' }, 413)
-
-    const error = await upload({ xhr, data: new FormData() }, true).catch((error) => error)
-
-    expect(error).toMatchObject({ status: 413, code: 'file_too_large' })
-    expect(isAppAccessError(error)).toBe(false)
-  })
 })
 
 describe('application not-found transport', () => {
@@ -367,6 +240,8 @@ describe('application not-found transport', () => {
       { isPublicAPI: true },
     ).catch((error) => error)
     expect(isAppAccessError(error)).toBe(true)
+    // The app-access dialog owns this failure, so the query cache must not report it.
+    expect(isErrorHandled(error)).toBe(true)
     expect((error as ORPCError<string, unknown>).data).toEqual(body)
     expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
       reason: 'app_not_found',
@@ -377,47 +252,6 @@ describe('application not-found transport', () => {
     expect(fetch).toHaveBeenCalledOnce()
     expect(window.location.pathname).toBe('/chat/app')
   })
-
-  it('handles an opaque Gateway upload 404 through the same App error boundary', async () => {
-    window.history.replaceState({}, '', '/chat/app')
-    const body = {
-      code: 'app_not_found',
-      message: 'App not found.',
-      status: 404,
-      client_ip: '2001:db8::12',
-    }
-    const xhr = createXhr(body, 404)
-    const error = await upload({ xhr, data: new FormData() }, true, '/files/upload').catch(
-      (error) => error,
-    )
-    expect(isAppAccessError(error)).toBe(true)
-    expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe('2001:db8::12')
-    expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-  })
-
-  it.each([{ name: 'POST', stream: ssePost, path: '/chat-messages' }])(
-    'settles an opaque Gateway 404 before opening an SSE $name stream',
-    async ({ stream, path }) => {
-      window.history.replaceState({}, '', '/chat/app')
-      const body = {
-        code: 'app_not_found',
-        message: 'App not found.',
-        status: 404,
-        client_ip: '203.0.113.8',
-      }
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(body, 404))
-      const onData = vi.fn()
-      const onError = vi.fn()
-      const onCompleted = vi.fn()
-      await stream(path, {}, { isPublicAPI: true, onData, onError, onCompleted })
-      await waitFor(() => expect(onError).toHaveBeenCalledExactlyOnceWith(body.message, body.code))
-      expect(onData).not.toHaveBeenCalled()
-      expect(onCompleted).not.toHaveBeenCalled()
-      expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe('203.0.113.8')
-      expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-      expect(toast.error).not.toHaveBeenCalled()
-    },
-  )
 
   it.each([
     ['/form/human_input/token', 404, 'not_found', 'Form not found'],
@@ -603,32 +437,4 @@ describe('trial application error isolation', () => {
       endTrialAppAccess(next)
     }
   })
-
-  it.each([true, false])(
-    'handles explicit app_not_found before SSE starts (public=%s)',
-    async (isPublicAPI) => {
-      const scope = isPublicAPI ? null : beginTrialAppAccess('missing')
-      if (isPublicAPI) window.history.replaceState({}, '', '/chat/missing')
-      const error = { code: 'app_not_found', message: 'App not found' }
-      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(error, 404))
-      const onError = vi.fn()
-      const onNotifyError = vi.fn()
-      const path = isPublicAPI ? '/chat-messages' : '/trial-apps/missing/chat-messages'
-      try {
-        await ssePost(path, {}, { isPublicAPI, onError, onNotifyError })
-        await waitFor(() =>
-          expect(onError).toHaveBeenCalledExactlyOnceWith(error.message, error.code),
-        )
-        expect(
-          appAccessStore.get(isPublicAPI ? appAccessErrorAtom : trialAppAccessErrorAtom)?.reason,
-        ).toBe('app_not_found')
-        expect(onNotifyError).not.toHaveBeenCalled()
-        expect(toast.error).not.toHaveBeenCalled()
-        await ssePost(path, {}, { isPublicAPI })
-        expect(fetch).toHaveBeenCalledOnce()
-      } finally {
-        if (scope) endTrialAppAccess(scope)
-      }
-    },
-  )
 })

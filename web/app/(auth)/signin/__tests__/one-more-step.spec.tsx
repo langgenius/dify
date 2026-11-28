@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { createHttpError } from '@/service/http-error'
 import OneMoreStep from '../one-more-step'
 
 vi.mock('@/next/navigation', () => ({
@@ -61,15 +63,76 @@ describe('OneMoreStep', () => {
       })
     })
   })
+
+  describe('Submission failure', () => {
+    it.each([
+      {
+        name: 'the invitation code message for an invalid code',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_invitation_code',
+          message: 'Invalid invitation code.',
+          status: 400,
+        }),
+        expected: 'login.invalidInvitationCode',
+      },
+      {
+        name: 'the translated message for another documented failure',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'account_already_inited',
+          message: 'Server says why',
+          status: 400,
+        }),
+        expected: 'requestErrors.code.account_already_inited',
+      },
+      {
+        name: 'the action failure for an unknown code',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'bad_request',
+          message: 'Server says why',
+        }),
+        expected: 'common.api.actionFailed',
+      },
+      {
+        name: 'a generic message without a server message',
+        error: new TypeError('Failed to fetch'),
+        expected: 'common.api.actionFailed',
+      },
+    ])('should show $name', async ({ error, expected }) => {
+      const toastError = vi.spyOn(toast, 'error')
+      mockSubmitOneMoreStep.mockRejectedValueOnce(error)
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      onTestFinished(() => queryClient.clear())
+      render(
+        <QueryClientProvider client={queryClient}>
+          <OneMoreStep />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByRole('textbox', { name: 'login.invitationCode' }), '{Enter}')
+
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith(expected))
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+  })
 })
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { account } = await import('@dify/contracts/api/console/account/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ account })
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.init.post': (input) => mockSubmitOneMoreStep(input),
+      'account.init.post': (input) =>
+        validate({
+          context: {},
+          input,
+          path: ['account', 'init', 'post'],
+          next: () => mockSubmitOneMoreStep(input),
+        }),
     }),
   }
 })

@@ -130,6 +130,7 @@ function Get-PathHint([string]$Dir) {
 # The hint names a v2 command, so a binary without it (any v1 build) gets none. Under
 # Windows PowerShell 5.1 a redirected stderr line throws when errors stop, hence the catch.
 function Write-SkillHint([string]$Bin) {
+    # Missing Unix paths otherwise trigger PowerShell module auto-discovery.
     if (-not (Test-Path -LiteralPath $Bin -PathType Leaf)) { return }
     try { & $Bin install skills --help *> $null } catch { return }
     if ($LASTEXITCODE -ne 0) { return }

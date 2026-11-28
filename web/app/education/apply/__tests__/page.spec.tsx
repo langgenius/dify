@@ -115,10 +115,9 @@ describe('EducationApplyPage billing boundary', () => {
     await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
     await waitFor(() => {
-      expect(mockGetSubscription).toHaveBeenCalledWith(
-        { query: { plan: 'professional', interval: 'year' } },
-        { context: { silent: true } },
-      )
+      expect(mockGetSubscription).toHaveBeenCalledWith({
+        query: { plan: 'professional', interval: 'year' },
+      })
     })
   })
 

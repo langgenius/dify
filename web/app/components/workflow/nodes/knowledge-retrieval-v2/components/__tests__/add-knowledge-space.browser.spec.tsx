@@ -176,14 +176,14 @@ it('recovers the initial catalog through its retry action', async () => {
   await expect.element(alert).not.toBeInTheDocument()
 })
 
-// Skipped: intermittently hits the 15 s test timeout in CI (5 of 17 runs) while passing locally.
-// Re-enable once the retry flow is deterministic under CI load.
-it.skip('retains the loaded page and its selection while retrying the failed next page', async () => {
+it('retains the loaded page and its selection while retrying the failed next page', async () => {
+  const requestedPages: unknown[] = []
   fake.use({
     console: {
       knowledgeFs: {
         spaces: {
           get: async (input) => {
+            requestedPages.push(input?.query?.page)
             if (input?.query?.page === 1)
               return response([space('product', 'Product docs')], 1, true)
             throw apiError({
@@ -197,15 +197,20 @@ it.skip('retains the loaded page and its selection while retrying the failed nex
     },
   })
   const { dialog, saved } = await setup()
-  const product = dialog.getByRole('checkbox', { name: 'Product docs' })
-  await product.click()
   const alert = dialog.getByRole('alert')
   await expect.element(alert).toBeVisible()
+  const product = dialog.getByRole('checkbox', { name: 'Product docs' })
+  await product.click()
+  await expect.element(product).toBeChecked()
+  // The failed page waits for the retry action instead of being requested again on its own.
+  await expect.element(alert).toBeVisible()
+  expect(requestedPages).toEqual([1, 2])
   fake.use({
     console: {
       knowledgeFs: {
         spaces: {
           get: async (input) => {
+            requestedPages.push(input?.query?.page)
             if (input?.query?.page !== 2)
               throw new Error('The retry must request the failed second page')
             return response([space('later', 'Later docs')], 2)
@@ -218,6 +223,7 @@ it.skip('retains the loaded page and its selection while retrying the failed nex
   const later = dialog.getByRole('checkbox', { name: 'Later docs' })
   await expect.element(later).toBeVisible()
   await expect.element(product).toBeChecked()
+  expect(requestedPages).toEqual([1, 2, 2])
   await later.click()
   await dialog.getByRole('button', { name: 'common.operation.add', exact: true }).click()
   await expect.element(saved).toHaveTextContent('Product docs, Later docs')

@@ -8,6 +8,8 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
+import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
@@ -166,12 +168,19 @@ describe('ErrorPluginItem', () => {
     expect(onClear).toHaveBeenCalledOnce()
   })
 
-  it('keeps the failed task retryable after a marketplace lookup failure', async () => {
+  it('reports a marketplace lookup failure and keeps the failed task retryable', async () => {
     const user = userEvent.setup()
-    mockFetch.mockRejectedValueOnce(new Error('Network error'))
+    const errorToast = vi.spyOn(toast, 'error')
+    mockFetch.mockRejectedValueOnce(
+      createHttpError(
+        { status: 503, statusText: '', headers: new Headers() },
+        { message: 'Marketplace unavailable' },
+      ),
+    )
     const { onClear } = renderError()
     await user.click(retry())
     await waitFor(() => expect(retry()).toBeEnabled())
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Marketplace unavailable')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onClear).not.toHaveBeenCalled()
     await user.click(retry())

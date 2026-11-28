@@ -1,6 +1,5 @@
 import type { CredentialTypeEnum, PluginPayload } from '../types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback } from 'react'
 import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
 import { consoleQuery } from '@/service/console'
 import {
@@ -79,20 +78,6 @@ export const useGetPluginOAuthUrlHook = (pluginPayload: PluginPayload) => {
 
 export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload, enabled = true) => {
   return useQuery(pluginOAuthClientSchemaQueryOptions(pluginPayload, enabled))
-}
-
-export const useInvalidPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {
-  const { category, provider } = pluginPayload
-  const queryClient = useQueryClient()
-  return useCallback(() => {
-    if (category !== AuthCategory.tool || !provider) return Promise.resolve()
-    return queryClient.invalidateQueries({
-      queryKey:
-        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key({
-          input: { params: { provider } },
-        }),
-    })
-  }, [queryClient, category, provider])
 }
 
 export const useSetPluginOAuthCustomClientHook = (pluginPayload: PluginPayload) => {

@@ -18,6 +18,7 @@ import {
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createAppSiteFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentConfigurePublishBar } from '../publish-bar'
@@ -54,12 +55,14 @@ const workflowReferences = vi.hoisted(() => ({
   fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
   shouldFail: false,
+  failure: undefined as unknown,
 }))
 const agentDetail = vi.hoisted(() => ({ data: {} as Partial<AgentAppDetailWithSite> }))
 
 const composerQuery = vi.hoisted(() => ({
   data: undefined as unknown,
   shouldFail: false,
+  pending: undefined as Promise<void> | undefined,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -86,10 +89,12 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.byAgentId.get': async () => agentDetail.data,
       'agent.byAgentId.composer.get': async () => {
         if (composerQuery.shouldFail) throw new Error('Composer query failed')
+        if (composerQuery.pending) await composerQuery.pending
         return composerQuery.data
       },
       'agent.byAgentId.referencingWorkflows.get': async () => {
         workflowReferences.fetchCount++
+        if (workflowReferences.failure) throw workflowReferences.failure
         if (workflowReferences.shouldFail) throw new Error('Workflow references query failed')
         return { data: workflowReferences.data }
       },
@@ -299,7 +304,9 @@ describe('AgentConfigurePublishBar', () => {
     workflowReferences.data = []
     workflowReferences.fetchCount = 0
     workflowReferences.shouldFail = false
+    workflowReferences.failure = undefined
     composerQuery.data = undefined
+    composerQuery.pending = undefined
     composerQuery.shouldFail = false
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
@@ -388,6 +395,32 @@ describe('AgentConfigurePublishBar', () => {
       onExitVersions.mock.invocationCallOrder[0]!,
     )
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('rebases the editor only after the restored composer has loaded', async () => {
+    const selectedVersionSnapshot = { ...activeConfigSnapshot, id: 'snapshot-2', version: 2 }
+    const onVersionRestored = vi.fn()
+    const { onExitVersions } = renderPublishBar({ onVersionRestored, selectedVersionSnapshot })
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    let releaseComposer!: () => void
+    composerQuery.pending = new Promise((resolve) => {
+      releaseComposer = resolve
+    })
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
+    )
+
+    await waitFor(() => expect(restoreVersionMutation).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(onVersionRestored).not.toHaveBeenCalled()
+    expect(onExitVersions).not.toHaveBeenCalled()
+
+    releaseComposer()
+    await waitFor(() => expect(onVersionRestored).toHaveBeenCalled())
+    expect(onExitVersions).toHaveBeenCalled()
   })
 
   it('starts a fresh restore confirmation after leaving and re-entering version view', async () => {
@@ -649,6 +682,31 @@ describe('AgentConfigurePublishBar', () => {
       expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
     })
     expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('should show the translated reason when workflow references cannot be loaded', async () => {
+    const user = userEvent.setup()
+    workflowReferences.failure = createHttpError(new Response(null, { status: 503 }), {
+      code: 'agent_model_not_configured',
+      message: 'Server says why',
+    })
+    renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.agent_model_not_configured')
+    })
   })
 
   it('should refresh cached workflow references before publishing', async () => {

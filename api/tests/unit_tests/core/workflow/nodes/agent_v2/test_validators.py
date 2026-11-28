@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from unittest.mock import Mock
 
 import pytest
 from pydantic import JsonValue
@@ -295,7 +294,7 @@ def test_draft_validation_allows_non_upstream_previous_output_ref(sqlite_session
     )
 
 
-def test_draft_validation_allows_missing_agent_soul_model() -> None:
+def test_draft_validation_allows_missing_agent_soul_model(sqlite_session: Session) -> None:
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -304,11 +303,10 @@ def test_draft_validation_allows_missing_agent_soul_model() -> None:
         version=1,
         config_snapshot=AgentSoulConfig(),
     )
-    session = Mock()
-    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+    _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
     WorkflowAgentNodeValidator.validate_draft_workflow(
-        session=session,
+        session=sqlite_session,
         workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
     )
 

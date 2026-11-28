@@ -1,10 +1,26 @@
-from pydantic import Field, NonNegativeInt
+from functools import lru_cache
+
+from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
+
+
+@lru_cache(maxsize=1)
+def _hosted_credit_rates(config: str) -> dict[str, str]:
+    """Parse the deployment-wide price table once per configuration, not once per catalog entry."""
+    entries = dict(item.strip().split(":", 1) for item in config.split(",") if ":" in item)
+    rates: dict[str, str] = {}
+    for name, rate in entries.items():
+        # Preserve the first normalized match after resolving exact duplicate keys.
+        rates.setdefault(name.strip(), rate)
+    return rates
 
 
 class HostedCreditConfig(BaseSettings):
     HOSTED_MODEL_CREDIT_CONFIG: str = Field(
-        description="Model credit configuration in format 'model:credits,model:credits', e.g., 'gpt-4:20,gpt-4o:10'",
+        description=(
+            "Deployment-wide prices by exact model ID, e.g. 'gpt-4o-mini:1,gpt-4o:0'. "
+            "A zero price skips charging; it does not add the model to any provider's trial or paid list."
+        ),
         default="",
     )
 
@@ -20,15 +36,7 @@ class HostedCreditConfig(BaseSettings):
             return 1
 
         try:
-            credit_map = dict(
-                item.strip().split(":", 1) for item in self.HOSTED_MODEL_CREDIT_CONFIG.split(",") if ":" in item
-            )
-
-            # Search for matching model pattern
-            for pattern, credit in credit_map.items():
-                if pattern.strip() == model_name:
-                    return int(credit)
-            return 1  # Default quota if no match found
+            return int(_hosted_credit_rates(self.HOSTED_MODEL_CREDIT_CONFIG).get(model_name, "1"))
         except (ValueError, AttributeError):
             return 1  # Return default quota if parsing fails
 
@@ -360,16 +368,26 @@ class HostedZhipuAIConfig(BaseSettings):
 
 
 class HostedModerationConfig(BaseSettings):
-    """Automatic moderation enablement and a fallback plugin pinned by SRE."""
+    """Automatic OpenAI moderation and verdict retention for Cloud model calls."""
 
     HOSTED_MODERATION_ENABLED: bool = Field(
         description="Enable automatic platform moderation for Cloud AI-credit LLMs; ignored in other editions",
         default=False,
     )
 
-    HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
-        description="Fallback plugin unique identifier when a trusted tenant OpenAI plugin is unavailable",
-        default="",
+    HOSTED_MODERATION_BATCH_MAX_ITEMS: PositiveInt = Field(
+        description="Maximum number of text segments per platform moderation request",
+        default=32,
+    )
+
+    HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES: PositiveInt = Field(
+        description="UTF-8 text budget per platform moderation batch; oversized segments are sent alone",
+        default=128 * 1024,
+    )
+
+    HOSTED_MODERATION_CACHE_TTL: NonNegativeInt = Field(
+        description="TTL in seconds for batch moderation verdicts; 0 disables caching",
+        default=600,
     )
 
 

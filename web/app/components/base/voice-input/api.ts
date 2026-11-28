@@ -31,7 +31,5 @@ export async function transcribeAudio(
     )
   }
 
-  const formData = new FormData()
-  formData.append('file', file)
-  return audioToText(target.appSourceType, target.appId, formData, signal)
+  return audioToText(target.appSourceType, target.appId, file, signal)
 }

@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Əlaqəni silmək mümkün olmadı. Yenidən cəhd edin.",
   "directory.removalSingleTitle": "{{name}} silinsin?",
   "directory.resultCount": "Nəticələr: {{count}}",
-  "imPlatform.action.configure": "Konfiqurasiya et",
   "imPlatform.action.configureChannel": "{{provider}} konfiqurasiyasını qur",
   "imPlatform.action.connect": "Qoş",
   "imPlatform.action.copied": "Kopyalandı",

@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 
 const endpoints = consoleQuery.datasets.externalKnowledgeApi
@@ -35,13 +36,13 @@ function DeleteExternalApiConfirmation({
   onConfirm: () => void
 }) {
   const { t } = useTranslation(['common', 'dataset'])
+  const describeRequestError = useRequestErrorDescriber()
   const usage = useQuery(
     endpoints.byExternalKnowledgeApiId.useCheck.get.queryOptions({
       input: { params: { external_knowledge_api_id: api.id } },
-      context: { silent: true },
-      gcTime: 0,
+      // A failed check is shown inline with a retry button.
+      meta: { errorToast: false },
       networkMode: 'always',
-      staleTime: 0,
       retry: false,
       refetchOnReconnect: false,
       refetchOnWindowFocus: false,
@@ -49,7 +50,10 @@ function DeleteExternalApiConfirmation({
   )
   const usageCount = usage.data?.is_using ? usage.data.count : 0
   const description = usage.isError
-    ? t(($) => $['api.actionFailed'], { ns: 'common' })
+    ? describeRequestError(
+        usage.error,
+        t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     : !usage.isSuccess || usage.isFetching
       ? t(($) => $.loading, { ns: 'common' })
       : usageCount > 0
@@ -114,19 +118,9 @@ export default function DeleteExternalApiDialog({
   const filter = { mutationKey: operation.mutationKey(), exact: true }
   const deletion = useMutation(
     operation.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       networkMode: 'always',
-      onSuccess: (_response, { params }) => {
-        const key = endpoints.get.queryKey({ input: {} })
-        client.setQueryData(
-          key,
-          (previous) =>
-            previous && {
-              ...previous,
-              data: previous.data.filter((api) => api.id !== params.external_knowledge_api_id),
-            },
-        )
-        void client.invalidateQueries({ queryKey: key, exact: true })
+      onSuccess: () => {
         finalFocusRef.current = fallbackFocus.current
         handle.close()
       },
@@ -138,18 +132,19 @@ export default function DeleteExternalApiDialog({
       onOpenChange={(open, details) => {
         if (open) {
           finalFocusRef.current = null
-          deletion.reset()
           onOpen()
         } else if (details.reason !== 'imperative-action' && client.isMutating(filter)) {
           details.cancel()
         }
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) deletion.reset()
       }}
     >
       {({ payload }) =>
         payload && (
           <AlertDialogContent finalFocus={finalFocusRef}>
             <DeleteExternalApiConfirmation
-              key={payload.id}
               api={payload}
               canManage={canManage}
               deleting={deletion.isPending}

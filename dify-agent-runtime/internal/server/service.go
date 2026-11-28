@@ -21,6 +21,7 @@ type Service struct {
 	db           *DB
 	tmux         *TmuxController
 	startingJobs map[string]bool
+	suspend      suspendLatch
 	mu           sync.Mutex
 	cancelGC     context.CancelFunc
 	cancelMon    context.CancelFunc
@@ -136,6 +137,12 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		return nil, err
 	}
 
+	started, err := s.suspend.admit()
+	if err != nil {
+		return nil, err
+	}
+	defer started()
+
 	cols := s.config.DefaultTerminalCols
 	rows := s.config.DefaultTerminalRows
 	if req.Terminal != nil {
@@ -248,6 +255,9 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	delete(s.startingJobs, jobID)
 	s.mu.Unlock()
 
+	// The job is durably recorded now; admission tracking ends before the wait.
+	started()
+
 	// Wait for initial output
 	return s.WaitJob(jobID, &WaitJobRequest{
 		Offset:           0,
@@ -255,6 +265,14 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		OutputLimit:      outputLimit,
 		IdleFlushSeconds: idleFlush.Seconds(),
 	})
+}
+
+// hasActiveJobs reports whether any job is in a non-terminal state. It is
+// read once, when a fenced suspension save asks for admission, so it adds no
+// DB dependency to existing flows.
+func (s *Service) hasActiveJobs() (bool, error) {
+	jobs, err := s.db.ListJobs([]JobStatusName{StatusCreated, StatusStarting, StatusRunning})
+	return len(jobs) > 0, err
 }
 
 func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int, mode jobmode.Mode) error {

@@ -22,7 +22,6 @@ export function createBrowserLink(contract: AnyContractRouter): ClientLink<Conso
       const response = await request<Response>(normalizedURL, requestInit, {
         fetchCompat: true,
         request: normalizedRequest,
-        silent: options.context.silent,
         onUploadProgress: options.context.onUploadProgress,
         timeout: options.context.stream ? false : undefined,
       })

@@ -63,7 +63,7 @@ from services.model_provider.service import ModelProviderService
 _CREATE: Final = workspace_write_guards(RBACPermission.CREDENTIAL_CREATE, roles=ADMIN_ROLES)
 _MANAGE: Final = workspace_write_guards(RBACPermission.CREDENTIAL_MANAGE, roles=ADMIN_ROLES)
 _USE: Final = workspace_write_guards(RBACPermission.CREDENTIAL_USE, roles=ADMIN_ROLES)
-_PREFERENCES: Final = workspace_write_guards(RBACPermission.PLUGIN_PREFERENCES, roles=ADMIN_ROLES)
+_MODEL_CONFIG: Final = workspace_write_guards(RBACPermission.PLUGIN_MODEL_CONFIG, roles=ADMIN_ROLES)
 
 _PROVIDER_EXAMPLE: Final = "langgenius/openai/openai"
 _OLLAMA_EXAMPLE: Final = "langgenius/ollama/ollama"
@@ -619,7 +619,7 @@ class ProviderModelsApi(Resource):
                 input={"provider": _OLLAMA_EXAMPLE, "model": "llama3", "model_type": "llm"},
             ),
         ),
-        requirements=_PREFERENCES,
+        requirements=_MODEL_CONFIG,
         query=ModelRefQuery,
         returns=(HTTPStatus.OK, SimpleResultResponse, "Model deleted"),
     )
@@ -683,7 +683,7 @@ class DefaultModelApi(Resource):
                 input={"model_type": "llm", "provider": _PROVIDER_EXAMPLE, "model": "gpt-4o"},
             ),
         ),
-        requirements=_PREFERENCES,
+        requirements=_MODEL_CONFIG,
         body=DefaultModelPayload,
         returns=(HTTPStatus.OK, DefaultModelResponse, "Default model set"),
     )
@@ -828,7 +828,7 @@ class ModelSettingsApi(Resource):
                 },
             ),
         ),
-        requirements=_PREFERENCES,
+        requirements=_MODEL_CONFIG,
         body=ModelSettingsPutPayload,
         returns=(HTTPStatus.OK, ModelSettingsResponse, "Model settings"),
     )

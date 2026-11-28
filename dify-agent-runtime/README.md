@@ -174,6 +174,22 @@ than falling back to it.
   window at 64 MiB, so foreign archives produced with long-window settings
   are rejected as malformed.
 
+### Cold sandbox state
+
+The gateway uses `POST /v1/state/save` and `POST /v1/state/restore` to
+transfer a single tar+zstd stream with `workspace/` and `home/` roots.
+Both endpoints require `SHELLCTL_AUTH_TOKEN` and share the Home Snapshot
+operation gate, success trailers, and restore reply. `SHELLCTL_WORKSPACE_DIR`
+sets the Workspace path and defaults to `/workspace`. State transfers get
+at least 180 seconds, or `SHELLCTL_SNAPSHOT_TIMEOUT` when it is greater.
+
+State restore replaces the contents of both writable directories on a fresh
+runtime. Save excludes and restore preserves the default Home state path
+`.local/share/shellctl` and the configured state and runtime directories
+inside either writable root. This includes a state directory selected through
+`XDG_DATA_HOME` on Linux.
+The gateway discards the new Claim if extraction or verification fails.
+
 ## Dependencies
 
 - Go 1.26

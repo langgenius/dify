@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -16,11 +17,12 @@ import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { UpdateSettingDialog } from '../update-setting-dialog'
+import { canConfigureModelsAtom } from './atoms'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import { useTrialCredits } from './provider-added-card/use-trial-credits'
-import SystemModelSelector from './system-model-selector'
+import { SystemModelTrigger } from './system-model-selector/trigger'
 
 const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
 const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
@@ -37,7 +39,6 @@ type Props = Readonly<{
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
-  hideSystemModelSelectorProviderSettingsFooter?: boolean
 }>
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
@@ -53,12 +54,12 @@ const ModelProviderPage = ({
   onSearchTextChange,
   searchText,
   stickyToolbar,
-  hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation(['modelProvider'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
-  const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
+  const defaultModelQueryOptions = { enabled: canConfigureModels }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
     useDefaultModel(ModelTypeEnum.textGeneration, defaultModelQueryOptions)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } =
@@ -173,20 +174,15 @@ const ModelProviderPage = ({
       ? 'modelProvider.noneConfigured'
       : null
   const showWarning =
-    canSetPluginPreferences &&
-    !isLoadingModelProviders &&
-    !isDefaultModelLoading &&
-    !!warningTextKey
+    canConfigureModels && !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
   const systemModelSelector = (className: string) => {
-    if (!canSetPluginPreferences) return null
+    if (!canConfigureModels) return null
 
     return (
-      <SystemModelSelector
+      <SystemModelTrigger
         className={className}
         notConfigured={showWarning}
         isLoading={isDefaultModelLoading}
-        hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
-        onOpenMarketplace={onOpenMarketplace}
       />
     )
   }

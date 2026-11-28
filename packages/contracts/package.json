@@ -12,6 +12,10 @@
       "types": "./console.ts",
       "import": "./console.ts"
     },
+    "./sso": {
+      "types": "./sso.ts",
+      "import": "./sso.ts"
+    },
     "./api/*": {
       "types": "./generated/api/*.ts",
       "import": "./generated/api/*.ts"

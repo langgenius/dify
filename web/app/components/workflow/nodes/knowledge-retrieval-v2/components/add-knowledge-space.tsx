@@ -78,7 +78,14 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
 
   useInfiniteScroll(
     async () => {
-      if (!spacesQuery.hasNextPage || spacesQuery.isFetchingNextPage) return { list: [] }
+      // A failed page waits for its retry action; `reloadDeps` would otherwise request it again
+      // each time the failed fetch settles.
+      if (
+        !spacesQuery.hasNextPage ||
+        spacesQuery.isFetchingNextPage ||
+        spacesQuery.isFetchNextPageError
+      )
+        return { list: [] }
       await spacesQuery.fetchNextPage()
       return { list: [] }
     },

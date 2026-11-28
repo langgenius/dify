@@ -22,11 +22,13 @@ import {
 } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { trackCollabCommentSent } from '@/app/components/workflow/collaboration/analytics'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   editorAppIdAtom,
   editorCollaborationEnabledAtom,
 } from '@/app/components/workflow/editor-resource/state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../store'
@@ -134,6 +136,7 @@ const sendKeyOf = (mutation: Pick<Mutation, 'mutationId'>) => `local-${mutation.
 export function WorkflowCommentLayer() {
   const appId = useAtomValue(editorAppIdAtom)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const queryClient = useQueryClient()
   const popupBounds = useCommentPopupBounds()
   const workflowStore = useWorkflowStore()
@@ -209,6 +212,13 @@ export function WorkflowCommentLayer() {
   const createComment = useMutation(
     commentsApi.post.mutationOptions({
       onSuccess: (created, { params, body }) => {
+        trackCollabCommentSent({
+          workspace_id: workspaceId,
+          app_id: params.app_id,
+          thread_id: created.id,
+          comment_id: created.id,
+          comment_kind: 'thread',
+        })
         const createdAt = created.created_at ?? Math.floor(Date.now() / 1000)
         updateList(queryClient, params.app_id, (list) => [
           ...list,
@@ -470,6 +480,7 @@ function ShownThread({
 }) {
   const queryClient = useQueryClient()
   const workflowStore = useWorkflowStore()
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const params = { app_id: appId, comment_id: listItem.id }
   const detailQuery = useQuery(
     commentsApi.byCommentId.get.queryOptions({
@@ -507,15 +518,24 @@ function ShownThread({
           created_by_account: author,
         }
         const { params } = variables
+        const thread = queryClient
+          .getQueryData(listKeyOf(params.app_id))
+          ?.data.find((item) => item.id === params.comment_id)
+        const threadAuthor = (queryClient.getQueryData(detailKeyOf(params)) ?? thread)?.created_by
+        trackCollabCommentSent({
+          workspace_id: workspaceId,
+          app_id: params.app_id,
+          thread_id: params.comment_id,
+          comment_id: reply.id,
+          comment_kind: 'reply',
+          is_thread_author: threadAuthor === author.id,
+        })
         queryClient.setQueryData(detailKeyOf(params), (detail) => {
           if (detail)
             return detail.replies.some((item) => item.id === reply.id)
               ? detail
               : { ...detail, replies: [...detail.replies, saved] }
-          const comment = queryClient
-            .getQueryData(listKeyOf(params.app_id))
-            ?.data.find((item) => item.id === params.comment_id)
-          return comment && { ...comment, replies: [saved], mentions: [] }
+          return thread && { ...thread, replies: [saved], mentions: [] }
         })
       },
     }),

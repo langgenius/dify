@@ -67,7 +67,7 @@ function TabHeaderItem({
       disabled={tab.disabled}
       className={cn(
         'z-10 me-0.5 h-8 rounded-t-lg border-b-0 px-3 py-0 system-sm-medium text-text-tertiary',
-        'data-active:cursor-default data-active:border-transparent data-active:text-text-accent',
+        'data-active:cursor-default data-active:text-text-accent',
         'data-disabled:text-text-disabled data-disabled:opacity-60',
       )}
     >
@@ -266,19 +266,14 @@ function BlockSelectorPanels({
     <Tabs defaultValue={defaultTab} className="w-full min-w-0">
       <TabsList
         aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        className="relative w-full min-w-0 gap-0 bg-background-section-burn ps-1 pt-1"
+        className="w-full min-w-0 gap-0 bg-background-section-burn ps-1 pt-1"
       >
         {tabs.map((tab) => (
           <TabHeaderItem key={tab.key} tab={tab} fallbackDisabledTip={fallbackDisabledTip} />
         ))}
         <TabsIndicator
-          className="pointer-events-none absolute inset-s-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
-          style={{
-            top: 'var(--active-tab-top)',
-            translate: 'var(--active-tab-left)',
-            width: 'var(--active-tab-width)',
-            height: 'var(--active-tab-height)',
-          }}
+          // oxlint-disable-next-line shadcn/no-restyle -- The Block Tab design raises the active tab as a panel surface instead of an underline.
+          className="top-(--active-tab-top) h-(--active-tab-height) rounded-t-lg bg-components-panel-bg"
         />
       </TabsList>
       {tabs.map((tab) => (

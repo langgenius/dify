@@ -46,7 +46,10 @@ function SettingsPage({ readonly }: { readonly: boolean }) {
   return (
     <div>
       <FileScanSetting controller={fileScan} />
-      <button type="button" onClick={() => void fileScan.save().then(setResult)}>
+      <button
+        type="button"
+        onClick={() => void fileScan.save().then((result) => setResult(result.status))}
+      >
         page save
       </button>
       <button type="button" onClick={fileScan.reset}>
@@ -62,12 +65,12 @@ async function renderSetting({
   enabled = true,
   providers = [scanner()],
   readonly = false,
-  role = 'owner',
+  canManageScanners = true,
 }: {
   enabled?: boolean
   providers?: FileScanProviderResponse[]
   readonly?: boolean
-  role?: 'normal' | 'owner'
+  canManageScanners?: boolean
 } = {}) {
   const fake = installFakeApi({
     console: {
@@ -84,7 +87,9 @@ async function renderSetting({
   })
   onTestFinished(fake)
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
-    currentWorkspace: { role },
+    // The legacy role stays 'normal': only the credential permission decides who manages scanners.
+    currentWorkspace: { role: 'normal' },
+    workspacePermissionKeys: canManageScanners ? ['credential.manage'] : [],
     features: { enable_file_scan: enabled },
   })
   await render(
@@ -211,8 +216,8 @@ it('shows the reason the backend gives when the policy is rejected', async () =>
   await expect.element(saveResult()).toHaveTextContent('failed')
 })
 
-it('tells a member without admin rights to ask an admin when no scanner exists', async () => {
-  await renderSetting({ providers: [], role: 'normal' })
+it('tells a member who cannot manage scanners to ask an admin when no scanner exists', async () => {
+  await renderSetting({ providers: [], canManageScanners: false })
   await enableSwitch().click()
 
   await expect.element(page.getByText('fileScan.policy.noScanners')).toBeVisible()

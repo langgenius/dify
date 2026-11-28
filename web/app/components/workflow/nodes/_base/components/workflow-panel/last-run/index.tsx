@@ -12,7 +12,6 @@ import { editorResourceAtom } from '@/app/components/workflow/editor-resource/st
 import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { isNotFoundError } from '@/service/http-error'
 import { lastRunQueryOptions } from '@/service/workflow-queries'
 import NoData from './no-data'
 
@@ -65,11 +64,7 @@ const LastRun: FC<Props> = ({
     isOneStepRunSucceed ||
     isOneStepRunFailed ||
     (pageHasHide && hidePageOneStepRunFinished)
-  const {
-    data: lastRunResult,
-    isFetching,
-    error,
-  } = useQuery({
+  const { data: lastRunResult, isFetching } = useQuery({
     ...lastRunQueryOptions(resource, nodeId),
     enabled: canRunLastRun,
   })
@@ -80,7 +75,7 @@ const LastRun: FC<Props> = ({
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
-  const noLastRun = isNotFoundError(error)
+  const noLastRun = lastRunResult === null
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
   const lastRunNode = runResult as Partial<NodeTracing>
   const externalTrace =

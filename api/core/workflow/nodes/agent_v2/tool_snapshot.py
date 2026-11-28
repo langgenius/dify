@@ -23,7 +23,12 @@ def build_runtime_tool_definitions(
     tool_layers: WorkflowAgentToolLayers,
     include_shell: bool,
 ) -> tuple[AgentRuntimeToolDefinition, ...]:
-    """Return the non-secret, model-visible tool surface for evaluation."""
+    """Return the exact non-secret tool surface with prepared display names.
+
+    Native names and references remain unchanged. Evaluation descriptions use
+    declared English labels when available and otherwise the native name;
+    credentials and other runtime configuration stay outside these records.
+    """
 
     definitions: list[AgentRuntimeToolDefinition] = []
     if tool_layers.plugin_tools is not None:
@@ -33,7 +38,7 @@ def build_runtime_tool_definitions(
                 AgentRuntimeToolDefinition(
                     tool_ref=f"plugin:{tool.plugin_id}/{tool.provider}/{tool.tool_name}",
                     name=name,
-                    display_name=name,
+                    display_name=tool_layers.tool_labels.get(name, {}).get("en_US") or name,
                     description=tool.description or "",
                     input_schema=tool.parameters_json_schema or {},
                 )
@@ -45,7 +50,7 @@ def build_runtime_tool_definitions(
                 AgentRuntimeToolDefinition(
                     tool_ref=f"core:{tool.provider_type}/{tool.provider_id}/{tool.tool_name}",
                     name=name,
-                    display_name=name,
+                    display_name=tool_layers.tool_labels.get(name, {}).get("en_US") or name,
                     description=tool.description or "",
                     input_schema=tool.parameters_json_schema or {},
                 )

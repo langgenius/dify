@@ -2,7 +2,7 @@ import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.ge
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
-import { DuplicateAgentDialog } from '../duplicate-agent-dialog'
+import { DuplicateAgentDialog } from './agent-dialog-harness'
 
 const mutateRequest = vi.hoisted(() => vi.fn())
 
@@ -100,41 +100,5 @@ describe('DuplicateAgentDialog', () => {
         },
       }),
     )
-  })
-
-  it('starts a new form session when the agent identity changes', async () => {
-    const user = userEvent.setup()
-    const onOpenChange = vi.fn()
-    const secondAgent = createAgent({
-      description: 'Second description',
-      id: 'agent-2',
-      name: 'Second Agent',
-      role: 'Second Role',
-    })
-    const { rerender } = render(
-      <DuplicateAgentDialog agent={createAgent()} open onOpenChange={onOpenChange} />,
-    )
-
-    rerender(<DuplicateAgentDialog agent={secondAgent} open onOpenChange={onOpenChange} />)
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' })
-    expect(
-      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
-    ).toHaveValue('Second Agent copy')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
-
-    expect(mutateRequest).toHaveBeenCalledWith({
-      params: {
-        agent_id: 'agent-2',
-      },
-      body: {
-        name: 'Second Agent copy',
-        description: 'Second description',
-        role: 'Second Role',
-        icon_type: 'emoji',
-        icon: '🧸',
-        icon_background: '#F5F3FF',
-      },
-    })
   })
 })

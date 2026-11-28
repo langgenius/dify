@@ -7,11 +7,10 @@ import type {
   DefaultModel,
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-// oxlint-disable-next-line no-restricted-imports
-import type { IOnCompleted, IOnData, IOnError } from '@/service/base'
-// oxlint-disable-next-line no-restricted-imports
-import { ssePost } from '@/service/base'
+import type { IOnCompleted, IOnData, IOnError } from '@/service/event-stream'
+import { noop } from 'es-toolkit/function'
 import { consoleClient } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 
 export async function uploadSkillFile(
   file: File,
@@ -25,7 +24,6 @@ export async function uploadSkillFile(
     { body: { file } },
     {
       context: {
-        silent: true,
         ...(onProgress && {
           onUploadProgress: ({ loaded, total }: { loaded: number; total: number }) => {
             onProgress(Math.floor((loaded / total) * 100))
@@ -48,27 +46,23 @@ export async function fetchSkillFileBlob({
   skillId: string
   versionId: string | null
 }): Promise<Blob> {
-  return consoleClient.workspaces.current.skills.bySkillId.files.content.get(
-    {
-      params: { skill_id: skillId },
-      query: {
-        path,
-        ...(versionId && { version_id: versionId }),
-        ...(download && { download: '1' }),
-      },
+  return consoleClient.workspaces.current.skills.bySkillId.files.content.get({
+    params: { skill_id: skillId },
+    query: {
+      path,
+      ...(versionId && { version_id: versionId }),
+      ...(download && { download: '1' }),
     },
-    { context: { silent: true } },
-  )
+  })
 }
 
 export async function fetchSkillArchiveBlob(skillId: string): Promise<Blob> {
-  return consoleClient.workspaces.current.skills.bySkillId.export.get(
-    { params: { skill_id: skillId } },
-    { context: { silent: true } },
-  )
+  return consoleClient.workspaces.current.skills.bySkillId.export.get({
+    params: { skill_id: skillId },
+  })
 }
 
-export function sendSkillAssistMessage({
+export async function sendSkillAssistMessage({
   attachments,
   getAbortController,
   message,
@@ -96,32 +90,28 @@ export function sendSkillAssistMessage({
   targetPath?: string
 }) {
   let streamErrorHandled = false
-  return ssePost(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/assist/messages`,
+  streamEvents(
+    (options) =>
+      consoleClient.workspaces.current.skills.bySkillId.assist.messages.post(
+        {
+          params: { skill_id: skillId },
+          body: {
+            attachments,
+            history,
+            message,
+            model,
+            target_path: targetPath,
+          },
+        },
+        options,
+      ),
     {
-      body: {
-        attachments,
-        history,
-        message,
-        model,
-        target_path: targetPath,
-      },
-    },
-    {
-      silent: true,
+      onNotifyError: noop,
       getAbortController,
       onCompleted: (hasError, errorMessage) => {
         onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)
       },
-      onData: (chunk, isFirstMessage, moreInfo) => {
-        if (moreInfo.errorMessage) {
-          streamErrorHandled = true
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          return
-        }
-
-        onData?.(chunk, isFirstMessage, moreInfo)
-      },
+      onData,
       onError: (errorMessage, errorCode) => {
         streamErrorHandled = true
         onError?.(errorMessage, errorCode)

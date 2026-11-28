@@ -4,8 +4,9 @@ saved, using the deterministic fake backend client (no live stack)."""
 
 from __future__ import annotations
 
+import hashlib
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
@@ -28,13 +29,25 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import (
+    TOOL_CALL_LIMIT_METADATA_KEY,
+    TOOL_EXECUTION_FAILED_METADATA_KEY,
+    TOOL_VALIDATION_FAILED_METADATA_KEY,
+    AgentToolActivity,
+    ToolCallLimitMetadata,
+    ToolCallLimitSnapshot,
+    agent_tool_activity_from_metadata,
+)
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
     PartDeltaEvent,
+    PartStartEvent,
+    RetryPromptPart,
     TextPartDelta,
     ThinkingPartDelta,
     ToolCallPart,
+    ToolCallPartDelta,
     ToolReturnPart,
 )
 from sqlalchemy import event, select
@@ -42,9 +55,11 @@ from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendError,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
+    AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
@@ -73,6 +88,7 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from core.app.llm.model_access import ModelRuntimeProfile
+from core.tools.entities.common_entities import I18nObject, I18nObjectDict
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
@@ -102,6 +118,9 @@ def _thought_rows(session: Session) -> list[MessageAgentThought]:
 
 
 class _NoToolsBuilder:
+    def __init__(self, tool_labels: Mapping[str, I18nObjectDict] | None = None) -> None:
+        self.tool_labels = tool_labels or {}
+
     def build_layers(
         self,
         *,
@@ -113,18 +132,21 @@ class _NoToolsBuilder:
         knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
     ) -> WorkflowAgentToolLayers:
         del tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces
-        return WorkflowAgentToolLayers()
+        return WorkflowAgentToolLayers(tool_labels=self.tool_labels)
 
 
 class _FakeQueueManager(AppQueueManager):
-    def __init__(self) -> None:
+    def __init__(self, *, reject_when_stopped: bool = False) -> None:
         super().__init__(task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.WEB_APP)
         self.events: list[Any] = []
         self._stop_requested = False
+        self._reject_when_stopped = reject_when_stopped
 
     @override
     def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         del pub_from
+        if self._reject_when_stopped and self.is_stopped():
+            raise GenerateTaskStoppedError()
         self.events.append(event)
 
     @override
@@ -657,10 +679,11 @@ def _runner(
     store: _FakeSessionStore,
     *,
     text_delta_debounce_seconds: float = 0,
+    tool_labels: Mapping[str, I18nObjectDict] | None = None,
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
-            dify_tools_builder=_NoToolsBuilder(),
+            dify_tools_builder=_NoToolsBuilder(tool_labels),
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
@@ -951,7 +974,10 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(
+        _runner(client, store, tool_labels={"bash": I18nObject(en_US="Run Command", zh_Hans="运行命令").to_dict()}),
+        qm,
+    )
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -966,6 +992,8 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
     assert rows[1].tool == "bash"
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
+    assert rows[1].tool_labels["bash"]["en_US"] == "Run Command"
+    assert rows[1].tool_labels["bash"]["zh_Hans"] == "运行命令"
     assert len(rows) == 2
 
 
@@ -1027,6 +1055,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
+    assert rows[0].tool_labels == {"shell_run": {"en_US": "shell_run", "zh_Hans": "shell_run"}}
     assert rows[0].tool_input == '{"script": "npx skills find browser"}'
     assert rows[0].observation == ""
     assert rows[1].tool == ""
@@ -1667,3 +1696,652 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
     assert len(contexts) == 1
     assert contexts[0].inputs == inputs
     assert contexts[0].user_query == "hello"
+
+
+@pytest.fixture
+def activity_message(sqlite_session: Session) -> None:
+    """Persist the real owning message before recording or replaying its tool calls."""
+    sqlite_session.add(_message_record())
+    sqlite_session.commit()
+
+
+_ACTIVITY_RUN_ID = "activity-run"
+_ACTIVITY_TOOL_IDENTITY = '["plugin","langgenius/github/github","search"]'
+
+
+def _activity_call(call_id: str, *, index: int | None = None) -> PydanticAIStreamRunEvent:
+    part = ToolCallPart(tool_name="search", args={"query": call_id}, tool_call_id=call_id)
+    data = FunctionToolCallEvent(part=part) if index is None else PartStartEvent(index=index, part=part)
+    return PydanticAIStreamRunEvent(run_id=_ACTIVITY_RUN_ID, data=data)
+
+
+def _activity_result(
+    call_id: str,
+    *,
+    call_limit: ToolCallLimitMetadata | None = None,
+    execution_failed: bool = False,
+    validation_failed: bool = False,
+    observation: str = "found repositories",
+) -> PydanticAIStreamRunEvent:
+    metadata: dict[str, object] = {}
+    if call_limit is not None:
+        metadata[TOOL_CALL_LIMIT_METADATA_KEY] = call_limit.model_dump(mode="json")
+    if execution_failed:
+        metadata[TOOL_EXECUTION_FAILED_METADATA_KEY] = True
+    if validation_failed:
+        metadata[TOOL_VALIDATION_FAILED_METADATA_KEY] = True
+    return PydanticAIStreamRunEvent(
+        run_id=_ACTIVITY_RUN_ID,
+        data=FunctionToolResultEvent(
+            part=ToolReturnPart(tool_name="search", tool_call_id=call_id, content=observation, metadata=metadata)
+        ),
+    )
+
+
+def _deliver_activity_event(recorder: app_runner_module._AgentProcessRecorder, event: RunEvent) -> None:
+    internal = [
+        item for item in AgentBackendRunEventAdapter().adapt(event) if isinstance(item, AgentBackendStreamInternalEvent)
+    ]
+    assert len(internal) == 1
+    recorder.handle_stream_event(internal[0])
+
+
+def _activity_terminal(status: str, *reserved_ids: str) -> RunSucceededEvent | RunFailedEvent | RunCancelledEvent:
+    summaries: dict[str, ToolCallLimitSnapshot] = {}
+    if reserved_ids:
+        summaries[hashlib.sha256(_ACTIVITY_TOOL_IDENTITY.encode()).hexdigest()] = ToolCallLimitSnapshot(
+            tool_identity=_ACTIVITY_TOOL_IDENTITY,
+            limit=3,
+            used=len(reserved_ids),
+            call_ids={
+                hashlib.sha256(call_id.encode()).hexdigest(): index for index, call_id in enumerate(reserved_ids, 1)
+            },
+        )
+    if status == "succeeded":
+        return RunSucceededEvent(
+            run_id=_ACTIVITY_RUN_ID,
+            data=RunSucceededEventData(output={"text": "done"}, session_snapshot=SessionSnapshot()),
+            tool_call_limits=summaries,
+        )
+    if status == "failed":
+        return RunFailedEvent(
+            run_id=_ACTIVITY_RUN_ID,
+            data=RunFailedEventData(error="run failed", session_snapshot=SessionSnapshot()),
+            tool_call_limits=summaries,
+        )
+    assert status == "cancelled"
+    return RunCancelledEvent(
+        run_id=_ACTIVITY_RUN_ID,
+        data=RunCancelledEventData(reason="stopped", session_snapshot=SessionSnapshot()),
+        tool_call_limits=summaries,
+    )
+
+
+def _finish_activity(recorder: app_runner_module._AgentProcessRecorder, event: RunEvent) -> None:
+    terminals = [
+        item
+        for item in AgentBackendRunEventAdapter().adapt(event)
+        if isinstance(
+            item,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        )
+    ]
+    assert len(terminals) == 1
+    recorder.finish(terminals[0])
+
+
+def _stored_activity(row: MessageAgentThought) -> AgentToolActivity:
+    activity = agent_tool_activity_from_metadata(row.tool_meta)
+    assert activity is not None
+    return activity
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_tool_activity_persists_parallel_same_name_calls_without_reusing_an_active_index(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    # Native part indexes can be reused across calls; stable ids remain distinct.
+    _deliver_activity_event(recorder, _activity_call("first", index=0))
+    _deliver_activity_event(recorder, _activity_call("second", index=0))
+    _deliver_activity_event(recorder, _activity_call("first"))
+    _deliver_activity_event(recorder, _activity_call("second"))
+    successful = ToolCallLimitMetadata(
+        tool_identity=_ACTIVITY_TOOL_IDENTITY, limit=3, used=1, execution_status="executed"
+    )
+    failed = ToolCallLimitMetadata(tool_identity=_ACTIVITY_TOOL_IDENTITY, limit=3, used=2, execution_status="executed")
+    _deliver_activity_event(
+        recorder, _activity_result("second", call_limit=failed, execution_failed=True, observation="timeout")
+    )
+    _deliver_activity_event(recorder, _activity_result("first", call_limit=successful))
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    by_call = {_stored_activity(row).tool_call_id: row for row in rows}
+    assert by_call["first"].tool_input == '{"query": "first"}'
+    assert by_call["second"].tool_input == '{"query": "second"}'
+    assert _stored_activity(by_call["first"]).status == "succeeded"
+    assert _stored_activity(by_call["second"]).status == "failed"
+    assert _stored_activity(by_call["second"]).call_limit == failed
+    assert by_call["second"].observation == "timeout"
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_tool_activity_replay_is_idempotent_in_one_recorder_and_after_reconstruction(sqlite_session: Session) -> None:
+    queue = _FakeQueueManager()
+    labels = {"search": I18nObject(en_US="Search", zh_Hans="搜索").to_dict()}
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue, tool_labels=labels
+    )
+    labels["search"]["en_US"] = "Renamed"
+    call = _activity_call("first")
+    result = _activity_result("first")
+    _deliver_activity_event(recorder, call)
+    _deliver_activity_event(recorder, result)
+    original = _thought_rows(sqlite_session)[0]
+    assert original.tool_labels["search"]["en_US"] == "Search"
+    assert original.tool_labels["search"]["zh_Hans"] == "搜索"
+    event_count = len(queue.events)
+    for replay_event in (call, result):
+        _deliver_activity_event(recorder, replay_event)
+    assert len(_thought_rows(sqlite_session)) == 1
+    assert len(queue.events) == event_count
+    reconstructed = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue, tool_labels=labels
+    )
+    for replay_event in (call, result):
+        _deliver_activity_event(reconstructed, replay_event)
+    assert len(_thought_rows(sqlite_session)) == 1
+    assert len(queue.events) == event_count
+    _deliver_activity_event(reconstructed, _activity_call("new-call"))
+    _deliver_activity_event(reconstructed, _activity_result("new-call"))
+    rows = _thought_rows(sqlite_session)
+    assert [row.position for row in rows] == [1, 2]
+    assert rows[0].id == original.id
+    assert rows[0].tool_labels["search"]["en_US"] == "Search"
+    assert rows[1].tool_labels["search"]["en_US"] == "Renamed"
+    assert [_stored_activity(row).tool_call_id for row in rows] == ["first", "new-call"]
+
+
+@pytest.mark.parametrize("failure", ["denied", "execution", "validation"])
+@pytest.mark.usefixtures("activity_message")
+def test_tool_activity_records_runtime_failure_dispositions_independently_of_observation_text(
+    sqlite_session: Session, failure: str
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    _deliver_activity_event(recorder, _activity_call("call"))
+    if failure == "denied":
+        metadata = ToolCallLimitMetadata(
+            tool_identity=_ACTIVITY_TOOL_IDENTITY,
+            limit=3,
+            used=3,
+            execution_status="not_executed",
+            reason="call_limit_reached",
+        )
+        observation = "untrusted success-looking text"
+        result = _activity_result("call", call_limit=metadata, observation=observation)
+        expected_status = "not_executed"
+    elif failure == "execution":
+        metadata = ToolCallLimitMetadata(
+            tool_identity=_ACTIVITY_TOOL_IDENTITY, limit=3, used=1, execution_status="executed"
+        )
+        observation = "provider unavailable"
+        result = _activity_result("call", call_limit=metadata, execution_failed=True, observation=observation)
+        expected_status = "failed"
+    else:
+        metadata = None
+        observation = "invalid tool input"
+        result = _activity_result("call", validation_failed=True, observation=observation)
+        expected_status = "failed"
+    _deliver_activity_event(recorder, result)
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    activity = _stored_activity(rows[0])
+    assert activity.id == f"{_ACTIVITY_RUN_ID}:call"
+    assert activity.status == expected_status
+    assert activity.call_limit == metadata
+    assert rows[0].observation == observation
+
+
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed", "cancelled"])
+@pytest.mark.usefixtures("activity_message")
+def test_tool_activity_terminal_summary_marks_pending_reservations_without_regressing_completed_calls(
+    sqlite_session: Session, terminal_status: str
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    for call_id in ("complete", "pending", "not-reserved"):
+        _deliver_activity_event(recorder, _activity_call(call_id))
+    confirmed = ToolCallLimitMetadata(
+        tool_identity=_ACTIVITY_TOOL_IDENTITY, limit=3, used=1, execution_status="executed"
+    )
+    _deliver_activity_event(recorder, _activity_result("complete", call_limit=confirmed))
+    terminal = _activity_terminal(terminal_status, "complete", "pending")
+    _finish_activity(recorder, terminal)
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 3
+    activities = {_stored_activity(row).tool_call_id: _stored_activity(row) for row in rows}
+    assert activities["complete"].status == "succeeded"
+    assert activities["complete"].call_limit == confirmed
+    pending = activities["pending"]
+    assert pending.status == ("cancelled" if terminal_status == "cancelled" else "failed")
+    assert pending.call_limit is not None
+    assert pending.call_limit.execution_status == "unconfirmed"
+    assert pending.call_limit.limit == 3
+    assert pending.call_limit.used == 2
+    assert activities["not-reserved"].call_limit is None
+    event_count = len(queue.events)
+    _finish_activity(recorder, terminal)
+    assert len(queue.events) == event_count
+    assert len(_thought_rows(sqlite_session)) == 3
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_stopped_queue_does_not_prevent_all_pending_tool_summaries_from_being_committed(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    for call_id in ("first", "second"):
+        _deliver_activity_event(recorder, _activity_call(call_id))
+    before_stop_events = len(queue.events)
+    queue.request_stop()
+    _finish_activity(recorder, _activity_terminal("cancelled", "first", "second"))
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    activities = [_stored_activity(row) for row in rows]
+    assert all(activity.status == "cancelled" and activity.call_limit is not None for activity in activities)
+    assert [activity.call_limit.used for activity in activities if activity.call_limit is not None] == [1, 2]
+    assert len(queue.events) == before_stop_events
+
+
+class _ActivityEventClient(_RecordingFakeAgentBackendRunClient):
+    """In-memory Agent run port using the real public event and cancellation DTOs."""
+
+    def __init__(
+        self,
+        *,
+        terminal_status: str,
+        stop_queue: _FakeQueueManager | None = None,
+        cleanup_only: bool = False,
+        pending_text: bool = False,
+    ) -> None:
+        super().__init__(run_id=_ACTIVITY_RUN_ID)
+        self._terminal_status = terminal_status
+        self._stop_queue = stop_queue
+        self._cleanup_only = cleanup_only
+        self._pending_text = pending_text
+
+    @override
+    def stream_events(
+        self, run_id: str, *, after: str | None = None, should_stop: Callable[[], bool] | None = None
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        assert run_id == _ACTIVITY_RUN_ID
+        yield _activity_call("pending")
+        if self._pending_text:
+            yield PydanticAIStreamRunEvent(
+                run_id=run_id,
+                data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="pending answer")),
+                agent_message_delta="pending answer",
+            )
+        if self._stop_queue is not None:
+            self._stop_queue.request_stop()
+        if self._cleanup_only:
+            yield PydanticAIStreamRunEvent(
+                run_id=run_id, data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="late delta"))
+            )
+        else:
+            yield _activity_terminal(self._terminal_status, "pending")
+
+    @override
+    def cancel_run_and_wait(
+        self, run_id: str, request: CancelRunRequest | None = None, *, after: str | None = None
+    ) -> RunCancelledEvent:
+        self.cancel_after.append(after)
+        self.cancel_run(run_id, request)
+        terminal = _activity_terminal("cancelled", "pending")
+        assert isinstance(terminal, RunCancelledEvent)
+        return terminal
+
+
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed", "cancelled"])
+@pytest.mark.usefixtures("activity_message")
+def test_agent_app_consume_stream_persists_terminal_tool_summary_before_finishing_or_raising(
+    sqlite_session: Session, terminal_status: str
+) -> None:
+    queue = _FakeQueueManager()
+    client = _ActivityEventClient(terminal_status=terminal_status)
+    runner = _runner(client, _FakeSessionStore())
+    if terminal_status == "succeeded":
+        _run(runner, queue)
+    else:
+        with pytest.raises(AgentBackendError):
+            _run(runner, queue)
+    rows = [row for row in _thought_rows(sqlite_session) if row.tool]
+    assert len(rows) == 1
+    activity = _stored_activity(rows[0])
+    assert activity.status == ("cancelled" if terminal_status == "cancelled" else "failed")
+    assert activity.call_limit is not None
+    assert activity.call_limit.execution_status == "unconfirmed"
+    assert activity.call_limit.used == 1
+    assert activity.call_limit.limit == 3
+
+
+@pytest.mark.parametrize("cleanup_only", [False, True])
+@pytest.mark.usefixtures("activity_message")
+def test_agent_app_cancel_paths_persist_tool_summary_when_stop_arrives_after_call(
+    sqlite_session: Session, cleanup_only: bool
+) -> None:
+    queue = _FakeQueueManager()
+    client = _ActivityEventClient(terminal_status="cancelled", stop_queue=queue, cleanup_only=cleanup_only)
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(client, _FakeSessionStore()), queue)
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    activity = _stored_activity(rows[0])
+    assert activity.status == "cancelled"
+    assert activity.call_limit is not None
+    assert activity.call_limit.execution_status == "unconfirmed"
+
+    assert client.cancelled_run_ids == ([_ACTIVITY_RUN_ID] if cleanup_only else [])
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_stopped_debounced_message_flush_cannot_bypass_cancel_or_drop_reserved_tool_summary(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager(reject_when_stopped=True)
+    client = _ActivityEventClient(terminal_status="cancelled", stop_queue=queue, cleanup_only=True, pending_text=True)
+    store = _FakeSessionStore()
+    runner = _runner(client, store, text_delta_debounce_seconds=60)
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(runner, queue)
+    assert client.cancelled_run_ids == [_ACTIVITY_RUN_ID]
+    assert len(client.cancel_after) == 1
+    rows = _thought_rows(sqlite_session)
+    tool_rows = [row for row in rows if row.tool]
+    assert len(tool_rows) == 1
+    activity = _stored_activity(tool_rows[0])
+    assert activity.status == "cancelled"
+    assert activity.call_limit is not None
+    assert activity.call_limit.execution_status == "unconfirmed"
+    assert activity.call_limit.used == 1
+    assert activity.call_limit.limit == 3
+    assert [row.answer for row in rows if row.answer] == ["pending answer"]
+    assert len(store.saved) == 1
+
+
+@pytest.mark.parametrize("opaque_id", [" call ", "call:null", "工具调用-🔎"])
+@pytest.mark.usefixtures("activity_message")
+def test_native_opaque_call_ids_remain_distinct_and_match_raw_terminal_reservation_hashes(
+    sqlite_session: Session, opaque_id: str
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    for call_id in (opaque_id, "call"):
+        _deliver_activity_event(recorder, _activity_call(call_id))
+    _finish_activity(recorder, _activity_terminal("cancelled", opaque_id, "call"))
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    by_call = {_stored_activity(row).tool_call_id: _stored_activity(row) for row in rows}
+    assert set(by_call) == {opaque_id, "call"}
+    for ordinal, call_id in enumerate((opaque_id, "call"), 1):
+        activity = by_call[call_id]
+        assert activity.id == f"{_ACTIVITY_RUN_ID}:{call_id}"
+        assert activity.status == "cancelled"
+        assert activity.call_limit is not None
+        assert activity.call_limit.execution_status == "unconfirmed"
+        assert activity.call_limit.used == ordinal
+        assert activity.call_limit.limit == 3
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_orphan_rejected_tool_result_persists_authoritative_metadata_and_ignores_late_replay(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    quota = ToolCallLimitMetadata(
+        tool_identity=_ACTIVITY_TOOL_IDENTITY,
+        limit=3,
+        used=3,
+        execution_status="not_executed",
+        reason="call_limit_reached",
+    )
+    result = _activity_result("orphan", call_limit=quota, observation="success-looking provider response")
+    _deliver_activity_event(recorder, result)
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    row = rows[0]
+    activity = _stored_activity(row)
+    assert activity.id == f"{_ACTIVITY_RUN_ID}:orphan"
+    assert activity.tool_name == "search"
+    assert activity.status == "not_executed"
+    assert activity.call_limit == quota
+    assert row.tool_input == ""
+    assert row.observation == "success-looking provider response"
+    event_count = len(queue.events)
+    _deliver_activity_event(recorder, result)
+    _deliver_activity_event(recorder, _activity_call("orphan"))
+    replayed = _thought_rows(sqlite_session)
+    assert len(replayed) == 1
+    assert replayed[0].id == row.id
+    assert _stored_activity(replayed[0]) == activity
+    assert replayed[0].tool_input == ""
+    assert len(queue.events) == event_count
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_retry_prompt_without_tool_name_uses_stable_call_identity_and_records_failure_without_quota(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    _deliver_activity_event(recorder, _activity_call("retry"))
+    retry_part = RetryPromptPart(content="query must not be empty", tool_call_id="retry")
+    assert retry_part.tool_name is None
+    _deliver_activity_event(
+        recorder,
+        PydanticAIStreamRunEvent(run_id=_ACTIVITY_RUN_ID, data=FunctionToolResultEvent(part=retry_part)),
+    )
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    activity = _stored_activity(rows[0])
+    assert activity.id == f"{_ACTIVITY_RUN_ID}:retry"
+    assert activity.tool_name == "search"
+    assert activity.status == "failed"
+    assert activity.error == "query must not be empty"
+    assert activity.call_limit is None
+    assert rows[0].tool == "search"
+    assert rows[0].observation == "query must not be empty"
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_recorder_restores_a_running_identity_and_continues_positions_past_legacy_thoughts(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    original_recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    _deliver_activity_event(original_recorder, _activity_call("pending"))
+    original = _thought_rows(sqlite_session)[0]
+    legacy = MessageAgentThought(
+        message_id="msg-1",
+        position=7,
+        created_by_role=original.created_by_role,
+        created_by=original.created_by,
+        tool="legacy_search",
+        observation="old response",
+        tool_meta_str='{"provider":{"status":"succeeded"}}',
+    )
+    sqlite_session.add(legacy)
+    sqlite_session.commit()
+    restored = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    quota = ToolCallLimitMetadata(tool_identity=_ACTIVITY_TOOL_IDENTITY, limit=3, used=1, execution_status="executed")
+    _deliver_activity_event(restored, _activity_result("pending", call_limit=quota))
+    _deliver_activity_event(restored, _activity_call("next"))
+    rows = _thought_rows(sqlite_session)
+    assert [row.position for row in rows] == [1, 7, 8]
+    assert rows[0].id == original.id
+    assert _stored_activity(rows[0]).status == "succeeded"
+    assert _stored_activity(rows[0]).call_limit == quota
+    assert rows[1].id == legacy.id
+    assert rows[1].observation == "old response"
+    assert agent_tool_activity_from_metadata(rows[1].tool_meta) is None
+    assert _stored_activity(rows[2]).tool_call_id == "next"
+    assert _stored_activity(rows[2]).status == "running"
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_completed_part_start_and_idless_delta_replay_do_not_reopen_a_call_or_block_a_new_id(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    _deliver_activity_event(recorder, _activity_call("complete"))
+    _deliver_activity_event(recorder, _activity_result("complete"))
+    original = _thought_rows(sqlite_session)[0]
+    before = (original.id, original.position, original.tool_input, original.observation, original.tool_meta_str)
+    event_count = len(queue.events)
+    _deliver_activity_event(recorder, _activity_call("complete", index=0))
+    _deliver_activity_event(
+        recorder,
+        PydanticAIStreamRunEvent(
+            run_id=_ACTIVITY_RUN_ID,
+            data=PartDeltaEvent(index=0, delta=ToolCallPartDelta(args_delta='{"query":"replayed fragment"}')),
+        ),
+    )
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    actual = rows[0]
+    assert (actual.id, actual.position, actual.tool_input, actual.observation, actual.tool_meta_str) == before
+    assert len(queue.events) == event_count
+    _deliver_activity_event(recorder, _activity_call("new-call", index=0))
+    _deliver_activity_event(recorder, _activity_result("new-call"))
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    assert [row.position for row in rows] == [1, 2]
+    assert rows[0].id == original.id
+    assert rows[1].id != original.id
+    assert [_stored_activity(row).tool_call_id for row in rows] == ["complete", "new-call"]
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_recorder_rejects_a_different_native_run_before_sql_or_queue_changes(sqlite_session: Session) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    _deliver_activity_event(recorder, _activity_call("known"))
+    original = _thought_rows(sqlite_session)[0]
+    before = (original.id, original.tool_input, original.observation, original.tool_meta_str)
+    event_count = len(queue.events)
+    statements: list[str] = []
+
+    def record_statement(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        statements.append(statement)
+
+    foreign = PydanticAIStreamRunEvent(
+        run_id="foreign-run",
+        data=FunctionToolCallEvent(
+            part=ToolCallPart(tool_name="search", args={"query": "foreign"}, tool_call_id="known")
+        ),
+    )
+    engine = sqlite_session.get_bind()
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        with pytest.raises(ValueError, match="different native runs"):
+            _deliver_activity_event(recorder, foreign)
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
+    assert statements == []
+    assert len(queue.events) == event_count
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    actual = rows[0]
+    assert (actual.id, actual.tool_input, actual.observation, actual.tool_meta_str) == before
+
+
+@pytest.mark.usefixtures("activity_message")
+def test_preview_merges_thinking_and_replaces_fragmented_tool_input_on_the_same_thought(
+    sqlite_session: Session,
+) -> None:
+    queue = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+    )
+    for delta in ("I will ", "search."):
+        _deliver_activity_event(
+            recorder,
+            PydanticAIStreamRunEvent(
+                run_id=_ACTIVITY_RUN_ID,
+                data=PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta=delta)),
+            ),
+        )
+    for name_delta, args_delta in (("sea", '{"que'), ("rch", 'ry":"rag"}')):
+        _deliver_activity_event(
+            recorder,
+            PydanticAIStreamRunEvent(
+                run_id=_ACTIVITY_RUN_ID,
+                data=PartDeltaEvent(
+                    index=1,
+                    delta=ToolCallPartDelta(
+                        tool_name_delta=name_delta, args_delta=args_delta, tool_call_id="fragmented"
+                    ),
+                ),
+            ),
+        )
+    tool_thought_id = _thought_rows(sqlite_session)[1].id
+    _deliver_activity_event(
+        recorder,
+        PydanticAIStreamRunEvent(
+            run_id=_ACTIVITY_RUN_ID,
+            data=FunctionToolCallEvent(
+                part=ToolCallPart(tool_name="search", args={"query": "rag"}, tool_call_id="fragmented")
+            ),
+        ),
+    )
+    _deliver_activity_event(recorder, _activity_result("fragmented"))
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    assert rows[0].thought == "I will search."
+    assert rows[0].tool == ""
+    assert rows[1].id == tool_thought_id
+    assert rows[1].tool == "search"
+    assert json.loads(rows[1].tool_input or "{}") == {"query": "rag"}
+    assert rows[1].observation == "found repositories"
+    activity = _stored_activity(rows[1])
+    assert activity.id == f"{_ACTIVITY_RUN_ID}:fragmented"
+    assert activity.tool_name == "search"
+    assert activity.status == "succeeded"
+    assert activity.call_limit is None

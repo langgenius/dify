@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ComponentProps, RefObject } from 'react'
 import {
   AlertDialog,
@@ -16,6 +17,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
@@ -33,10 +35,11 @@ import { TagSelector } from '@/features/tag-management/tag-selector'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
-import { DuplicateAgentDialog } from './duplicate-agent-dialog'
-import { EditAgentDialog } from './edit-agent-dialog'
+import { DuplicateAgentDialogContent } from './duplicate-agent-dialog'
+import { EditAgentDialogContent } from './edit-agent-dialog'
 import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 type AgentRosterListFooterState =
@@ -222,10 +225,14 @@ function AgentCardActionMenuItems({
 
 function AgentRosterItem({
   agent,
+  duplicateDialog,
+  editDialog,
   onDelete,
   onOpenTagManagement,
 }: {
   agent: AgentAppPartial
+  duplicateDialog: DialogHandle<AgentAppPartial>
+  editDialog: DialogHandle<AgentAppPartial>
   onDelete: (item: HTMLLIElement | null) => void
   onOpenTagManagement: () => void
 }) {
@@ -236,7 +243,6 @@ function AgentRosterItem({
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
-  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
   const isPreviewOnly = agent.permission_keys?.length === 1 && capabilities.canPreview
@@ -265,20 +271,7 @@ function AgentRosterItem({
     .filter(Boolean)
     .join(' ')
 
-  const handleEditOpen = () => {
-    setActiveDialog('edit')
-  }
-
-  const handleDuplicateOpen = () => {
-    setActiveDialog('duplicate')
-  }
-
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open) setActiveDialog(null)
-  }
-
   const handleExport = () => {
-    if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
       toast.error(tApp(($) => $.exportFailed))
       return
@@ -372,8 +365,8 @@ function AgentRosterItem({
             <AgentCardActionMenuItems
               kind="context"
               isExporting={isExporting}
-              onEdit={capabilities.canEdit ? handleEditOpen : undefined}
-              onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
+              onEdit={capabilities.canEdit ? () => editDialog.openWithPayload(agent) : undefined}
+              onDuplicate={canDuplicate ? () => duplicateDialog.openWithPayload(agent) : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
               onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
             />
@@ -402,8 +395,12 @@ function AgentRosterItem({
                 <AgentCardActionMenuItems
                   kind="menu"
                   isExporting={isExporting}
-                  onEdit={capabilities.canEdit ? handleEditOpen : undefined}
-                  onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
+                  onEdit={
+                    capabilities.canEdit ? () => editDialog.openWithPayload(agent) : undefined
+                  }
+                  onDuplicate={
+                    canDuplicate ? () => duplicateDialog.openWithPayload(agent) : undefined
+                  }
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
                   onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
                 />
@@ -462,20 +459,6 @@ function AgentRosterItem({
           )}
         </div>
       </div>
-      {capabilities.canEdit && (
-        <EditAgentDialog
-          agent={agent}
-          open={activeDialog === 'edit'}
-          onOpenChange={handleDialogOpenChange}
-        />
-      )}
-      {canDuplicate && (
-        <DuplicateAgentDialog
-          agent={agent}
-          open={activeDialog === 'duplicate'}
-          onOpenChange={handleDialogOpenChange}
-        />
-      )}
     </li>
   )
 }
@@ -487,11 +470,18 @@ export function AgentRosterList({
 }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
+  const [editDialog] = useState(() => createDialogHandle<AgentAppPartial>())
+  const [duplicateDialog] = useState(() => createDialogHandle<AgentAppPartial>())
+  const agentUpdate = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
+  const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const regionRef = useRef<HTMLDivElement>(null)
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   return (
@@ -543,6 +533,8 @@ export function AgentRosterList({
               <AgentRosterItem
                 key={agent.id}
                 agent={agent}
+                duplicateDialog={duplicateDialog}
+                editDialog={editDialog}
                 onOpenTagManagement={onOpenTagManagement}
                 onDelete={(item) => {
                   deleteDialog.openWithPayload({
@@ -577,6 +569,60 @@ export function AgentRosterList({
           </div>
         )}
       </div>
+      <Dialog
+        handle={editDialog}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && agentUpdate.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) agentUpdate.reset()
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <EditAgentDialogContent
+              agent={payload}
+              pending={agentUpdate.isPending}
+              onSubmit={(body) => {
+                if (agentUpdate.isPending) return
+                agentUpdate.mutate(
+                  { params: { agent_id: payload.id }, body },
+                  { onSuccess: () => editDialog.close() },
+                )
+              }}
+            />
+          )
+        }
+      </Dialog>
+      <Dialog
+        handle={duplicateDialog}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && agentCopy.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) agentCopy.reset()
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <DuplicateAgentDialogContent
+              agent={payload}
+              pending={agentCopy.isPending}
+              onSubmit={(body) => {
+                if (agentCopy.isPending) return
+                agentCopy.mutate(
+                  { params: { agent_id: payload.id }, body },
+                  { onSuccess: () => duplicateDialog.close() },
+                )
+              }}
+            />
+          )
+        }
+      </Dialog>
       <AlertDialog
         handle={deleteDialog}
         onOpenChange={(open, details) => {
@@ -602,7 +648,14 @@ export function AgentRosterList({
               <DeleteAgentForm
                 agentName={payload.name}
                 isPending={deletion.isPending}
-                error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+                error={
+                  deletion.isError
+                    ? describeRequestError(
+                        deletion.error,
+                        t(($) => $['roster.deleteFailed']),
+                      )
+                    : undefined
+                }
                 onSubmit={() => {
                   if (deletion.isPending) return
                   deletion.mutate(

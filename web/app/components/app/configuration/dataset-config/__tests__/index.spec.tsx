@@ -223,7 +223,6 @@ describe('DatasetConfig', () => {
         datasetId: 'dataset-1',
         body: expect.objectContaining({ name: 'Updated dataset' }),
       }),
-      { silent: true },
     )
   })
 

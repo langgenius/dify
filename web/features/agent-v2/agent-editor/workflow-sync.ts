@@ -3,7 +3,7 @@ import type {
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
@@ -44,7 +44,6 @@ export function useWorkflowInlineAgentConfigureSync({
   onDraftSaved?: (composerState: WorkflowAgentComposerResponse) => void
   enabled: boolean
 }) {
-  const queryClient = useQueryClient()
   const store = useJotaiStore()
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
@@ -61,13 +60,13 @@ export function useWorkflowInlineAgentConfigureSync({
 
   const { mutateAsync: replaceAppComposer } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: replaceSnippetComposer } = useMutation(
     consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
       {
-        context: { silent: true },
+        meta: { errorToast: false },
       },
     ),
   )
@@ -123,33 +122,6 @@ export function useWorkflowInlineAgentConfigureSync({
               body,
             })
 
-      if (resource.kind === 'snippet') {
-        queryClient.setQueryData(
-          consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-            {
-              input: {
-                params: {
-                  snippet_id: resource.snippetId,
-                  node_id: nodeId,
-                },
-              },
-            },
-          ),
-          composerState,
-        )
-      } else {
-        queryClient.setQueryData(
-          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-            input: {
-              params: {
-                app_id: resource.appId,
-                node_id: nodeId,
-              },
-            },
-          }),
-          composerState,
-        )
-      }
       setSavedDraft(agentSoulConfigToFormState(composerState.agent_soul))
       lastAutosavedDraftKeyRef.current = savedDraftKey
       onDraftSavedRef.current?.(composerState)

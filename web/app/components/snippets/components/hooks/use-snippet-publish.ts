@@ -1,12 +1,10 @@
-import type { Snippet as SnippetContract } from '@/types/snippet'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { workflowVersionHistoryKey } from '@/service/workflow-queries'
 
 type UseSnippetPublishOptions = {
   snippetId: string
@@ -15,18 +13,10 @@ type UseSnippetPublishOptions = {
 export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const { t } = useTranslation(['snippet'])
   const workflowStore = useWorkflowStore()
-  const queryClient = useQueryClient()
   const { mutateAsync: publishSnippet, isPending: isPublishing } = useMutation(
     consoleQuery.snippets.bySnippetId.workflows.publish.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
-  )
-  const resetWorkflowVersionHistory = useCallback(
-    () =>
-      queryClient.resetQueries({
-        queryKey: workflowVersionHistoryKey({ kind: 'snippet', snippetId }),
-      }),
-    [queryClient, snippetId],
   )
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
 
@@ -39,32 +29,14 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
         params: { snippet_id: snippetId },
         body: {},
       })
-      queryClient.setQueryData<SnippetContract | undefined>(
-        consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.key({
-          type: 'query',
-          input: {
-            params: { snippet_id: snippetId },
-          },
-        }),
-        (old) => (old ? { ...old, is_published: true } : old),
-      )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-      resetWorkflowVersionHistory()
       toast.success(t(($) => $.publishSuccess))
       return true
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t(($) => $.publishFailed))
       return false
     }
-  }, [
-    handleCheckBeforePublish,
-    publishSnippet,
-    queryClient,
-    resetWorkflowVersionHistory,
-    snippetId,
-    t,
-    workflowStore,
-  ])
+  }, [handleCheckBeforePublish, publishSnippet, snippetId, t, workflowStore])
 
   return {
     handlePublish,

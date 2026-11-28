@@ -12,6 +12,7 @@ from typing import cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from dify_agent.protocol.tool_call_limits import AGENT_TOOL_ACTIVITY_META_KEY, AgentToolActivity, ToolCallLimitMetadata
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
 from sqlalchemy import Engine as _easy_ui_based_generate_task_pipeline_Engine
@@ -1226,7 +1227,10 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 MessageCompleted(message_id="msg", conversation_id="conv")
             ]
 
-        def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
+        @pytest.mark.parametrize("metadata_kind", ["legacy", "quota", "invalid"])
+        def test_agent_thought_to_stream_response_returns_payload(
+            self, monkeypatch: pytest.MonkeyPatch, metadata_kind: str
+        ) -> None:
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
@@ -1239,6 +1243,29 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             )
 
             agent_thought = _agent_thought()
+            activity = AgentToolActivity(
+                id="run:call",
+                run_id="run",
+                tool_call_id="call",
+                tool_name="search",
+                status="not_executed",
+                call_limit=ToolCallLimitMetadata(
+                    tool_identity="operation",
+                    limit=3,
+                    used=3,
+                    execution_status="not_executed",
+                    reason="call_limit_reached",
+                ),
+            )
+            if metadata_kind == "quota":
+                agent_thought.tool_meta_str = json.dumps(
+                    {
+                        AGENT_TOOL_ACTIVITY_META_KEY: activity.model_dump(mode="json"),
+                        "legacy_config": {"credential": "must-not-be-exposed"},
+                    }
+                )
+            elif metadata_kind == "invalid":
+                agent_thought.tool_meta_str = json.dumps({AGENT_TOOL_ACTIVITY_META_KEY: {"status": "success"}})
 
             class _Session:
                 def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
@@ -1263,6 +1290,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert response is not None
             assert response.id == "thought"
             assert response.thought == "t"
+            assert response.tool_activity == (activity if metadata_kind == "quota" else None)
+            serialized = response.model_dump(mode="json")
+            assert "must-not-be-exposed" not in json.dumps(serialized)
+            if metadata_kind != "quota":
+                assert "tool_activity" not in serialized
 
         def test_agent_thought_to_stream_response_normalizes_null_display_fields(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)

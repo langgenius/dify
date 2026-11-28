@@ -6,6 +6,7 @@ quota API; this module only owns the reservation lifecycle and the metadata
 contract that the ledger records for each event.
 """
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
@@ -15,6 +16,9 @@ from uuid import uuid4
 from core.credit_usage import normalize_credit_usage_app_type, normalize_credit_usage_created_by
 from core.errors.error import InsufficientHostedCreditsError
 from models.enums import ProviderQuotaType
+from services.errors.billing import BillingUpstreamUnavailableError
+
+logger = logging.getLogger(__name__)
 
 FEATURE_KEY_CREDIT_POOL = "credit_pool"
 CREDIT_USAGE_CREATED_BY_META_KEY = "created_by"
@@ -138,6 +142,15 @@ class CreditPoolService:
             quota_used=balance.usage,
             exhausted_at=balance.exhausted_at,
         )
+
+    @classmethod
+    def get_pool_if_available(cls, *, tenant_id: str, pool_type: str) -> CreditPoolBalance | None:
+        """Read a balance for provider discovery or display; an outage is neither zero nor unlimited."""
+        try:
+            return cls.get_pool(tenant_id=tenant_id, pool_type=pool_type)
+        except BillingUpstreamUnavailableError as exc:
+            logger.warning("Billing balance unavailable for workspace %s, pool %s: %s", tenant_id, pool_type, exc)
+            return None
 
     @classmethod
     def reserve_credits(

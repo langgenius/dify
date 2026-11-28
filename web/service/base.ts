@@ -1,61 +1,21 @@
-import type { FetchOptionType } from './fetch'
 import type { RequestGuard } from './request-guard'
 import type { OnUploadProgress } from './xhr-fetch'
-import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
-import type { VisionFile } from '@/types/app'
-import type {
-  DataSourceNodeCompletedResponse,
-  DataSourceNodeErrorResponse,
-  DataSourceNodeProcessingResponse,
-} from '@/types/pipeline'
-import type {
-  AgentLogResponse,
-  HumanInputFormFilledResponse,
-  HumanInputFormTimeoutResponse,
-  HumanInputRequiredResponse,
-  IterationFinishedResponse,
-  IterationNextResponse,
-  IterationStartedResponse,
-  LoopFinishedResponse,
-  LoopNextResponse,
-  LoopStartedResponse,
-  NodeFinishedResponse,
-  NodeStartedResponse,
-  ParallelBranchFinishedResponse,
-  ParallelBranchStartedResponse,
-  ReasoningChunkResponse,
-  TextChunkResponse,
-  TextReplaceResponse,
-  WorkflowFinishedResponse,
-  WorkflowPausedResponse,
-  WorkflowStartedResponse,
-} from '@/types/workflow'
 import { ORPCError } from '@orpc/client'
-import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
-import { toast } from '@/app/notifications'
-import {
-  API_PREFIX,
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-  PASSPORT_HEADER_NAME,
-  PUBLIC_API_PREFIX,
-  WEB_APP_SHARE_CODE_HEADER_NAME,
-} from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
-import { base, ContentType, getBaseOptions } from './fetch'
-import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
+import { base } from './fetch'
+import { markErrorHandled } from './handled-error'
+import { isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { captureRequestGuard } from './request-guard'
-import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
+import { resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
   clearWebAppPassport,
   completeWebAppAuthorizationRecovery,
-  getWebAppPassport,
 } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -102,166 +62,12 @@ const handleWebAppAuthorizationError = (
   return recoverEnvironmentWebAppAuthorization(error, url)
 }
 
-const isAbortError = (error: unknown) => {
-  if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
-
-  return (
-    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
-  )
-}
-
-const shouldNotifyStreamError = (error: unknown) =>
-  !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
-
-export type IOnDataMoreInfo = {
-  event?: string
-  conversationId?: string
-  taskId?: string
-  messageId: string
-  errorMessage?: string
-  errorCode?: string
-}
-
-export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
-type IOnThought = (though: ThoughtItem) => void
-type IOnFile = (file: VisionFile) => void
-type IOnMessageEnd = (messageEnd: MessageEnd) => void
-export type IOnMessageReplace = (messageReplace: MessageReplace) => void
-export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
-export type IOnError = (msg: string, code?: string, identity?: IOnDataMoreInfo) => void
-
-const reportStreamResponseError = async (
-  response: Response,
-  onError: IOnError | undefined,
-  onNotifyError?: IOnError,
-) => {
-  let errorMessage = 'Server Error'
-  let errorCode: string | undefined
-  try {
-    const data: unknown = await response.json()
-    if (typeof data === 'object' && data !== null && 'message' in data) {
-      const message = data.message
-      if (typeof message === 'string' && message) errorMessage = message
-    }
-    if (typeof data === 'object' && data !== null && 'code' in data) {
-      const code = data.code
-      if (typeof code === 'string' && code) errorCode = code
-    }
-  } catch {}
-
-  if (errorCode) {
-    onError?.(errorMessage, errorCode)
-    onNotifyError?.(errorMessage, errorCode)
-  } else {
-    onError?.(errorMessage)
-    onNotifyError?.(errorMessage)
-  }
-}
-
-const handleGuardedStreamResponseError = async (
-  response: Response,
-  guard: RequestGuard | undefined,
-  onError: IOnError | undefined,
-  onCompleted: IOnCompleted | undefined,
-) => {
-  if (!guard) return false
-  const data = await response
-    .clone()
-    .json()
-    .catch(() => undefined)
-  if (!guard.handleError(response.status, data, response) && canRecoverWebAppAuthorization(guard))
-    return false
-  const message =
-    typeof data?.message === 'string' ? data.message : 'The request is no longer active.'
-  if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
-  else onCompleted?.(true, message)
-  return true
-}
-
-const handlePublicStreamResponseError = async (
-  response: Response,
-  onError: IOnError | undefined,
-  onNotifyError: IOnError | undefined,
-  silent: boolean | undefined,
-  requestGuard: RequestGuard | undefined,
-  onCompleted: IOnCompleted | undefined,
-) => {
-  let data: { code?: string; message?: string; reason?: unknown } | undefined
-  try {
-    data = (await response.clone().json()) as typeof data
-  } catch {}
-
-  if (data && requestGuard?.handleError(response.status, data, response)) {
-    const message = data.message || 'Server Error'
-    if (onError) onError(message, data.code)
-    else onCompleted?.(true, message)
-    return
-  }
-  if (!canRecoverWebAppAuthorization(requestGuard)) {
-    const message = data?.message || 'Server Error'
-    if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
-    else onCompleted?.(true, message)
-    return
-  }
-  if (data) {
-    if (handleWebAppAuthorizationError(data)) return
-    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
-      requiredWebSSOLogin()
-      return
-    }
-  }
-
-  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
-  else if (!silent)
-    await reportStreamResponseError(response, onError, (message) => toast.error(message))
-  else await reportStreamResponseError(response, onError)
-}
-
-type UnhandledEventError = {
-  conversationId?: string
-  errorCode?: string
-  errorMessage: string
-  messageId?: string
-}
-type IOnUnhandledEvent = (event: Record<string, unknown>) => UnhandledEventError | void
-
-type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
-type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
-type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
-type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
-type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
-type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
-type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
-type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
-type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
-type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
-type IOnTextChunk = (textChunk: TextChunkResponse) => void
-type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
-type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-type IOnTTSEnd = (messageId: string, audioStr: string) => void
-type IOnTextReplace = (textReplace: TextReplaceResponse) => void
-type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
-type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
-type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
-type IOnAgentLog = (agentLog: AgentLogResponse) => void
-
-type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
-type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
-type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
-type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
-type IOnDataSourceNodeProcessing = (
-  dataSourceNodeProcessing: DataSourceNodeProcessingResponse,
-) => void
-type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
-type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
-
 export type IOtherOptions = {
   isPublicAPI?: boolean
   isMarketplaceAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
-  silent?: boolean
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
@@ -274,46 +80,7 @@ export type IOtherOptions = {
    */
   timeout?: false
 
-  onData?: IOnData // for stream
-  onReasoning?: IOnReasoning
-  onThought?: IOnThought
-  onFile?: IOnFile
-  onMessageEnd?: IOnMessageEnd
-  onMessageReplace?: IOnMessageReplace
-  onError?: IOnError
-  /** Replaces the default global error notification for this request. */
-  onNotifyError?: IOnError
-  onUnhandledEvent?: IOnUnhandledEvent
-  onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
-
-  onWorkflowStarted?: IOnWorkflowStarted
-  onWorkflowFinished?: IOnWorkflowFinished
-  onNodeStarted?: IOnNodeStarted
-  onNodeFinished?: IOnNodeFinished
-  onIterationStart?: IOnIterationStarted
-  onIterationNext?: IOnIterationNext
-  onIterationFinish?: IOnIterationFinished
-  onNodeRetry?: IOnNodeRetry
-  onParallelBranchStarted?: IOnParallelBranchStarted
-  onParallelBranchFinished?: IOnParallelBranchFinished
-  onTextChunk?: IOnTextChunk
-  onTTSChunk?: IOnTTSChunk
-  onTTSEnd?: IOnTTSEnd
-  onTextReplace?: IOnTextReplace
-  onLoopStart?: IOnLoopStarted
-  onLoopNext?: IOnLoopNext
-  onLoopFinish?: IOnLoopFinished
-  onAgentLog?: IOnAgentLog
-  onHumanInputRequired?: IOHumanInputRequired
-  onHumanInputFormFilled?: IOnHumanInputFormFilled
-  onHumanInputFormTimeout?: IOnHumanInputFormTimeout
-  onWorkflowPaused?: IOWorkflowPaused
-
-  // Pipeline data source node run
-  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
-  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
-  onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
 const discardRegistrationStateForConsoleAuthBoundary = ({
@@ -356,14 +123,6 @@ export const buildSigninUrlWithRedirect = (): string => {
   return `${loginUrl}?redirect_url=${encodeURIComponent(currentTarget.href)}`
 }
 
-function unicodeToChar(text: string) {
-  if (!text) return ''
-
-  return text.replace(/\\u([0-9a-f]{4})/gi, (_match, p1) => {
-    return String.fromCharCode(Number.parseInt(p1, 16))
-  })
-}
-
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
 
 export function isWebAppSigninPath(pathname: string) {
@@ -402,498 +161,14 @@ function requiredWebSSOLogin(message?: string, code?: number) {
   )
 }
 
-function formatURL(url: string, isPublicAPI: boolean) {
-  let urlPrefix = API_PREFIX
-  if (isPublicAPI) urlPrefix = PUBLIC_API_PREFIX
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  const urlWithoutProtocol = isPublicAPI
-    ? getWebAppPublicApiPath(resolveWebAppAddress(), url)
-    : url.startsWith('/')
-      ? url
-      : `/${url}`
-  return `${urlPrefix}${urlWithoutProtocol}`
-}
-
-export const handleStream = (
-  response: Response,
-  onData: IOnData,
-  onCompleted?: IOnCompleted,
-  onThought?: IOnThought,
-  onMessageEnd?: IOnMessageEnd,
-  onMessageReplace?: IOnMessageReplace,
-  onFile?: IOnFile,
-  onWorkflowStarted?: IOnWorkflowStarted,
-  onWorkflowFinished?: IOnWorkflowFinished,
-  onNodeStarted?: IOnNodeStarted,
-  onNodeFinished?: IOnNodeFinished,
-  onIterationStart?: IOnIterationStarted,
-  onIterationNext?: IOnIterationNext,
-  onIterationFinish?: IOnIterationFinished,
-  onLoopStart?: IOnLoopStarted,
-  onLoopNext?: IOnLoopNext,
-  onLoopFinish?: IOnLoopFinished,
-  onNodeRetry?: IOnNodeRetry,
-  onParallelBranchStarted?: IOnParallelBranchStarted,
-  onParallelBranchFinished?: IOnParallelBranchFinished,
-  onTextChunk?: IOnTextChunk,
-  onTTSChunk?: IOnTTSChunk,
-  onTTSEnd?: IOnTTSEnd,
-  onTextReplace?: IOnTextReplace,
-  onAgentLog?: IOnAgentLog,
-  onHumanInputRequired?: IOHumanInputRequired,
-  onHumanInputFormFilled?: IOnHumanInputFormFilled,
-  onHumanInputFormTimeout?: IOnHumanInputFormTimeout,
-  onWorkflowPaused?: IOWorkflowPaused,
-  onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
-  onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
-  onDataSourceNodeError?: IOnDataSourceNodeError,
-  onReasoning?: IOnReasoning,
-  onUnhandledEvent?: IOnUnhandledEvent,
-) => {
-  if (!response.ok) throw new Error('Network response was not ok')
-
-  const reader = response.body?.getReader()
-  const decoder = new TextDecoder('utf-8')
-  let buffer = ''
-  let bufferObj: Record<string, any>
-  let isFirstMessage = true
-  const completeWithError = (errorMessage: string, errorCode?: string) => {
-    onData('', false, {
-      conversationId: bufferObj?.conversation_id,
-      messageId: bufferObj?.message_id ?? '',
-      errorMessage,
-      errorCode,
-    })
-    onCompleted?.(true, errorMessage)
-  }
-
-  function read() {
-    let hasError = false
-    reader?.read().then(
-      (result: ReadableStreamReadResult<Uint8Array>) => {
-        if (result.done) {
-          onCompleted?.()
-          return
-        }
-        buffer += decoder.decode(result.value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        try {
-          lines.forEach((message) => {
-            if (hasError) return
-            if (message.startsWith('data: ')) {
-              // check if it starts with data:
-              try {
-                bufferObj = JSON.parse(message.substring(6)) as Record<string, any> // remove data: and parse as json
-              } catch {
-                // mute handle message cut off
-                onData('', isFirstMessage, {
-                  conversationId: bufferObj?.conversation_id,
-                  messageId: bufferObj?.message_id,
-                })
-                return
-              }
-              if (!bufferObj || typeof bufferObj !== 'object') {
-                onData('', isFirstMessage, {
-                  conversationId: undefined,
-                  messageId: '',
-                  errorMessage: 'Invalid response data',
-                  errorCode: 'invalid_data',
-                })
-                hasError = true
-                onCompleted?.(true, 'Invalid response data')
-                return
-              }
-              const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
-              if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
-                onData('', false, {
-                  conversationId: bufferObj.conversation_id,
-                  messageId: bufferObj.message_id ?? '',
-                  errorMessage: bufferObj?.message,
-                  errorCode: bufferObj?.code,
-                })
-                hasError = true
-                onCompleted?.(true, bufferObj?.message)
-                return
-              }
-              if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
-                // can not use format here. Because message is splitted.
-                onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
-                  event: bufferObj.event,
-                  conversationId: bufferObj.conversation_id,
-                  taskId: bufferObj.task_id,
-                  messageId: bufferObj.id,
-                })
-                isFirstMessage = false
-              } else if (bufferObj.event === 'agent_thought') {
-                onThought?.(bufferObj as ThoughtItem)
-              } else if (bufferObj.event === 'message_file') {
-                onFile?.(bufferObj as VisionFile)
-              } else if (bufferObj.event === 'message_end') {
-                onMessageEnd?.(bufferObj as MessageEnd)
-              } else if (bufferObj.event === 'message_replace') {
-                onMessageReplace?.(bufferObj as MessageReplace)
-              } else if (bufferObj.event === 'workflow_started') {
-                onWorkflowStarted?.(bufferObj as WorkflowStartedResponse)
-              } else if (bufferObj.event === 'workflow_finished') {
-                onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
-              } else if (bufferObj.event === 'node_started') {
-                onNodeStarted?.(bufferObj as NodeStartedResponse)
-              } else if (bufferObj.event === 'node_finished') {
-                onNodeFinished?.(bufferObj as NodeFinishedResponse)
-              } else if (bufferObj.event === 'iteration_started') {
-                onIterationStart?.(bufferObj as IterationStartedResponse)
-              } else if (bufferObj.event === 'iteration_next') {
-                onIterationNext?.(bufferObj as IterationNextResponse)
-              } else if (bufferObj.event === 'iteration_completed') {
-                onIterationFinish?.(bufferObj as IterationFinishedResponse)
-              } else if (bufferObj.event === 'loop_started') {
-                onLoopStart?.(bufferObj as LoopStartedResponse)
-              } else if (bufferObj.event === 'loop_next') {
-                onLoopNext?.(bufferObj as LoopNextResponse)
-              } else if (bufferObj.event === 'loop_completed') {
-                onLoopFinish?.(bufferObj as LoopFinishedResponse)
-              } else if (bufferObj.event === 'node_retry') {
-                onNodeRetry?.(bufferObj as NodeFinishedResponse)
-              } else if (bufferObj.event === 'parallel_branch_started') {
-                onParallelBranchStarted?.(bufferObj as ParallelBranchStartedResponse)
-              } else if (bufferObj.event === 'parallel_branch_finished') {
-                onParallelBranchFinished?.(bufferObj as ParallelBranchFinishedResponse)
-              } else if (bufferObj.event === 'text_chunk') {
-                onTextChunk?.(bufferObj as TextChunkResponse)
-              } else if (bufferObj.event === 'reasoning_chunk') {
-                onReasoning?.(bufferObj as ReasoningChunkResponse)
-              } else if (bufferObj.event === 'text_replace') {
-                onTextReplace?.(bufferObj as TextReplaceResponse)
-              } else if (bufferObj.event === 'agent_log') {
-                onAgentLog?.(bufferObj as AgentLogResponse)
-              } else if (bufferObj.event === 'tts_message') {
-                onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
-              } else if (bufferObj.event === 'tts_message_end') {
-                onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
-              } else if (bufferObj.event === 'human_input_required') {
-                onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
-              } else if (bufferObj.event === 'human_input_form_filled') {
-                onHumanInputFormFilled?.(bufferObj as HumanInputFormFilledResponse)
-              } else if (bufferObj.event === 'human_input_form_timeout') {
-                onHumanInputFormTimeout?.(bufferObj as HumanInputFormTimeoutResponse)
-              } else if (bufferObj.event === 'workflow_paused') {
-                onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
-              } else if (bufferObj.event === 'datasource_processing') {
-                onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
-              } else if (bufferObj.event === 'datasource_completed') {
-                onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
-              } else if (bufferObj.event === 'datasource_error') {
-                onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
-              } else {
-                const unhandledEventError = onUnhandledEvent?.(bufferObj)
-                if (unhandledEventError) {
-                  onData('', false, {
-                    conversationId: unhandledEventError.conversationId,
-                    messageId: unhandledEventError.messageId ?? '',
-                    errorMessage: unhandledEventError.errorMessage,
-                    errorCode: unhandledEventError.errorCode,
-                  })
-                  hasError = true
-                  onCompleted?.(true, unhandledEventError.errorMessage)
-                  return
-                }
-                console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
-              }
-            }
-          })
-        } catch (e) {
-          onData('', false, {
-            conversationId: undefined,
-            messageId: '',
-            errorMessage: `${e}`,
-          })
-          hasError = true
-          onCompleted?.(true, e as string)
-          return
-        }
-        if (!hasError) read()
-      },
-      (e: unknown) => {
-        completeWithError(String(e), 'stream_read_error')
-      },
-    )
-  }
-  read()
-}
-
 const baseFetch = base
-
-type UploadOptions = {
-  xhr: XMLHttpRequest
-  method?: string
-  url?: string
-  headers?: Record<string, string>
-  data: FormData
-  onprogress?: (this: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => void
-}
-
-type UploadResponse = {
-  id: string
-  [key: string]: unknown
-}
-
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const upload = async (
-  options: UploadOptions,
-  isPublicAPI?: boolean,
-  url?: string,
-  searchParams?: string,
-): Promise<UploadResponse> => {
-  const requestGuard = captureRequestGuard(
-    options.url || url || '/files/upload',
-    isPublicAPI,
-    options.method || 'POST',
-  )
-  requestGuard?.beforeRequest()
-  const address = resolveWebAppAddress()
-  const shareCode = address?.code
-  const publicApiPrefix = PUBLIC_API_PREFIX
-  const urlPrefix = isPublicAPI ? publicApiPrefix : API_PREFIX
-  const defaultOptions = {
-    method: 'POST',
-    url:
-      (url
-        ? `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, url) : url}`
-        : `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, '/files/upload') : '/files/upload'}`) +
-      (searchParams || ''),
-    headers: {
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(address),
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
-    },
-  }
-  const mergedOptions = {
-    ...defaultOptions,
-    ...options,
-    url: options.url || defaultOptions.url,
-    headers: { ...defaultOptions.headers, ...options.headers } as Record<string, string>,
-  }
-  return new Promise((resolve, reject) => {
-    const xhr = mergedOptions.xhr
-    xhr.open(mergedOptions.method, mergedOptions.url)
-    for (const key in mergedOptions.headers) xhr.setRequestHeader(key, mergedOptions.headers[key]!)
-
-    xhr.withCredentials = true
-    xhr.responseType = 'json'
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4 && xhr.status !== 0) {
-        if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
-        else {
-          const error = httpErrorFromXhr(xhr)
-          if (requestGuard?.handleError(xhr.status, xhr.response, error)) {
-            reject(error)
-            return
-          }
-          if (isPublicAPI && !canRecoverWebAppAuthorization(requestGuard)) {
-            reject(new DOMException('The upload is no longer active.', 'AbortError'))
-            return
-          }
-          if (
-            isPublicAPI &&
-            (xhr.status === 401 || xhr.status === 403) &&
-            typeof xhr.response === 'object' &&
-            xhr.response !== null
-          )
-            handleWebAppAuthorizationError(xhr.response)
-          reject(error)
-        }
-      }
-    }
-    xhr.onerror = () => reject(new TypeError('Failed to fetch'))
-    xhr.onabort = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
-    xhr.ontimeout = () => reject(new DOMException('The operation timed out.', 'TimeoutError'))
-    if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
-    xhr.send(mergedOptions.data)
-  })
-}
-
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const ssePost = async (
-  url: string,
-  fetchOptions: FetchOptionType,
-  otherOptions: IOtherOptions,
-) => {
-  const {
-    isPublicAPI = false,
-    onData,
-    onReasoning,
-    onCompleted,
-    onThought,
-    onFile,
-    onMessageEnd,
-    onMessageReplace,
-    onWorkflowStarted,
-    onWorkflowFinished,
-    onNodeStarted,
-    onNodeFinished,
-    onIterationStart,
-    onIterationNext,
-    onIterationFinish,
-    onNodeRetry,
-    onParallelBranchStarted,
-    onParallelBranchFinished,
-    onTextChunk,
-    onTTSChunk,
-    onTTSEnd,
-    onTextReplace,
-    onAgentLog,
-    onError,
-    onNotifyError,
-    getAbortController,
-    onLoopStart,
-    onLoopNext,
-    onLoopFinish,
-    onHumanInputRequired,
-    onHumanInputFormFilled,
-    onHumanInputFormTimeout,
-    onWorkflowPaused,
-    onDataSourceNodeProcessing,
-    onDataSourceNodeCompleted,
-    onDataSourceNodeError,
-    onUnhandledEvent,
-    silent,
-  } = otherOptions
-  const requestGuard = captureRequestGuard(url, isPublicAPI, 'POST')
-  if (requestGuard?.isActive() === false) {
-    onCompleted?.(true, 'The request is no longer active.')
-    return
-  }
-  const abortController = new AbortController()
-
-  // No need to get token from localStorage, cookies will be sent automatically
-
-  const baseOptions = getBaseOptions()
-  const shareCode = resolveWebAppAddress()?.code
-  const options = Object.assign(
-    {},
-    baseOptions,
-    {
-      method: 'POST',
-      signal: abortController.signal,
-      headers: new Headers({
-        [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
-      }),
-    } as RequestInit,
-    fetchOptions,
-  )
-  options.headers = new Headers(options.headers)
-
-  const contentType = options.headers.get('Content-Type')
-  if (!contentType) options.headers.set('Content-Type', ContentType.json)
-
-  getAbortController?.(abortController)
-
-  const urlWithPrefix = formatURL(url, isPublicAPI)
-
-  const { body } = options
-  if (body) options.body = JSON.stringify(body)
-
-  globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
-    .then(async (res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
-        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
-          if (isPublicAPI) {
-            void handlePublicStreamResponseError(
-              res,
-              onError,
-              onNotifyError,
-              silent,
-              requestGuard,
-              onCompleted,
-            )
-          } else {
-            refreshAccessTokenOrReLogin(TIME_OUT)
-              .then(() => {
-                ssePost(url, fetchOptions, otherOptions)
-              })
-              .catch((err) => {
-                const errorMessage = String(err)
-                console.error(err)
-                onError?.(errorMessage)
-              })
-          }
-        } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
-          else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
-        }
-        return
-      }
-      return handleStream(
-        res,
-        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-          if (moreInfo.errorMessage) {
-            onError?.(moreInfo.errorMessage, moreInfo.errorCode, moreInfo)
-            // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
-              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
-              else toast.error(moreInfo.errorMessage)
-            }
-            return
-          }
-          onData?.(str, isFirstMessage, moreInfo)
-        },
-        onCompleted,
-        onThought,
-        onMessageEnd,
-        onMessageReplace,
-        onFile,
-        onWorkflowStarted,
-        onWorkflowFinished,
-        onNodeStarted,
-        onNodeFinished,
-        onIterationStart,
-        onIterationNext,
-        onIterationFinish,
-        onLoopStart,
-        onLoopNext,
-        onLoopFinish,
-        onNodeRetry,
-        onParallelBranchStarted,
-        onParallelBranchFinished,
-        onTextChunk,
-        onTTSChunk,
-        onTTSEnd,
-        onTextReplace,
-        onAgentLog,
-        onHumanInputRequired,
-        onHumanInputFormFilled,
-        onHumanInputFormTimeout,
-        onWorkflowPaused,
-        onDataSourceNodeProcessing,
-        onDataSourceNodeCompleted,
-        onDataSourceNodeError,
-        onReasoning,
-        onUnhandledEvent,
-      )
-    })
-    .catch((e) => {
-      const errorMessage = String(e)
-      if (!silent && shouldNotifyStreamError(e)) {
-        if (onNotifyError) onNotifyError(errorMessage)
-        else toast.error(errorMessage)
-      }
-      onError?.(errorMessage)
-    })
-}
 
 // base request
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
-    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
+    const { isPublicAPI = false } = otherOptionsForBaseFetch
     const requestGuard = captureRequestGuard(
       url,
       isPublicAPI,
@@ -926,10 +201,15 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(err)
-      if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
+      // A WebApp sign-in redirect is the feedback for these errors.
+      if (handleWebAppAuthorizationError(errRespData, url)) {
+        markErrorHandled(err)
+        return Promise.reject(err)
+      }
       // special code
-      const { code, message } = errRespData
+      const { code } = errRespData
       if (code === 'web_sso_auth_required') {
+        markErrorHandled(err)
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
@@ -944,10 +224,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed') {
-        if (!silent) toast.error(message, { timeout: 4000 })
-        return Promise.reject(err)
-      }
+      // The init page shows a wrong password at its field.
+      if (code === 'init_validate_failed') return Promise.reject(err)
       if (code === 'not_init_validated') {
         jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
@@ -967,15 +245,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
       discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
-      if (window.location.pathname !== `${basePath}/signin`) {
-        jumpTo(buildSigninUrlWithRedirect())
-        return Promise.reject(err)
-      }
-      if (!silent) {
-        toast.error(message)
-        return Promise.reject(err)
-      }
-      jumpTo(buildSigninUrlWithRedirect())
+      // On the sign-in page itself the sign-in forms own the failure, so there is nowhere to go.
+      if (window.location.pathname !== `${basePath}/signin`) jumpTo(buildSigninUrlWithRedirect())
       return Promise.reject(err)
     } else {
       return Promise.reject(err)
@@ -984,66 +255,4 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
     console.error(error)
     return Promise.reject(error)
   }
-}
-
-// request methods
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
-}
-
-// For public API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
-}
-
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
-}
-
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
-}
-
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }

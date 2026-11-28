@@ -4,6 +4,7 @@ import logging
 import secrets
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
+from dataclasses import replace
 from typing import override
 from uuid import uuid4
 
@@ -42,7 +43,7 @@ from services.errors.workspace import (
     WorkspaceInvitationQuotaError,
     WorkspaceMemberLicenseQuotaError,
 )
-from services.feature_service import FeatureService
+from services.feature_service import FeatureService, ProviderCatalogBilling
 from services.file_service import FileService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.rbac.contracts import ListOption
@@ -396,9 +397,10 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
 
     @override
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        """Display known credit metadata without inventing a subscription or balance during an outage."""
+        billing = ProviderCatalogBilling(workspace_id).subscription
+        if billing is None:
             return EffectiveCreditPool()
-        billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
         return self._credit_pool(workspace_id, CloudPlan(billing.subscription.plan), billing.next_credit_reset_date)
 
     @staticmethod
@@ -407,7 +409,14 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         credit_pool_type = FeatureService.get_credit_pool_type(workspace_id, plan=plan)
         if credit_pool_type is None:
             return EffectiveCreditPool(plan=plan, next_credit_reset_date=reset_date)
-        pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type=credit_pool_type)
+        metadata = EffectiveCreditPool(
+            plan=plan,
+            pool_type="paid" if credit_pool_type == ProviderQuotaType.PAID else "trial",
+            next_credit_reset_date=reset_date,
+        )
+        pool = CreditPoolService.get_pool_if_available(tenant_id=workspace_id, pool_type=credit_pool_type)
+        if pool is None:
+            return metadata
         exhausted_at = pool.exhausted_at
         if not (
             isinstance(exhausted_at, int)
@@ -416,14 +425,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
             and pool.quota_used >= pool.quota_limit
         ):
             exhausted_at = None
-        return EffectiveCreditPool(
-            plan=plan,
-            pool_type="paid" if credit_pool_type == ProviderQuotaType.PAID else "trial",
-            quota_limit=pool.quota_limit,
-            quota_used=pool.quota_used,
-            exhausted_at=exhausted_at,
-            next_credit_reset_date=reset_date,
-        )
+        return replace(metadata, quota_limit=pool.quota_limit, quota_used=pool.quota_used, exhausted_at=exhausted_at)
 
     @override
     def logo_url(self, workspace_id: str) -> str:

@@ -29,8 +29,8 @@ from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import TagType
 from models.model import App, AppMode, AppModelConfig, Conversation, Tag, TagBinding
 from models.provider import TenantDefaultModel
-from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
 from services.enterprise.base import EnterpriseRequest
 from services.entities.app_entities import AppEvent, AppListParams

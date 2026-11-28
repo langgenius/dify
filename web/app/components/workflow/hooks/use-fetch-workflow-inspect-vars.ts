@@ -8,6 +8,7 @@ import { useStoreApi } from 'reactflow'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { fetchAllInspectVars } from '@/service/workflow'
 import {
@@ -143,7 +144,15 @@ export const useSetWorkflowVarsWithValue = () => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
       invalidateConversationVarValues()
       invalidateSysVarValues()
-      const data = passInVars ? vars! : await fetchAllInspectVars(resource)
+      let data: VarInInspect[]
+      try {
+        data = passInVars ? vars! : await fetchAllInspectVars(resource)
+      } catch (error) {
+        // Most callers refresh after a run without awaiting; the report marks the error handled,
+        // so a caller that reports it too shows nothing more.
+        reportRequestError(error)
+        throw error
+      }
       setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
       handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
     },

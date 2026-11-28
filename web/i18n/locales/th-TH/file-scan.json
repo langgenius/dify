@@ -50,7 +50,7 @@
   "scanner.lastTested": "ทดสอบล่าสุด {{time}}",
   "scanner.loadFailed": "ไม่สามารถโหลดรายการตัวสแกนได้",
   "scanner.neverTested": "ยังไม่เคยทดสอบ",
-  "scanner.readOnly": "เฉพาะเจ้าของและผู้ดูแลพื้นที่ทำงานเท่านั้นที่จัดการตัวสแกนได้",
+  "scanner.readOnly": "คุณไม่มีสิทธิ์จัดการตัวสแกน",
   "scanner.status.active": "ใช้งานได้",
   "scanner.status.error": "ข้อผิดพลาด",
   "scanner.test": "ทดสอบ",

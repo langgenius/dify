@@ -253,7 +253,6 @@ const selectedEnvironmentDeploymentsDiscoveryQueryAtom = atomWithQuery((get) => 
               },
             }
           : skipToken,
-      enabled: discoveryEnabled,
       staleTime: 0,
     },
   )
@@ -310,7 +309,6 @@ const selectedEnvironmentDeploymentQueryAtom = atomWithQuery((get) => {
             },
           }
         : skipToken,
-    enabled: shouldFetch,
     refetchInterval: (query) => {
       if (query.state.status === 'error' || query.state.fetchFailureCount > 0) return false
 

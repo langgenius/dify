@@ -6,6 +6,7 @@ export function createCommandContext(overrides: Partial<CommandContext> = {}): C
     t: withSelectorKey((key: string) => key) as CommandContext['t'],
     locale: 'en-US',
     agentsAvailable: true,
+    canConfigureModels: true,
     skillsAvailable: true,
     currentApp: null,
     setThemePreference: vi.fn(),

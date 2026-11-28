@@ -4,6 +4,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { fetchExternalAPI } from '@/service/datasets'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConfigurationModals } from '@/test/configuration-modals'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -146,13 +147,10 @@ it('saves edits through the modal and refreshes the displayed card', async () =>
   }
   await user.click(within(dialog).getByRole('button', { name: 'dataset.externalAPIForm.save' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(updateExternalAPI).toHaveBeenCalledWith(
-    {
-      params: { external_knowledge_api_id: api.id },
-      body: { name: updated.name, settings: updated.settings },
-    },
-    { context: { silent: true } },
-  )
+  expect(updateExternalAPI).toHaveBeenCalledWith({
+    params: { external_knowledge_api_id: api.id },
+    body: { name: updated.name, settings: updated.settings },
+  })
   expect(await screen.findByText(updated.name)).toBeVisible()
   expect(screen.getByText(updated.settings.endpoint)).toBeVisible()
   expect(screen.queryByText(api.name)).not.toBeInTheDocument()
@@ -165,6 +163,22 @@ it('shows the usage count before deleting a connected API', async () => {
   await user.click(remove())
   await waitFor(() => expect(screen.getByRole('alertdialog')).toHaveTextContent('3'))
   expect(deleteExternalAPI).not.toHaveBeenCalled()
+})
+
+it('shows the translated error code when the usage check fails', async () => {
+  const user = userEvent.setup()
+  checkUsageExternalAPI.mockRejectedValue(
+    createHttpError(new Response(null, { status: 503 }), {
+      code: 'invalid_input',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  await user.click(remove())
+  await waitFor(() =>
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('requestErrors.code.invalid_input'),
+  )
+  expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
 })
 
 it('opens the confirmation while checking usage and ignores a result after Escape', async () => {

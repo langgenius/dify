@@ -81,7 +81,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const streamRequestOptions = {
   signal: new AbortController().signal,
-  context: { silent: true, stream: true },
+  context: { stream: true },
 } as const
 
 type PipelineRun = ReturnType<typeof usePipelineRunByCanEdit>

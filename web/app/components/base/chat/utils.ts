@@ -1,5 +1,8 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
+import type { AppConversationData, ConversationItem } from '@/models/share'
+import type { shareConversationsQueryOptions } from '@/service/share-queries'
 import { UUID_NIL } from './constants'
 
 async function decodeBase64AndDecompress(base64String: string) {
@@ -260,6 +263,50 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
+/**
+ * Puts a new conversation with its generated name into the conversation list,
+ * starting one when the list has not loaded (for example after its request failed).
+ */
+function withGeneratedConversation(
+  data: AppConversationData | undefined,
+  conversation: ConversationItem,
+): AppConversationData {
+  if (!data) return { data: [conversation], has_more: false, limit: 100 }
+  const list = data.data.slice()
+  const index = list.findIndex((item) => item.id === conversation.id)
+  if (index > -1) list[index] = conversation
+  else list.unshift(conversation)
+  return { ...data, data: list }
+}
+
+type ConversationListQueryKey = ReturnType<typeof shareConversationsQueryOptions>['queryKey']
+
+/**
+ * Edits the conversation list cache. A list that has no data or whose last request failed stays
+ * stale after the edit, so the next mount still loads the full list.
+ */
+function updateConversationList(
+  queryClient: QueryClient,
+  queryKey: ConversationListQueryKey,
+  updater: (data: AppConversationData | undefined) => AppConversationData | undefined,
+) {
+  const state = queryClient.getQueryState(queryKey)
+  const keepStale = state?.data === undefined || state.isInvalidated
+  queryClient.setQueryData(queryKey, updater)
+  if (keepStale) queryClient.invalidateQueries({ queryKey, exact: true, refetchType: 'none' })
+}
+
+/** Writes a generated conversation into the conversation list cache. */
+function writeGeneratedConversation(
+  queryClient: QueryClient,
+  queryKey: ConversationListQueryKey,
+  conversation: ConversationItem,
+) {
+  updateConversationList(queryClient, queryKey, (data) =>
+    withGeneratedConversation(data, conversation),
+  )
+}
+
 export {
   buildChatItemTree,
   getLastAnswer,
@@ -270,4 +317,6 @@ export {
   getRawUserVariablesFromUrlParams,
   getThreadMessages,
   isValidGeneratedAnswer,
+  updateConversationList,
+  writeGeneratedConversation,
 }

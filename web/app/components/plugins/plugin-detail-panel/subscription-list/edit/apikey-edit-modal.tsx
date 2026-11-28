@@ -137,11 +137,10 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     null,
   )
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useMutation(
-    updateTriggerSubscriptionMutationOptions({
-      silent: true,
-    }),
-  )
+  const { mutate: updateSubscription, isPending: isUpdating } = useMutation({
+    ...updateTriggerSubscriptionMutationOptions(),
+    meta: { errorToast: false },
+  })
   const { mutate: verifyCredentials, isPending: isVerifying } = useMutation(
     verifyTriggerSubscriptionMutationOptions(),
   )

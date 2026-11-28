@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { ContactsManagementProvider } from '../composition'
 import { PlatformContactPickerDialog } from '../platform-contact-picker-dialog'
@@ -266,4 +267,43 @@ it('blocks closing during a pending import and does not add duplicates', async (
   expect(api.add).toHaveBeenCalledOnce()
   await act(async () => request.resolve({ data: [] }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
+
+it('shows the load failure when candidates fail with an unknown code', async () => {
+  const user = userEvent.setup()
+  api.candidates.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 503 }), {
+      code: 'service_unavailable',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  await open(user)
+  expect(await screen.findByRole('alert')).toHaveTextContent('contacts.platformPicker.error')
+})
+
+it.each([
+  {
+    name: 'the add failure for an unmapped failure',
+    status: 400,
+    expected: 'contacts.platformPicker.addFailed',
+  },
+  {
+    name: 'the permission message for 403',
+    status: 403,
+    expected: 'contacts.platformPicker.addForbidden',
+  },
+])('shows $name when adding fails', async ({ status, expected }) => {
+  const user = userEvent.setup()
+  api.add.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status }), {
+      code: 'add_failed',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  await open(user)
+  await user.click(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ }))
+  await user.click(screen.getByRole('button', { name: 'contacts.platformPicker.add' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(expected)
 })

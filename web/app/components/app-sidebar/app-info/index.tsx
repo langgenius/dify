@@ -1,11 +1,10 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoOperation } from './app-info-modals'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { consoleClient, consoleQuery } from '@/service/console'
-import AppInfoModals from './app-info-modals'
-import AppInfoTrigger from './app-info-trigger'
+import { createAppInfoDialogHandles } from './app-info-dialog-handles'
+import { AppInfoDialogs } from './app-info-dialogs'
+import { AppInfoTrigger } from './app-info-trigger'
 import { updateCachedAppMetadata } from './metadata'
 
 type AppInfoViewProps = { appDetail: AppDetailWithSite; expand: boolean }
@@ -13,8 +12,7 @@ type AppInfoViewProps = { appDetail: AppDetailWithSite; expand: boolean }
 export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
   const appId = appDetail.id
   const queryClient = useQueryClient()
-  const [activeModal, setActiveModal] = useState<AppInfoOperation | null>(null)
-  const { exportAppDsl, isExporting } = useExportAppDsl()
+  const [handles] = useState(createAppInfoDialogHandles)
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
     let disposed = false
@@ -51,22 +49,8 @@ export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
 
   return (
     <>
-      <AppInfoTrigger
-        appDetail={appDetail}
-        expand={expand}
-        openModal={setActiveModal}
-        isExporting={isExporting}
-        exportCheck={() => {
-          if (appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat')
-            setActiveModal('export')
-          else if (!isExporting) void exportAppDsl({ appId, appName: appDetail.name })
-        }}
-      />
-      <AppInfoModals
-        appDetail={appDetail}
-        activeModal={activeModal}
-        onClose={() => setActiveModal(null)}
-      />
+      <AppInfoTrigger appDetail={appDetail} expand={expand} handles={handles} />
+      <AppInfoDialogs appDetail={appDetail} handles={handles} />
     </>
   )
 }

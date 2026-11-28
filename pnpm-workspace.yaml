@@ -75,6 +75,10 @@ overrides:
   vite@*: 'catalog:'
   vitest@*: 'catalog:'
 patchedDependencies:
+  # Use TanStack's skipToken as queryFn for skipToken inputs, so a caller's `enabled` cannot
+  # re-enable a skipped query, and give skipped queries their own key (middleapi/orpc#2210).
+  # Drop when an oRPC release ships both; see web/service/console/__tests__/skip-token.spec.ts.
+  '@orpc/tanstack-query@1.16.2': patches/@orpc__tanstack-query@1.16.2.patch
   # Vite 8 replaces the legacy path resolver. Reassess this patch and its paired
   # dependency-removal override together when upgrading Storybook.
   vite-plugin-storybook-nextjs@10.6.7: patches/vite-plugin-storybook-nextjs@10.6.7.patch

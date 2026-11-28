@@ -25,7 +25,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AgentConfigurePage } from '../roster-page'
 
-const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
+const ssePost = vi.hoisted(() => vi.fn<import('@/test/stream-recorder').RecordedStreamCall>())
 const api = vi.hoisted(() => ({
   getAgent: vi.fn(),
   getComposer: vi.fn(),

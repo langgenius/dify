@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
-import { refreshAgentTagCatalogs } from '@/service/console/query-policies'
+import { refreshAgentTagCatalogs } from '@/service/console/policies/shared'
 import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from './permissions'
@@ -112,8 +112,10 @@ export const TagSelector = ({
   const { isPending: isApplyingBindings, mutateAsync: saveBindings } = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutateAsync: createTag } = useMutation(
     consoleQuery.tags.post.mutationOptions({
-      context: { silent: true },
-      meta: { deferAgentTagCatalogRefresh: type === 'agent' && !onApplyTags },
+      meta: {
+        errorToast: false,
+        deferAgentTagCatalogRefresh: type === 'agent' && !onApplyTags,
+      },
     }),
   )
   const { data: tagList = EMPTY_TAGS, isSuccess: hasLoadedTags } = useQuery({

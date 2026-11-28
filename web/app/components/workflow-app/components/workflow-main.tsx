@@ -34,7 +34,6 @@ import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
-import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
@@ -78,8 +77,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     () => ({
       getState: () => ({
         getNodes: () => reactFlow.getNodes(),
+        // oxlint-disable-next-line dify/no-raw-reactflow-graph-write -- The collaboration manager applies CRDT imports to the canvas through this adapter.
         setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
         getEdges: () => reactFlow.getEdges(),
+        // oxlint-disable-next-line dify/no-raw-reactflow-graph-write -- The collaboration manager applies CRDT imports to the canvas through this adapter.
         setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
       }),
     }),
@@ -439,7 +440,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useWorkflowNodeCatalog()
-  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const fileSettings = useFeatures((state) => state.features.file)
@@ -480,7 +480,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       handleWorkflowTriggerPluginRunInWorkflow,
       handleWorkflowRunAllTriggersInWorkflow,
       availableNodesMetaData,
-      getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
       isExporting,
@@ -524,7 +523,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
     availableNodesMetaData,
-    getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
     isExporting,

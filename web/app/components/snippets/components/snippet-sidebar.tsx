@@ -22,8 +22,6 @@ type SnippetSidebarProps = {
   fields: PipelineInputVar[]
   readonly: boolean
   evaluationEnabled: boolean
-  /** The plan excludes evaluation; the entry stays visible but says why it is disabled. */
-  evaluationRequiresUpgrade?: boolean
   onFieldsChange?: (fields: PipelineInputVar[]) => void
 }
 
@@ -48,7 +46,6 @@ export const SnippetSidebarContent = ({
   fields,
   readonly,
   evaluationEnabled,
-  evaluationRequiresUpgrade = false,
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
@@ -153,12 +150,8 @@ export const SnippetSidebarContent = ({
             name={t(($) => $.title, { ns: 'evaluation' })}
             href={`/snippets/${snippet.id}/evaluation`}
             active={section === 'evaluation'}
-            disabled={evaluationRequiresUpgrade || !snippet.is_published}
-            disabledReason={
-              evaluationRequiresUpgrade
-                ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
-                : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })
-            }
+            disabled={!snippet.is_published}
+            disabledReason={t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })}
             iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
           />
         )}

@@ -958,6 +958,45 @@ describe('AgentSkills', () => {
     })
   })
 
+  it('shows the save failure when saving library skills fails for an unknown code', async () => {
+    const user = userEvent.setup()
+    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'bad_request',
+        message: 'Server says why',
+      }),
+    )
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => { query?: { limit?: number } }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [createWorkspaceSkill()],
+          has_more: false,
+          limit: input(pageParam).query?.limit ?? 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await openWorkspaceSkills(user)
+    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'agentV2.agentDetail.configure.skills.workspaceSelector.saveFailed',
+      )
+    })
+  })
+
   it('blocks adding a 21st library skill and explains the limit before saving', async () => {
     const user = userEvent.setup()
     const boundSkills = Array.from({ length: 20 }, (_, index) =>

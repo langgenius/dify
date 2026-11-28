@@ -5,10 +5,10 @@ import type { Edge, Node, OnNodeAdd, ValueSelector } from '../../types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
 import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
@@ -408,7 +408,7 @@ export const useInsertSnippet = () => {
   const { t } = useTranslation(['snippet', 'workflow'])
   const { t: workflowT } = useTranslation(['workflow'])
   const queryClient = useQueryClient()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { mutate: incrementSnippetUseCount } = useMutation(
@@ -420,7 +420,7 @@ export const useInsertSnippet = () => {
       try {
         const workflow = await queryClient.query(
           consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
-            context: { silent: true },
+            meta: { errorToast: false },
             input: {
               params: { snippet_id: snippetId },
             },
@@ -430,8 +430,7 @@ export const useInsertSnippet = () => {
 
         if (!snippetNodes.length) return
 
-        const { getNodes, setNodes, edges, setEdges } = store.getState()
-        const currentNodes = getNodes()
+        const { nodes: currentNodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
         const insertionBlocker = getHumanInputNodesInsertionBlocker(currentNodes, snippetNodes)
         if (insertionBlocker) {
           notifyHumanInputInsertionBlocked(insertionBlocker, workflowT)
@@ -561,7 +560,7 @@ export const useInsertSnippet = () => {
           }
         })
 
-        setNodes(nextNodes)
+        if (!setNodes(nextNodes)) return false
         setEdges([
           ...edges
             .filter((edge) => edge.id !== currentEdge?.id)
@@ -591,11 +590,11 @@ export const useInsertSnippet = () => {
       }
     },
     [
+      collaborativeWorkflow,
       handleSyncWorkflowDraft,
       incrementSnippetUseCount,
       queryClient,
       saveStateToHistory,
-      store,
       t,
       workflowT,
     ],

@@ -54,9 +54,7 @@ describe('markers and the composer', () => {
     expect(closedOnTheWay).toBe(false)
   })
 
-  // Skipped: flaky in CI. The rejected move (`networkError()`) sometimes surfaces as an unhandled
-  // rejection, which Vitest reports as a run error. Re-enable once the rejection is always handled.
-  it.skip('returns a marker to its place when moving it fails, keeping its thread', async () => {
+  it('returns a marker to its place when moving it fails, keeping its thread', async () => {
     saveReplyOnServer('first', 'Written meanwhile')
     const move = deferred<never>()
     api.update.mockReturnValueOnce(move.promise)
@@ -73,6 +71,9 @@ describe('markers and the composer', () => {
     await userEvent.keyboard('{Tab}')
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x + 5)
 
+    await expect
+      .poll(() => api.update.mock.calls[0]?.[0])
+      .toMatchObject({ params: { comment_id: 'first' } })
     move.reject(networkError())
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x)
     await openThread(screen)

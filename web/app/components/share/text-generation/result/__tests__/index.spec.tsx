@@ -1,6 +1,6 @@
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { VisionSettings } from '@/types/app'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -176,7 +176,6 @@ describe('Result', () => {
         'task-1',
         AppSourceType.webApp,
         'app-1',
-        { silent: true },
       )
     })
 
@@ -191,7 +190,7 @@ describe('Result', () => {
   })
 
   it('should render workflow results after workflow completion', async () => {
-    let workflowHandlers: IOtherOptions | null = null
+    let workflowHandlers: StreamCallbacks | null = null
     sendWorkflowMessageMock.mockImplementation(async (_data, handlers) => {
       workflowHandlers = handlers
     })
@@ -252,7 +251,7 @@ describe('Result', () => {
 
   it('should finish a timed-out workflow and show a translated warning', async () => {
     vi.useFakeTimers()
-    let workflowHandlers: IOtherOptions | null = null
+    let workflowHandlers: StreamCallbacks | null = null
     sendWorkflowMessageMock.mockImplementation(async (_data, handlers) => {
       workflowHandlers = handlers
     })

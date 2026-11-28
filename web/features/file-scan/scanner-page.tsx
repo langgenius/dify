@@ -18,11 +18,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
@@ -53,12 +52,12 @@ function ScannerItem({
   const deleteActionsRef = useRef<AlertDialogActions>(null)
   const testMutation = useMutation(
     consoleQuery.fileScan.providers.byProviderId.test.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteMutation = useMutation(
     consoleQuery.fileScan.providers.byProviderId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const hasError = provider.status === 'error'
@@ -196,7 +195,7 @@ type FileScanProvidersPageProps = {
 export function FileScanProvidersPage({ layout }: FileScanProvidersPageProps) {
   const { t } = useTranslation(['fileScan'])
   const { t: tCommon } = useTranslation(['common'])
-  const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { canManageCredential: canManage } = useCredentialPermissions()
   const providersQuery = useQuery(consoleQuery.fileScan.providers.get.queryOptions())
   const { data: providerTypes } = useQuery(
     consoleQuery.fileScan.providerTypes.get.queryOptions({ enabled: canManage }),

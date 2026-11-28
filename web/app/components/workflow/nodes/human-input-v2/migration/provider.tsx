@@ -14,6 +14,7 @@ import {
 } from '@/app/components/workflow/hooks/use-workflow-history'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { ENABLE_HITL_IM } from '@/config'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { syncHumanInputDraft } from '../../human-input/shared/sync-draft'
 import { HumanInputMigrationContext } from './context'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from './executor'
@@ -59,6 +60,7 @@ const ActiveHumanInputMigrationProvider = ({
   canEdit,
 }: HumanInputMigrationProviderProps) => {
   const { t } = useTranslation(['workflow'])
+  const describeRequestError = useRequestErrorDescriber()
   const nodes = useNodes() as Node[]
   const store = useStoreApi()
   const collaborativeWorkflow = useCollaborativeWorkflow()
@@ -90,6 +92,8 @@ const ActiveHumanInputMigrationProvider = ({
   )
 
   const migration = useMutation({
+    // The dialog shows migration failures.
+    meta: { errorToast: false },
     mutationFn: () =>
       executeHumanInputV2Migration({
         getGraph: () => {
@@ -122,7 +126,10 @@ const ActiveHumanInputMigrationProvider = ({
   }
   const result = migration.data
   const error = migration.isError
-    ? t(($) => $['nodes.humanInputMigration.error.preflight'], { ns: 'workflow' })
+    ? describeRequestError(
+        migration.error,
+        t(($) => $['nodes.humanInputMigration.error.preflight'], { ns: 'workflow' }),
+      )
     : result?.status === 'blocked'
       ? (() => {
           const blocker = result.blockers[0]

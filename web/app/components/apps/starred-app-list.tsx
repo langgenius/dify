@@ -1,12 +1,14 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppListDialogHandles } from './app-list-dialogs'
 import { useTranslation } from 'react-i18next'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import { StarredAppCard } from './starred-app-card'
 
 type StarredAppListProps = {
   apps: AppPartial[]
+  dialogs: AppListDialogHandles
   onDelete: (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
@@ -30,6 +32,7 @@ export function AppListSectionHeading({ id, label }: { id: string; label: string
 
 export function StarredAppList({
   apps,
+  dialogs,
   onDelete,
   stepByStepTourCardTarget,
   stepByStepTourCardHighlightPart,
@@ -56,6 +59,7 @@ export function StarredAppList({
           <StarredAppCard
             key={app.id}
             app={app}
+            dialogs={dialogs}
             onDelete={(item) => onDelete(app, item)}
             stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
             stepByStepTourCardHighlightPart={

@@ -1,8 +1,4 @@
-// Web-side calls into the Dify device-flow endpoints. All routes now sit
-// under /openapi/v1/oauth/device/* (Phase G of the openapi migration). The
-// approve/deny endpoints still require the console session cookie + CSRF
-// token; lookup is unauthenticated; the SSO branch uses cookie + per-flow
-// CSRF baked into the approval-context response.
+// Web-side calls into the Dify device-flow endpoints under /openapi/v1/oauth/device/*.
 //
 //   /openapi/v1/oauth/device/lookup            (public — GET)
 //   /openapi/v1/oauth/device/approve           (cookie + CSRF — POST)
@@ -10,13 +6,44 @@
 //   /openapi/v1/oauth/device/approval-context  (cookie — GET)
 //   /openapi/v1/oauth/device/approve-external  (cookie + per-flow CSRF — POST)
 //
-// /openapi/v1/* is its own URL prefix, so we bypass service/base's
-// API_PREFIX (which targets /console/api) and call fetch directly.
+// The account branch (lookup / approve / deny) uses the generated openapi
+// contract over the shared request layer, which adds the console CSRF header
+// and refreshes an expired console session. When the session cannot be
+// refreshed the shared layer leaves the /device page in place, so the page
+// still renders its own view for the failure.
+//
+// The SSO branch (approval-context / approve-external) stays on plain fetch:
+// approve-external authenticates with the per-flow token from
+// approval-context in `X-CSRF-Token`, the same header the shared layer fills
+// from the console CSRF cookie, and neither route has a console session to
+// refresh. The generated contract does not describe these routes either.
 
-import Cookies from 'js-cookie'
-import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
+import type { ContractRouterClient, InferContractRouterOutputs } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi-client'
+import { device } from '@dify/contracts/api/openapi/orpc.gen'
+import { createORPCClient, ORPCError } from '@orpc/client'
+import { OpenAPILink } from '@orpc/openapi-client/fetch'
+// oxlint-disable-next-line no-restricted-imports -- The device-flow HTTP adapter must reuse the console session's CSRF and refresh handling.
+import { request } from './base'
 
-const DEVICE_BASE = '/openapi/v1/oauth/device'
+const OPENAPI_PREFIX = '/openapi/v1'
+const DEVICE_BASE = `${OPENAPI_PREFIX}/oauth/device`
+
+const deviceFlowContract = { oauth: { device } }
+
+// Same-origin like the SSO calls below: /openapi/v1 is served next to the page, not under API_PREFIX.
+const deviceFlowClient: JsonifiedClient<ContractRouterClient<typeof deviceFlowContract>> =
+  createORPCClient(
+    new OpenAPILink(deviceFlowContract, {
+      url: () => new URL(OPENAPI_PREFIX, window.location.origin),
+      fetch: (input, init) =>
+        // oxlint-disable-next-line typescript/no-deprecated -- Device-flow calls need the shared console CSRF and session refresh transport.
+        request<Response>(input.url, init, {
+          fetchCompat: true,
+          request: input,
+        }),
+    }),
+  )
 
 // Typed error thrown by every wrapper here. The page/component layer
 // switches on `code` to choose user-facing copy / view; never render
@@ -33,20 +60,14 @@ export class DeviceFlowError extends Error {
   }
 }
 
-// Translate a non-2xx fetch Response into a DeviceFlowError. Honours the
-// server contract `{"error": "<code>"}` and falls back to a status-class
-// code so callers can still dispatch (rate_limited / server_error / ...).
-async function failFromResponse(res: Response): Promise<never> {
-  let serverCode = ''
-  try {
-    const body = await res.clone().json()
-    if (body && typeof body.error === 'string') serverCode = body.error
-  } catch {
-    /* non-JSON body — fall through to status mapping */
-  }
-
-  const code = serverCode || statusFallbackCode(res.status)
-  throw new DeviceFlowError(code, res.status)
+// Honours the server contract `{"error": "<code>"}` and falls back to a
+// status-class code so callers can still dispatch (rate_limited / server_error / ...).
+export function deviceFlowErrorFrom(status: number, body: unknown): DeviceFlowError {
+  const serverCode =
+    body && typeof body === 'object' && 'error' in body && typeof body.error === 'string'
+      ? body.error
+      : ''
+  return new DeviceFlowError(serverCode || statusFallbackCode(status), status)
 }
 
 function statusFallbackCode(status: number): string {
@@ -59,52 +80,43 @@ function statusFallbackCode(status: number): string {
   return 'unknown'
 }
 
-function consoleCsrfHeader(): Record<string, string> {
-  return { [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '' }
+// HTTP failures from the shared layer arrive as ORPCError; network failures pass through unchanged.
+async function withDeviceFlowError<T>(call: Promise<T>): Promise<T> {
+  try {
+    return await call
+  } catch (error) {
+    if (error instanceof ORPCError) throw deviceFlowErrorFrom(error.status, error.data)
+    throw error
+  }
+}
+
+// Translate a non-2xx fetch Response into a DeviceFlowError.
+async function failFromResponse(res: Response): Promise<never> {
+  let body: unknown
+  try {
+    body = await res.clone().json()
+  } catch {
+    /* non-JSON body — fall through to status mapping */
+  }
+  throw deviceFlowErrorFrom(res.status, body)
 }
 
 // ----- Account branch --------------------------------------------------------
 
-export type DeviceLookupReply = {
-  valid: boolean
-  expires_in_remaining: number
-  client_id: string
+export type DeviceLookupReply = InferContractRouterOutputs<
+  typeof deviceFlowContract
+>['oauth']['device']['lookup']['get']
+
+export function deviceLookup(user_code: string): Promise<DeviceLookupReply> {
+  return withDeviceFlowError(deviceFlowClient.oauth.device.lookup.get({ query: { user_code } }))
 }
 
-export async function deviceLookup(user_code: string): Promise<DeviceLookupReply> {
-  const res = await fetch(`${DEVICE_BASE}/lookup?user_code=${encodeURIComponent(user_code)}`, {
-    method: 'GET',
-  })
-  if (!res.ok) await failFromResponse(res)
-  return res.json()
+export function deviceApproveAccount(user_code: string) {
+  return withDeviceFlowError(deviceFlowClient.oauth.device.approve.post({ body: { user_code } }))
 }
 
-export async function deviceApproveAccount(user_code: string): Promise<{ status: 'approved' }> {
-  const res = await fetch(`${DEVICE_BASE}/approve`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...consoleCsrfHeader(),
-    },
-    body: JSON.stringify({ user_code }),
-  })
-  if (!res.ok) await failFromResponse(res)
-  return res.json()
-}
-
-export async function deviceDenyAccount(user_code: string): Promise<{ status: 'denied' }> {
-  const res = await fetch(`${DEVICE_BASE}/deny`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...consoleCsrfHeader(),
-    },
-    body: JSON.stringify({ user_code }),
-  })
-  if (!res.ok) await failFromResponse(res)
-  return res.json()
+export function deviceDenyAccount(user_code: string) {
+  return withDeviceFlowError(deviceFlowClient.oauth.device.deny.post({ body: { user_code } }))
 }
 
 // ----- SSO branch (cookie-authed via /openapi/v1/oauth/device/*) -----------

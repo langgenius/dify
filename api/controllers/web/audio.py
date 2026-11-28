@@ -86,6 +86,12 @@ class AudioApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "file": {"description": "Audio file to transcribe", "in": "formData", "type": "file", "required": True}
+        },
+    )
     @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
     @with_session(write=False)
     def post(self, session: Session, app_model: App, end_user: EndUser):

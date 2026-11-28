@@ -18,6 +18,8 @@ import {
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
+import { shareQueryKeys } from '@/service/share-queries'
+import { createDeferred } from '@/test/deferred'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
 import { createTestQueryClient } from '@/test/query-client'
 import { TransferMethod } from '@/types/app'
@@ -343,6 +345,192 @@ describe('useEmbeddedChatbot', () => {
           100,
         ),
       )
+    })
+
+    it('should show the generated conversation when the conversation list fails to load', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+
+      await waitFor(() =>
+        expect(result.current.conversationList.map(({ id, name }) => ({ id, name }))).toEqual([
+          { id: 'conversation-new', name: 'Generated' },
+        ]),
+      )
+    })
+
+    it('should load the full list on the next mount after a failed list load', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      const { result, queryClient, unmount } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+      queryClient.setQueryDefaults(shareQueryKeys.conversations, { staleTime: 5 * 60 * 1000 })
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      unmount()
+
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({
+          data: [
+            createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+            createConversationItem({ id: 'conversation-1' }),
+          ],
+        }),
+      )
+      const remounted = renderHook(() => useEmbeddedChatbot(AppSourceType.webApp), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await waitFor(() =>
+        expect(remounted.result.current.conversationList.map(({ id }) => id)).toEqual([
+          'conversation-new',
+          'conversation-1',
+        ]),
+      )
+    })
+
+    it('should retry generating the conversation name after a transient failure', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName
+        .mockRejectedValueOnce(new Error('bad gateway'))
+        .mockResolvedValueOnce(
+          createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+        )
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+
+      await waitFor(
+        () => expect(result.current.conversationList[0]).toMatchObject({ name: 'Generated' }),
+        { timeout: 3000 },
+      )
+      expect(mockGenerationConversationName).toHaveBeenCalledTimes(2)
+    })
+
+    it('should keep a list that failed to load stale after another generated name', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { promise: secondName, resolve: resolveSecondName } = createDeferred<ConversationItem>()
+      mockGenerationConversationName
+        .mockResolvedValueOnce(
+          createConversationItem({ id: 'conversation-a', name: 'Generated A' }),
+        )
+        .mockReturnValueOnce(secondName)
+      const { result, queryClient, unmount } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+      queryClient.setQueryDefaults(shareQueryKeys.conversations, { staleTime: 5 * 60 * 1000 })
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-a')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated A'))
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-b')
+      })
+      await waitFor(() =>
+        expect(queryClient.isFetching({ queryKey: shareQueryKeys.conversations })).toBe(0),
+      )
+      await act(async () => {
+        resolveSecondName(createConversationItem({ id: 'conversation-b', name: 'Generated B' }))
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated B'))
+
+      unmount()
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      const remounted = renderHook(() => useEmbeddedChatbot(AppSourceType.webApp), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await waitFor(() =>
+        expect(remounted.result.current.conversationList.map(({ id }) => id)).toEqual([
+          'conversation-1',
+        ]),
+      )
+    })
+
+    it('should drop a generated name that arrives after the chat unmounted', async () => {
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { promise: generatedName, resolve: resolveGeneratedName } =
+        createDeferred<ConversationItem>()
+      mockGenerationConversationName.mockReturnValue(generatedName)
+      const { result, queryClient, unmount } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      unmount()
+      await waitFor(() =>
+        expect(queryClient.isFetching({ queryKey: shareQueryKeys.conversations })).toBe(0),
+      )
+      await act(async () => {
+        resolveGeneratedName(createConversationItem({ id: 'conversation-new', name: 'Generated' }))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+
+      const cachedIds = queryClient
+        .getQueriesData<AppConversationData>({ queryKey: shareQueryKeys.conversations })
+        .flatMap(([, data]) => data?.data.map(({ id }) => id) ?? [])
+      expect(cachedIds).not.toContain('conversation-new')
+    })
+
+    it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { promise: generatedName, resolve: resolveGeneratedName } =
+        createDeferred<ConversationItem>()
+      mockGenerationConversationName.mockReturnValue(generatedName)
+      const { result, queryClient } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({
+          data: [createConversationItem({ id: 'conversation-new', name: 'Original' })],
+        }),
+      )
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Original'))
+      await act(async () => {
+        resolveGeneratedName(createConversationItem({ id: 'conversation-new', name: 'Generated' }))
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+
+      act(() => {
+        result.current.handleChangeConversation('conversation-new')
+      })
+
+      expect(result.current.conversationList[0]).toMatchObject({
+        id: 'conversation-new',
+        name: 'Generated',
+      })
     })
   })
 

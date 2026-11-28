@@ -80,7 +80,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const streamRequestOptions = {
   signal: new AbortController().signal,
-  context: { silent: true, stream: true },
+  context: { stream: true },
 } as const
 
 type SnippetRun = ReturnType<typeof useSnippetRun>

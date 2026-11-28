@@ -1,3 +1,4 @@
+import { reportRequestError } from '@/app/query-error-toast'
 import { AppSourceType, textToAudioStream } from '@/service/share'
 
 const DEFAULT_AUDIO_CONTENT_TYPE = 'audio/mpeg'
@@ -242,8 +243,11 @@ export class AudioPlayer {
           break
         }
       }
-    } catch {
-      if (!this.destroyed) this.failLoad()
+    } catch (error) {
+      if (this.destroyed) return
+      this.failLoad()
+      // Provider and quota errors come back as request errors.
+      reportRequestError(error)
     } finally {
       this.reader = undefined
     }

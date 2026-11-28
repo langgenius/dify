@@ -3,7 +3,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createOverviewData } from '@/test/new-rag-overview'
 import { createTestNavigation } from '@/test/next-navigation'
@@ -170,10 +170,7 @@ describe('KnowledgeOverviewPage indexing', () => {
     vi.restoreAllMocks()
   })
 
-  // TODO(https://github.com/langgenius/dify/issues/46699): the overview keeps polling after tasks
-  // finish, so this fails over HTTP; https://github.com/langgenius/dify/pull/46747 fixes the
-  // polling and turns it back on.
-  it.skip('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
+  it('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryData.tasks[0]!.state = 'running'
     queryData.tasks[0]!.updated_at = '2026-07-29T10:00:00Z'
@@ -197,6 +194,94 @@ describe('KnowledgeOverviewPage indexing', () => {
     await vi.advanceTimersByTimeAsync(6000)
     expect(stats).toHaveBeenCalledTimes(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+  })
+
+  it('stops refreshing overview sections after the task request fails', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.mockImplementation(
+      async () => {
+        throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+      },
+    )
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
+    const overview = fake.console.knowledgeFs.spaces.byControlSpaceId.overview
+    const calls = () => [overview.stats.get, overview.attention.get].map((m) => m.mock.calls.length)
+    const settled = calls()
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(calls()).toEqual(settled)
+  })
+
+  it('resumes refreshing visible metrics when tasks load after the task request failed', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const tasks = fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
+    tasks.mockImplementationOnce(async () => {
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+    })
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    queryData.tasks[0]!.state = 'running'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    queryData.stats.queries.value = 12
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.element(page.getByText('12', { exact: true })).toBeVisible()
+  })
+
+  it('refreshes stopped metrics when tasks recover with only finished tasks', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const tasks = fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
+    tasks.mockImplementationOnce(async () => {
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+    })
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    queryData.tasks[0]!.state = 'completed'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+  })
+
+  it('refreshes stopped metrics when a task is first seen after it finished', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const idle = stats.mock.calls.length
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(stats).toHaveBeenCalledTimes(idle)
+    queryData.tasks.push({
+      ...queryData.tasks[0]!,
+      id: 'task-finished-elsewhere',
+      state: 'completed',
+      updated_at: '2026-07-29T10:02:00Z',
+    })
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+  })
+
+  it('resumes refreshing visible metrics when a task starts after polling stopped', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const idle = stats.mock.calls.length
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(stats).toHaveBeenCalledTimes(idle)
+    queryData.tasks[0]!.state = 'running'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    queryData.stats.queries.value = 12
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.element(page.getByText('12', { exact: true })).toBeVisible()
   })
 
   it('keeps failed first-source tasks in Needs attention without a duplicate banner', async () => {

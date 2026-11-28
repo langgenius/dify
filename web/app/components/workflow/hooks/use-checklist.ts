@@ -34,6 +34,7 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { ENABLE_HITL_IM, MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
@@ -808,9 +809,16 @@ export const useChecklistBeforePublish = () => {
 
       updateTimeRef.current = updateTimeRef.current + 1
       const currUpdateTime = updateTimeRef.current
-      const { data: datasetsDetail } = await fetchDatasets({
-        params: { page: 1, ids: [...allDatasetIds] },
-      })
+      let datasetsDetail: DatasetDetailWithPartialMembersResponse[] | undefined
+      try {
+        ;({ data: datasetsDetail } = await fetchDatasets({
+          params: { page: 1, ids: [...allDatasetIds] },
+        }))
+      } catch (error) {
+        // A failed lookup blocks the publish; the callers treat `null` as not publishable.
+        reportRequestError(error)
+        return null
+      }
       if (currUpdateTime < updateTimeRef.current) return null
       if (datasetsDetail?.length) updateDatasetsDetail(datasetsDetail)
       return datasetsDetail || []

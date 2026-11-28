@@ -59,10 +59,12 @@ it('reads native file bytes, uploads them to the public endpoint and accepts the
   await input.upload(file)
   const saved = screen.getByRole('status', { name: 'Uploaded image' })
   await expect.element(saved).toBeVisible()
-  await expect.poll(() => JSON.parse(saved.element().textContent!).progress).toBe(100)
+  // Progress reaches 100 once the bytes are sent; the file id arrives with the response.
+  await expect.poll(() => JSON.parse(saved.element().textContent!).fileId).toBe('uploaded-image')
   const result = JSON.parse(saved.element().textContent!)
   expect(result).toMatchObject({
     fileId: 'uploaded-image',
+    progress: 100,
     type: TransferMethod.local_file,
     base64Url: imageUrl,
     url: imageUrl,

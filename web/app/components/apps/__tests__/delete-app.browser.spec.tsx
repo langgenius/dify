@@ -175,7 +175,9 @@ it.each(['pointer', 'keyboard'] as const)(
       } else {
         trigger.element().focus()
         await userEvent.keyboard('{Enter}')
-        await expect.element(screen.getByRole('menu')).toBeVisible()
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'Open Sidebar Web App', exact: true }))
+          .toHaveFocus()
         await userEvent.keyboard('{End}')
         await expect
           .element(screen.getByRole('menuitem', { name: 'Delete', exact: true }))
