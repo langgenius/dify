@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
@@ -104,8 +105,17 @@ from models.model import AppMode, Message, MessageAgentThought
 
 @pytest.fixture(autouse=True)
 def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind local runner dependencies without reaching external services."""
-    monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    """Reuse the test SQLite session for Agent App writes."""
+
+    @contextmanager
+    def reuse_session():
+        try:
+            yield sqlite_session
+        except Exception:
+            sqlite_session.rollback()
+            raise
+
+    monkeypatch.setattr(app_runner_module, "create_session", reuse_session)
     monkeypatch.setattr(
         "core.app.llm.model_access.resolve_model_runtime_profile",
         lambda **_kwargs: ModelRuntimeProfile(None, []),
@@ -1506,17 +1516,143 @@ def test_partial_usage_persistence_recovers_invalid_metadata(metadata: str, sqli
     assert json.loads(persisted.message_metadata)["usage"]["total_tokens"] == 3
 
 
+class _RecordingSession:
+    """Session double for commit/rollback assertions without a MagicMock assignment."""
+
+    def __init__(
+        self,
+        *,
+        get_result: Any = None,
+        get_error: Exception | None = None,
+        commit_error: Exception | None = None,
+    ) -> None:
+        self._get_result = get_result
+        self._get_error = get_error
+        self._commit_error = commit_error
+        self.commit_calls = 0
+        self.rollback_calls = 0
+
+    def get(self, *args: Any, **kwargs: Any) -> Any:
+        del args, kwargs
+        if self._get_error is not None:
+            raise self._get_error
+        return self._get_result
+
+    def commit(self) -> None:
+        self.commit_calls += 1
+        if self._commit_error is not None:
+            raise self._commit_error
+
+    def rollback(self) -> None:
+        self.rollback_calls += 1
+
+
+@contextmanager
+def _recording_session_context(recording: _RecordingSession) -> Generator[_RecordingSession]:
+    # Mirror SQLAlchemy Session.__exit__: roll back then re-raise.
+    try:
+        yield recording
+    except Exception:
+        recording.rollback()
+        raise
+
+
 def test_partial_usage_persistence_rolls_back_database_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.get.side_effect = RuntimeError("database unavailable")
-    monkeypatch.setattr(app_runner_module.db, "session", session)
+    """Session-context exit must roll back when usage persistence hits a DB error."""
+    recording = _RecordingSession(get_error=RuntimeError("database unavailable"))
+    monkeypatch.setattr(app_runner_module, "create_session", lambda: _recording_session_context(recording))
 
     AgentAppRunner._persist_message_usage(
         message_id="msg-1",
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
 
-    session.rollback.assert_called_once()
+    assert recording.rollback_calls == 1
+    assert recording.commit_calls == 0
+
+
+def test_trim_answer_suffix_skips_when_thought_row_missing() -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder._answer_thought_id = "00000000-0000-4000-8000-000000000099"
+
+    recorder.trim_answer_suffix("final answer")
+
+    assert recorder._answer_thought_id == "00000000-0000-4000-8000-000000000099"
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_trim_answer_suffix_skips_when_overlap_is_zero(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder.append_answer_text("prefix only")
+    before = _thought_rows(sqlite_session)[0].answer
+    qm.events.clear()
+
+    recorder.trim_answer_suffix("unrelated suffix")
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    assert rows[0].answer == before
+    # No publish when overlap is zero (early return inside the session block).
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_trim_answer_suffix_deletes_empty_answer_only_thought(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    # Entire answer is the terminal suffix → trim leaves an empty answer-only row → delete.
+    recorder.append_answer_text("final answer")
+    qm.events.clear()
+    recorder.trim_answer_suffix("final answer")
+
+    assert recorder._answer_thought_id is None
+    assert _thought_rows(sqlite_session) == []
+    # Delete path commits inside the session and returns before publish.
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_update_thought_skips_missing_row(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder._update_thought("00000000-0000-4000-8000-000000000099", answer_delta="x")
+
+    assert _thought_rows(sqlite_session) == []
+    # Missing row returns before commit/publish.
+    assert not [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+
+
+def test_persist_message_usage_commit_failure_rolls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Commit errors inside the session block must roll back via context exit."""
+    message = MagicMock()
+    message.message_metadata = "{}"
+    recording = _RecordingSession(get_result=message, commit_error=RuntimeError("commit failed"))
+    monkeypatch.setattr(app_runner_module, "create_session", lambda: _recording_session_context(recording))
+
+    AgentAppRunner._persist_message_usage(
+        message_id="msg-1",
+        usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
+    )
+
+    assert recording.commit_calls == 1
+    assert recording.rollback_calls == 1
 
 
 @pytest.mark.parametrize("outcome", ["failed", "stopped"])
