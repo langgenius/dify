@@ -8,6 +8,11 @@ import { useState } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { toast } from '@/app/notifications'
 import { createErrorToastCaches } from '@/app/query-error-toast'
@@ -113,7 +118,20 @@ const renderForm = (props: Partial<Props> = {}, { reportErrors = false } = {}) =
     )
   }
   return {
-    ...renderWorkflowFlowComponent(<Form />, { queryClient, nodes: [], edges: [] }),
+    ...renderWorkflowFlowComponent(<Form />, {
+      queryClient,
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      nodes: [
+        createStartNode({
+          id: 'start',
+          data: {
+            variables: [{ variable: 'asset', label: 'Asset', type: 'file', required: false }],
+          },
+        }),
+        createNode({ id: 'node-1' }),
+      ],
+      edges: [createEdge({ source: 'start', target: 'node-1' })],
+    }),
     onChange,
   }
 }
@@ -124,6 +142,44 @@ describe('FormInputItem selections', () => {
     mockDynamicOptions.mockResolvedValue({ options: [] })
   })
   afterEach(() => vi.restoreAllMocks())
+
+  it.each([FormTypeEnum.file, FormTypeEnum.files])(
+    'resets a cleared optional %s input to an unset constant',
+    async (type) => {
+      const user = userEvent.setup()
+      const { onChange } = renderForm({
+        schema: createSchema({ type, required: false }),
+        value: { field: { type: VarKindType.variable, value: ['start', 'asset'] } },
+      })
+
+      await user.hover(screen.getByText('asset'))
+      await user.click(screen.getByRole('button', { name: /clear/i }))
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        field: { type: VarKindType.constant, value: null },
+      })
+      expect(screen.queryByText('asset')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument()
+    },
+  )
+
+  it.each([FormTypeEnum.file, FormTypeEnum.files])(
+    'preserves variable mode when a required %s input is cleared',
+    async (type) => {
+      const user = userEvent.setup()
+      const { onChange } = renderForm({
+        schema: createSchema({ type, required: true }),
+        value: { field: { type: VarKindType.variable, value: ['start', 'asset'] } },
+      })
+
+      await user.hover(screen.getByText('asset'))
+      await user.click(screen.getByRole('button', { name: /clear/i }))
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        field: { type: VarKindType.variable, value: [] },
+      })
+    },
+  )
 
   it('keeps static selection and the persisted value in sync', async () => {
     const user = userEvent.setup()
