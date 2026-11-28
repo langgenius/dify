@@ -150,6 +150,11 @@ The queue is bounded (2048 spans, batches of at most 128), with up to 128 unackn
 batches retained until invocation finalization. Batches are split below 1 MiB
 of UTF-8 JSON. A single oversized span is dropped and marks its invocation
 incomplete rather than silently truncating content or sending a success marker.
+Its warning identifies the run, invocation, trace and span, along with the UTF-8
+serialized span size, reserved envelope bytes and configured batch limit.
+The admission calculation includes one additional separator byte per span.
+Span names, attributes, events and captured model/tool content are not included
+in this warning.
 This is not a durable local
 spool: process loss can leave an incomplete trace in the API. Shutdown drains the
 collector after active runs finish.

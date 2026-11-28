@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import threading
 import time
@@ -27,7 +28,7 @@ from pydantic_ai.toolsets import FunctionToolset
 from dify_agent.layers.dify_plugin import llm_layer
 from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.protocol.schemas import CreateRunRequest, RunComposition, RunLayerSpec, RunSucceededEvent
-from dify_agent.protocol.tracing import AgentTraceBatch
+from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceEvent, AgentTraceSpan
 from dify_agent.runtime.agent_factory import create_agent
 from dify_agent.runtime.application_trace_exporter import (
     ApplicationBatchSpanProcessor,
@@ -403,6 +404,71 @@ def test_batches_respect_utf8_byte_limit_and_oversized_spans_prevent_final(inbox
                 len(json.dumps(batch, ensure_ascii=False, separators=(",", ":")).encode()) <= 4096
                 for batch in inbox.batches
             )
+    finally:
+        provider.shutdown()
+        exporter.shutdown()
+
+
+def test_oversized_span_diagnostic_identifies_bytes_without_logging_content(inbox, caplog):
+    tracing = tracing_context()
+    memory = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(memory))
+    tracer = provider.get_tracer("test")
+    attributes = {
+        DIFY_TRACING_RUN_ID_ATTRIBUTE: str(tracing.run_id),
+        DIFY_TRACING_INVOCATION_ID_ATTRIBUTE: str(tracing.invocation_id),
+    }
+    exporter = JSONSpanExporter(inner_api_url=inbox.url, inner_api_key="private-inner-key", max_batch_bytes=4096)
+    try:
+        with tracer.start_as_current_span("private-span-name", attributes=attributes) as oversized:
+            oversized.set_attribute("private-attribute", "汉" * 1500)
+            oversized.add_event("private-event-name", {"private-event-attribute": "private-event-content"})
+        with tracer.start_as_current_span("normal", attributes=attributes):
+            pass
+        spans = memory.get_finished_spans()
+        span_context = spans[0].get_span_context()
+        assert span_context is not None
+        assert spans[0].start_time is not None
+        assert spans[0].end_time is not None
+        trace_id = f"{span_context.trace_id:032x}"
+        span_id = f"{span_context.span_id:016x}"
+        serialized = AgentTraceSpan(
+            trace_id=trace_id,
+            span_id=span_id,
+            name="private-span-name",
+            start_time_ns=spans[0].start_time,
+            end_time_ns=spans[0].end_time,
+            attributes={**attributes, "private-attribute": "汉" * 1500},
+            status="ok",
+            events=[
+                AgentTraceEvent(
+                    name="private-event-name",
+                    timestamp_ns=spans[0].events[0].timestamp,
+                    attributes={"private-event-attribute": "private-event-content"},
+                )
+            ],
+        ).model_dump_json()
+        assert len(serialized) < 4096 < len(serialized.encode("utf-8"))
+        with caplog.at_level(logging.WARNING, logger="dify_agent.runtime.application_trace_exporter"):
+            assert exporter.export(spans) == SpanExportResult.FAILURE
+        records = [record for record in caplog.records if "exceeds delivery limit" in record.getMessage()]
+        assert len(records) == 1
+        message = records[0].getMessage()
+        assert f"run_id={tracing.run_id}" in message
+        assert f"invocation_id={tracing.invocation_id}" in message
+        assert f"trace_id={trace_id}" in message
+        assert f"span_id={span_id}" in message
+        assert f"serialized_span_bytes={len(serialized.encode('utf-8'))}" in message
+        assert "max_batch_bytes=4096" in message
+        assert "envelope_reserve_bytes=1024" in message
+        assert "private-" not in message
+        assert "汉" not in message
+        assert len(message) < 512
+        assert len(inbox.batches) == 1
+        assert [span["name"] for span in inbox.batches[0]["spans"]] == ["normal"]
+        assert not exporter.finish_invocation(tracing.run_id, tracing.invocation_id)
+        assert not any(batch["final"] for batch in inbox.batches)
     finally:
         provider.shutdown()
         exporter.shutdown()

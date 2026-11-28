@@ -157,7 +157,18 @@ class JSONSpanExporter(SpanExporter):
             if span_size + 1024 > self._max_batch_bytes:
                 oversized = True
                 self.mark_incomplete((run_id, invocation_id))
-                logger.warning("Application trace span exceeds delivery limit; invocation_id=%s", invocation_id)
+                # IDs and byte counts diagnose the rejected span without logging captured content.
+                logger.warning(
+                    "Application trace span exceeds delivery limit; run_id=%s invocation_id=%s "
+                    "trace_id=%s span_id=%s serialized_span_bytes=%s envelope_reserve_bytes=%s max_batch_bytes=%s",
+                    run_id,
+                    invocation_id,
+                    span.trace_id,
+                    span.span_id,
+                    span_size - 1,
+                    1024,
+                    self._max_batch_bytes,
+                )
                 continue
             if size + span_size > self._max_batch_bytes:
                 append_batch()
