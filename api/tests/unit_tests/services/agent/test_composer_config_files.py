@@ -62,7 +62,6 @@ def assets(sqlite_session_factory: sessionmaker[Session]) -> AgentConfigService:
     return AgentConfigService(
         configs=AgentConfigRepository(session_factory=sqlite_session_factory),
         files=FileGrantRepository(session_factory=sqlite_session_factory),
-        session_factory=sqlite_session_factory,
     )
 
 

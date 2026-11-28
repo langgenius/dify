@@ -1339,8 +1339,8 @@ forbidden_modules =
     werkzeug
 allow_indirect_imports = True
 
-[importlinter:contract:agent-config-assets-read-contracts]
-name = Agent config asset reads use detached contracts without ORM or infrastructure
+[importlinter:contract:agent-config-assets-store-contracts]
+name = Agent config asset storage contracts use detached data without ORM or infrastructure
 type = forbidden
 source_modules =
     services.agent.config_assets_store
@@ -1354,6 +1354,20 @@ forbidden_modules =
     repositories
     sqlalchemy
     werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-config-assets-persistence-boundary]
+name = Agent config asset orchestration delegates SQL and transactions to its store
+type = forbidden
+source_modules =
+    services.agent.config_service
+forbidden_modules =
+    extensions.ext_database
+    models.agent
+    models.model
+    models.tools
+    repositories
+    sqlalchemy
 allow_indirect_imports = True
 
 [importlinter:contract:inner-agent-config-controllers]

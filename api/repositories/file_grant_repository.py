@@ -18,6 +18,28 @@ from services.entities.file_grant_entities import (
 )
 
 
+def find_file_row(
+    session: Session, *, file_id: str, kind: FileKind, tenant_id: str | None
+) -> UploadFile | ToolFile | None:
+    """Read the requested file kind in the caller's session and transaction.
+
+    An absent or foreign file returns None. A None tenant is reserved for a
+    signed file ID whose authorization has already been verified by the caller.
+    """
+    model: type[UploadFile] | type[ToolFile]
+    match kind:
+        case FileKind.UPLOAD:
+            model = UploadFile
+        case FileKind.TOOL:
+            model = ToolFile
+        case _:
+            return None
+    statement = select(model).where(model.id == file_id)
+    if tenant_id is not None:
+        statement = statement.where(model.tenant_id == tenant_id)
+    return session.scalar(statement.limit(1))
+
+
 class FileGrantRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -129,33 +151,22 @@ class FileGrantRepository:
     def _get_content_record(self, *, file_id: str, kind: FileKind, tenant_id: str | None) -> FileContentRecord | None:
         """Read metadata for one kind and close its session, optionally applying the workspace scope."""
         with self._session_factory() as session:
-            match kind:
-                case FileKind.UPLOAD:
-                    upload_statement = select(UploadFile).where(UploadFile.id == file_id)
-                    if tenant_id is not None:
-                        upload_statement = upload_statement.where(UploadFile.tenant_id == tenant_id)
-                    upload_file = session.scalar(upload_statement.limit(1))
-                    if upload_file is None:
-                        return None
-                    return FileContentRecord(
-                        name=upload_file.name,
-                        size=upload_file.size,
-                        mime_type=upload_file.mime_type,
-                        storage_key=upload_file.key,
-                    )
-                case FileKind.TOOL:
-                    tool_statement = select(ToolFile).where(ToolFile.id == file_id)
-                    if tenant_id is not None:
-                        tool_statement = tool_statement.where(ToolFile.tenant_id == tenant_id)
-                    tool_file = session.scalar(tool_statement.limit(1))
-                    if tool_file is None:
-                        return None
-                    return FileContentRecord(
-                        name=tool_file.name or "",
-                        size=tool_file.size,
-                        mime_type=tool_file.mimetype,
-                        storage_key=tool_file.file_key,
-                    )
+            file = find_file_row(session, file_id=file_id, kind=kind, tenant_id=tenant_id)
+            if file is None:
+                return None
+            if isinstance(file, UploadFile):
+                return FileContentRecord(
+                    name=file.name,
+                    size=file.size,
+                    mime_type=file.mime_type,
+                    storage_key=file.key,
+                )
+            return FileContentRecord(
+                name=file.name or "",
+                size=file.size,
+                mime_type=file.mimetype,
+                storage_key=file.file_key,
+            )
 
     @staticmethod
     def _subject_statement(*, tenant_id: str, app_id: str, session_id: str, require_app: bool):
@@ -230,4 +241,4 @@ class FileGrantRepository:
         }
 
 
-__all__ = ["FileGrantRepository"]
+__all__ = ["FileGrantRepository", "find_file_row"]
