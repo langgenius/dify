@@ -8,7 +8,7 @@ import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import { cn } from '../cn'
 import { useDirection } from '../direction-provider'
-import { checkedControlFocusClassName, focusRingClassName } from '../internal/focus'
+import { focusRingClassName } from '../internal/focus'
 import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
 import { resolveClassName } from '../internal/resolve-class-name'
 import { useMergedRefs } from '../use-merged-refs'
@@ -299,9 +299,6 @@ function Coachmark<Payload = undefined>(props: CoachmarkProps<Payload>) {
       })
   }, [shownParts, shownTarget])
 
-  // Base UI uses `modal={false}` in `allow-target` mode so the target stays interactive.
-  // Marking outside subtrees `inert` and `aria-hidden="true"` isolates both keyboard focus and
-  // assistive technology to the popup, target, and live regions.
   React.useLayoutEffect(() => {
     if (modal !== 'allow-target' || !shown || !portalElement || !shownTarget) return
     return inertOutside([portalElement, shownTarget])
@@ -399,7 +396,8 @@ function CoachmarkSpotlight({ className, ref, style, ...props }: CoachmarkSpotli
       data-pending={pending ? '' : undefined}
       className={(state) =>
         cn(
-          'pointer-events-none fixed inset-s-0 top-0 rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)] data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:transition-opacity motion-safe:data-gliding:transition-[transform,width,height,opacity]',
+          // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- --coachmark-left is measured from the physical left edge via getBoundingClientRect().
+          'pointer-events-none fixed top-0 left-0 rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)] data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:transition-opacity motion-safe:data-gliding:transition-[transform,width,height,opacity]',
           GLIDE_CLASS_NAME,
           resolveClassName(className, state),
         )
@@ -439,6 +437,7 @@ function CoachmarkPositioner({
   const anchor = React.useMemo(
     () => ({
       contextElement: target,
+      layout,
       getBoundingClientRect() {
         const measured = target.isConnected ? measure(target, parts) : undefined
         const geometry =
@@ -454,7 +453,7 @@ function CoachmarkPositioner({
         return new DOMRect(arrowX, highlight.top, 2, highlight.height)
       },
     }),
-    [arrowInset, direction, inline, parts, store, target],
+    [arrowInset, direction, inline, layout, parts, store, target],
   )
 
   return (
@@ -486,7 +485,6 @@ function CoachmarkPositioner({
         className={(state) =>
           cn(
             positionerClassName,
-            // Keep the popup visible and reachable when a target scrolls outside its scroll container.
             'data-anchor-hidden:pointer-events-auto data-anchor-hidden:visible motion-safe:data-gliding:transition-transform',
             GLIDE_CLASS_NAME,
             resolveClassName(className, state),
@@ -645,8 +643,7 @@ function CoachmarkPopup({
         className={(state) =>
           cn(
             floatingPopupAnimationClassName,
-            checkedControlFocusClassName,
-            'relative flex max-h-(--available-height) w-88 max-w-[min(var(--available-width,100dvw),calc(100dvw-16px))] flex-col rounded-2xl border-[0.5px] border-state-base-hover-alt bg-components-panel-bg-blur-burn bg-linear-to-r from-components-icon-bg-blue-soft to-components-icon-bg-blue-soft p-4 shadow-xl outline-hidden backdrop-blur-[5px] focus-visible:outline-solid',
+            'relative flex max-h-(--available-height) w-88 max-w-[min(var(--available-width,100dvw),calc(100dvw-16px))] flex-col rounded-2xl border-[0.5px] border-state-base-hover-alt bg-components-panel-bg-blur-burn bg-linear-to-r from-components-icon-bg-blue-soft to-components-icon-bg-blue-soft p-4 shadow-xl outline-hidden backdrop-blur-[5px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
             resolveClassName(className, state),
           )
         }

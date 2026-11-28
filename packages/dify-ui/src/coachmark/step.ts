@@ -101,10 +101,19 @@ const getSettlingAnimations = (elements: Element[]) =>
     )
   })
 
+const warnedInvalidSelectors = new Set<string>()
+
+function warnInvalidSelector(selector: string, error: unknown) {
+  if (process.env.NODE_ENV === 'production' || warnedInvalidSelectors.has(selector)) return
+  warnedInvalidSelectors.add(selector)
+  console.warn(`Coachmark: invalid CSS selector "${selector}".`, error)
+}
+
 function querySelectorSafe(selector: string) {
   try {
     return document.querySelector(selector)
-  } catch {
+  } catch (error) {
+    warnInvalidSelector(selector, error)
     return null
   }
 }
@@ -112,7 +121,8 @@ function querySelectorSafe(selector: string) {
 function querySelectorAllSafe(selector: string) {
   try {
     return Array.from(document.querySelectorAll(selector))
-  } catch {
+  } catch (error) {
+    warnInvalidSelector(selector, error)
     return []
   }
 }

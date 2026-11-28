@@ -124,6 +124,9 @@ it.each(['ltr', 'rtl'] as const)(
     await expect.element(coachmark).toBeVisible()
     const target = screen.getByText('First target').element().getBoundingClientRect()
     const popup = coachmark.element().getBoundingClientRect()
+    const spotlight = screen.getByTestId('spotlight').element().getBoundingClientRect()
+    expect(Math.abs(spotlight.left - (target.left - 4))).toBeLessThanOrEqual(1)
+    expect(Math.abs(spotlight.right - (target.right + 4))).toBeLessThanOrEqual(1)
     if (direction === 'rtl') expect(Math.abs(popup.right - target.right)).toBeLessThanOrEqual(2)
     else expect(Math.abs(popup.left - target.left)).toBeLessThanOrEqual(2)
   },
@@ -1092,4 +1095,25 @@ it('keeps descendants of the target interactive when highlightSelectors matches 
   await expect.element(screen.getByRole('dialog', { name: 'Nested step' })).toBeVisible()
   const inner = screen.getByRole('button', { name: 'Inner action' }).element()
   expect(inner.closest('[inert]')).toBeNull()
+})
+
+it('repositions the popup when a highlight part grows vertically while the target stays still', async () => {
+  const part = document.createElement('div')
+  part.dataset.verticalPart = ''
+  part.style.cssText = 'position: fixed; top: 160px; left: 16px; width: 120px; height: 40px'
+  document.body.append(part)
+  onTestFinished(() => part.remove())
+
+  const screen = await render(<Demo highlightSelectors={['[data-vertical-part]']} />)
+  const coachmark = screen.getByRole('dialog', { name: 'Start here' })
+  await expect.element(coachmark).toBeVisible()
+  const spotlight = screen.getByTestId('spotlight').element()
+  expect(spotlight.getBoundingClientRect().bottom).toBe(204)
+  const initialPopupTop = coachmark.element().getBoundingClientRect().top
+
+  part.style.height = '120px'
+  await expect.poll(() => spotlight.getBoundingClientRect().bottom).toBe(284)
+  await expect
+    .poll(() => coachmark.element().getBoundingClientRect().top)
+    .toBeCloseTo(initialPopupTop + 80, 0)
 })
