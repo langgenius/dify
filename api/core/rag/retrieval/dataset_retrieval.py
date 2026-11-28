@@ -1224,6 +1224,8 @@ class DatasetRetrieval:
                         # tool path reads the stored top_k as-is); only a missing
                         # entry falls back to the default.
                         dataset_top_k = retrieval_model.get("top_k")
+                        if dataset.summary_index_setting and dataset.summary_index_setting.get("enable"):
+                            dataset_top_k = max(dataset_top_k if dataset_top_k is not None else 4, top_k)
                         # retrieval source
                         documents = RetrievalService.retrieve(
                             retrieval_method=retrieval_model["search_method"],
@@ -2009,6 +2011,11 @@ class DatasetRetrieval:
                 if retrieval_thread_exceptions:
                     raise retrieval_thread_exceptions[0]
 
+                source_limit = top_k
+                has_summaries = any(document.metadata.get("is_summary") for document in all_documents_item)
+                if has_summaries:
+                    top_k = len(all_documents_item)
+
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:
                     # do rerank for searched documents
@@ -2047,6 +2054,8 @@ class DatasetRetrieval:
                         all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
                     else:
                         all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
+                if has_summaries:
+                    all_documents_item, _ = RetrievalService.select_segment_documents(all_documents_item, source_limit)
                 if all_documents_item:
                     all_documents.extend(all_documents_item)
         except Exception:
