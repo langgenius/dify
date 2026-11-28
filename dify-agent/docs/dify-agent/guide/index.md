@@ -182,6 +182,9 @@ DIFY_AGENT_RUNTIME_BACKEND=local
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
 DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
 # Set these when shellctl runs directly on a host that does not have /home/dify.
+# When these paths lie outside shellctl's default allowed cwd roots ($HOME and
+# SHELLCTL_WORKSPACE_DIR, default /workspace), also configure SHELLCTL_ALLOWED_CWD_ROOTS
+# on shellctl (for example, SHELLCTL_ALLOWED_CWD_ROOTS="$HOME,/tmp/dify-agent").
 DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
 DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
 DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
@@ -244,6 +247,12 @@ the new flag.
 When shellctl path isolation is enabled, any Landlock setup error aborts the job
 with exit code `125` before its user script executes. Deployments may explicitly
 set `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable shellctl path isolation.
+`POST /v1/jobs/run` still constrains `cwd` to allowed roots (`$HOME` and
+`SHELLCTL_WORKSPACE_DIR`, defaulting to `/workspace`) even when path isolation
+is disabled: if custom `DIFY_AGENT_LOCAL_SANDBOX_*_ROOT` paths live outside
+those defaults (such as `/tmp/dify-agent/...`), set `SHELLCTL_ALLOWED_CWD_ROOTS`
+on `shellctl` to include them (for example,
+`SHELLCTL_ALLOWED_CWD_ROOTS="$HOME,/tmp/dify-agent"`).
 
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries

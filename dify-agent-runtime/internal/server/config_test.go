@@ -2,6 +2,7 @@ package server
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -48,6 +49,142 @@ func TestConfigPaths(t *testing.T) {
 	}
 	if cfg.RunnerPath() != "/tmp/shellctl-test/runtime/bin/shellctl-runner" {
 		t.Errorf("unexpected RunnerPath: %s", cfg.RunnerPath())
+	}
+}
+
+func TestAllowedCwdRootsDefaults(t *testing.T) {
+	cases := []struct {
+		name  string
+		raw   string
+		unset bool
+	}{
+		{name: "unset", unset: true},
+		{name: "empty", raw: ""},
+		{name: "blank", raw: " \t\n "},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			t.Setenv(workspaceDirEnv, "")
+			t.Setenv(AllowedCwdRootsEnv, tc.raw)
+			if tc.unset {
+				if err := os.Unsetenv(AllowedCwdRootsEnv); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cfg := mustDefaultConfig(t)
+			if cfg.DefaultCwd != home {
+				t.Fatalf("DefaultCwd = %q, want %q", cfg.DefaultCwd, home)
+			}
+			if cfg.AllowedCwdRoots != nil {
+				t.Fatalf("default roots must remain dynamic, got %v", cfg.AllowedCwdRoots)
+			}
+			if cfg.WorkspaceDir != DefaultWorkspaceCwd {
+				t.Fatalf("WorkspaceDir = %q, want %q", cfg.WorkspaceDir, DefaultWorkspaceCwd)
+			}
+			want := []string{home, DefaultWorkspaceCwd}
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+				t.Errorf("roots = %v, want %v", roots, want)
+			}
+			cfg.DefaultCwd = "/custom-home"
+			want = []string{"/custom-home", DefaultWorkspaceCwd}
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+				t.Errorf("roots after changing DefaultCwd = %v, want %v", roots, want)
+			}
+			cfg.WorkspaceDir = "/custom-workspace"
+			want = []string{"/custom-home", "/custom-workspace"}
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+				t.Errorf("roots after changing WorkspaceDir = %v, want %v", roots, want)
+			}
+			cfg.WorkspaceDir = ""
+			want = []string{"/custom-home", DefaultWorkspaceCwd}
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+				t.Errorf("roots with empty WorkspaceDir = %v, want %v", roots, want)
+			}
+			cfg.DefaultCwd = ""
+			want = []string{DefaultWorkspaceCwd}
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+				t.Errorf("roots without DefaultCwd or WorkspaceDir = %v, want %v", roots, want)
+			}
+			cfg.WorkspaceDir = "/custom-workspace"
+			want = []string{"/custom-workspace"}
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+				t.Errorf("roots without DefaultCwd with WorkspaceDir = %v, want %v", roots, want)
+			}
+		})
+	}
+
+	t.Run("workspace dir from env", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv(AllowedCwdRootsEnv, "")
+		if err := os.Unsetenv(AllowedCwdRootsEnv); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv(workspaceDirEnv, "/env-workspace")
+		cfg := mustDefaultConfig(t)
+		if cfg.DefaultCwd != home {
+			t.Fatalf("DefaultCwd = %q, want %q", cfg.DefaultCwd, home)
+		}
+		if cfg.AllowedCwdRoots != nil {
+			t.Fatalf("default roots must remain dynamic, got %v", cfg.AllowedCwdRoots)
+		}
+		if cfg.WorkspaceDir != "/env-workspace" {
+			t.Fatalf("WorkspaceDir = %q, want /env-workspace", cfg.WorkspaceDir)
+		}
+		want := []string{home, "/env-workspace"}
+		if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+			t.Errorf("roots = %v, want %v", roots, want)
+		}
+	})
+
+	t.Run("direct struct literal with empty WorkspaceDir", func(t *testing.T) {
+		cfg := &Config{DefaultCwd: "/custom-home"}
+		want := []string{"/custom-home", DefaultWorkspaceCwd}
+		if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, want) {
+			t.Errorf("roots = %v, want %v", roots, want)
+		}
+	})
+}
+
+func TestAllowedCwdRootsFromEnv(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		want []string
+	}{
+		{name: "single root", raw: "/workspace", want: []string{"/workspace"}},
+		{name: "multiple roots trimmed and cleaned", raw: " /home/dify/ , /workspace/./project/.. ", want: []string{"/home/dify", "/workspace"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(AllowedCwdRootsEnv, tc.raw)
+			cfg := mustDefaultConfig(t)
+			if !reflect.DeepEqual(cfg.AllowedCwdRoots, tc.want) {
+				t.Errorf("AllowedCwdRoots = %v, want %v", cfg.AllowedCwdRoots, tc.want)
+			}
+			cfg.DefaultCwd = "/custom-home"
+			cfg.WorkspaceDir = "/custom-workspace"
+			if roots := cfg.allowedCwdRoots(); !reflect.DeepEqual(roots, tc.want) {
+				t.Errorf("explicit roots = %v, want %v", roots, tc.want)
+			}
+		})
+	}
+}
+
+func TestAllowedCwdRootsRejectsUnusableEnv(t *testing.T) {
+	for _, raw := range []string{"workspace", "./workspace", "/workspace,relative", ",/workspace", "/workspace,", "/workspace,,/home/dify", "/workspace, ,/home/dify", ","} {
+		t.Run(raw, func(t *testing.T) {
+			t.Setenv(AllowedCwdRootsEnv, raw)
+			cfg, err := DefaultConfig()
+			if err == nil || !strings.Contains(err.Error(), AllowedCwdRootsEnv) {
+				t.Fatalf("DefaultConfig error = %v, want error naming %s", err, AllowedCwdRootsEnv)
+			}
+			if cfg != nil {
+				t.Errorf("unusable allowed roots yielded a usable config: %v", cfg)
+			}
+		})
 	}
 }
 

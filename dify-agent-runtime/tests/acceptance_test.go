@@ -271,14 +271,14 @@ func TestRunWithCwd(t *testing.T) {
 		t.Run(tgt.name, func(t *testing.T) {
 			result := runJob(t, tgt, map[string]any{
 				"script":  "pwd",
-				"cwd":     "/tmp",
+				"cwd":     "/workspace",
 				"timeout": 10,
 			})
 			assertJobDone(t, result)
 			assertExitCode(t, result, 0)
 			output := result["output"].(string)
-			if !strings.Contains(output, "/tmp") {
-				t.Errorf("expected output to contain '/tmp', got %q", output)
+			if !strings.Contains(output, "/workspace") {
+				t.Errorf("expected output to contain '/workspace', got %q", output)
 			}
 		})
 	}
@@ -559,20 +559,36 @@ func TestMultilineOutput(t *testing.T) {
 }
 
 func TestInvalidCwd(t *testing.T) {
+	type authTarget struct {
+		tgt   target
+		token string
+	}
+	var allTargets []authTarget
 	for _, tgt := range targets() {
-		t.Run(tgt.name, func(t *testing.T) {
-			resp := doPost(t, tgt, "/v1/jobs/run", map[string]any{
-				"script":  "echo x",
-				"cwd":     "/nonexistent-dir-xyz",
-				"timeout": 5,
-			}, true)
-			if resp.StatusCode != 400 {
+		allTargets = append(allTargets, authTarget{tgt: tgt, token: authToken})
+	}
+	if tgt, ok := noIsolationTarget(); ok {
+		allTargets = append(allTargets, authTarget{tgt: tgt, token: authTokenNoIsolation})
+	}
+	for _, entry := range allTargets {
+		for _, cwd := range []string{"/nonexistent-dir-xyz", "/tmp"} {
+			t.Run(entry.tgt.name+cwd, func(t *testing.T) {
+				resp := doPostWithToken(t, entry.tgt, entry.token, "/v1/jobs/run", map[string]any{
+					"script":  "echo x",
+					"cwd":     cwd,
+					"timeout": 5,
+				})
+				assertStatus(t, resp, http.StatusBadRequest)
 				body := readBody(t, resp)
-				t.Errorf("expected 400, got %d: %s", resp.StatusCode, string(body))
-			} else {
-				resp.Body.Close()
-			}
-		})
+				var failure map[string]map[string]string
+				if err := json.Unmarshal(body, &failure); err != nil {
+					t.Fatal(err)
+				}
+				if code := failure["error"]["code"]; code != "invalid_cwd" {
+					t.Errorf("error code = %q, want invalid_cwd", code)
+				}
+			})
+		}
 	}
 }
 
@@ -656,6 +672,67 @@ func TestLandlockUsesWorkspaceAsTempSpace(t *testing.T) {
 			if !strings.Contains(output, "tmp_exit=1") && !strings.Contains(output, "Permission denied") {
 				t.Errorf("expected write to /tmp to be denied, got %q", output)
 			}
+
+			t.Run("symlink_cwd", func(t *testing.T) {
+				fixtureRoot := fmt.Sprintf("/workspace/canonical-cwd-%s-%d", tgt.name, time.Now().UnixNano())
+				realDir := fixtureRoot + "/real"
+				linkDir := fixtureRoot + "/link"
+				t.Cleanup(func() {
+					cleanup := runJob(t, tgt, map[string]any{
+						"script":  "rm -rf -- \"$FIXTURE_ROOT\"",
+						"cwd":     "/workspace",
+						"env":     map[string]string{"HOME": "/home/dify", "FIXTURE_ROOT": fixtureRoot},
+						"mode":    "stdio",
+						"timeout": 10,
+					})
+					assertJobDone(t, cleanup)
+					assertExitCode(t, cleanup, 0)
+				})
+				setup := runJob(t, tgt, map[string]any{
+					"script": "set -eu\nmkdir -p -- \"$REAL_DIR\"\nln -s -- \"$REAL_DIR\" \"$LINK_DIR\"",
+					"cwd":    "/workspace",
+					"env": map[string]string{
+						"HOME":     "/home/dify",
+						"REAL_DIR": realDir,
+						"LINK_DIR": linkDir,
+					},
+					"mode":    "stdio",
+					"timeout": 10,
+				})
+				assertJobDone(t, setup)
+				assertExitCode(t, setup, 0)
+				if t.Failed() {
+					t.Fatalf("symlink fixture setup failed: %#v", setup)
+				}
+
+				canonicalResult := runJob(t, tgt, map[string]any{
+					"script": "test \"$(pwd -P)\" = \"$EXPECTED_CWD\" && " +
+						"test \"$PWD\" = \"$EXPECTED_CWD\" && " +
+						"test \"$TMPDIR\" = \"$EXPECTED_CWD\" && " +
+						"test \"$TMP\" = \"$EXPECTED_CWD\" && " +
+						"test \"$TEMP\" = \"$EXPECTED_CWD\" && " +
+						"touch \"$TMPDIR/canonical-tmp-test\" && echo canonical_temp_ok; " +
+						"touch /tmp/landlock-denied-canonical 2>&1; echo tmp_exit=$?",
+					"cwd": linkDir,
+					"env": map[string]string{
+						"HOME":         "/home/dify",
+						"EXPECTED_CWD": realDir,
+						"TMPDIR":       "/tmp",
+						"TMP":          "/tmp",
+						"TEMP":         "/tmp",
+					},
+					"mode":    "stdio",
+					"timeout": 10,
+				})
+				assertJobDone(t, canonicalResult)
+				canonicalOutput := canonicalResult["output"].(string)
+				if !strings.Contains(canonicalOutput, "canonical_temp_ok") {
+					t.Errorf("expected canonical symlink cwd temp checks to pass, got %q", canonicalOutput)
+				}
+				if !strings.Contains(canonicalOutput, "tmp_exit=1") && !strings.Contains(canonicalOutput, "Permission denied") {
+					t.Errorf("expected write to /tmp to be denied for symlinked cwd, got %q", canonicalOutput)
+				}
+			})
 		})
 	}
 }
@@ -962,11 +1039,20 @@ func doGet(t *testing.T, tgt target, path string, withAuth bool) *http.Response 
 
 func doPost(t *testing.T, tgt target, path string, payload map[string]any, withAuth bool) *http.Response {
 	t.Helper()
+	token := ""
+	if withAuth {
+		token = authToken
+	}
+	return doPostWithToken(t, tgt, token, path, payload)
+}
+
+func doPostWithToken(t *testing.T, tgt target, token, path string, payload map[string]any) *http.Response {
+	t.Helper()
 	body, _ := json.Marshal(payload)
 	req, _ := http.NewRequest("POST", tgt.baseURL+path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	if withAuth {
-		req.Header.Set("Authorization", "Bearer "+authToken)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
