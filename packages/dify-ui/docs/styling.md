@@ -41,6 +41,9 @@ See Base UI's [styling] and [composition] guides for the upstream contracts.
 
 When merging default classes with an incoming `className`, use the local `cn(...)` helper and put
 defaults first so callers can override them. Resolve state callbacks before merging their classes.
+A typography utility replaces earlier typography, font-size, font-weight, and line-height classes,
+and an uppercase one also replaces text-transform; a later font-size, font-weight, or line-height class adjusts it instead. New typography utilities
+join the `cn` class groups.
 
 Import Tailwind from the consumer's root stylesheet as described in the [Tailwind CSS v4 upgrade
 guide], then import the Dify UI CSS entry:

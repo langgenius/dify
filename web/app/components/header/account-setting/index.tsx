@@ -270,7 +270,7 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-start text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
+                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-start focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',
