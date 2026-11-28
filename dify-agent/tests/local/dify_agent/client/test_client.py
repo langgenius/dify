@@ -1042,6 +1042,70 @@ def test_stream_events_resets_reconnect_budget_after_each_delivered_event() -> N
     assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
 
 
+@pytest.mark.parametrize(
+    ("first_event_id", "stale_event_id"),
+    [("1-0", "1-0"), ("1000-10", "1000-2")],
+)
+def test_stream_events_stale_numbered_events_do_not_restore_reconnect_budget(
+    first_event_id: str, stale_event_id: str
+) -> None:
+    seen_after: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        event_id = first_event_id if len(seen_after) == 1 else stale_event_id
+        return httpx.Response(
+            200,
+            stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id=event_id, run_id="run-1"))),
+        )
+
+    events: list[RunEvent] = []
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+            for event in client.stream_events_sync("run-1", max_reconnects=1, reconnect_delay_seconds=0):
+                events.append(event)
+
+    assert seen_after == ["0-0", first_event_id]
+    assert [event.id for event in events] == [first_event_id]
+
+
+def test_stream_events_unnumbered_events_do_not_restore_reconnect_budget() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            200,
+            stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id=None, run_id="run-1"))),
+        )
+
+    events: list[RunEvent] = []
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+            for event in client.stream_events_sync("run-1", max_reconnects=1, reconnect_delay_seconds=0):
+                events.append(event)
+
+    assert calls == 2
+    assert [event.id for event in events] == [None, None]
+
+
+def test_stream_events_unnumbered_terminal_event_still_finishes() -> None:
+    terminal = _run_succeeded_event().model_copy(update={"id": None})
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=_event_frame(terminal)))
+        ),
+    )
+
+    events = list(client.stream_events_sync("run-1", max_reconnects=0, reconnect_delay_seconds=0))
+
+    assert events == [terminal]
+
+
 def test_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
     """Only a delivered event restores spent retries; comment-only heartbeats do not."""
     seen_after: list[str] = []
@@ -1597,6 +1661,80 @@ def test_async_stream_events_resets_reconnect_budget_after_each_delivered_event(
         assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
         assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
         await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("first_event_id", "stale_event_id"),
+    [("1-0", "1-0"), ("1000-10", "1000-2")],
+)
+def test_async_stream_events_stale_numbered_events_do_not_restore_reconnect_budget(
+    first_event_id: str, stale_event_id: str
+) -> None:
+    seen_after: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        event_id = first_event_id if len(seen_after) == 1 else stale_event_id
+        return httpx.Response(
+            200,
+            stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id=event_id, run_id="run-1"))),
+        )
+
+    async def scenario() -> None:
+        events: list[RunEvent] = []
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+                async for event in client.stream_events("run-1", max_reconnects=1, reconnect_delay_seconds=0):
+                    events.append(event)
+
+        assert seen_after == ["0-0", first_event_id]
+        assert [event.id for event in events] == [first_event_id]
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_unnumbered_events_do_not_restore_reconnect_budget() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            200,
+            stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id=None, run_id="run-1"))),
+        )
+
+    async def scenario() -> None:
+        events: list[RunEvent] = []
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+                async for event in client.stream_events("run-1", max_reconnects=1, reconnect_delay_seconds=0):
+                    events.append(event)
+
+        assert calls == 2
+        assert [event.id for event in events] == [None, None]
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_unnumbered_terminal_event_still_finishes() -> None:
+    terminal = _run_succeeded_event().model_copy(update={"id": None})
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=_event_frame(terminal)))
+        ) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            events = [
+                event
+                async for event in client.stream_events("run-1", max_reconnects=0, reconnect_delay_seconds=0)
+            ]
+
+        assert events == [terminal]
 
     asyncio.run(scenario())
 
