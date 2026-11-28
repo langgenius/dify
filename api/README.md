@@ -85,6 +85,56 @@ When parsing a local time without an explicit UTC offset, `parse_time_range` and
 
 The `pytz` migration intentionally changes the repeated-hour choice in `Europe/Dublin`: `2024-10-27 01:30` now resolves to `01:30Z` (`01:30+00:00`), whereas the previous `is_dst=False` policy selected `00:30Z` (`01:30+01:00`). Both instants exist; the new policy consistently chooses by chronological order rather than by the timezone database's DST label. New York's existing later-occurrence behavior is preserved.
 
+## CPython GC metrics
+
+Enable `ENABLE_OTEL` and configure the existing OTLP metric endpoint. The standard
+`SystemMetricsInstrumentor` supplies `cpython.gc.collections`,
+`cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects`, by generation.
+GC metrics are independent of trace sampling and follow the existing worker-local
+OTel initialization and `OTEL_METRIC_EXPORT_INTERVAL` (milliseconds, default 60000).
+Preserve the existing `process.pid` and container resource identity when aggregating.
+
+The small GC callback adapter adds:
+
+| Metric | Meaning |
+| --- | --- |
+| `cpython.gc.count` | Scheduling counters, not live object counts |
+| `cpython.gc.threshold` | Active GC thresholds |
+| `cpython.gc.enabled` | Whether automatic cyclic GC is enabled |
+| `dify.gc.duration` | Collection histogram in seconds, by generation and startup/runtime phase |
+| `dify.gc.duration_samples_dropped` | Duration samples overwritten before collection, by generation |
+| `dify.gc.startup_frozen_objects` | Cached startup snapshot; zero if freeze is disabled |
+
+The GC callback only timestamps events and appends to a bounded 4096-sample buffer per
+generation, so frequent young collections cannot overwrite full-collection durations.
+An OTel observable callback publishes those samples into the histogram during the
+existing SDK collection cycle. This avoids reentering SDK aggregation locks from GC,
+without introducing a publisher thread, exporter or additional collection timer.
+Check dropped samples when interpreting histograms. Native counters remain available
+if the duration buffer overflows. The `startup` phase identifies the explicit
+collection before freeze; the frozen-count gauge is absent until that decision.
+
+Metric collection never calls `gc.collect()`, `gc.get_objects()` or
+`gc.get_freeze_count()`; the last function walks the permanent generation in CPython
+3.13. The startup helper reads it once and reuses the snapshot. This adapter targets
+the GIL-enabled CPython runtime used by Dify.
+
+With standard OTLP-to-Prometheus name translation:
+
+```promql
+# Full-GC wall-clock seconds per second, retaining worker labels.
+rate(dify_gc_duration_seconds_sum{generation="2", phase="runtime"}[5m])
+
+# Full-GC p95 across workers; sparse windows may contain too few observations.
+histogram_quantile(0.95, sum by (le) (
+  rate(dify_gc_duration_seconds_bucket{generation="2", phase="runtime"}[5m])
+))
+```
+
+Correlate collection duration and frequency with CPU, RSS and request latency.
+These metrics exclude ordinary reference-counting destruction; an uncollectable
+count of zero does not reveal cycles retained by startup freeze.
+
 ## Testing
 
 Test real production behavior with real objects. Do not use mocks, `SimpleNamespace`, or other shortcuts that bypass real testing.
