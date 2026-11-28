@@ -40,7 +40,7 @@ export default function SignupEmailForm({ onSuccess }: Props) {
   }
 
   return (
-    <Form<SignupEmailFormValues> onFormSubmit={({ email }) => void handleSubmit(email)}>
+    <Form<SignupEmailFormValues> noValidate onFormSubmit={({ email }) => void handleSubmit(email)}>
       <Field
         name="email"
         validate={(value) => {
