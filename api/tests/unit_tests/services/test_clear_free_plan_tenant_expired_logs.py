@@ -1,15 +1,18 @@
 import datetime
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import contextmanager
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Self, override
 from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import event
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import Executable, Select
 
 from enums import CloudPlan, DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -17,6 +20,7 @@ from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
 from models.enums import (
     ConversationFromSource,
+    ConversationStatus,
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
@@ -45,7 +49,7 @@ from models.workflow import (
     WorkflowType,
 )
 from services import clear_free_plan_tenant_expired_logs as service_module
-from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs, MessageRelatedRecord
 
 
 @pytest.fixture(autouse=True)
@@ -114,7 +118,7 @@ def _create_conversation(
         app_id=app_id,
         mode=AppMode.CHAT,
         name=f"Conversation {conversation_id}",
-        status="normal",
+        status=ConversationStatus.NORMAL,
         from_source=ConversationFromSource.API,
         from_end_user_id="end-user-1",
     )
@@ -233,7 +237,7 @@ def _create_workflow_run(run_id: str) -> WorkflowRun:
     return workflow_run
 
 
-def _create_related_records(message_id: str) -> list[object]:
+def _create_related_records(message_id: str) -> list[MessageRelatedRecord]:
     """Create one real row for every message-related table cleaned by the service."""
     return [
         MessageFeedback(
@@ -474,34 +478,21 @@ def test_process_tenant_processes_and_persists_all_batches(
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", clear_related)
 
     node_execution = _create_workflow_node_execution("node-execution-1")
-    node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [[node_execution], []]
-    node_repo.delete_executions_by_ids.return_value = 1
-    run_repo = MagicMock()
-    run_repo.get_expired_runs_batch.side_effect = [
-        [_create_workflow_run("workflow-run-1")],
-        [],
-    ]
-    run_repo.delete_runs_by_ids.return_value = 1
-    monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_node_execution_repository",
-        lambda _session_maker: node_repo,
-    )
-    monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        lambda _session_maker: run_repo,
-    )
+    node_execution.created_at = old
+    workflow_run = _create_workflow_run("workflow-run-1")
+    workflow_run.created_at = old
+    sqlite_session.add_all([node_execution, workflow_run])
+    sqlite_session.commit()
+    with _guard_workflow_batch_reads(sqlite_engine) as batch_reads:
+        ClearFreePlanTenantExpiredLogs.process_tenant(
+            flask_app,
+            "tenant-1",
+            days=7,
+            batch=1,
+            session=sqlite_session,
+        )
 
-    ClearFreePlanTenantExpiredLogs.process_tenant(
-        flask_app,
-        "tenant-1",
-        days=7,
-        batch=1,
-        session=sqlite_session,
-    )
-
+    assert batch_reads == {WorkflowNodeExecutionModel.__tablename__: 2, WorkflowRun.__tablename__: 2}
     assert clear_related.call_count == 1
     related_session, related_tenant_id, message_ids = clear_related.call_args.args
     assert isinstance(related_session, Session)
@@ -509,6 +500,8 @@ def test_process_tenant_processes_and_persists_all_batches(
     assert message_ids == ["message-old"]
     assert storage.save.call_count == 5
     with Session(sqlite_engine) as verification_session:
+        assert verification_session.get(WorkflowNodeExecutionModel, "node-execution-1") is None
+        assert verification_session.get(WorkflowRun, "workflow-run-1") is None
         assert verification_session.get(Message, "message-old") is None
         assert verification_session.get(Conversation, "conversation-old") is None
         assert verification_session.get(WorkflowAppLog, "log-old") is None
@@ -590,8 +583,11 @@ def test_process_without_tenant_ids_batches_and_scales_interval(
 
     class FixedDateTime(REAL_DATETIME):
         @classmethod
-        def now(cls, tz: datetime.tzinfo | None = None) -> REAL_DATETIME:
-            return fixed_now
+        @override
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            # Return an instance of the subclass, as ``datetime.now`` does; the
+            # value is the frozen instant the test pinned.
+            return cls.fromtimestamp(fixed_now.timestamp(), tz=fixed_now.tzinfo)
 
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
@@ -662,8 +658,11 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
 
     class FixedDateTime(REAL_DATETIME):
         @classmethod
-        def now(cls, tz: datetime.tzinfo | None = None) -> REAL_DATETIME:
-            return fixed_now
+        @override
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            # Return an instance of the subclass, as ``datetime.now`` does; the
+            # value is the frozen instant the test pinned.
+            return cls.fromtimestamp(fixed_now.timestamp(), tz=fixed_now.tzinfo)
 
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
@@ -697,12 +696,47 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
     assert len(interval_counts) == 5
 
 
+@contextmanager
+def _guard_workflow_batch_reads(sqlite_engine: Engine) -> Generator[dict[str, int]]:
+    """Count the two workflow batch queries during one full-batch cleanup.
+
+    The caller seeds one full batch per workflow table; the next read should
+    find no records. Fail on a third read and always detach before verification.
+    """
+    workflow_tables = {
+        WorkflowNodeExecutionModel.__tablename__: WorkflowNodeExecutionModel.__table__,
+        WorkflowRun.__tablename__: WorkflowRun.__table__,
+    }
+    reads = dict.fromkeys(workflow_tables, 0)
+
+    def count_workflow_reads(
+        _connection: Connection,
+        statement: Executable,
+        _multiparams: Sequence[Mapping[str, object]],
+        _params: Mapping[str, object],
+        _execution_options: Mapping[str, object],
+    ) -> None:
+        if isinstance(statement, Select):
+            tables = statement.get_final_froms()
+            for name, table in workflow_tables.items():
+                if any(source.is_derived_from(table) for source in tables):
+                    reads[name] += 1
+                    assert reads[name] <= 2, f"unexpected third cleanup batch SELECT from {name}"
+
+    event.listen(sqlite_engine, "before_execute", count_workflow_reads)
+    try:
+        yield reads
+    finally:
+        event.remove(sqlite_engine, "before_execute", count_workflow_reads)
+
+
 def test_process_tenant_repo_loops_break_on_empty_second_batch(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_engine: Engine,
 ) -> None:
     flask_app = service_module.Flask("test-app")
+    expired = REAL_DATETIME.now() - datetime.timedelta(days=30)
     sqlite_session.add(_create_app("app-1", "tenant-1"))
     sqlite_session.commit()
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=sqlite_engine))
@@ -715,49 +749,23 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         _create_workflow_node_execution("node-1"),
         _create_workflow_node_execution("node-2", node_id="node-2"),
     ]
-    node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [node_executions, []]
-    node_repo.delete_executions_by_ids.return_value = 2
-    run_repo = MagicMock()
-    run_repo.get_expired_runs_batch.side_effect = [
-        [
-            _create_workflow_run("run-1"),
-            _create_workflow_run("run-2"),
-        ],
-        [],
-    ]
-    run_repo.delete_runs_by_ids.return_value = 2
-    node_session_makers: list[object] = []
-    run_session_makers: list[object] = []
+    workflow_runs = [_create_workflow_run("run-1"), _create_workflow_run("run-2")]
+    stored = [*node_executions, *workflow_runs]
+    for record in stored:
+        record.created_at = expired
+    sqlite_session.add_all(stored)
+    sqlite_session.commit()
 
-    def create_node_repo(session_maker: object) -> MagicMock:
-        node_session_makers.append(session_maker)
-        return node_repo
+    with _guard_workflow_batch_reads(sqlite_engine) as batch_reads:
+        ClearFreePlanTenantExpiredLogs.process_tenant(
+            flask_app,
+            "tenant-1",
+            days=7,
+            batch=2,
+            session=sqlite_session,
+        )
 
-    def create_run_repo(session_maker: object) -> MagicMock:
-        run_session_makers.append(session_maker)
-        return run_repo
-
-    monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_node_execution_repository",
-        create_node_repo,
-    )
-    monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        create_run_repo,
-    )
-
-    ClearFreePlanTenantExpiredLogs.process_tenant(
-        flask_app,
-        "tenant-1",
-        days=7,
-        batch=2,
-        session=sqlite_session,
-    )
-
-    assert node_repo.get_expired_executions_batch.call_count == 2
-    assert run_repo.get_expired_runs_batch.call_count == 2
-    assert node_session_makers[0].kw["bind"] is sqlite_engine
-    assert run_session_makers[0].kw["bind"] is sqlite_engine
+    assert batch_reads == {WorkflowNodeExecutionModel.__tablename__: 2, WorkflowRun.__tablename__: 2}
+    with Session(sqlite_engine) as verification_session:
+        for record in stored:
+            assert verification_session.get(type(record), record.id) is None

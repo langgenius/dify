@@ -26,16 +26,33 @@ from models.model import (
     MessageFile,
 )
 from models.web import SavedMessage
-from models.workflow import WorkflowAppLog
+from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel
 from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
 
+type MessageRelatedRecord = (
+    MessageFeedback
+    | MessageFile
+    | MessageAnnotation
+    | MessageChain
+    | MessageAgentThought
+    | AppAnnotationHitHistory
+    | SavedMessage
+)
+"""A row from any message-related table the cleanup service backs up and deletes.
+
+These models share the same ``id`` primary key but have no common declarative
+base declaring it, so the union states the row shape once instead of widening
+every use site to ``object``.
+"""
+
+
 class ClearFreePlanTenantExpiredLogs:
     @staticmethod
-    def _serialize_record(record: object) -> dict[str, object]:
+    def _serialize_record(record: MessageRelatedRecord | WorkflowNodeExecutionModel) -> dict[str, object]:
         if hasattr(record, "to_dict"):
             return record.to_dict()  # type: ignore[no-any-return]
 
