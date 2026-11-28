@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,23 +6,6 @@ from sqlalchemy.orm import Session
 import core.external_data_tool.api.api as api_module
 from core.external_data_tool.api.api import ApiExternalDataTool
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-
-pytestmark = [
-    pytest.mark.usefixtures("sqlite_session"),
-    pytest.mark.parametrize("sqlite_session", [(APIBasedExtension,)], indirect=True),
-]
-
-
-@dataclass(eq=False, repr=False)
-class _DatabaseBinding:
-    """Expose the real SQLite session used by extension queries."""
-
-    session: Session
-
-
-@pytest.fixture(autouse=True)
-def bind_sqlite_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(api_module, "db", _DatabaseBinding(sqlite_session))
 
 
 @pytest.fixture
@@ -57,6 +39,11 @@ def test_validate_config_missing_id() -> None:
 def test_validate_config_invalid_id() -> None:
     with pytest.raises(ValueError, match="api_based_extension_id is invalid"):
         ApiExternalDataTool.validate_config("tenant_id", {"api_based_extension_id": "ext_id"})
+
+
+def test_validate_config_rejects_other_tenant_extension(api_extension: APIBasedExtension) -> None:
+    with pytest.raises(ValueError, match="api_based_extension_id is invalid"):
+        ApiExternalDataTool.validate_config("other_tenant", {"api_based_extension_id": "ext_id"})
 
 
 @pytest.fixture
@@ -107,6 +94,66 @@ def test_query_missing_extension_id() -> None:
 def test_query_invalid_extension(api_tool: ApiExternalDataTool) -> None:
     with pytest.raises(ValueError, match=".*error: api_based_extension_id is invalid"):
         api_tool.query({}, "")
+
+
+def test_query_rejects_other_tenant_extension(api_extension: APIBasedExtension) -> None:
+    other_tenant_tool = ApiExternalDataTool(
+        tenant_id="other_tenant",
+        app_id="app_id",
+        variable="var1",
+        config={"api_based_extension_id": "ext_id"},
+    )
+    with pytest.raises(ValueError, match=".*error: api_based_extension_id is invalid"):
+        other_tenant_tool.query({}, "")
+
+
+@patch("core.external_data_tool.api.api.encrypter")
+@patch("core.external_data_tool.api.api.APIBasedExtensionRequestor")
+def test_query_closes_session_before_outbound_request(
+    mock_requestor_class: MagicMock,
+    mock_encrypter: MagicMock,
+    api_tool: ApiExternalDataTool,
+    api_extension: APIBasedExtension,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_encrypter.decrypt_token.return_value = "decrypted_key"
+
+    opened_sessions = 0
+    closed_sessions = 0
+    original_create_session = api_module.session_factory.create_session
+
+    class _TrackedSession:
+        def __init__(self, session: Session) -> None:
+            self._session = session
+
+        def __enter__(self) -> Session:
+            nonlocal opened_sessions
+            opened_sessions += 1
+            return self._session.__enter__()
+
+        def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+            nonlocal closed_sessions
+            try:
+                self._session.__exit__(exc_type, exc_val, exc_tb)
+            finally:
+                closed_sessions += 1
+
+    monkeypatch.setattr(
+        api_module.session_factory,
+        "create_session",
+        lambda: _TrackedSession(original_create_session()),
+    )
+
+    session_states_at_request: list[tuple[int, int]] = []
+
+    def _record_request(**_kwargs: object) -> dict[str, str]:
+        session_states_at_request.append((opened_sessions, closed_sessions))
+        return {"result": "ok"}
+
+    mock_requestor_class.return_value.request.side_effect = _record_request
+
+    assert api_tool.query({}, None) == "ok"
+    assert session_states_at_request == [(1, 1)]
 
 
 @patch("core.external_data_tool.api.api.encrypter")
