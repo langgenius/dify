@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Final, cast
 from urllib.parse import unquote
 
-from jsonschema import SchemaError
+from jsonschema import Draft4Validator, Draft6Validator, Draft7Validator, SchemaError
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 from jsonschema.protocols import Validator as JsonSchemaValidator
 from jsonschema.validators import validator_for
@@ -30,6 +30,10 @@ from dify_agent.runtime.context import Deps
 _FINAL_OUTPUT_TOOL_NAME: Final[str] = "final_output"
 _VALIDATED_OUTPUT_TYPE_NAME: Final[str] = f"DifyValidatedOutput_{_FINAL_OUTPUT_TOOL_NAME}"
 _NON_SCHEMA_VALUE_KEYWORDS: Final[frozenset[str]] = frozenset({"const", "default", "enum", "example", "examples"})
+_ANNOTATION_ONLY_KEYWORDS: Final[frozenset[str]] = frozenset(
+    {"$comment", "default", "deprecated", "description", "example", "examples", "readOnly", "title", "writeOnly"}
+)
+_UNEVALUATED_KEYWORDS: Final[frozenset[str]] = frozenset({"unevaluatedItems", "unevaluatedProperties"})
 # Keywords whose values are name-to-schema maps. Entry names inside these maps
 # are user-chosen data (property names, definition names, ...), never keywords,
 # so every entry value is traversed as a schema.
@@ -240,21 +244,72 @@ def _local_defs_ref_name(ref: str) -> str:
     return token.replace("~1", "/").replace("~0", "~")
 
 
+def _ref_ignores_siblings(schema: dict[str, JsonValue]) -> bool:
+    """Return whether the schema's JSON Schema draft ignores sibling keywords beside ``$ref``."""
+    return issubclass(validator_for(schema), (Draft4Validator, Draft6Validator, Draft7Validator))
+
+
 def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue]:
     """Inline supported root ``$defs`` refs for Pydantic schema exposure.
 
     ``jsonschema`` can validate a schema that keeps local refs, but Pydantic's
     JSON schema generation cannot safely preserve custom root ``$defs`` in this
     integration. Inlining keeps the model-facing schema equivalent while still
-    letting runtime validation use the original schema document. Schema
-    containers are rebuilt and literal keyword values are deep-copied, so the
-    exposed schema stays independent of the validation schema. Unresolvable or
-    recursive references raise ``ValueError`` during contract construction.
+    letting runtime validation use the original schema document: for Draft
+    2019-09 / Draft 2020-12 schemas, validation siblings alongside ``$ref`` are
+    composed via ``allOf`` rather than overwriting the referenced definition,
+    while Draft-04 / Draft-06 / Draft-07 schemas ignore ``$ref`` siblings.
+    Schema containers are rebuilt and literal keyword values are deep-copied,
+    so the exposed schema stays independent of the validation schema.
+    Unresolvable or recursive references raise ``ValueError`` during contract
+    construction.
     """
     raw_defs = schema.get("$defs")
     root_defs = raw_defs if isinstance(raw_defs, dict) else {}
+    ignore_ref_siblings = _ref_ignores_siblings(schema)
 
-    def resolve(node: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
+    def _compose_ref_with_siblings(
+        resolved_target: dict[str, JsonValue],
+        siblings: dict[str, JsonValue],
+        *,
+        is_root: bool,
+    ) -> dict[str, JsonValue]:
+        if not siblings:
+            return resolved_target
+        if ignore_ref_siblings:
+            if is_root and "$schema" in siblings:
+                return {"$schema": siblings["$schema"], **resolved_target}
+            return resolved_target
+
+        outer: dict[str, JsonValue] = {}
+        validation_siblings: dict[str, JsonValue] = {}
+        has_unevaluated = False
+        for key, value in siblings.items():
+            if is_root and key == "$schema":
+                outer[key] = value
+            elif key in _ANNOTATION_ONLY_KEYWORDS:
+                outer[key] = value
+            elif key in _UNEVALUATED_KEYWORDS:
+                outer[key] = value
+                has_unevaluated = True
+            else:
+                validation_siblings[key] = value
+
+        if not validation_siblings and not has_unevaluated:
+            return {**resolved_target, **outer}
+
+        if is_root and validation_siblings.get("type") == "object":
+            outer["type"] = "object"
+            del validation_siblings["type"]
+            if not validation_siblings and not has_unevaluated and resolved_target.get("type") == "object":
+                return {**resolved_target, **outer}
+
+        all_of_members: list[JsonValue] = [resolved_target]
+        if validation_siblings:
+            all_of_members.append(validation_siblings)
+        return {**outer, "allOf": all_of_members}
+
+    def resolve(node: JsonValue, *, ref_stack: tuple[str, ...], is_root: bool = False) -> JsonValue:
         if isinstance(node, dict):
             ref = node.get("$ref")
             if isinstance(ref, str):
@@ -264,13 +319,13 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
                 target = root_defs.get(ref_name)
                 if not isinstance(target, dict):
                     raise ValueError(f"Local $ref {ref!r} could not be resolved from $defs.")
-                resolved_target = resolve(target, ref_stack=(*ref_stack, ref_name))
-                merged = cast(dict[str, JsonValue], resolved_target)
+                resolved_target = cast(dict[str, JsonValue], resolve(target, ref_stack=(*ref_stack, ref_name)))
+                siblings: dict[str, JsonValue] = {}
                 for key, value in node.items():
-                    if key == "$ref":
+                    if key in {"$ref", "$defs"}:
                         continue
-                    merged[key] = _resolve_schema_keyword(key, value, ref_stack=ref_stack)
-                return merged
+                    siblings[key] = _resolve_schema_keyword(key, value, ref_stack=ref_stack)
+                return _compose_ref_with_siblings(resolved_target, siblings, is_root=is_root)
 
             resolved_node: dict[str, JsonValue] = {}
             for key, value in node.items():
@@ -297,7 +352,7 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
             return {name: resolve(entry, ref_stack=ref_stack) for name, entry in value.items()}
         return resolve(value, ref_stack=ref_stack)
 
-    resolved_schema = resolve(schema, ref_stack=())
+    resolved_schema = resolve(schema, ref_stack=(), is_root=True)
     return cast(dict[str, JsonValue], resolved_schema)
 
 
