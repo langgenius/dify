@@ -787,3 +787,49 @@ def test_parse_openapi_to_tool_bundle_handles_circular_schema_refs(app: Flask) -
     assert len(bundles) == 1
     params = {p.name: p for p in bundles[0].parameters or []}
     assert set(params) == {"count", "parent"}
+
+
+def test_parse_openapi_to_tool_bundle_handles_non_mapping_schemas_and_missing_param_schema(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.1.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/raw": {
+                "post": {
+                    "operationId": "submitRaw",
+                    "parameters": [
+                        {
+                            "name": "tag",
+                            "in": "query",
+                            "description": "Parameter without schema mapping",
+                        }
+                    ],
+                    "requestBody": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AllowAny",
+                                    "allOf": [True, {"type": "string"}],
+                                }
+                            }
+                        }
+                    },
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "AllowAny": True,
+            }
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    params = {p.name: p for p in bundles[0].parameters or []}
+    assert set(params) == {"tag"}
+    assert params["tag"].type == ToolParameter.ToolParameterType.STRING
