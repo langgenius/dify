@@ -1,8 +1,16 @@
+import csv
 import json
 from datetime import UTC, datetime, timedelta
+from io import StringIO
+from pathlib import Path
 
 import pytest
+from psycopg2 import OperationalError as PostgresOperationalError
+from psycopg2 import errors as postgres_errors
+from sqlalchemy import Connection, Engine, event
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -17,8 +25,15 @@ from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunSta
 from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
+from repositories import log_export_queries, workflow_app_log_query_repository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import WorkflowAppLogAccount, WorkflowAppLogEndUser
+from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
+from services.workflow_app_log_query_service import (
+    WorkflowAppLogAccount,
+    WorkflowAppLogEndUser,
+    WorkflowAppLogQueryService,
+)
 
 
 def _log(
@@ -73,6 +88,225 @@ def _run(
     )
     run.created_at = created_at
     return run
+
+
+def test_export_counts_and_reads_live_runs_once_across_batches(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cross empty pages and use the earliest matching log for each live run."""
+    monkeypatch.setattr(workflow_app_log_query_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
+    timestamp = datetime(2026, 1, 1)
+    user_log = _log("user", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    user_log.created_from = WorkflowAppLogCreatedFrom.WEB_APP
+    duplicate_log = _log(
+        "duplicate", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp
+    )
+    duplicate_log.workflow_run_id = user_log.workflow_run_id
+    old_log = _log(
+        "old", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp - timedelta(days=1)
+    )
+    old_log.workflow_run_id = user_log.workflow_run_id
+    wrong_actor_log = _log(
+        "a-other", created_by="other-user", created_by_role=CreatorUserRole.END_USER, created_at=timestamp
+    )
+    wrong_actor_log.workflow_run_id = user_log.workflow_run_id
+    wrong_actor_log.created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+    orphan_log = _log("a-orphan", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    account_log = _log(
+        "account",
+        created_by="account-id",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_at=timestamp + timedelta(days=1),
+    )
+    foreign_log = _log("foreign", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    foreign_run = _run(foreign_log.workflow_run_id, tenant_id="other-workspace")
+    account_run = _run(account_log.workflow_run_id, triggered_from=WorkflowRunTriggeredFrom.SCHEDULE)
+    account_run.status = WorkflowExecutionStatus.FAILED
+    account_run.outputs = json.dumps({"output": "account-search-token"})
+
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                user_log,
+                duplicate_log,
+                old_log,
+                wrong_actor_log,
+                orphan_log,
+                account_log,
+                foreign_log,
+                foreign_run,
+                _run(user_log.workflow_run_id),
+                account_run,
+                _run("unlogged-debug-run"),
+            ]
+        )
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    filters = WorkflowLogExportFilters(
+        created_at_after=timestamp, end_user_ids=("user-id",), account_ids=("account-id",)
+    )
+    assert repository.count_log_export_rows(scope=scope, filters=filters) == 2
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    rows = []
+    for row in repository.iter_log_export_rows(scope=scope, filters=filters):
+        assert sqlite_engine.pool.checkedout() == 0
+        rows.append(row)
+    assert [(row.run_id, row.created_at, row.status, row.trigger_by) for row in rows] == [
+        (user_log.workflow_run_id, timestamp, "succeeded", "service-api"),
+        (account_log.workflow_run_id, account_log.created_at, "failed", "schedule"),
+    ]
+    assert rows[1].account_id == "account-id"
+    assert json.loads(rows[0].inputs or "{}") == {"input": "value"}
+
+    failed = WorkflowLogExportFilters(status=WorkflowExecutionStatus.FAILED)
+    assert [row.run_id for row in repository.iter_log_export_rows(scope=scope, filters=failed)] == [
+        account_log.workflow_run_id
+    ]
+    keyword = WorkflowLogExportFilters(keyword="account-search-token")
+    assert [row.run_id for row in repository.iter_log_export_rows(scope=scope, filters=keyword)] == [
+        account_log.workflow_run_id
+    ]
+    after = WorkflowLogExportFilters(created_at_after=timestamp + timedelta(days=1))
+    rows_after = list(repository.iter_log_export_rows(scope=scope, filters=after))
+    assert [(row.run_id, row.created_at) for row in rows_after] == [
+        (account_log.workflow_run_id, account_log.created_at)
+    ]
+    assert (
+        repository.count_log_export_rows(
+            scope=scope,
+            filters=WorkflowLogExportFilters(
+                keyword="value",
+                status=WorkflowExecutionStatus.SUCCEEDED,
+                created_at_before=timestamp,
+            ),
+        )
+        == 1
+    )
+    assert (
+        repository.count_log_export_rows(
+            scope=scope,
+            filters=WorkflowLogExportFilters(created_at_after=timestamp + timedelta(days=1), end_user_ids=("user-id",)),
+        )
+        == 0
+    )
+
+
+def test_workflow_csv_preserves_json_meaning_and_writes_unicode_as_utf8(
+    sqlite_session_factory: sessionmaker[Session], tmp_path: Path
+) -> None:
+    """Decode valid Unicode escapes while retaining text that cannot be safely rewritten."""
+    malformed = r'{"broken": "\u4f60"'
+    lone_surrogate = r'{"value": "\ud800"}'
+    unescaped = ' { "text": "已是中文" } '
+    plain_text = "Plain text, with a comma\nand a line break"
+    data = (
+        ("escaped", r'{"text": "\u4f60\u597d", "literal": "\\u4f60"}', r'{"text": "\ud83d\ude00"}'),
+        ("invalid", malformed, lone_surrogate),
+        ("unchanged", unescaped, plain_text),
+    )
+    with sqlite_session_factory.begin() as session:
+        for log_id, inputs, outputs in data:
+            log = _log(
+                log_id, created_by="actor-1", created_by_role=CreatorUserRole.ACCOUNT, created_at=datetime(2026, 1, 1)
+            )
+            run = _run(log.workflow_run_id)
+            run.inputs, run.outputs = inputs, outputs
+            session.add_all([log, run])
+
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    writer = WorkflowLogCsvWriter(logs=WorkflowAppLogQueryService(logs=repository))
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    path = tmp_path / "logs.csv"
+    with path.open("w", encoding="utf-8", newline="") as output:
+        assert writer.write_scoped_csv(scope=scope, filters=WorkflowLogExportFilters(), output=output) == len(data)
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        rows = {row["run_id"]: row for row in csv.DictReader(stream)}
+
+    escaped = rows["run-escaped"]
+    assert "你好" in escaped["user_input"]
+    assert json.loads(escaped["user_input"]) == {"text": "你好", "literal": r"\u4f60"}
+    assert "😀" in escaped["app_response"]
+    assert json.loads(escaped["app_response"]) == {"text": "😀"}
+    assert (rows["run-invalid"]["user_input"], rows["run-invalid"]["app_response"]) == (malformed, lone_surrogate)
+    assert (rows["run-unchanged"]["user_input"], rows["run-unchanged"]["app_response"]) == (unescaped, plain_text)
+
+
+@pytest.mark.parametrize("standby_disconnect", [False, True], ids=["recovery-conflict", "standby-disconnect"])
+def test_workflow_csv_retries_the_same_page_without_rewriting_rows(
+    standby_disconnect: bool,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Recover the failed page on a new connection and keep exactly one CSV row per run."""
+    monkeypatch.setattr(workflow_app_log_query_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
+    timestamp = datetime(2026, 1, 1)
+    logs = [
+        _log(log_id, created_by="actor-1", created_by_role=CreatorUserRole.ACCOUNT, created_at=timestamp)
+        for log_id in ("a", "b", "c")
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([*reversed(logs), *(_run(log.workflow_run_id) for log in logs)])
+
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    writer = WorkflowLogCsvWriter(logs=WorkflowAppLogQueryService(logs=repository))
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    filters = WorkflowLogExportFilters()
+    baseline = StringIO(newline="")
+    assert writer.write_scoped_csv(scope=scope, filters=filters, output=baseline) == 3
+    reader = csv.DictReader(StringIO(baseline.getvalue().removeprefix("\ufeff")))
+    assert [row["run_id"] for row in reader] == [log.workflow_run_id for log in logs]
+
+    progress: list[int] = []
+    attempts: list[tuple[str, tuple[object, ...], int]] = []
+    connections: list[object] = []
+    connections_held_during_retry: list[int] = []
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    monkeypatch.setattr(
+        log_export_queries, "sleep", lambda _delay: connections_held_during_retry.append(pool.checkedout())
+    )
+    monkeypatch.setattr(log_export_queries, "_log_export_requires_standby", lambda _session: standby_disconnect)
+
+    def interrupt_second_page(
+        connection: Connection,
+        _cursor: object,
+        statement: str,
+        parameters: tuple[object, ...],
+        _context: object,
+        _executemany: object,
+    ) -> None:
+        if "WITH workflow_export_candidates AS" not in statement:
+            return
+        attempts.append((statement, parameters, len(progress)))
+        connections.append(connection.connection.dbapi_connection)
+        if len(attempts) == 2:
+            error: PostgresOperationalError
+            if standby_disconnect:
+                error = PostgresOperationalError("connection reset by peer")
+            else:
+                error = postgres_errors.SerializationFailure("canceling statement due to conflict with recovery")
+                error.__setstate__({"pgcode": "40001"})
+            raise OperationalError(statement, parameters, error, connection_invalidated=standby_disconnect)
+
+    output = StringIO(newline="")
+    event.listen(sqlite_engine, "before_cursor_execute", interrupt_second_page)
+    try:
+        assert writer.write_scoped_csv(scope=scope, filters=filters, output=output, report_rows=progress.append) == 3
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", interrupt_second_page)
+
+    assert attempts[1] == attempts[2]
+    assert attempts[1][2] == 1
+    assert connections[1] is not connections[2]
+    assert connections_held_during_retry == [0]
+    assert progress == [1, 2, 3]
+    assert output.getvalue() == baseline.getvalue()
+    reason = "standby disconnect" if standby_disconnect else "recovery conflict"
+    assert f"Retrying workflow log export page after PostgreSQL {reason}: app=app-1 page=run" in caplog.text
 
 
 def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(

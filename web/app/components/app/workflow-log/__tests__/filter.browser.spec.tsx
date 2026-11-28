@@ -1,24 +1,40 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { QueryParam } from '../index'
+import type { WorkflowLogQuery } from '../log-filters'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { useCloudSandboxPlanStatus } from '@/features/log-export/cloud-sandbox-retention'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import Filter from '../filter'
+import { useWorkflowLogFilterOptions } from '../log-filters'
 
 async function setup({
   edition = 'CLOUD',
   plan = 'professional',
   initial = {},
-}: { edition?: DeploymentEdition; plan?: CloudPlan; initial?: Partial<QueryParam> } = {}) {
+}: { edition?: DeploymentEdition; plan?: CloudPlan; initial?: Partial<WorkflowLogQuery> } = {}) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
     features: { billing: { subscription: { plan } } },
   })
   function Filters() {
-    const [params, setParams] = useState<QueryParam>({ status: 'all', period: '2', ...initial })
-    return <Filter queryParams={params} setQueryParams={setParams} />
+    const [params, setParams] = useState<WorkflowLogQuery>({
+      status: 'all',
+      period: '2',
+      ...initial,
+    })
+    const planState = useCloudSandboxPlanStatus()
+    const filterOptions = useWorkflowLogFilterOptions(planState)
+    return (
+      <Filter
+        appId="workflow-app"
+        queryParams={params}
+        setQueryParams={setParams}
+        filterOptions={filterOptions}
+        identityOptions={[]}
+      />
+    )
   }
   return render(
     <Providers>
@@ -32,15 +48,29 @@ it.each(['running', 'paused', 'scheduled'] as const)(
   async (status) => {
     const screen = await setup({ initial: { keyword: 'invoice', period: '3' } })
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
-    await screen.getByRole('combobox', { name: 'appLog.status.all' }).click()
+    await screen
+      .getByRole('combobox', { name: 'appLog.table.header.status appLog.status.all' })
+      .click()
     await screen.getByRole('option', { name: `appLog.status.${status}`, exact: true }).click()
     await expect
-      .element(screen.getByRole('combobox', { name: `appLog.status.${status}`, exact: true }))
+      .element(
+        screen.getByRole('combobox', {
+          name: `appLog.table.header.status appLog.status.${status}`,
+          exact: true,
+        }),
+      )
       .toBeVisible()
     await screen
-      .getByRole('button', { name: `common.operation.clear appLog.status.${status}`, exact: true })
+      .getByRole('button', {
+        name: `common.operation.clear appLog.table.header.status appLog.status.${status}`,
+        exact: true,
+      })
       .click()
-    await expect.element(screen.getByRole('combobox', { name: 'appLog.status.all' })).toBeVisible()
+    await expect
+      .element(
+        screen.getByRole('combobox', { name: 'appLog.table.header.status appLog.status.all' }),
+      )
+      .toBeVisible()
     await expect.element(search).toHaveValue('invoice')
     await expect
       .element(screen.getByRole('combobox', { name: 'appLog.filter.period.last4weeks' }))
@@ -65,11 +95,20 @@ it.each([
       await expect
         .element(list.getByRole('option', { name: 'appLog.filter.period.allTime' }))
         .not.toBeInTheDocument()
+      await expect
+        .element(list.getByRole('option', { name: 'appLog.filter.period.custom' }))
+        .not.toBeInTheDocument()
       expect(list.getByRole('option').elements()).toHaveLength(3)
     } else {
       await expect
         .element(list.getByRole('option', { name: 'appLog.filter.period.allTime' }))
         .toBeVisible()
+      await expect
+        .element(list.getByRole('option').last())
+        .toHaveTextContent('appLog.filter.period.custom')
+      await expect
+        .element(list.getByRole('option', { name: 'appLog.filter.period.custom' }))
+        .toBeInViewport({ ratio: 1 })
     }
     await list.getByRole('option', { name: 'appLog.filter.period.today', exact: true }).click()
     await expect
@@ -87,11 +126,20 @@ it.each([
       )
       .toBeVisible()
     await expect
-      .element(screen.getByRole('combobox', { name: 'appLog.status.failed' }))
+      .element(
+        screen.getByRole('combobox', { name: 'appLog.table.header.status appLog.status.failed' }),
+      )
       .toBeVisible()
     await expect
       .element(screen.getByRole('searchbox', { name: 'common.operation.search' }))
       .toHaveValue('invoice')
+    if (!restricted) {
+      await screen.getByRole('combobox', { name: 'appLog.filter.period.allTime' }).click()
+      await expect.element(list.getByRole('option').first()).toBeInViewport({ ratio: 1 })
+      await expect
+        .element(list.getByRole('option', { name: 'appLog.filter.period.custom' }))
+        .toBeInViewport({ ratio: 1 })
+    }
   },
 )
 
@@ -103,7 +151,11 @@ it('edits and clears the keyword without changing the selected status or period'
   await screen.getByRole('button', { name: 'common.operation.clear', exact: true }).click()
   await expect.element(search).toHaveValue('')
   await expect.element(search).toHaveFocus()
-  await expect.element(screen.getByRole('combobox', { name: 'appLog.status.failed' })).toBeVisible()
+  await expect
+    .element(
+      screen.getByRole('combobox', { name: 'appLog.table.header.status appLog.status.failed' }),
+    )
+    .toBeVisible()
   await expect
     .element(screen.getByRole('combobox', { name: 'appLog.filter.period.last4weeks' }))
     .toBeVisible()

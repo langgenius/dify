@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Nie udało się wczytać logów",
   "agentDetail.logs.notAvailable": "Brak danych",
   "agentDetail.logs.table.createdTime": "Czas utworzenia",
-  "agentDetail.logs.table.endUser": "Użytkownik końcowy",
   "agentDetail.logs.table.messageCount": "Liczba wiad.",
   "agentDetail.logs.table.operationRate": "Ocena operatora",
   "agentDetail.logs.table.source": "Źródło",

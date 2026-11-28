@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "로그를 불러오지 못했습니다",
   "agentDetail.logs.notAvailable": "없음",
   "agentDetail.logs.table.createdTime": "생성 시간",
-  "agentDetail.logs.table.endUser": "최종 사용자",
   "agentDetail.logs.table.messageCount": "메시지 수",
   "agentDetail.logs.table.operationRate": "관리자 평점",
   "agentDetail.logs.table.source": "소스",

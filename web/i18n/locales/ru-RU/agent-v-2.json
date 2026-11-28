@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Не удалось загрузить журналы",
   "agentDetail.logs.notAvailable": "Н/Д",
   "agentDetail.logs.table.createdTime": "Время создания",
-  "agentDetail.logs.table.endUser": "Конечный пользователь",
   "agentDetail.logs.table.messageCount": "Кол-во сообщений",
   "agentDetail.logs.table.operationRate": "Оценка администратора",
   "agentDetail.logs.table.source": "Источник",

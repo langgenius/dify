@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Falha ao carregar logs",
   "agentDetail.logs.notAvailable": "N/D",
   "agentDetail.logs.table.createdTime": "Hora de criação",
-  "agentDetail.logs.table.endUser": "Usuário final",
   "agentDetail.logs.table.messageCount": "Qtd. msg.",
   "agentDetail.logs.table.operationRate": "Avaliação do administrador",
   "agentDetail.logs.table.source": "Fonte",

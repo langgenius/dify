@@ -1,7 +1,8 @@
 """Detached conversation records and explicit ownership references."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import JsonValue
@@ -100,14 +101,63 @@ class ConsoleConversationScope:
 
 
 @dataclass(frozen=True, slots=True)
-class ConsoleConversationFilters:
+class ConsoleConversationLogFilters:
+    """Select Console logs before pagination.
+
+    A conversation matches either identity list. Two empty lists select all identities.
+    """
+
     keyword: str | None
     start: datetime | None
     end: datetime | None
     annotation_status: ConversationAnnotationStatus
     sort_by: ConversationSort
+    end_user_ids: tuple[str, ...] = field(default=(), kw_only=True)
+    account_ids: tuple[str, ...] = field(default=(), kw_only=True)
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleConversationFilters(ConsoleConversationLogFilters):
     page: int
     limit: int
+
+
+class ConsoleLogIdentitySource(StrEnum):
+    END_USER = "end-user"
+    ACCOUNT = "account"
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleLogIdentity:
+    """Display label and the exact ID accepted by the Console Logs filters."""
+
+    id: str
+    label: str
+    source: ConsoleLogIdentitySource
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationLogExportCounts:
+    conversation_count: int
+    message_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationLogExportRow:
+    """One message and its optional identity, feedback and conversation status."""
+
+    conversation_id: str
+    message_id: str
+    created_at: datetime
+    end_user_id: str | None
+    account_id: str | None
+    account_name: str | None
+    user_input: str
+    app_response: str
+    feedback_rating: str | None
+    feedback_content: str | None
+    input_variables: dict[str, JsonValue] | None
+    status: str | None
 
 
 @dataclass(frozen=True, slots=True)

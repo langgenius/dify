@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Iterable
+from pathlib import Path
 
 
 class BaseStorage(ABC):
@@ -10,6 +11,10 @@ class BaseStorage(ABC):
     @abstractmethod
     def save(self, filename: str, data: bytes):
         raise NotImplementedError
+
+    def save_from_path(self, key: str, source: Path) -> None:
+        """Read a completed local file for backends that implement byte-oriented writes."""
+        self.save(key, source.read_bytes())
 
     @abstractmethod
     def load_once(self, filename: str) -> bytes:
@@ -37,6 +42,7 @@ class BaseStorage(ABC):
         *,
         expires_in: int,
         content_type: str | None = None,
+        download_filename: str | None = None,
     ) -> str:
         """Generate a temporary direct-download URL when the backend supports it."""
         raise NotImplementedError("This storage backend doesn't support presigned URLs")

@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "تعذر تحميل السجلات",
   "agentDetail.logs.notAvailable": "غير متاح",
   "agentDetail.logs.table.createdTime": "وقت الإنشاء",
-  "agentDetail.logs.table.endUser": "المستخدم النهائي",
   "agentDetail.logs.table.messageCount": "عدد الرسائل",
   "agentDetail.logs.table.operationRate": "معدل المسؤول",
   "agentDetail.logs.table.source": "المصدر",

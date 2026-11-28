@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Failed to load logs",
   "agentDetail.logs.notAvailable": "N/A",
   "agentDetail.logs.table.createdTime": "Created Time",
-  "agentDetail.logs.table.endUser": "End-user",
   "agentDetail.logs.table.messageCount": "Msg. Count",
   "agentDetail.logs.table.operationRate": "Op. Rate",
   "agentDetail.logs.table.source": "Source",

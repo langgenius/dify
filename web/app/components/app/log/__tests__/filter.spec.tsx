@@ -1,10 +1,11 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
-import type { QueryParam } from '../index'
+import type { QueryParam } from '../log-filters'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { useCloudSandboxPlanStatus } from '@/features/log-export/cloud-sandbox-retention'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -12,6 +13,7 @@ import {
   seedFeatures,
 } from '@/test/console/query-data'
 import Filter from '../filter'
+import { useLogFilterOptions } from '../log-filters'
 
 let mockAnnotationsCountLoading = false
 let mockAnnotationsCountData: { count: number } | null = { count: 10 }
@@ -57,10 +59,13 @@ const initialQuery: QueryParam = { period: '2', annotation_status: 'all', keywor
 const onChange = vi.fn()
 function ControlledFilter({ isChatMode = true }: { isChatMode?: boolean }) {
   const [queryParams, setQueryParams] = useState(initialQuery)
+  const planState = useCloudSandboxPlanStatus()
+  const filterOptions = useLogFilterOptions('test-app-id', planState)
   return (
     <Filter
       appId="test-app-id"
       isChatMode={isChatMode}
+      filterOptions={filterOptions}
       queryParams={queryParams}
       setQueryParams={(value) => {
         onChange(value)
@@ -102,7 +107,8 @@ it('keeps the period list restricted while the plan is pending and follows cache
   act(() => {
     seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
   })
-  await waitFor(() => expect(options.getAllByRole('option')).toHaveLength(9))
+  await waitFor(() => expect(options.getAllByRole('option')).toHaveLength(10))
+  expect(options.getByRole('option', { name: 'appLog.filter.period.custom' })).toBeVisible()
   act(() => {
     seedFeatures(queryClient, { billing: { subscription: { plan: 'sandbox' } } })
   })
@@ -115,7 +121,7 @@ it.each(['COMMUNITY', 'ENTERPRISE'] as const)('keeps every period in %s', async 
   const user = userEvent.setup()
   render(<ControlledFilter />)
   await user.click(screen.getByRole('combobox', { name: /last7days/ }))
-  expect(within(await screen.findByRole('listbox')).getAllByRole('option')).toHaveLength(9)
+  expect(within(await screen.findByRole('listbox')).getAllByRole('option')).toHaveLength(10)
 })
 
 it.each([
@@ -176,6 +182,10 @@ it.each(['loading', 'unavailable'] as const)(
     mockAnnotationsCountData = null
     render(<ControlledFilter />)
     expect(screen.getByRole('searchbox')).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: 'appLog.filter.annotation.all' })).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', {
+        name: 'appLog.table.header.status appLog.filter.annotation.all',
+      }),
+    ).toBeDisabled()
   },
 )

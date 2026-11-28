@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Nu s-au putut încărca jurnalele",
   "agentDetail.logs.notAvailable": "Indisponibil",
   "agentDetail.logs.table.createdTime": "Data creării",
-  "agentDetail.logs.table.endUser": "Utilizator final",
   "agentDetail.logs.table.messageCount": "Nr. mesaje",
   "agentDetail.logs.table.operationRate": "Rating administrator",
   "agentDetail.logs.table.source": "Sursă",

@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 CSRF_WHITE_LIST = [
     re.compile(r"/console/api/apps/[a-f0-9-]+/workflows/draft"),
     re.compile(r"/console/api/workflow-run-archives/downloads/[a-f0-9]+/file"),
+    re.compile(r"/console/api/apps/[a-f0-9-]+/(?:conversation|workflow)-log-exports/[a-f0-9-]+/file"),
+    re.compile(r"/console/api/agent/[a-f0-9-]+/log-exports/[a-f0-9-]+/file"),
 ]
 _ACCOUNT_AVATAR_FILE_PATH = re.compile(r"/console/api/accounts/[a-f0-9-]+/avatars/[a-f0-9-]+")
 

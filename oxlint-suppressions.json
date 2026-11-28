@@ -248,11 +248,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/log/filter.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/components/app/log/var-panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -280,11 +275,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/app/workflow-log/filter.tsx": {
-    "react/only-export-components": {
-      "count": 1
     }
   },
   "web/app/components/base/agent-log-modal/index.tsx": {

@@ -39,6 +39,7 @@ class EmailType(StrEnum):
     QUEUE_MONITOR_ALERT = auto()
     DOCUMENT_CLEAN_NOTIFY = auto()
     WORKFLOW_COMMENT_MENTION = auto()
+    LOG_EXPORT_READY = auto()
     EMAIL_REGISTER = auto()
     EMAIL_REGISTER_WHEN_ACCOUNT_EXIST = auto()
     RESET_PASSWORD_WHEN_ACCOUNT_NOT_EXIST_NO_REGISTER = auto()
@@ -470,6 +471,18 @@ def create_default_email_config() -> EmailI18nConfig:
                 subject="你在工作流评论中被提及",
                 template_path="workflow_comment_mention_template_zh-CN.html",
                 branded_template_path="without-brand/workflow_comment_mention_template_zh-CN.html",
+            ),
+        },
+        EmailType.LOG_EXPORT_READY: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="Your log export is ready",
+                template_path="log_export_ready_template_en-US.html",
+                branded_template_path="log_export_ready_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="日志导出已完成",
+                template_path="log_export_ready_template_zh-CN.html",
+                branded_template_path="log_export_ready_template_zh-CN.html",
             ),
         },
         EmailType.TRIGGER_EVENTS_LIMIT_SANDBOX: {

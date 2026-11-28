@@ -136,6 +136,9 @@ def test_exact_workflow_draft_path_bypasses_csrf() -> None:
         "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/iteration/nodes/node-1/run",
         "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/loop/nodes/node-1/run",
         "/console/api/workflow-run-archives/downloads/5923ce20291444af45f0580fb49f1cc9/file/extra",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/conversation-log-exports",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/conversation-log-exports/5923ce20-2914-44af-45f0-580fb49f1cc8",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/conversation-log-exports/5923ce20-2914-44af-45f0-580fb49f1cc8/file/extra",
     ],
 )
 def test_whitelist_prefix_paths_still_require_csrf(path: str) -> None:

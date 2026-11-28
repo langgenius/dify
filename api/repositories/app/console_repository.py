@@ -79,6 +79,7 @@ from services.entities.app_entities import (
 from services.errors.app import AppDiscoveryNotFoundError
 from services.errors.base import NoPermissionError
 from services.openapi.visibility import apply_openapi_gate
+from services.retention.log_export_command import AppLogExportTarget
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,20 @@ def console_app_actor(session: Session, context: RequestContext) -> Account:
 class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_log_export_target(self, app_id: str) -> AppLogExportTarget:
+        """Load a trusted server operator's visible App and any bound Agent in its actual workspace."""
+        with self._session_factory() as session:
+            workspace_id = session.scalar(select(App.tenant_id).where(App.id == app_id))
+            if workspace_id is None:
+                raise ConsoleAppNotFoundError("App not found.")
+            app = find_console_app(session, workspace_id=workspace_id, app_id=app_id)
+            if app is None:
+                raise ConsoleAppNotFoundError("App not found.")
+            agent_id = app.bound_agent_id_with_session(session=session)
+            if app.mode == AppMode.AGENT and agent_id is None:
+                raise ConsoleAppNotFoundError("The app's bound Agent was not found.")
+            return AppLogExportTarget(app_id=app.id, tenant_id=app.tenant_id, mode=app.mode, agent_id=agent_id)
 
     def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
         with self._session_factory() as session:

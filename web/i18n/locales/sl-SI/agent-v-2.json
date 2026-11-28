@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Dnevnikov ni bilo mogoče naložiti",
   "agentDetail.logs.notAvailable": "Ni na voljo",
   "agentDetail.logs.table.createdTime": "Čas izdelave",
-  "agentDetail.logs.table.endUser": "Končni uporabnik",
   "agentDetail.logs.table.messageCount": "Št. sporočil",
   "agentDetail.logs.table.operationRate": "Ocena operaterja",
   "agentDetail.logs.table.source": "Vir",

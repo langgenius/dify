@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useCloudSandboxPlanStatus } from './cloud-sandbox-retention'
+import { useCloudSandboxPlanStatus } from '@/features/log-export/cloud-sandbox-retention'
 
 export function RetentionUpgradeNotice() {
   const { t } = useTranslation(['appLog'])

@@ -2,7 +2,7 @@
 
 import type { AgentLogConversationItemResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentLogsSort } from './components/logs-table'
-import type { SourceFilterValue } from './components/source-picker'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import {
   Drawer,
   DrawerBackdrop,
@@ -21,56 +21,47 @@ import {
   PaginationPrevious,
   PaginationRoot,
 } from '@langgenius/dify-ui/pagination'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import dayjs from 'dayjs'
+import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { userTimezoneQueryOptions } from '@/features/account-profile/client'
+import {
+  isLogTimePeriodRestricted,
+  useCloudSandboxPlanStatus,
+} from '@/features/log-export/cloud-sandbox-retention'
+import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogDetailPanel } from './components/log-detail-panel'
 import { AgentLogsTable } from './components/logs-table'
 import { AgentLogSourcePicker } from './components/source-picker'
-
-type PeriodKey = 'last7days' | 'last30days' | 'allTime'
+import { AgentLogExportDialog } from './log-export-dialog'
+import { agentLogPeriods, defaultAgentLogFilters, toAgentLogQuery } from './log-filters'
 
 type AgentLogsPageProps = {
   agentId: string
-}
-
-const queryDateFormat = 'YYYY-MM-DD HH:mm'
-
-const periodOptions: Array<{
-  value: PeriodKey
-  labelKey:
-    | 'agentDetail.logs.filters.period.last7days'
-    | 'agentDetail.logs.filters.period.last30days'
-    | 'agentDetail.logs.filters.period.allTime'
-}> = [
-  { value: 'last7days', labelKey: 'agentDetail.logs.filters.period.last7days' },
-  { value: 'last30days', labelKey: 'agentDetail.logs.filters.period.last30days' },
-  { value: 'allTime', labelKey: 'agentDetail.logs.filters.period.allTime' },
-]
-
-const getPeriodQuery = (period: PeriodKey) => {
-  if (period === 'allTime') return {}
-
-  const days = period === 'last7days' ? 7 : 30
-  return {
-    start: dayjs().subtract(days, 'day').format(queryDateFormat),
-    end: dayjs().add(1, 'minute').format(queryDateFormat),
-  }
 }
 
 export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
-  const [period, setPeriod] = useState<PeriodKey>('last7days')
-  const [source, setSource] = useState<SourceFilterValue>([])
+  const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { data: timezone } = useQuery(userTimezoneQueryOptions())
+  const planState = useCloudSandboxPlanStatus()
+  const allowCustom = !isLogTimePeriodRestricted(planState)
+  const [filters, setFilters] = useState(defaultAgentLogFilters)
+  const effectiveFilters =
+    !allowCustom && filters.period === 'custom'
+      ? { ...filters, period: defaultAgentLogFilters.period, customRange: undefined }
+      : filters
+  const [identityOptionsBeforeFilter, setIdentityOptionsBeforeFilter] = useState<LogIdentity[]>([])
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<AgentLogsSort>({
     field: 'created_at',
@@ -79,9 +70,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
   const [selectedLog, setSelectedLog] = useState<AgentLogConversationItemResponse>()
-  const periodItems = periodOptions.map((option) => ({
-    value: option.value,
-    name: t(($) => $[option.labelKey]),
+  const periodItems = agentLogPeriods.map((period) => ({
+    value: period,
+    label: t(($) => $[`agentDetail.logs.filters.period.${period}`]),
   }))
   const logSourcesQuery = useQuery(
     consoleQuery.agent.byAgentId.logSources.get.queryOptions({
@@ -94,24 +85,41 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   )
   const logsQuery = useQuery({
     ...consoleQuery.agent.byAgentId.logs.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-        query: {
-          ...getPeriodQuery(period),
-          page,
-          limit,
-          keyword: keyword.trim() || undefined,
-          ...(source.length > 0 ? { sources: source } : {}),
-          sort_by: sort.field,
-          sort_order: sort.order,
-        },
-      },
+      input: timezone
+        ? {
+            params: {
+              agent_id: agentId,
+            },
+            query: {
+              ...toAgentLogQuery(effectiveFilters, timezone),
+              page,
+              limit,
+              keyword: keyword.trim() || undefined,
+              sort_by: sort.field,
+              sort_order: sort.order,
+            },
+          }
+        : skipToken,
     }),
     placeholderData: keepPreviousData,
   })
   const logs = logsQuery.data?.data ?? []
+  const listedIdentities = logs.flatMap(({ end_user_id, account_id }): LogIdentity[] => {
+    const identities: LogIdentity[] = []
+    if (end_user_id) identities.push({ id: end_user_id, label: end_user_id, source: 'end-user' })
+    if (account_id) identities.push({ id: account_id, label: account_id, source: 'account' })
+    return identities
+  })
+  const identityOptions =
+    filters.identities.length || (logsQuery.isPlaceholderData && identityOptionsBeforeFilter.length)
+      ? identityOptionsBeforeFilter
+      : listedIdentities
+  const sourcePicker = {
+    groups: logSourcesQuery.data?.groups ?? [],
+    isLoading: logSourcesQuery.isPending,
+    isError: logSourcesQuery.isError,
+    onRetry: () => void logSourcesQuery.refetch(),
+  }
   const totalPages = Math.max(Math.ceil((logsQuery.data?.total ?? 0) / limit), 1)
   const currentPage = logsQuery.data?.page ?? page
   const closeLogDetail = () => {
@@ -124,55 +132,71 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
       label={t(($) => $['agentDetail.sections.logs'])}
       panelClassName="max-lg:overflow-y-auto"
     >
-      <header className="h-auto shrink-0 px-3 pt-3 pb-2 lg:h-26.5 lg:px-6">
-        <div className="min-w-0">
-          <h2 className="system-xl-semibold text-text-primary">
-            {t(($) => $['agentDetail.logs.title'])}
-          </h2>
-          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t(($) => $['agentDetail.logs.description'])}</span>
-            <a
-              href={docLink('/use-dify/monitor/logs')}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              {t(($) => $['agentDetail.logs.learnMore'])}
-              <span aria-hidden className="i-ri-external-link-line size-3" />
-            </a>
-          </p>
+      <header className="shrink-0 px-3 pt-3 pb-2 lg:px-6">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="system-xl-semibold text-text-primary">
+              {t(($) => $['agentDetail.logs.title'])}
+            </h2>
+            <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
+              <span>{t(($) => $['agentDetail.logs.description'])}</span>
+              <a
+                href={docLink('/use-dify/monitor/logs')}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                {t(($) => $['agentDetail.logs.learnMore'])}
+                <span aria-hidden className="i-ri-external-link-line size-3" />
+              </a>
+            </p>
+          </div>
+          {canExportLogs && timezone && (
+            <AgentLogExportDialog
+              key={agentId}
+              agentId={agentId}
+              currentFilters={effectiveFilters}
+              sourcePicker={sourcePicker}
+              identityOptions={identityOptions}
+              timezone={timezone}
+            />
+          )}
         </div>
 
         <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-          <Chip
-            value={period}
-            items={periodItems}
-            leftIcon={
-              <span aria-hidden className="i-ri-calendar-line block size-4 text-text-secondary" />
-            }
-            className="min-w-32"
-            onSelect={(item) => {
+          <LogTimeRangePicker
+            value={effectiveFilters}
+            options={periodItems}
+            timezone={timezone}
+            clearedPeriod="allTime"
+            allowCustom={allowCustom}
+            onChange={({ period, customRange }) => {
               setPage(1)
-              setPeriod(item.value)
-            }}
-            onClear={() => {
-              setPage(1)
-              setPeriod('allTime')
+              setFilters((previous) => ({ ...previous, period, customRange }))
             }}
           />
 
           <AgentLogSourcePicker
-            value={source}
-            groups={logSourcesQuery.data?.groups ?? []}
-            isLoading={logSourcesQuery.isPending}
-            isError={logSourcesQuery.isError}
-            onRetry={() => {
-              void logSourcesQuery.refetch()
-            }}
-            onChange={(nextSource) => {
+            {...sourcePicker}
+            value={filters.sources}
+            onChange={(sources) => {
               setPage(1)
-              setSource(nextSource)
+              setFilters((previous) => ({ ...previous, sources }))
             }}
+          />
+
+          <LogIdentityField
+            agentId={agentId}
+            options={identityOptions}
+            value={filters.identities}
+            onChange={(identities) => {
+              if (identities.length && !filters.identities.length)
+                setIdentityOptionsBeforeFilter(identityOptions)
+              setPage(1)
+              setFilters((previous) => ({ ...previous, identities }))
+            }}
+            disabled={false}
+            applyOnClose
           />
 
           <SearchInput

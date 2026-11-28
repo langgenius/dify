@@ -455,6 +455,83 @@ export type MessageFeedbackRatingRequiredError = ErrorResponse & {
   status: 400
 }
 
+export type AgentLogExportCreatePayload = {
+  account_ids?: Array<string>
+  end?: string | null
+  end_user_ids?: Array<string>
+  estimated_rows?: number | null
+  identity_labels?: Array<LogExportIdentityLabel>
+  sources?: Array<string>
+  start?: string | null
+}
+
+export type AgentLogExportTaskResponse = {
+  estimated_rows?: number | null
+  status: 'pending'
+  task_id: string
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type LogExportLimitReachedError = ErrorResponse & {
+  code: 'log_export_limit_reached'
+  status: 429
+}
+
+export type AgentLogExportLatestResponse = {
+  task: AgentLogExportLatestTaskResponse | null
+}
+
+export type AgentLogExportPreviewResponse = {
+  counts: AgentLogExportCountsResponse | null
+}
+
+export type AgentLogExportStatusResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
+  status: LogExportStatus
+  task_id: string
+}
+
+export type AgentLogExportTaskNotFoundError = ErrorResponse & {
+  code: 'agent_log_export_task_not_found'
+  status: 404
+}
+
+export type LogExportEmailNotificationPayload = {
+  enabled: boolean
+}
+
+export type LogExportEmailNotificationResponse = {
+  email_notification: LogExportEmailState
+}
+
+export type LogExportTaskNotCancelableError = ErrorResponse & {
+  code: 'log_export_task_not_cancelable'
+  status: 409
+}
+
+export type BinaryFileResponse = Blob | File
+
+export type AgentLogExportFileNotFoundError = ErrorResponse & {
+  code: 'agent_log_export_file_not_found'
+  status: 404
+}
+
+export type AgentLogExportTaskNotReadyError = ErrorResponse & {
+  code: 'agent_log_export_task_not_ready'
+  status: 409
+}
+
 export type AgentLogSourceListResponse = {
   data: Array<AgentLogSourceResponse>
   groups: Array<AgentLogSourceGroupResponse>
@@ -466,6 +543,10 @@ export type AgentLogListResponse = {
   limit: number
   page: number
   total: number
+}
+
+export type AgentLogIdentitySearchResponse = {
+  data: Array<AgentLogIdentityOptionResponse>
 }
 
 export type AgentLogMessageListResponse = {
@@ -1167,6 +1248,37 @@ export type AgentTextToSpeechFeatureConfig = {
   [key: string]: unknown
 }
 
+export type LogExportIdentityLabel = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
+export type AgentLogExportLatestTaskResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  expires_at?: string | null
+  filters: AgentLogExportFilters
+  identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
+  status: LogExportStatus
+  task_id: string
+}
+
+export type AgentLogExportCountsResponse = {
+  log_count: number
+  row_count: number
+}
+
+export type LogExportEmailState = 'off' | 'queued' | 'waiting'
+
+export type LogExportProgressResponse = {
+  rows_written: number
+  stage: LogExportStage
+}
+
+export type LogExportStatus = 'canceled' | 'failed' | 'pending' | 'processing' | 'ready'
+
 export type AgentLogSourceResponse = {
   app_icon?: string | null
   app_icon_background?: string | null
@@ -1187,6 +1299,7 @@ export type AgentLogSourceGroupResponse = {
 }
 
 export type AgentLogConversationItemResponse = {
+  account_id?: string | null
   conversation_id: string
   created_at?: number | null
   end_user_id?: string | null
@@ -1199,6 +1312,12 @@ export type AgentLogConversationItemResponse = {
   unread: boolean
   updated_at?: number | null
   user_rate?: number | null
+}
+
+export type AgentLogIdentityOptionResponse = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
 }
 
 export type AgentLogMessageItemResponse = {
@@ -1820,6 +1939,18 @@ export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
   provider: string
   [key: string]: unknown
 }
+
+export type ConsoleLogIdentitySource = 'account' | 'end-user'
+
+export type AgentLogExportFilters = {
+  account_ids?: Array<string>
+  end: string | null
+  end_user_ids: Array<string>
+  sources: Array<string>
+  start: string | null
+}
+
+export type LogExportStage = 'preparing' | 'uploading' | 'writing'
 
 export type AgentLogFeedbackResponse = {
   content?: string | null
@@ -3925,6 +4056,200 @@ export type PostAgentByAgentIdFeedbacksResponses = {
 export type PostAgentByAgentIdFeedbacksResponse =
   PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
 
+export type PostAgentByAgentIdLogExportsData = {
+  body: AgentLogExportCreatePayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports'
+}
+
+export type PostAgentByAgentIdLogExportsErrors = {
+  400: ErrorResponse
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  429: LogExportLimitReachedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdLogExportsError =
+  PostAgentByAgentIdLogExportsErrors[keyof PostAgentByAgentIdLogExportsErrors]
+
+export type PostAgentByAgentIdLogExportsResponses = {
+  202: AgentLogExportTaskResponse
+}
+
+export type PostAgentByAgentIdLogExportsResponse =
+  PostAgentByAgentIdLogExportsResponses[keyof PostAgentByAgentIdLogExportsResponses]
+
+export type GetAgentByAgentIdLogExportsLatestData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/latest'
+}
+
+export type GetAgentByAgentIdLogExportsLatestErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsLatestError =
+  GetAgentByAgentIdLogExportsLatestErrors[keyof GetAgentByAgentIdLogExportsLatestErrors]
+
+export type GetAgentByAgentIdLogExportsLatestResponses = {
+  200: AgentLogExportLatestResponse
+}
+
+export type GetAgentByAgentIdLogExportsLatestResponse =
+  GetAgentByAgentIdLogExportsLatestResponses[keyof GetAgentByAgentIdLogExportsLatestResponses]
+
+export type GetAgentByAgentIdLogExportsPreviewData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    account_ids?: Array<string>
+    end?: string
+    end_user_ids?: Array<string>
+    sources?: Array<string>
+    start?: string
+  }
+  url: '/agent/{agent_id}/log-exports/preview'
+}
+
+export type GetAgentByAgentIdLogExportsPreviewErrors = {
+  400: ErrorResponse
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsPreviewError =
+  GetAgentByAgentIdLogExportsPreviewErrors[keyof GetAgentByAgentIdLogExportsPreviewErrors]
+
+export type GetAgentByAgentIdLogExportsPreviewResponses = {
+  200: AgentLogExportPreviewResponse
+}
+
+export type GetAgentByAgentIdLogExportsPreviewResponse =
+  GetAgentByAgentIdLogExportsPreviewResponses[keyof GetAgentByAgentIdLogExportsPreviewResponses]
+
+export type GetAgentByAgentIdLogExportsByTaskIdData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}'
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdError =
+  GetAgentByAgentIdLogExportsByTaskIdErrors[keyof GetAgentByAgentIdLogExportsByTaskIdErrors]
+
+export type GetAgentByAgentIdLogExportsByTaskIdResponses = {
+  200: AgentLogExportStatusResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdResponse =
+  GetAgentByAgentIdLogExportsByTaskIdResponses[keyof GetAgentByAgentIdLogExportsByTaskIdResponses]
+
+export type PutAgentByAgentIdLogExportsByTaskIdData = {
+  body: LogExportEmailNotificationPayload
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}'
+}
+
+export type PutAgentByAgentIdLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAgentByAgentIdLogExportsByTaskIdError =
+  PutAgentByAgentIdLogExportsByTaskIdErrors[keyof PutAgentByAgentIdLogExportsByTaskIdErrors]
+
+export type PutAgentByAgentIdLogExportsByTaskIdResponses = {
+  200: LogExportEmailNotificationResponse
+}
+
+export type PutAgentByAgentIdLogExportsByTaskIdResponse =
+  PutAgentByAgentIdLogExportsByTaskIdResponses[keyof PutAgentByAgentIdLogExportsByTaskIdResponses]
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}/cancel'
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelError =
+  PostAgentByAgentIdLogExportsByTaskIdCancelErrors[keyof PostAgentByAgentIdLogExportsByTaskIdCancelErrors]
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelResponses = {
+  200: AgentLogExportStatusResponse
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelResponse =
+  PostAgentByAgentIdLogExportsByTaskIdCancelResponses[keyof PostAgentByAgentIdLogExportsByTaskIdCancelResponses]
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}/file'
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404:
+    | AgentLogExportFileNotFoundError
+    | AgentLogExportTaskNotFoundError
+    | AgentNotFoundError
+    | ErrorResponse
+  409: AgentLogExportTaskNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileError =
+  GetAgentByAgentIdLogExportsByTaskIdFileErrors[keyof GetAgentByAgentIdLogExportsByTaskIdFileErrors]
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileResponse =
+  GetAgentByAgentIdLogExportsByTaskIdFileResponses[keyof GetAgentByAgentIdLogExportsByTaskIdFileResponses]
+
 export type GetAgentByAgentIdLogSourcesData = {
   body?: never
   path: {
@@ -3955,7 +4280,9 @@ export type GetAgentByAgentIdLogsData = {
     agent_id: string
   }
   query?: {
+    account_ids?: Array<string>
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -3984,6 +4311,33 @@ export type GetAgentByAgentIdLogsResponses = {
 
 export type GetAgentByAgentIdLogsResponse =
   GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+
+export type GetAgentByAgentIdLogsIdentityOptionsData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/agent/{agent_id}/logs/identity-options'
+}
+
+export type GetAgentByAgentIdLogsIdentityOptionsErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogsIdentityOptionsError =
+  GetAgentByAgentIdLogsIdentityOptionsErrors[keyof GetAgentByAgentIdLogsIdentityOptionsErrors]
+
+export type GetAgentByAgentIdLogsIdentityOptionsResponses = {
+  200: AgentLogIdentitySearchResponse
+}
+
+export type GetAgentByAgentIdLogsIdentityOptionsResponse =
+  GetAgentByAgentIdLogsIdentityOptionsResponses[keyof GetAgentByAgentIdLogsIdentityOptionsResponses]
 
 export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
   body?: never

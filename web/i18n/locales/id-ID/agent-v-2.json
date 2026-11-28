@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Gagal memuat log",
   "agentDetail.logs.notAvailable": "Tidak tersedia",
   "agentDetail.logs.table.createdTime": "Waktu Dibuat",
-  "agentDetail.logs.table.endUser": "Pengguna akhir",
   "agentDetail.logs.table.messageCount": "Jumlah Pesan",
   "agentDetail.logs.table.operationRate": "Tingkat Admin",
   "agentDetail.logs.table.source": "Sumber",

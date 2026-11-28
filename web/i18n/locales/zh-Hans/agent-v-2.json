@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "日志加载失败",
   "agentDetail.logs.notAvailable": "暂无",
   "agentDetail.logs.table.createdTime": "创建时间",
-  "agentDetail.logs.table.endUser": "终端用户",
   "agentDetail.logs.table.messageCount": "消息数",
   "agentDetail.logs.table.operationRate": "管理员评分",
   "agentDetail.logs.table.source": "来源",

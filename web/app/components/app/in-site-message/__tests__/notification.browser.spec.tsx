@@ -1,11 +1,17 @@
+import type { ReactNode } from 'react'
 import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
+import { Provider } from 'jotai'
+import { useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { LogExportProgressDialog } from '@/features/log-export/progress-dialog'
+import appLogEn from '@/i18n/locales/en-US/app-log.json'
 import commonEn from '@/i18n/locales/en-US/common.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import InSiteMessageNotification from '../notification'
@@ -17,20 +23,24 @@ beforeEach(() => {
 })
 const notice = (
   body: string,
+  id = 'notice-1',
 ): Awaited<ReturnType<typeof consoleClient.notification.get>>['notifications'][number] => ({
   frequency: 'once',
   lang: 'en-US',
-  notification_id: 'notice-1',
+  notification_id: id,
   title: 'Update\\nReady',
   subtitle: 'Details\\nBelow',
   title_pic_url: '',
   body,
 })
-async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
+async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD', progress?: ReactNode) {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
-    resources: { 'en-US': { common: commonEn }, 'zh-Hans': { common: commonZh } },
+    resources: {
+      'en-US': { appLog: appLogEn, common: commonEn },
+      'zh-Hans': { common: commonZh },
+    },
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
@@ -38,17 +48,42 @@ async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
     systemFeatures: { deployment_edition: edition },
   })
   const { NavigationProvider } = createTestNavigation({ url: pathname })
-  const screen = await render(
+  const content = (progress?: ReactNode) => (
     <NavigationProvider>
       <Providers>
-        <I18nextProvider i18n={i18n}>
-          <button type="button">Before notification</button>
-          <InSiteMessageNotification />
-        </I18nextProvider>
+        <Provider>
+          <I18nextProvider i18n={i18n}>
+            <button type="button">Before notification</button>
+            <InSiteMessageNotification />
+            {progress}
+          </I18nextProvider>
+        </Provider>
       </Providers>
-    </NavigationProvider>,
+    </NavigationProvider>
   )
-  return { screen, i18n }
+  const screen = await render(content(progress))
+  return {
+    screen,
+    i18n,
+    rerenderProgress: (progress: ReactNode) => screen.rerender(content(progress)),
+  }
+}
+
+function ExportProgress({ taskId, ready = false }: { taskId: string; ready?: boolean }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <LogExportProgressDialog
+      appName="Test app"
+      open={open}
+      taskId={taskId}
+      task={{ task_id: taskId, status: ready ? 'ready' : 'pending' }}
+      statusError={false}
+      fileUrl="/test-export.csv"
+      finalFocus={false}
+      onClose={() => setOpen(false)}
+      onRetry={() => {}}
+    />
+  )
 }
 const fake = setupFakeApi(() => ({
   console: {
@@ -190,3 +225,83 @@ it.each([
       .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
   },
 )
+
+it('shows a queued export notice when the same progress dialog closes before Ready', async () => {
+  const taskId = crypto.randomUUID()
+  const list = createDeferred<Awaited<ReturnType<typeof consoleClient.notification.get>>>()
+  fake.console.notification.get.mockReturnValue(list.promise)
+  const { screen } = await setup('CLOUD', <ExportProgress taskId={taskId} />)
+  const progress = screen.getByRole('dialog', { name: appLogEn['export.progressTitle'] })
+  await expect.element(progress.getByText(appLogEn['export.progressQueued'])).toBeVisible()
+
+  list.resolve({
+    should_show: true,
+    notifications: [
+      {
+        ...notice(
+          JSON.stringify({
+            log_export_task_id: taskId,
+            main: [
+              String.raw`**Start date** — 2026\-01\-03 00\:00`,
+              String.raw`**Search** — \:\:card \[customer\]\(https\:\/\/example\.com\) &lt;label&gt;`,
+              '**CSV rows** — 12',
+            ].join('\n\n'),
+            actions: [
+              { action: 'link', data: '/test-export.csv', text: 'Download CSV', type: 'primary' },
+            ],
+          }),
+        ),
+        title: 'Log export complete',
+        subtitle: 'Onboarding Flow',
+      },
+      notice('Ordinary announcement', 'announcement-1'),
+    ],
+  })
+  await expect.element(screen.getByText('Ordinary announcement')).toBeVisible()
+  await expect.element(screen.getByText('Log export complete')).not.toBeInTheDocument()
+
+  await progress.getByRole('button', { name: commonEn['operation.close'] }).last().click()
+  await expect.element(screen.getByText('Log export complete')).toBeVisible()
+  await expect.element(screen.getByText('Onboarding Flow')).toBeVisible()
+  await expect.element(screen.getByText('Start date — 2026-01-03 00:00')).toBeVisible()
+  await expect
+    .element(screen.getByText('Search — ::card [customer](https://example.com) <label>'))
+    .toBeVisible()
+  await expect.element(screen.getByText('CSV rows — 12')).toBeVisible()
+  await expect
+    .element(screen.getByRole('link', { name: 'Download CSV' }))
+    .toHaveAttribute('href', '/test-export.csv')
+  expect(screen.getByRole('link').all()).toHaveLength(1)
+  expect(fake.console.notification.dismiss.post).not.toHaveBeenCalled()
+})
+
+it('keeps the seen Ready notice hidden after remount without hiding another export', async () => {
+  const taskId = crypto.randomUUID()
+  fake.console.notification.get.mockResolvedValue({
+    should_show: true,
+    notifications: [
+      notice(JSON.stringify({ main: 'Export already seen', log_export_task_id: taskId })),
+      notice(
+        JSON.stringify({
+          main: 'Another export is ready',
+          log_export_task_id: crypto.randomUUID(),
+        }),
+        'notice-2',
+      ),
+    ],
+  })
+  const { screen, rerenderProgress } = await setup('CLOUD', <ExportProgress taskId={taskId} />)
+  const progress = screen.getByRole('dialog', { name: appLogEn['export.progressTitle'] })
+  await expect.element(progress.getByText(appLogEn['export.progressQueued'])).toBeVisible()
+  await rerenderProgress(<ExportProgress taskId={taskId} ready />)
+  await expect.element(progress.getByText(appLogEn['export.progressReady'])).toBeVisible()
+  await progress.getByRole('button', { name: commonEn['operation.close'] }).last().click()
+  await expect.element(screen.getByText('Another export is ready')).toBeVisible()
+  await expect.element(screen.getByText('Export already seen')).not.toBeInTheDocument()
+  await screen.unmount()
+
+  const fresh = await setup()
+  await expect.element(fresh.screen.getByText('Another export is ready')).toBeVisible()
+  await expect.element(fresh.screen.getByText('Export already seen')).not.toBeInTheDocument()
+  expect(fake.console.notification.dismiss.post).not.toHaveBeenCalled()
+})

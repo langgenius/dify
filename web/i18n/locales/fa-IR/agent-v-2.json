@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "بارگیری گزارش‌ها ناموفق بود",
   "agentDetail.logs.notAvailable": "ناموجود",
   "agentDetail.logs.table.createdTime": "زمان ایجاد",
-  "agentDetail.logs.table.endUser": "کاربر نهایی",
   "agentDetail.logs.table.messageCount": "تعداد پیام",
   "agentDetail.logs.table.operationRate": "امتیاز اپراتور",
   "agentDetail.logs.table.source": "منبع",

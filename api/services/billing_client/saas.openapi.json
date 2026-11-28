@@ -97,6 +97,36 @@
         }
       }
     },
+    "/v1/notifications": {
+      "post": {
+        "tags": [
+          "SaasNotification"
+        ],
+        "operationId": "SaasNotification_UpsertNotification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertNotificationReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpsertNotificationReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/notifications/active": {
       "get": {
         "tags": [
@@ -119,6 +149,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetAccountNotificationReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/{notificationId}/accounts": {
+      "post": {
+        "tags": [
+          "SaasNotification"
+        ],
+        "operationId": "SaasNotification_BatchAddNotificationAccounts",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchAddNotificationAccountsReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchAddNotificationAccountsReply"
                 }
               }
             }
@@ -681,6 +751,38 @@
           "updatedAt",
           "enabled",
           "accessPoints"
+        ]
+      },
+      "BatchAddNotificationAccountsReply": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of records inserted (excluding duplicates).",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "BatchAddNotificationAccountsReq": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string"
+          },
+          "accountIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Account IDs from the dify `accounts` table. Max 1000 per call."
+          }
+        },
+        "required": [
+          "notificationId",
+          "accountIds"
         ]
       },
       "CheckAccountInFreezeReply": {
@@ -1263,6 +1365,63 @@
           "allowedCidrs",
           "expectedVersion",
           "actorAccountId"
+        ]
+      },
+      "UpsertNotificationReply": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notificationId"
+        ]
+      },
+      "UpsertNotificationReq": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string",
+            "description": "Leave empty to create a new notification; supply an existing UUID to update."
+          },
+          "contents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LangContent"
+            },
+            "description": "At least one language variant is required."
+          },
+          "startTime": {
+            "type": "string",
+            "description": "Optional delivery window. Omit (leave zero) to mean \"no bound\".",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "frequency": {
+            "type": "string",
+            "description": "\"once\" (default) | \"every_page_load\""
+          },
+          "status": {
+            "type": "string",
+            "description": "\"active\" (default) | \"inactive\""
+          },
+          "isGlobal": {
+            "type": "boolean",
+            "description": "true means every account is eligible without pre-created target rows."
+          }
+        },
+        "required": [
+          "notificationId",
+          "contents",
+          "startTime",
+          "endTime",
+          "frequency",
+          "status",
+          "isGlobal"
         ]
       },
       "UtmErrorReason": {

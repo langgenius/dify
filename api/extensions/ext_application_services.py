@@ -6,6 +6,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from typing import cast
 from uuid import uuid4
 
@@ -222,6 +223,13 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
+from services.retention.agent.log_export_csv import AgentLogCsvWriter
+from services.retention.agent.log_export_service import AgentLogExportService, AgentLogExportTask
+from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
+from services.retention.log_export_adapters import dispatch_log_export_head, open_log_export_csv, store_log_export_csv
+from services.retention.log_export_command import LogExportCommandService
+from services.retention.log_export_email import LogExportEmailNotifications
+from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
@@ -229,6 +237,8 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
+from services.retention.workflow_run.log_export_service import WorkflowLogExportService, WorkflowLogExportTask
 from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock
@@ -267,6 +277,7 @@ from tasks.annotation.enable_annotation_reply_task import enable_annotation_repl
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.mail_inner_task import enqueue_inner_mail
+from tasks.mail_log_export_task import dispatch_log_export_email
 
 logger = logging.getLogger(__name__)
 
@@ -327,6 +338,7 @@ class ApplicationServices:
     agent_versions: AgentVersionService
     agent_invite_options: AgentInviteOptionsService
     agent_observability: AgentObservability
+    agent_log_exports: AgentLogExportService
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
@@ -352,6 +364,9 @@ class ApplicationServices:
     conversation_names: ConversationNameService
     conversation_commands: ConversationCommandService
     conversation_queries: ConversationQueryService
+    conversation_log_exports: ConversationLogExportService
+    log_export_command: LogExportCommandService
+    log_export_email_notifications: LogExportEmailNotifications
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -392,6 +407,7 @@ class ApplicationServices:
     workspaces: WorkspaceServices
     triggers: TriggerServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_log_exports: WorkflowLogExportService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
@@ -665,6 +681,24 @@ def build_application_services(
         session_factory=database_client,
         repository=messages,
     )
+    workflow_app_logs = WorkflowAppLogQueryService(
+        logs=WorkflowAppLogQueryRepository(
+            session_factory=database_client,
+            include_evaluation=dify_config.ENABLE_EVALUATION,
+        ),
+    )
+    agent_observability = build_agent_observability(database_client=database_client)
+    agent_log_csv = AgentLogCsvWriter(logs=agent_observability)
+    workflow_log_csv = WorkflowLogCsvWriter(logs=workflow_app_logs)
+    conversation_log_exports = ConversationLogExportService(
+        conversations=conversations,
+        tasks=RedisLogExportTasks(
+            redis=redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+        ),
+        dispatch=partial(dispatch_log_export_head, redis=redis),
+        store_csv=store_log_export_csv,
+        open_csv=open_log_export_csv,
+    )
 
     return ApplicationServices(
         moderation=build_moderation_service(database_client=database_client),
@@ -698,6 +732,14 @@ def build_application_services(
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
         conversation_queries=conversation_queries,
+        conversation_log_exports=conversation_log_exports,
+        log_export_command=LogExportCommandService(
+            apps=console_apps,
+            conversations=conversation_log_exports,
+            write_workflow_csv=workflow_log_csv.write_scoped_csv,
+            agents=agent_log_csv,
+        ),
+        log_export_email_notifications=LogExportEmailNotifications(redis=redis, dispatch=dispatch_log_export_email),
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
@@ -709,7 +751,15 @@ def build_application_services(
         agent_invite_options=build_agent_invite_options_service(
             database_client=database_client, rbac_members=rbac.members
         ),
-        agent_observability=build_agent_observability(database_client=database_client),
+        agent_observability=agent_observability,
+        agent_log_exports=AgentLogExportService(
+            logs=agent_observability,
+            tasks=RedisLogExportTasks(redis=redis, task_type=AgentLogExportTask, key_prefix="agent_log_export"),
+            dispatch=partial(dispatch_log_export_head, redis=redis),
+            store_csv=store_log_export_csv,
+            write_csv=agent_log_csv.write_csv,
+            open_csv=open_log_export_csv,
+        ),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(
@@ -912,11 +962,13 @@ def build_application_services(
         ),
         workspaces=workspace_services,
         triggers=triggers,
-        workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(
-                session_factory=database_client,
-                include_evaluation=dify_config.ENABLE_EVALUATION,
-            ),
+        workflow_app_logs=workflow_app_logs,
+        workflow_log_exports=WorkflowLogExportService(
+            tasks=RedisLogExportTasks(redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"),
+            dispatch=partial(dispatch_log_export_head, redis=redis),
+            store_csv=store_log_export_csv,
+            write_csv=workflow_log_csv.write_csv,
+            open_csv=open_log_export_csv,
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,

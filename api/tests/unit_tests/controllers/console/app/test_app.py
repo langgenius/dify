@@ -524,8 +524,12 @@ class TestAppApisCases:
             context = RequestContext("request-1", None, USER_ID, _APP_APIS_TENANT_ID)
             app_model = _make_app("app-1")
 
-            with database_app.test_request_context("/?page=1&limit=20"):
-                result = method(api, WorkflowAppLogQuery(page=1, limit=20), context, app_model=app_model)
+            first_id = "b6a88710-e7b2-4e19-8162-cd7432c1102c"
+            second_id = "bc53aff8-b9ab-4492-a754-eca9ba1bd8a9"
+            with database_app.test_request_context(
+                f"/?page=1&limit=20&end_user_ids={first_id}&end_user_ids={second_id}"
+            ):
+                result = method(api, context, app_model=app_model)
 
             assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
             workflow_app_logs.list_logs.assert_called_once_with(
@@ -540,6 +544,8 @@ class TestAppApisCases:
                 detail=False,
                 created_by_end_user_session_id=None,
                 created_by_account=None,
+                end_user_ids=(first_id, second_id),
+                account_ids=(),
             )
 
     class TestWorkflowDraftVariableEndpoints:

@@ -1,24 +1,30 @@
 """Persist conversations within their end-user, installed-account, or Console app scope."""
 
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
+from functools import partial
 from typing import cast
+from uuid import UUID
 
 from pydantic import JsonValue
-from sqlalchemy import Select, exists, func, or_, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, tuple_, update
+from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
+from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation
+from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, InvokeFrom
+from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation, MessageFeedback
 from models.web import PinnedConversation
+from models.workflow import WorkflowRun
 from repositories.app.console_repository import find_console_app
 from repositories.conversation_lifecycle import retire_conversation, retire_debug_conversation_workspaces
+from repositories.log_export_queries import execute_log_export_count, read_log_export_with_retry
 from repositories.message_projection import snapshot_console_message
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
@@ -32,14 +38,19 @@ from services.entities.conversation_entities import (
     ConsoleConversationDetailSource,
     ConsoleConversationFilters,
     ConsoleConversationKind,
+    ConsoleConversationLogFilters,
     ConsoleConversationMessage,
     ConsoleConversationPage,
     ConsoleConversationRecord,
     ConsoleConversationScope,
+    ConsoleLogIdentity,
+    ConsoleLogIdentitySource,
     ConversationAgentWorkspaceRetirement,
     ConversationDeletion,
     ConversationInputValue,
     ConversationListSource,
+    ConversationLogExportCounts,
+    ConversationLogExportRow,
     ConversationNameSource,
     ConversationPage,
     ConversationRecord,
@@ -53,6 +64,15 @@ from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+
+_LOG_IDENTITY_SEARCH_LIMIT = 20
+_LOG_EXPORT_BATCH_SIZE = 500
+_CONSOLE_APP_MODES_BY_KIND: dict[ConsoleConversationKind, frozenset[AppMode]] = {
+    "completion": frozenset({AppMode.COMPLETION}),
+    "chat": frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}),
+}
+_CONSOLE_LOG_APP_MODES = _CONSOLE_APP_MODES_BY_KIND["completion"] | _CONSOLE_APP_MODES_BY_KIND["chat"]
+_CONVERSATION_EXPORT_APP_MODES = _CONSOLE_LOG_APP_MODES - {AppMode.AGENT}
 
 
 class ConversationRepository:
@@ -158,8 +178,17 @@ class ConversationRepository:
     def get_console_scope(
         self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationScope:
+        return self._get_console_scope(context, app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind])
+
+    def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
+        """Resolve the owned conversation app's mode and the caller's time zone for log export."""
+        return self._get_console_scope(context, app_id, allowed_modes=_CONVERSATION_EXPORT_APP_MODES)
+
+    def _get_console_scope(
+        self, context: RequestContext, app_id: str, *, allowed_modes: frozenset[AppMode]
+    ) -> ConsoleConversationScope:
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(session=session, context=context, app_id=app_id, allowed_modes=allowed_modes)
             account = session.get(Account, context.account_id)
             if account is None:
                 raise NoPermissionError("The admitted account no longer exists.")
@@ -174,6 +203,7 @@ class ConversationRepository:
     def get_console_page(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
     ) -> ConsoleConversationPage:
+        """Return a page and total for the admitted app, with all response fields detached."""
         with self._session_factory() as session:
             app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
             if app is None:
@@ -183,51 +213,9 @@ class ConversationRepository:
                     f"App mode changed from '{scope.app_mode}' to '{app.mode}' after admission."
                 )
             completion = app.mode == AppMode.COMPLETION
-            statement = select(Conversation).where(Conversation.app_id == app.id, Conversation.is_deleted.is_(False))
-            if completion:
-                statement = statement.where(Conversation.mode == AppMode.COMPLETION)
-            if filters.keyword:
-                pattern = f"%{escape_like_pattern(filters.keyword)}%"
-                statement = statement.join(Message, Message.conversation_id == Conversation.id)
-                matches = [
-                    Message.query.ilike(pattern, escape="\\"),
-                    Message.answer.ilike(pattern, escape="\\"),
-                ]
-                if not completion:
-                    statement = statement.outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
-                    matches.extend(
-                        [
-                            Conversation.name.ilike(pattern, escape="\\"),
-                            Conversation.introduction.ilike(pattern, escape="\\"),
-                            EndUser.session_id.ilike(pattern, escape="\\"),
-                        ]
-                    )
-                    statement = statement.group_by(Conversation.id)
-                # Completion historically counts each matching message join row.
-                statement = statement.where(or_(*matches))
-
-            column = (
-                Conversation.created_at
-                if completion or filters.sort_by in {"created_at", "-created_at"}
-                else Conversation.updated_at
+            statement, column = self._filter_console_conversations(
+                select(Conversation), app_id=app.id, mode=app.mode, filters=filters
             )
-            if filters.start is not None:
-                statement = statement.where(column >= filters.start)
-            if filters.end is not None:
-                statement = statement.where(column <= filters.end)
-            if filters.annotation_status == "annotated":
-                statement = statement.join(
-                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-                ).group_by(Conversation.id)
-            elif filters.annotation_status == "not_annotated":
-                statement = (
-                    statement.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                    .group_by(Conversation.id)
-                    .having(func.count(MessageAnnotation.id) == 0)
-                )
-            if app.mode == AppMode.ADVANCED_CHAT:
-                # SQL != also excludes NULL, matching the existing Console query.
-                statement = statement.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
             statement = statement.order_by(
                 column.desc() if completion or filters.sort_by.startswith("-") else column.asc()
             )
@@ -244,11 +232,394 @@ class ConversationRepository:
                 ),
             )
 
+    def search_console_log_identities(
+        self, context: RequestContext, app_id: str, *, keyword: str
+    ) -> tuple[ConsoleLogIdentity, ...]:
+        """Find visible log actors by label or ID, including former workspace members."""
+        try:
+            identity_id = str(UUID(keyword))
+        except ValueError:
+            identity_id = None
+
+        with self._session_factory() as session:
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_LOG_APP_MODES
+            )
+            visible_logs, _ = self._filter_console_conversations(
+                select(Conversation.id),
+                app_id=app.id,
+                mode=app.mode,
+                filters=ConsoleConversationLogFilters(
+                    keyword=None, start=None, end=None, annotation_status="all", sort_by="-created_at"
+                ),
+            )
+            pattern = f"%{escape_like_pattern(keyword)}%"
+            exact_end_user_match = EndUser.session_id == keyword
+            account_match = Account.name.ilike(pattern, escape="\\")
+            if identity_id is not None:
+                exact_end_user_match = or_(exact_end_user_match, EndUser.id == identity_id)
+                account_match = or_(account_match, Account.id == identity_id)
+
+            end_users = session.execute(
+                select(EndUser.id, EndUser.session_id)
+                .where(
+                    EndUser.tenant_id == app.tenant_id,
+                    or_(exact_end_user_match, EndUser.session_id.ilike(pattern, escape="\\")),
+                    visible_logs.where(
+                        Conversation.from_source == ConversationFromSource.API,
+                        Conversation.from_end_user_id == EndUser.id,
+                    ).exists(),
+                )
+                .order_by(exact_end_user_match.desc(), EndUser.id)
+                .limit(_LOG_IDENTITY_SEARCH_LIMIT)
+            ).all()
+            accounts = session.execute(
+                select(Account.id, Account.name)
+                .where(
+                    account_match,
+                    visible_logs.where(
+                        Conversation.from_source == ConversationFromSource.CONSOLE,
+                        Conversation.from_account_id == Account.id,
+                    ).exists(),
+                )
+                .order_by(Account.name, Account.id)
+                .limit(_LOG_IDENTITY_SEARCH_LIMIT)
+            ).all()
+            return (
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.END_USER)
+                    for identity, label in end_users
+                ),
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.ACCOUNT)
+                    for identity, label in accounts
+                ),
+            )
+
+    @staticmethod
+    def _filter_console_conversations[T: tuple[object, ...]](
+        statement: Select[T], *, app_id: str, mode: AppMode, filters: ConsoleConversationLogFilters
+    ) -> tuple[Select[T], InstrumentedAttribute[datetime]]:
+        """Apply Logs visibility and filters to a Conversation select, returning its time column."""
+        completion = mode == AppMode.COMPLETION
+        statement = statement.where(Conversation.app_id == app_id, Conversation.is_deleted.is_(False))
+        if completion:
+            statement = statement.where(Conversation.mode == AppMode.COMPLETION)
+        identities = []
+        if filters.end_user_ids:
+            identities.append(
+                and_(
+                    Conversation.from_source == ConversationFromSource.API,
+                    Conversation.from_end_user_id.in_(filters.end_user_ids),
+                )
+            )
+        if filters.account_ids:
+            identities.append(
+                and_(
+                    Conversation.from_source == ConversationFromSource.CONSOLE,
+                    Conversation.from_account_id.in_(filters.account_ids),
+                )
+            )
+        if identities:
+            statement = statement.where(or_(*identities))
+        if filters.keyword:
+            pattern = f"%{escape_like_pattern(filters.keyword)}%"
+            statement = statement.join(Message, Message.conversation_id == Conversation.id)
+            matches = [
+                Message.query.ilike(pattern, escape="\\"),
+                Message.answer.ilike(pattern, escape="\\"),
+            ]
+            if not completion:
+                statement = statement.outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
+                matches.extend(
+                    [
+                        Conversation.name.ilike(pattern, escape="\\"),
+                        Conversation.introduction.ilike(pattern, escape="\\"),
+                        EndUser.session_id.ilike(pattern, escape="\\"),
+                    ]
+                )
+                statement = statement.group_by(Conversation.id)
+            # Completion historically counts each matching message join row.
+            statement = statement.where(or_(*matches))
+
+        column = (
+            Conversation.created_at
+            if completion or filters.sort_by in {"created_at", "-created_at"}
+            else Conversation.updated_at
+        )
+        if filters.start is not None:
+            statement = statement.where(column >= filters.start)
+        if filters.end is not None:
+            statement = statement.where(column <= filters.end)
+        if filters.annotation_status == "annotated":
+            statement = statement.join(
+                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+            ).group_by(Conversation.id)
+        elif filters.annotation_status == "not_annotated":
+            statement = (
+                statement.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
+                .group_by(Conversation.id)
+                .having(func.count(MessageAnnotation.id) == 0)
+            )
+        if mode == AppMode.ADVANCED_CHAT:
+            # SQL != also excludes NULL, matching the existing Console query.
+            statement = statement.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
+        return statement, column
+
+    def get_console_log_export_counts(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
+    ) -> ConversationLogExportCounts | None:
+        """Count all matched conversations and their messages in one read statement.
+
+        Require a Console conversation log scope. Recheck application ownership and mode before counting.
+        Use a statement timeout on PostgreSQL and MySQL. Return None on timeout and release
+        the read transaction on all paths.
+        """
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+            if app is None or app.mode != scope.app_mode:
+                raise ConsoleAppNotFoundError("App not found.")
+            matching, _ = self._filter_console_conversations(
+                select(Conversation.id), app_id=app.id, mode=app.mode, filters=filters
+            )
+            if app.mode == AppMode.COMPLETION and filters.keyword:
+                # Completion list search can return the same conversation for multiple matching messages.
+                matching = matching.distinct()
+            conversations = matching.subquery()
+            # Count via the conversation_id index. A keyword selects the conversation,
+            # and every message in that conversation contributes one export row.
+            messages_per_conversation = (
+                select(func.count()).where(Message.conversation_id == conversations.c.id).scalar_subquery()
+            )
+            counts = execute_log_export_count(
+                session,
+                select(func.count(), func.coalesce(func.sum(messages_per_conversation), 0)).select_from(conversations),
+            )
+            if counts is None:
+                return None
+            conversation_count, message_count = counts
+            return ConversationLogExportCounts(
+                conversation_count=int(conversation_count), message_count=int(message_count)
+            )
+
+    def iter_console_log_export_rows(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
+    ) -> Iterator[ConversationLogExportRow]:
+        """Yield one row per message of the owned app's matching conversations.
+
+        Exclude new conversations and messages using the export start time. Release the read
+        session before yielding each batch so the caller can write it outside a transaction.
+        Retry eligible standby failures at the same page before advancing its cursor.
+        Use a lookahead row to decide whether to continue after the last emitted message.
+        """
+        end_before = naive_utc_now()
+        conversation_cursor: tuple[datetime, str] | None = None
+        has_more_conversations = True
+        while has_more_conversations:
+            conversation_ids, statuses, conversation_cursor = read_log_export_with_retry(
+                self._session_factory,
+                scope.app_id,
+                "conversation",
+                partial(
+                    self._console_log_export_selection,
+                    scope=scope,
+                    filters=filters,
+                    end_before=end_before,
+                    cursor=conversation_cursor,
+                ),
+                export_kind="conversation",
+            )
+            has_more_conversations = conversation_cursor is not None
+            message_cursor: tuple[datetime, str] | None = None
+            has_more_messages = bool(conversation_ids)
+            while has_more_messages:
+                rows = read_log_export_with_retry(
+                    self._session_factory,
+                    scope.app_id,
+                    "message",
+                    partial(
+                        self._console_log_export_message_batch,
+                        scope=scope,
+                        conversation_ids=conversation_ids,
+                        statuses=statuses,
+                        end_before=end_before,
+                        cursor=message_cursor,
+                    ),
+                    export_kind="conversation",
+                )
+                batch = rows[:_LOG_EXPORT_BATCH_SIZE]
+                has_more_messages = len(rows) > _LOG_EXPORT_BATCH_SIZE
+                yield from batch
+                if has_more_messages:
+                    last = batch[-1]
+                    message_cursor = (last.created_at, last.message_id)
+
+    def _console_log_export_selection(
+        self,
+        session: Session,
+        *,
+        scope: ConsoleConversationScope,
+        filters: ConsoleConversationLogFilters,
+        end_before: datetime,
+        cursor: tuple[datetime, str] | None,
+    ) -> tuple[tuple[str, ...], dict[str, str], tuple[datetime, str] | None]:
+        """Select matching IDs and statuses within one candidate page of the owned app.
+
+        The next cursor advances over the candidate page even when it yields no matches.
+        Return None as the cursor when there are no more candidates to scan.
+        """
+        app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+        if app is None or app.mode != scope.app_mode:
+            raise ConsoleAppNotFoundError("App not found.")
+
+        # Page the inexpensive predicates before applying keyword and annotation joins.
+        candidates, _ = self._filter_console_conversations(
+            select(Conversation.created_at, Conversation.id),
+            app_id=app.id,
+            mode=app.mode,
+            filters=replace(filters, keyword=None, annotation_status="all"),
+        )
+        candidates = candidates.where(Conversation.created_at < end_before)
+        if cursor is not None:
+            cursor_at, cursor_id = cursor
+            # Give the app and time index an explicit bound and use IDs to break ties.
+            candidates = candidates.where(
+                Conversation.created_at >= cursor_at,
+                or_(Conversation.created_at != cursor_at, Conversation.id > cursor_id),
+            )
+        page = (
+            session.execute(candidates.order_by(Conversation.created_at, Conversation.id).limit(_LOG_EXPORT_BATCH_SIZE))
+            .tuples()
+            .all()
+        )
+        if not page:
+            return (), {}, None
+
+        conversation_ids = tuple(conversation_id for _, conversation_id in page)
+        if filters.keyword or filters.annotation_status != "all":
+            matches, _ = self._filter_console_conversations(
+                select(Conversation.id).where(Conversation.id.in_(conversation_ids)),
+                app_id=app.id,
+                mode=app.mode,
+                filters=filters,
+            )
+            if app.mode == AppMode.COMPLETION and filters.keyword:
+                matches = matches.distinct()
+            conversation_ids = tuple(session.scalars(matches))
+
+        statuses = (
+            self._chatflow_log_export_statuses(session, scope, conversation_ids, end_before)
+            if conversation_ids and app.mode == AppMode.ADVANCED_CHAT
+            else {}
+        )
+        next_cursor = (page[-1][0], page[-1][1]) if len(page) == _LOG_EXPORT_BATCH_SIZE else None
+        return conversation_ids, statuses, next_cursor
+
+    def _console_log_export_message_batch(
+        self,
+        session: Session,
+        *,
+        scope: ConsoleConversationScope,
+        conversation_ids: tuple[str, ...],
+        statuses: dict[str, str],
+        end_before: datetime,
+        cursor: tuple[datetime, str] | None,
+    ) -> list[ConversationLogExportRow]:
+        """Read an ordered message page plus one lookahead row for the admitted app's selected conversations."""
+        app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+        if app is None or app.mode != scope.app_mode:
+            raise ConsoleAppNotFoundError("App not found.")
+        # Select only one user feedback even if old data has more than one per message.
+        feedback_id = (
+            select(MessageFeedback.id)
+            .where(
+                MessageFeedback.message_id == Message.id,
+                MessageFeedback.app_id == app.id,
+                MessageFeedback.from_source == FeedbackFromSource.USER,
+            )
+            .order_by(MessageFeedback.updated_at.desc(), MessageFeedback.id.desc())
+            .limit(1)
+            .correlate(Message)
+            .scalar_subquery()
+        )
+        statement = (
+            select(
+                Message.conversation_id,
+                Message.id,
+                Message.created_at,
+                EndUser.session_id,
+                Conversation.from_account_id,
+                Account.name,
+                Message.query,
+                Message.answer,
+                MessageFeedback.rating,
+                MessageFeedback.content,
+                Message._inputs if app.mode == AppMode.COMPLETION else null(),
+            )
+            .select_from(Message)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .outerjoin(EndUser, and_(EndUser.id == Conversation.from_end_user_id, EndUser.tenant_id == scope.tenant_id))
+            .outerjoin(Account, Account.id == Conversation.from_account_id)
+            .outerjoin(MessageFeedback, MessageFeedback.id == feedback_id)
+            .where(
+                Message.app_id == app.id,
+                Conversation.app_id == app.id,
+                Conversation.is_deleted.is_(False),
+                Message.conversation_id.in_(conversation_ids),
+                Message.created_at < end_before,
+            )
+            .order_by(Message.created_at, Message.id)
+            .limit(_LOG_EXPORT_BATCH_SIZE + 1)
+        )
+        if cursor is not None:
+            statement = statement.where(
+                tuple_(Message.created_at, Message.id)
+                > tuple_(literal(cursor[0], type_=DateTime()), literal(cursor[1], type_=Message.id.type))
+            )
+
+        rows = session.execute(statement).tuples().all()
+        return [ConversationLogExportRow(*row, status=statuses.get(row[0])) for row in rows]
+
+    @staticmethod
+    def _chatflow_log_export_statuses(
+        session: Session, scope: ConsoleConversationScope, conversation_ids: tuple[str, ...], end_before: datetime
+    ) -> dict[str, str]:
+        """Resolve the Logs status for each batch conversation's exported messages with linked runs."""
+        # The Logs UI prioritizes paused, failed and partial success in that order.
+        statuses = (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.PAUSED,
+        )
+        priority = case({status: index for index, status in enumerate(statuses)}, value=WorkflowRun.status, else_=0)
+        statement = (
+            select(Message.conversation_id, func.max(priority))
+            .outerjoin(
+                WorkflowRun,
+                and_(
+                    WorkflowRun.id == Message.workflow_run_id,
+                    WorkflowRun.app_id == scope.app_id,
+                    WorkflowRun.tenant_id == scope.tenant_id,
+                ),
+            )
+            .where(
+                Message.app_id == scope.app_id,
+                Message.conversation_id.in_(conversation_ids),
+                Message.workflow_run_id.is_not(None),
+                Message.created_at < end_before,
+            )
+            .group_by(Message.conversation_id)
+        )
+        return {conversation_id: statuses[index].value for conversation_id, index in session.execute(statement)}
+
     def get_console_detail(
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationDetailSource:
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             conversation = self._get_console_conversation(
                 session=session, app_id=app.id, conversation_id=conversation_id
             )
@@ -294,7 +665,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> None:
         with self._session_factory.begin() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             self._get_console_conversation(session=session, app_id=app.id, conversation_id=conversation_id)
             session.execute(
                 update(Conversation)
@@ -466,7 +839,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> ConversationDeletion:
         with self._session_factory.begin() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             # Console log queries see all users; deletion still requires the
             # current account's Console conversation, as in the original API.
             conversation = self._get_conversation(
@@ -581,14 +956,9 @@ class ConversationRepository:
 
     @staticmethod
     def _get_console_app(
-        *, session: Session, context: RequestContext, app_id: str, kind: ConsoleConversationKind
+        *, session: Session, context: RequestContext, app_id: str, allowed_modes: frozenset[AppMode]
     ) -> App:
         app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
-        allowed_modes = (
-            {AppMode.COMPLETION}
-            if kind == "completion"
-            else {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
-        )
         if app is None:
             raise ConsoleAppNotFoundError("App not found.")
         if app.mode not in allowed_modes:

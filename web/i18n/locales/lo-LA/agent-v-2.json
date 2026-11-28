@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "ໂຫຼດບັນທຶກບໍ່ສຳເລັດ",
   "agentDetail.logs.notAvailable": "ບໍ່ມີຂໍ້ມູນ",
   "agentDetail.logs.table.createdTime": "ເວລາສ້າງ",
-  "agentDetail.logs.table.endUser": "ຜູ້ໃຊ້ປາຍທາງ",
   "agentDetail.logs.table.messageCount": "ຈຳນວນຂໍ້ຄວາມ",
   "agentDetail.logs.table.operationRate": "ຄະແນນຈາກຜູ້ດູແລ",
   "agentDetail.logs.table.source": "ແຫຼ່ງທີ່ມາ",

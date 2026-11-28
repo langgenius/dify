@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Échec du chargement des journaux",
   "agentDetail.logs.notAvailable": "N/D",
   "agentDetail.logs.table.createdTime": "Date de création",
-  "agentDetail.logs.table.endUser": "Utilisateur final",
   "agentDetail.logs.table.messageCount": "Nb. msg.",
   "agentDetail.logs.table.operationRate": "Note de l’administrateur",
   "agentDetail.logs.table.source": "Source",

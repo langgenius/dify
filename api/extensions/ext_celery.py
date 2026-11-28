@@ -212,6 +212,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.log_export_tasks",  # CSV log export preparation
+        "tasks.mail_log_export_task",  # CSV log export email
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
         "tasks.human_input_im_card_tasks",  # post-submission IM card updates
         "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
@@ -229,6 +231,12 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_LOG_EXPORT_QUEUE_RECOVERY_TASK:
+        beat_schedule["log-export-queue-recovery"] = {
+            "task": "tasks.log_export_tasks.recover_log_export_queues",
+            "schedule": timedelta(minutes=5),
+            "options": {"expires": 240},
+        }
     if dify_config.ENABLE_EVALUATION_RUN_RECONCILER:
         beat_schedule["evaluation-run-reconciler"] = {
             "task": "tasks.evaluation_task.reconcile_stale_evaluation_runs",

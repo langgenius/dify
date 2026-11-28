@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
+import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/log-filters'
 import LongTimeRangePicker from '../long-time-range-picker'
 
 describe('LongTimeRangePicker', () => {

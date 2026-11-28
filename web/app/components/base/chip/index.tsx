@@ -28,6 +28,7 @@ type Props<T extends ItemValue> = {
   'aria-labelledby'?: string
   className?: string
   panelClassName?: string
+  listClassName?: string
   showLeftIcon?: boolean
   leftIcon?: ReactNode
   showItemIndicator?: boolean
@@ -44,6 +45,7 @@ function Chip<T extends ItemValue>({
   'aria-labelledby': ariaLabelledBy,
   className,
   panelClassName,
+  listClassName,
   showLeftIcon = true,
   leftIcon,
   showItemIndicator = true,
@@ -154,7 +156,7 @@ function Chip<T extends ItemValue>({
                 panelClassName,
               )}
             >
-              <SelectList className="max-h-72 p-1">
+              <SelectList className={cn('max-h-72 p-1', listClassName)}>
                 {items.map((item) => (
                   <SelectItem<T> key={item.value} value={item.value}>
                     <SelectItemText title={item.name}>{item.name}</SelectItemText>

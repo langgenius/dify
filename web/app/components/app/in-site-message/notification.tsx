@@ -4,6 +4,7 @@ import type { InSiteMessageActionItem } from './index'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { useHiddenLogExportNotificationTaskIds } from '@/features/log-export/notification-visibility'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -12,6 +13,7 @@ import InSiteMessage from './index'
 type NotificationBodyPayload = {
   actions: InSiteMessageActionItem[]
   main: string
+  logExportTaskId?: string
 }
 
 function isValidActionItem(value: unknown): value is InSiteMessageActionItem {
@@ -39,6 +41,7 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
     const parsed = JSON.parse(body) as {
       actions?: unknown
       main?: unknown
+      log_export_task_id?: unknown
     }
 
     if (!parsed || typeof parsed !== 'object') return null
@@ -50,6 +53,8 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
     return {
       main: parsed.main,
       actions,
+      logExportTaskId:
+        typeof parsed.log_export_task_id === 'string' ? parsed.log_export_task_id : undefined,
     }
   } catch {
     return null
@@ -71,6 +76,7 @@ function InSiteMessageNotification() {
   const dismissNotificationMutation = useMutation(
     consoleQuery.notification.dismiss.post.mutationOptions(),
   )
+  const hiddenExportTaskIds = useHiddenLogExportNotificationTaskIds()
 
   const { data } = useQuery(
     consoleQuery.notification.get.queryOptions({
@@ -79,7 +85,10 @@ function InSiteMessageNotification() {
     }),
   )
 
-  const notification = data?.notifications?.[0]
+  const notification = data?.notifications?.find(({ body }) => {
+    const taskId = parseNotificationBody(body)?.logExportTaskId
+    return !taskId || !hiddenExportTaskIds.has(taskId)
+  })
   const parsedBody = notification ? parseNotificationBody(notification.body) : null
 
   if (hidden || !isCloudEdition || !notification || !notification.notification_id) return null

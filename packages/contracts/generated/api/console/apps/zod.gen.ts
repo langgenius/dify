@@ -612,6 +612,125 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConversationLogExportTaskResponse
+ */
+export const zConversationLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
+  status: z.literal('pending'),
+  task_id: z.string(),
+})
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * UnprocessableEntityError
+ */
+export const zUnprocessableEntityError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unprocessable_entity'),
+    status: z.literal(422),
+  }),
+)
+
+/**
+ * LogExportLimitReachedError
+ *
+ * There is already an active log export for this requester and app.
+ */
+export const zLogExportLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_limit_reached'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * ConversationLogExportTaskNotFoundError
+ *
+ * Conversation log export task not found.
+ */
+export const zConversationLogExportTaskNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_log_export_task_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * LogExportEmailNotificationPayload
+ *
+ * Set the requester's mail preference for a single export.
+ */
+export const zLogExportEmailNotificationPayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
+ * LogExportTaskNotCancelableError
+ *
+ * Only queued log export tasks can be canceled.
+ */
+export const zLogExportTaskNotCancelableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_task_not_cancelable'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * ConversationLogExportFileNotFoundError
+ *
+ * Conversation log export file not found.
+ */
+export const zConversationLogExportFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_log_export_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationLogExportTaskNotReadyError
+ *
+ * The conversation log export is not ready for download.
+ */
+export const zConversationLogExportTaskNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_log_export_task_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ConvertToWorkflowPayload
  */
 export const zConvertToWorkflowPayload = z.object({
@@ -779,18 +898,6 @@ export const zNetworkAccessUnsupportedAccessPointsError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_unsupported_access_points'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 
@@ -1197,6 +1304,58 @@ export const zWorkflowTriggerListResponse = z.object({
 })
 
 /**
+ * WorkflowLogExportTaskResponse
+ */
+export const zWorkflowLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
+  status: z.literal('pending'),
+  task_id: z.string(),
+})
+
+/**
+ * WorkflowLogExportPreviewResponse
+ */
+export const zWorkflowLogExportPreviewResponse = z.object({
+  row_count: z.int().gte(0).nullable(),
+})
+
+/**
+ * WorkflowLogExportTaskNotFoundError
+ *
+ * Workflow log export task not found.
+ */
+export const zWorkflowLogExportTaskNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_log_export_task_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * WorkflowLogExportFileNotFoundError
+ *
+ * Workflow log export file not found.
+ */
+export const zWorkflowLogExportFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_log_export_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * WorkflowLogExportTaskNotReadyError
+ *
+ * The Workflow log export is not ready for download.
+ */
+export const zWorkflowLogExportTaskNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_log_export_task_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * NoActiveBindingError
  *
  * No active sandbox binding.
@@ -1269,18 +1428,6 @@ export const zSandboxReadResponse = z.object({
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
-
-/**
- * ForbiddenError
- *
- * You don't have the permission to access the requested resource.
- */
-export const zForbiddenError = zErrorResponse.and(
-  z.object({
-    code: z.literal('forbidden'),
-    status: z.literal(403),
-  }),
-)
 
 /**
  * WorkflowCommentCreatePayload
@@ -2083,6 +2230,42 @@ export const zFeedbackStat = z.object({
 })
 
 /**
+ * ConversationLogExportCountsResponse
+ */
+export const zConversationLogExportCountsResponse = z.object({
+  conversation_count: z.int().gte(0),
+  message_count: z.int().gte(0),
+})
+
+/**
+ * ConversationLogExportPreviewResponse
+ */
+export const zConversationLogExportPreviewResponse = z.object({
+  counts: zConversationLogExportCountsResponse.nullable(),
+})
+
+/**
+ * LogExportEmailState
+ *
+ * The public opt-in state for a task with a live download.
+ */
+export const zLogExportEmailState = z.enum(['off', 'queued', 'waiting'])
+
+/**
+ * LogExportEmailNotificationResponse
+ *
+ * Return the stored preference or that a mail job has been queued.
+ */
+export const zLogExportEmailNotificationResponse = z.object({
+  email_notification: zLogExportEmailState,
+})
+
+/**
+ * LogExportStatus
+ */
+export const zLogExportStatus = z.enum(['canceled', 'failed', 'pending', 'processing', 'ready'])
+
+/**
  * ConversationVariableResponse
  */
 export const zConversationVariableResponse = z.object({
@@ -2411,6 +2594,19 @@ export const zTraceRunStatusResponse = z.object({
   trace_id: z.string().nullish(),
   trace_url: z.string().nullish(),
 })
+
+/**
+ * WorkflowExecutionStatus
+ */
+export const zWorkflowExecutionStatus = z.enum([
+  'failed',
+  'partial-succeeded',
+  'paused',
+  'running',
+  'scheduled',
+  'stopped',
+  'succeeded',
+])
 
 /**
  * SimpleAccountResponse
@@ -3033,19 +3229,6 @@ export const zComposerValidationFindingsResponse = z.object({
 })
 
 /**
- * WorkflowExecutionStatus
- */
-export const zWorkflowExecutionStatus = z.enum([
-  'failed',
-  'partial-succeeded',
-  'paused',
-  'running',
-  'scheduled',
-  'stopped',
-  'succeeded',
-])
-
-/**
  * NodeStatus
  *
  * Coarse node-level status used by Inspector to pick a banner.
@@ -3469,6 +3652,88 @@ export const zConversationWithSummaryPagination = z.object({
 })
 
 /**
+ * ConsoleLogIdentitySource
+ */
+export const zConsoleLogIdentitySource = z.enum(['account', 'end-user'])
+
+/**
+ * ConversationLogIdentityResponse
+ */
+export const zConversationLogIdentityResponse = z.object({
+  id: z.string(),
+  label: z.string(),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * ConversationLogIdentitySearchResponse
+ */
+export const zConversationLogIdentitySearchResponse = z.object({
+  data: z.array(zConversationLogIdentityResponse),
+})
+
+/**
+ * LogExportIdentityLabel
+ *
+ * A display label captured by the requester for an identity in the export filters.
+ */
+export const zLogExportIdentityLabel = z.object({
+  id: z.uuid(),
+  label: z.string().max(255),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * ConversationLogExportCreatePayload
+ */
+export const zConversationLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
+  end: z.string().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  keyword: z.string().nullish(),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
+  start: z.string().nullish(),
+})
+
+/**
+ * WorkflowLogExportCreatePayload
+ *
+ * Submit unpaginated preview filters and their display labels for the export.
+ */
+export const zWorkflowLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  created_at__after: z.iso.datetime().nullish(),
+  created_at__before: z.iso.datetime().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  keyword: z.string().nullish(),
+  status: zWorkflowExecutionStatus.nullish(),
+})
+
+/**
+ * WorkflowLogExportIdentityResponse
+ */
+export const zWorkflowLogExportIdentityResponse = z.object({
+  id: z.string(),
+  label: z.string(),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * WorkflowLogExportIdentitySearchResponse
+ */
+export const zWorkflowLogExportIdentitySearchResponse = z.object({
+  data: z.array(zWorkflowLogExportIdentityResponse),
+})
+
+/**
  * SimpleMessageDetail
  */
 export const zSimpleMessageDetail = z.object({
@@ -3476,6 +3741,43 @@ export const zSimpleMessageDetail = z.object({
   inputs: z.record(z.string(), zAnyJsonValue),
   message: z.string(),
   query: z.string(),
+})
+
+/**
+ * LogExportStage
+ */
+export const zLogExportStage = z.enum(['preparing', 'uploading', 'writing'])
+
+/**
+ * LogExportProgressResponse
+ *
+ * The last reported stage and CSV data-row count for the current attempt.
+ */
+export const zLogExportProgressResponse = z.object({
+  rows_written: z.int().gte(0),
+  stage: zLogExportStage,
+})
+
+/**
+ * ConversationLogExportStatusResponse
+ */
+export const zConversationLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * WorkflowLogExportStatusResponse
+ */
+export const zWorkflowLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
 })
 
 /**
@@ -3867,6 +4169,41 @@ export const zWorkflowRunForLogResponse = z.object({
   total_tokens: z.int().nullish(),
   triggered_from: z.string().nullish(),
   version: z.string().nullish(),
+})
+
+/**
+ * WorkflowLogExportFiltersResponse
+ *
+ * Submitted filters for the export, with log time bounds in UTC.
+ */
+export const zWorkflowLogExportFiltersResponse = z.object({
+  account_ids: z.array(z.string()),
+  created_at__after: z.iso.datetime().nullable(),
+  created_at__before: z.iso.datetime().nullable(),
+  end_user_ids: z.array(z.string()),
+  keyword: z.string().nullable(),
+  status: zWorkflowExecutionStatus.nullable(),
+})
+
+/**
+ * WorkflowLogExportLatestTaskResponse
+ */
+export const zWorkflowLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
+  filters: zWorkflowLogExportFiltersResponse,
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * WorkflowLogExportLatestResponse
+ */
+export const zWorkflowLogExportLatestResponse = z.object({
+  task: zWorkflowLogExportLatestTaskResponse.nullable(),
 })
 
 /**
@@ -4519,6 +4856,46 @@ export const zAppExternalDataToolFormResponse = z.object({
  */
 export const zAppJsonObjectFormResponse = z.object({
   json_object: zAppUserInputFormConfigResponse,
+})
+
+export const zConversationAnnotationStatus = z.enum(['all', 'annotated', 'not_annotated'])
+
+export const zConversationSort = z.enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+
+/**
+ * ConversationLogExportFiltersResponse
+ *
+ * Submitted filters for the export, with any date bounds in UTC.
+ */
+export const zConversationLogExportFiltersResponse = z.object({
+  account_ids: z.array(z.string()),
+  annotation_status: zConversationAnnotationStatus,
+  end: z.iso.datetime().nullable(),
+  end_user_ids: z.array(z.string()),
+  keyword: z.string().nullable(),
+  sort_by: zConversationSort,
+  start: z.iso.datetime().nullable(),
+})
+
+/**
+ * ConversationLogExportLatestTaskResponse
+ */
+export const zConversationLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
+  filters: zConversationLogExportFiltersResponse,
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * ConversationLogExportLatestResponse
+ */
+export const zConversationLogExportLatestResponse = z.object({
+  task: zConversationLogExportLatestTaskResponse.nullable(),
 })
 
 /**
@@ -7496,8 +7873,10 @@ export const zGetAppsByAppIdChatConversationsPath = z.object({
 })
 
 export const zGetAppsByAppIdChatConversationsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
@@ -7512,6 +7891,20 @@ export const zGetAppsByAppIdChatConversationsQuery = z.object({
  * Success
  */
 export const zGetAppsByAppIdChatConversationsResponse = zConversationWithSummaryPagination
+
+export const zGetAppsByAppIdChatConversationsIdentityOptionsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdChatConversationsIdentityOptionsQuery = z.object({
+  keyword: z.string().min(1).max(255),
+})
+
+/**
+ * Matching identities
+ */
+export const zGetAppsByAppIdChatConversationsIdentityOptionsResponse =
+  zConversationLogIdentitySearchResponse
 
 export const zDeleteAppsByAppIdChatConversationsByConversationIdPath = z.object({
   app_id: z.uuid(),
@@ -7574,8 +7967,10 @@ export const zGetAppsByAppIdCompletionConversationsPath = z.object({
 })
 
 export const zGetAppsByAppIdCompletionConversationsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
@@ -7628,6 +8023,95 @@ export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
  * Task stopped successfully
  */
 export const zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
+
+export const zPostAppsByAppIdConversationLogExportsBody = zConversationLogExportCreatePayload
+
+export const zPostAppsByAppIdConversationLogExportsPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Export task accepted
+ */
+export const zPostAppsByAppIdConversationLogExportsResponse = zConversationLogExportTaskResponse
+
+export const zGetAppsByAppIdConversationLogExportsLatestPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Latest export
+ */
+export const zGetAppsByAppIdConversationLogExportsLatestResponse =
+  zConversationLogExportLatestResponse
+
+export const zGetAppsByAppIdConversationLogExportsPreviewPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdConversationLogExportsPreviewQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
+  end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  keyword: z.string().optional(),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
+  start: z.string().optional(),
+})
+
+/**
+ * Export preview
+ */
+export const zGetAppsByAppIdConversationLogExportsPreviewResponse =
+  zConversationLogExportPreviewResponse
+
+export const zGetAppsByAppIdConversationLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export task status
+ */
+export const zGetAppsByAppIdConversationLogExportsByTaskIdResponse =
+  zConversationLogExportStatusResponse
+
+export const zPutAppsByAppIdConversationLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAppsByAppIdConversationLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAppsByAppIdConversationLogExportsByTaskIdResponse =
+  zLogExportEmailNotificationResponse
+
+export const zPostAppsByAppIdConversationLogExportsByTaskIdCancelPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export canceled
+ */
+export const zPostAppsByAppIdConversationLogExportsByTaskIdCancelResponse =
+  zConversationLogExportStatusResponse
+
+export const zGetAppsByAppIdConversationLogExportsByTaskIdFilePath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * CSV attachment
+ */
+export const zGetAppsByAppIdConversationLogExportsByTaskIdFileResponse = zBinaryFileResponse
 
 export const zGetAppsByAppIdConversationVariablesPath = z.object({
   app_id: z.uuid(),
@@ -8139,11 +8623,13 @@ export const zGetAppsByAppIdWorkflowAppLogsPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowAppLogsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   created_at__after: z.iso.datetime().optional(),
   created_at__before: z.iso.datetime().optional(),
   created_by_account: z.string().optional(),
   created_by_end_user_session_id: z.string().optional(),
   detail: z.boolean().optional().default(false),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
@@ -8156,6 +8642,117 @@ export const zGetAppsByAppIdWorkflowAppLogsQuery = z.object({
  * Workflow app logs retrieved successfully
  */
 export const zGetAppsByAppIdWorkflowAppLogsResponse = zWorkflowAppLogPaginationResponse
+
+export const zGetAppsByAppIdWorkflowAppLogsIdentityOptionsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdWorkflowAppLogsIdentityOptionsQuery = z.object({
+  keyword: z.string().min(1).max(255),
+})
+
+/**
+ * Matching identities
+ */
+export const zGetAppsByAppIdWorkflowAppLogsIdentityOptionsResponse =
+  zWorkflowLogExportIdentitySearchResponse
+
+export const zPostAppsByAppIdWorkflowLogExportsBody = zWorkflowLogExportCreatePayload
+
+export const zPostAppsByAppIdWorkflowLogExportsPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Export task accepted
+ */
+export const zPostAppsByAppIdWorkflowLogExportsResponse = zWorkflowLogExportTaskResponse
+
+export const zGetAppsByAppIdWorkflowLogExportsIdentityOptionsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdWorkflowLogExportsIdentityOptionsQuery = z.object({
+  keyword: z.string().min(1).max(255),
+})
+
+/**
+ * Matching identities
+ */
+export const zGetAppsByAppIdWorkflowLogExportsIdentityOptionsResponse =
+  zWorkflowLogExportIdentitySearchResponse
+
+export const zGetAppsByAppIdWorkflowLogExportsLatestPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Latest export
+ */
+export const zGetAppsByAppIdWorkflowLogExportsLatestResponse = zWorkflowLogExportLatestResponse
+
+export const zGetAppsByAppIdWorkflowLogExportsPreviewPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdWorkflowLogExportsPreviewQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  created_at__after: z.iso.datetime().optional(),
+  created_at__before: z.iso.datetime().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  keyword: z.string().optional(),
+  status: z
+    .enum(['failed', 'partial-succeeded', 'paused', 'running', 'scheduled', 'stopped', 'succeeded'])
+    .optional(),
+})
+
+/**
+ * Export preview
+ */
+export const zGetAppsByAppIdWorkflowLogExportsPreviewResponse = zWorkflowLogExportPreviewResponse
+
+export const zGetAppsByAppIdWorkflowLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export task status
+ */
+export const zGetAppsByAppIdWorkflowLogExportsByTaskIdResponse = zWorkflowLogExportStatusResponse
+
+export const zPutAppsByAppIdWorkflowLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAppsByAppIdWorkflowLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAppsByAppIdWorkflowLogExportsByTaskIdResponse = zLogExportEmailNotificationResponse
+
+export const zPostAppsByAppIdWorkflowLogExportsByTaskIdCancelPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export canceled
+ */
+export const zPostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponse =
+  zWorkflowLogExportStatusResponse
+
+export const zGetAppsByAppIdWorkflowLogExportsByTaskIdFilePath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * CSV attachment
+ */
+export const zGetAppsByAppIdWorkflowLogExportsByTaskIdFileResponse = zBinaryFileResponse
 
 export const zGetAppsByAppIdWorkflowRunsPath = z.object({
   app_id: z.uuid(),

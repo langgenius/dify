@@ -40,6 +40,15 @@ class AppNetworkAccessGroupBinding(BillingModel):
     access_points: list[str] = Field(alias="accessPoints")
 
 
+class BatchAddNotificationAccountsReply(BillingModel):
+    count: int
+
+
+class BatchAddNotificationAccountsReq(BillingModel):
+    notification_id: str = Field(alias="notificationId")
+    account_ids: list[str] = Field(alias="accountIds")
+
+
 class CheckAccountInFreezeReply(BillingModel):
     data: bool
     freeze_type: Literal["", "freeze", "email_domain_suspended"] = Field(alias="freezeType")
@@ -199,6 +208,20 @@ class UpdateNetworkAccessGroupRequest(BillingModel):
     allowed_cidrs: list[str] = Field(alias="allowedCidrs")
     expected_version: int = Field(alias="expectedVersion")
     actor_account_id: str = Field(alias="actorAccountId")
+
+
+class UpsertNotificationReply(BillingModel):
+    notification_id: str = Field(alias="notificationId")
+
+
+class UpsertNotificationReq(BillingModel):
+    notification_id: str = Field(alias="notificationId")
+    contents: list[LangContent]
+    start_time: datetime = Field(alias="startTime")
+    end_time: datetime = Field(alias="endTime")
+    frequency: str
+    status: str
+    is_global: bool = Field(alias="isGlobal")
 
 
 type UtmErrorReason = Literal["", "CODEC", "VALIDATOR", "UNKNOWN", "INVALID_SECRET_KEY"]
@@ -382,6 +405,20 @@ def account_add_delete_feedback(*, body: AddDeleteFeedbackRequest) -> AddDeleteF
     )
 
 
+def notification_upsert_notification(*, body: UpsertNotificationReq) -> UpsertNotificationReply:
+    """POST /v1/notifications (SaasNotification_UpsertNotification)."""
+    return request(
+        Upstream.SAAS,
+        "POST",
+        "/notifications",
+        response_model=UpsertNotificationReply,
+        errors=SAAS_NOTIFICATION_ERRORS,
+        path_params={},
+        params={},
+        body=body,
+    )
+
+
 def notification_get_account_notification(*, account_id: str) -> GetAccountNotificationReply:
     """GET /v1/notifications/active (SaasNotification_GetAccountNotification)."""
     return request(
@@ -393,6 +430,22 @@ def notification_get_account_notification(*, account_id: str) -> GetAccountNotif
         path_params={},
         params={"accountId": account_id},
         body=None,
+    )
+
+
+def notification_batch_add_notification_accounts(
+    *, notification_id: str, body: BatchAddNotificationAccountsReq
+) -> BatchAddNotificationAccountsReply:
+    """POST /v1/notifications/{notificationId}/accounts (SaasNotification_BatchAddNotificationAccounts)."""
+    return request(
+        Upstream.SAAS,
+        "POST",
+        "/notifications/{notification_id}/accounts",
+        response_model=BatchAddNotificationAccountsReply,
+        errors=SAAS_NOTIFICATION_ERRORS,
+        path_params={"notification_id": notification_id},
+        params={},
+        body=body,
     )
 
 

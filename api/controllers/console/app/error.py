@@ -21,6 +21,54 @@ class AppNotFoundError(BaseHTTPException):
     code = 404
 
 
+class LogExportLimitReachedHTTPError(BaseHTTPException):
+    error_code = "log_export_limit_reached"
+    description = "There is already an active log export for this requester and app."
+    code = HTTPStatus.TOO_MANY_REQUESTS
+
+
+class LogExportTaskNotCancelableHTTPError(BaseHTTPException):
+    error_code = "log_export_task_not_cancelable"
+    description = "Only queued log export tasks can be canceled."
+    code = HTTPStatus.CONFLICT
+
+
+class ConversationLogExportTaskNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_log_export_task_not_found"
+    description = "Conversation log export task not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationLogExportTaskNotReadyHTTPError(BaseHTTPException):
+    error_code = "conversation_log_export_task_not_ready"
+    description = "The conversation log export is not ready for download."
+    code = HTTPStatus.CONFLICT
+
+
+class ConversationLogExportFileNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_log_export_file_not_found"
+    description = "Conversation log export file not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WorkflowLogExportTaskNotFoundHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_task_not_found"
+    description = "Workflow log export task not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WorkflowLogExportTaskNotReadyHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_task_not_ready"
+    description = "The Workflow log export is not ready for download."
+    code = HTTPStatus.CONFLICT
+
+
+class WorkflowLogExportFileNotFoundHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_file_not_found"
+    description = "Workflow log export file not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AppTriggerNotFoundError(BaseHTTPException):
     error_code = "app_trigger_not_found"
     description = "Trigger not found."

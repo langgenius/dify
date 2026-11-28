@@ -1,150 +1,76 @@
 'use client'
-import type { Dayjs } from 'dayjs'
-import type { FC } from 'react'
-import type { QueryParam } from './index'
-import type { I18nKeysByPrefix } from '@/types/i18n'
-import { RiCalendarLine } from '@remixicon/react'
-import { skipToken, useQuery } from '@tanstack/react-query'
-import dayjs from 'dayjs'
-import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import type { FC, ReactNode } from 'react'
+import type { LogFilterOptions, QueryParam } from './log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
-import { consoleQuery } from '@/service/console'
-import {
-  CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
-  CLOUD_SANDBOX_TIME_PERIOD_KEYS,
-  isLogTimePeriodRestricted,
-  resolveLogTimePeriodOption,
-  useCloudSandboxPlanStatus,
-} from './cloud-sandbox-retention'
-
-dayjs.extend(quarterOfYear)
-
-// Count the days when the value is read, so a page left open past midnight still uses the current date.
-// Round the result, because a daylight saving change makes some days 23 or 25 hours long.
-const daysSince = (getStart: (today: Dayjs) => Dayjs) => {
-  const today = dayjs().startOf('day')
-  return Math.round(today.diff(getStart(today).startOf('day'), 'day', true))
-}
-
-type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
-
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePeriodName } } = {
-  1: { value: 0, name: 'today' },
-  2: { value: 7, name: 'last7days' },
-  3: { value: 28, name: 'last4weeks' },
-  4: {
-    get value() {
-      return daysSince((today) => today.subtract(3, 'month'))
-    },
-    name: 'last3months',
-  },
-  5: {
-    get value() {
-      return daysSince((today) => today.subtract(12, 'month'))
-    },
-    name: 'last12months',
-  },
-  6: {
-    get value() {
-      return daysSince((today) => today.startOf('month'))
-    },
-    name: 'monthToDate',
-  },
-  7: {
-    get value() {
-      return daysSince((today) => today.startOf('quarter'))
-    },
-    name: 'quarterToDate',
-  },
-  8: {
-    get value() {
-      return daysSince((today) => today.startOf('year'))
-    },
-    name: 'yearToDate',
-  },
-  9: { value: -1, name: 'allTime' },
-}
+import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 
 type IFilterProps = {
   isChatMode?: boolean
   appId: string
+  filterOptions: LogFilterOptions
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  identityOptions?: LogIdentity[]
+  timezone?: string
+  actions?: ReactNode
 }
 
 const Filter: FC<IFilterProps> = ({
   isChatMode,
   appId,
+  filterOptions: { periods, annotations, hasAnnotationCount, clearedPeriod, allowCustom },
   queryParams,
   setQueryParams,
+  identityOptions,
+  timezone,
+  actions,
 }: IFilterProps) => {
-  const { data } = useQuery(
-    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
-      input: appId ? { params: { app_id: appId } } : skipToken,
-    }),
-  )
   const { t } = useTranslation(['appLog', 'common'])
-  const planState = useCloudSandboxPlanStatus()
-  const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
-  const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
-    .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
-    .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
 
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
-      <Chip
-        className="min-w-37.5"
-        panelClassName="w-[270px]"
-        leftIcon={<RiCalendarLine className="size-4 text-text-secondary" />}
-        value={queryParams.period}
-        onSelect={(item) => {
-          setQueryParams({ ...queryParams, period: item.value })
-        }}
-        onClear={() =>
-          setQueryParams({
-            ...queryParams,
-            period: isTimePeriodRestricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
-          })
-        }
-        items={timePeriodEntries.map(([k, v]) => ({
-          value: k,
-          name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
-        }))}
+      <LogTimeRangePicker
+        value={queryParams}
+        options={periods}
+        onChange={(timeRange) => setQueryParams({ ...queryParams, ...timeRange })}
+        timezone={timezone}
+        allowCustom={allowCustom}
+        clearedPeriod={clearedPeriod}
       />
       <Chip
         className="min-w-37.5"
         panelClassName="w-[270px]"
-        disabled={!data}
+        label={t(($) => $['table.header.status'], { ns: 'appLog' })}
+        disabled={!hasAnnotationCount}
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
           setQueryParams({
             ...queryParams,
-            annotation_status: item.value as QueryParam['annotation_status'],
+            annotation_status: item.value,
           })
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
-        items={[
-          { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
-          {
-            value: 'annotated',
-            name: t(($) => $['filter.annotation.annotated'], {
-              ns: 'appLog',
-              count: data?.count ?? 0,
-            }),
-          },
-          {
-            value: 'not_annotated',
-            name: t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
-          },
-        ]}
+        items={annotations.map(({ value, label }) => ({ value, name: label }))}
       />
+      {identityOptions && (
+        <LogIdentityField
+          appId={appId}
+          options={identityOptions}
+          value={queryParams.identities ?? []}
+          onChange={(identities) => setQueryParams({ ...queryParams, identities })}
+          disabled={false}
+          applyOnClose
+        />
+      )}
       <SearchInput
-        className="w-50"
+        className="max-w-50 min-w-24 flex-1"
         value={queryParams.keyword ?? ''}
         placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
         onValueChange={(value) => {
@@ -172,6 +98,7 @@ const Filter: FC<IFilterProps> = ({
           />
         </>
       )}
+      {actions ? <div className="ms-auto shrink-0">{actions}</div> : null}
     </div>
   )
 }

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from configs import dify_config
 from enums import DeploymentEdition
+from extensions.storage.storage_type import StorageType
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
 
@@ -142,6 +143,16 @@ class SystemFeatureService:
     @staticmethod
     def is_trial_app_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
+
+    @staticmethod
+    def use_presigned_log_export_downloads() -> bool:
+        # Self-hosted S3 endpoints can be private to the API container.
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.STORAGE_TYPE == StorageType.S3
+
+    @staticmethod
+    def is_log_export_notification_enabled() -> bool:
+        """Allow export completion notifications where the Console has a SaaS notification provider."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel) -> None:

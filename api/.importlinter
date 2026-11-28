@@ -1135,6 +1135,7 @@ source_modules =
     services.conversation_command_service
     services.conversation_query_service
     services.conversation_variable_command_service
+    services.retention.conversation.log_export_service
 forbidden_modules =
     controllers
     extensions
@@ -1155,6 +1156,36 @@ forbidden_modules =
     models
     repositories
     services.conversation_service
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:log-export-application-boundary]
+name = Log export services are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.retention.agent.log_export_service
+    services.retention.log_export_command
+    services.retention.log_export_task
+    services.retention.workflow_run.log_export_service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+
+[importlinter:contract:workflow-app-log-controller-boundary]
+name = Workflow log controllers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_app_log
+forbidden_modules =
+    extensions.ext_database
+    extensions.ext_redis
+    repositories
     sqlalchemy
 allow_indirect_imports = True
 

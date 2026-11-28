@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Không tải được nhật ký",
   "agentDetail.logs.notAvailable": "Không có",
   "agentDetail.logs.table.createdTime": "Thời gian tạo",
-  "agentDetail.logs.table.endUser": "Người dùng cuối",
   "agentDetail.logs.table.messageCount": "Số tin nhắn",
   "agentDetail.logs.table.operationRate": "Tỷ lệ quản trị viên",
   "agentDetail.logs.table.source": "Nguồn",

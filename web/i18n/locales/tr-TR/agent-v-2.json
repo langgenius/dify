@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Günlükler yüklenemedi",
   "agentDetail.logs.notAvailable": "Yok",
   "agentDetail.logs.table.createdTime": "Oluşturulma Zamanı",
-  "agentDetail.logs.table.endUser": "Son kullanıcı",
   "agentDetail.logs.table.messageCount": "Mesaj Sayısı",
   "agentDetail.logs.table.operationRate": "Yönetici Oranı",
   "agentDetail.logs.table.source": "Kaynak",

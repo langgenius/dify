@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "Logboeken laden mislukt",
   "agentDetail.logs.notAvailable": "Niet beschikbaar",
   "agentDetail.logs.table.createdTime": "Aanmaaktijd",
-  "agentDetail.logs.table.endUser": "Eindgebruiker",
   "agentDetail.logs.table.messageCount": "Aantal ber.",
   "agentDetail.logs.table.operationRate": "Beheerdersbeoordeling",
   "agentDetail.logs.table.source": "Bron",

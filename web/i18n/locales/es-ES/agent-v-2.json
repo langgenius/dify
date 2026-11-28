@@ -313,7 +313,6 @@
   "agentDetail.logs.loadFailed": "No se pudieron cargar los registros",
   "agentDetail.logs.notAvailable": "N/D",
   "agentDetail.logs.table.createdTime": "Fecha de creación",
-  "agentDetail.logs.table.endUser": "Usuario final",
   "agentDetail.logs.table.messageCount": "Cant. mens.",
   "agentDetail.logs.table.operationRate": "Valoración del administrador",
   "agentDetail.logs.table.source": "Fuente",

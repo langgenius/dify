@@ -75,6 +75,10 @@ class FeatureService:
         """Agent App preview runs are available on Cloud and Enterprise deployments only."""
         return dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
 
+    @staticmethod
+    def requires_paid_plan_for_log_export() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
     def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
         """Keep Cloud-only Web app customization out of free workspace imports."""

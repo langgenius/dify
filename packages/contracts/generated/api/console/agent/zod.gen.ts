@@ -479,6 +479,115 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
+ * AgentLogExportTaskResponse
+ */
+export const zAgentLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
+  status: z.literal('pending'),
+  task_id: z.string(),
+})
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * LogExportLimitReachedError
+ *
+ * There is already an active log export for this requester and app.
+ */
+export const zLogExportLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_limit_reached'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * AgentLogExportTaskNotFoundError
+ *
+ * Agent log export task not found.
+ */
+export const zAgentLogExportTaskNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_log_export_task_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * LogExportEmailNotificationPayload
+ *
+ * Set the requester's mail preference for a single export.
+ */
+export const zLogExportEmailNotificationPayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
+ * LogExportTaskNotCancelableError
+ *
+ * Only queued log export tasks can be canceled.
+ */
+export const zLogExportTaskNotCancelableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_task_not_cancelable'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * AgentLogExportFileNotFoundError
+ *
+ * Agent log export file not found.
+ */
+export const zAgentLogExportFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_log_export_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentLogExportTaskNotReadyError
+ *
+ * The Agent log export is not ready for download.
+ */
+export const zAgentLogExportTaskNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_log_export_task_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({
@@ -1227,6 +1336,42 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
 })
 
 /**
+ * AgentLogExportCountsResponse
+ */
+export const zAgentLogExportCountsResponse = z.object({
+  log_count: z.int(),
+  row_count: z.int(),
+})
+
+/**
+ * AgentLogExportPreviewResponse
+ */
+export const zAgentLogExportPreviewResponse = z.object({
+  counts: zAgentLogExportCountsResponse.nullable(),
+})
+
+/**
+ * LogExportEmailState
+ *
+ * The public opt-in state for a task with a live download.
+ */
+export const zLogExportEmailState = z.enum(['off', 'queued', 'waiting'])
+
+/**
+ * LogExportEmailNotificationResponse
+ *
+ * Return the stored preference or that a mail job has been queued.
+ */
+export const zLogExportEmailNotificationResponse = z.object({
+  email_notification: zLogExportEmailState,
+})
+
+/**
+ * LogExportStatus
+ */
+export const zLogExportStatus = z.enum(['canceled', 'failed', 'pending', 'processing', 'ready'])
+
+/**
  * AgentLogSourceResponse
  */
 export const zAgentLogSourceResponse = z.object({
@@ -1263,6 +1408,7 @@ export const zAgentLogSourceListResponse = z.object({
  * AgentLogConversationItemResponse
  */
 export const zAgentLogConversationItemResponse = z.object({
+  account_id: z.string().nullish(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   end_user_id: z.string().nullish(),
@@ -1798,6 +1944,111 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * ConsoleLogIdentitySource
+ */
+export const zConsoleLogIdentitySource = z.enum(['account', 'end-user'])
+
+/**
+ * LogExportIdentityLabel
+ *
+ * A display label captured by the requester for an identity in the export filters.
+ */
+export const zLogExportIdentityLabel = z.object({
+  id: z.uuid(),
+  label: z.string().max(255),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * AgentLogExportCreatePayload
+ *
+ * Submit unpaginated preview filters and their display labels for the export.
+ */
+export const zAgentLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  end: z.string().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  sources: z.array(z.string()).optional(),
+  start: z.string().nullish(),
+})
+
+/**
+ * AgentLogIdentityOptionResponse
+ */
+export const zAgentLogIdentityOptionResponse = z.object({
+  id: z.string(),
+  label: z.string(),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * AgentLogIdentitySearchResponse
+ */
+export const zAgentLogIdentitySearchResponse = z.object({
+  data: z.array(zAgentLogIdentityOptionResponse),
+})
+
+/**
+ * AgentLogExportFilters
+ */
+export const zAgentLogExportFilters = z.object({
+  account_ids: z.array(z.string()).optional().default([]),
+  end: z.iso.datetime().nullable(),
+  end_user_ids: z.array(z.string()),
+  sources: z.array(z.string()),
+  start: z.iso.datetime().nullable(),
+})
+
+/**
+ * LogExportStage
+ */
+export const zLogExportStage = z.enum(['preparing', 'uploading', 'writing'])
+
+/**
+ * LogExportProgressResponse
+ *
+ * The last reported stage and CSV data-row count for the current attempt.
+ */
+export const zLogExportProgressResponse = z.object({
+  rows_written: z.int().gte(0),
+  stage: zLogExportStage,
+})
+
+/**
+ * AgentLogExportStatusResponse
+ */
+export const zAgentLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * AgentLogExportLatestTaskResponse
+ */
+export const zAgentLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
+  filters: zAgentLogExportFilters,
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * AgentLogExportLatestResponse
+ */
+export const zAgentLogExportLatestResponse = z.object({
+  task: zAgentLogExportLatestTaskResponse.nullable(),
 })
 
 /**
@@ -4557,6 +4808,85 @@ export const zPostAgentByAgentIdFeedbacksPath = z.object({
  */
 export const zPostAgentByAgentIdFeedbacksResponse = zSimpleResultResponse
 
+export const zPostAgentByAgentIdLogExportsBody = zAgentLogExportCreatePayload
+
+export const zPostAgentByAgentIdLogExportsPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Export task created
+ */
+export const zPostAgentByAgentIdLogExportsResponse = zAgentLogExportTaskResponse
+
+export const zGetAgentByAgentIdLogExportsLatestPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Latest export
+ */
+export const zGetAgentByAgentIdLogExportsLatestResponse = zAgentLogExportLatestResponse
+
+export const zGetAgentByAgentIdLogExportsPreviewPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdLogExportsPreviewQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  sources: z.array(z.string()).optional(),
+  start: z.string().optional(),
+})
+
+/**
+ * Export preview
+ */
+export const zGetAgentByAgentIdLogExportsPreviewResponse = zAgentLogExportPreviewResponse
+
+export const zGetAgentByAgentIdLogExportsByTaskIdPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export task status
+ */
+export const zGetAgentByAgentIdLogExportsByTaskIdResponse = zAgentLogExportStatusResponse
+
+export const zPutAgentByAgentIdLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAgentByAgentIdLogExportsByTaskIdPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAgentByAgentIdLogExportsByTaskIdResponse = zLogExportEmailNotificationResponse
+
+export const zPostAgentByAgentIdLogExportsByTaskIdCancelPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export canceled
+ */
+export const zPostAgentByAgentIdLogExportsByTaskIdCancelResponse = zAgentLogExportStatusResponse
+
+export const zGetAgentByAgentIdLogExportsByTaskIdFilePath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * CSV attachment
+ */
+export const zGetAgentByAgentIdLogExportsByTaskIdFileResponse = zBinaryFileResponse
+
 export const zGetAgentByAgentIdLogSourcesPath = z.object({
   agent_id: z.uuid(),
 })
@@ -4571,7 +4901,9 @@ export const zGetAgentByAgentIdLogsPath = z.object({
 })
 
 export const zGetAgentByAgentIdLogsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
@@ -4588,6 +4920,19 @@ export const zGetAgentByAgentIdLogsQuery = z.object({
  * Agent logs
  */
 export const zGetAgentByAgentIdLogsResponse = zAgentLogListResponse
+
+export const zGetAgentByAgentIdLogsIdentityOptionsPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdLogsIdentityOptionsQuery = z.object({
+  keyword: z.string().min(1).max(255),
+})
+
+/**
+ * Matching identities
+ */
+export const zGetAgentByAgentIdLogsIdentityOptionsResponse = zAgentLogIdentitySearchResponse
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesPath = z.object({
   agent_id: z.uuid(),

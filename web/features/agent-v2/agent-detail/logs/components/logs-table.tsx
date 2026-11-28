@@ -37,12 +37,12 @@ export function AgentLogsTable({
   onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'appLog'])
   const tableHeaderLabels = {
     unread: t(($) => $['agentDetail.logs.table.unread']),
     title: t(($) => $['agentDetail.logs.table.title']),
     source: t(($) => $['agentDetail.logs.table.source']),
-    endUser: t(($) => $['agentDetail.logs.table.endUser']),
+    identity: t(($) => $['table.header.endUser'], { ns: 'appLog' }),
     messageCount: t(($) => $['agentDetail.logs.table.messageCount']),
     userRate: t(($) => $['agentDetail.logs.table.userRate']),
     operationRate: t(($) => $['agentDetail.logs.table.operationRate']),
@@ -179,7 +179,9 @@ function AgentLogsTableBody({
               <td className="px-3">
                 <LogSourceCell source={log.source} />
               </td>
-              <TableCell translate="no">{log.end_user_id || notAvailable}</TableCell>
+              <TableCell translate="no">
+                {log.end_user_id || log.account_id || notAvailable}
+              </TableCell>
               <TableCell className="tabular-nums">{log.message_count}</TableCell>
               <TableCell className="text-text-quaternary">
                 {formatRate(log.user_rate, notAvailable)}
@@ -204,7 +206,7 @@ type LogsTableHeaderLabels = {
   unread: string
   title: string
   source: string
-  endUser: string
+  identity: string
   messageCount: string
   userRate: string
   operationRate: string
@@ -235,7 +237,7 @@ function LogsTableHeader({
         </th>
         <TableHead>{labels.title}</TableHead>
         <TableHead>{labels.source}</TableHead>
-        <TableHead>{labels.endUser}</TableHead>
+        <TableHead>{labels.identity}</TableHead>
         <TableHead>{labels.messageCount}</TableHead>
         <TableHead>{labels.userRate}</TableHead>
         <TableHead>{labels.operationRate}</TableHead>

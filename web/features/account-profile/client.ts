@@ -36,3 +36,9 @@ export const userProfileQueryOptions = () =>
     },
     retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
   })
+
+export const userTimezoneQueryOptions = () =>
+  queryOptions({
+    ...userProfileQueryOptions(),
+    select: ({ profile }) => profile.timezone || 'UTC',
+  })

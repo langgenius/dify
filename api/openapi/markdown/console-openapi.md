@@ -1342,6 +1342,171 @@ Create or update Agent App message feedback
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /agent/{agent_id}/log-exports
+**Admit the caller and return the Agent's task ID after the normalized filters are saved**
+
+Create a pending CSV export task for the Agent
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentLogExportCreatePayload](#agentlogexportcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Export task created | **application/json**: [AgentLogExportTaskResponse](#agentlogexporttaskresponse)<br> |
+| 400 | Invalid log filters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [LogExportLimitReachedError](#logexportlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/log-exports/latest
+**Return the caller's latest live task for an available Agent, or a null task**
+
+Get the caller's latest Agent log export and its filters
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Latest export | **application/json**: [AgentLogExportLatestResponse](#agentlogexportlatestresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/log-exports/preview
+**Return filtered export counts for the admitted Agent, workspace role, and plan**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| account_ids | query | Include logs from these workspace accounts | No | [ string (uuid) ] |
+| end | query | Exclusive end time in the account timezone (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | Include logs from these end users | No | [ string (uuid) ] |
+| sources | query | Source IDs from the Agent Logs filters | No | [ string ] |
+| start | query | Inclusive start time in the account timezone (YYYY-MM-DD HH:MM) | No | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export preview | **application/json**: [AgentLogExportPreviewResponse](#agentlogexportpreviewresponse)<br> |
+| 400 | Invalid log filters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/log-exports/{task_id}
+**Return the state of a live task scoped to the admitted workspace and Agent**
+
+Get the current status of an Agent log export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export task status | **application/json**: [AgentLogExportStatusResponse](#agentlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentLogExportTaskNotFoundError](#agentlogexporttasknotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /agent/{agent_id}/log-exports/{task_id}
+**Update the caller's preference for a live export of the Agent's logs**
+
+Set the requester's email preference for this Agent CSV export
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LogExportEmailNotificationPayload](#logexportemailnotificationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email notification preference | **application/json**: [LogExportEmailNotificationResponse](#logexportemailnotificationresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentLogExportTaskNotFoundError](#agentlogexporttasknotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /agent/{agent_id}/log-exports/{task_id}/cancel
+**Cancel the admitted requester's queued Agent task and return its new status**
+
+Cancel a queued Agent CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export canceled | **application/json**: [AgentLogExportStatusResponse](#agentlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentLogExportTaskNotFoundError](#agentlogexporttasknotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [LogExportTaskNotCancelableError](#logexporttasknotcancelableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/log-exports/{task_id}/file
+**Authorize the Agent and its ready export before redirecting or streaming the CSV**
+
+Download a completed Agent log CSV from object storage or the Console API
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | CSV attachment | **text/csv**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 302 | Redirect to a pre-signed CSV download URL<br>**Headers:**<br>**Location**: Pre-signed object storage URL<br> |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentLogExportFileNotFoundError](#agentlogexportfilenotfounderror)<br>[AgentLogExportTaskNotFoundError](#agentlogexporttasknotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentLogExportTaskNotReadyError](#agentlogexporttasknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /agent/{agent_id}/log-sources
 **Return the admitted Agent's available log sources**
 
@@ -1366,7 +1531,9 @@ Create or update Agent App message feedback
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| account_ids | query | Include logs from these workspace accounts | No | [ string (uuid) ] |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | Include logs from these end users | No | [ string (uuid) ] |
 | keyword | query | Search query, answer, or conversation name | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -1385,6 +1552,25 @@ Create or update Agent App message feedback
 | ---- | ----------- | ------ |
 | 200 | Agent logs | **application/json**: [AgentLogListResponse](#agentloglistresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/logs/identity-options
+**Return matching identities with visible logs in the admitted Agent's WebApp or Workflow sources**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Part of an identity label or a full internal ID | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Matching identities | **application/json**: [AgentLogIdentitySearchResponse](#agentlogidentitysearchresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid keyword | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
@@ -3161,8 +3347,10 @@ Get chat conversations with pagination and filtering
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
 | keyword | query | Search keyword | No | string |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -3179,6 +3367,26 @@ Get chat conversations with pagination and filtering
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/chat-conversations/identity-options
+**Return up to 20 matches per identity type for the admitted app**
+
+Search for end users or workspace accounts with visible conversation logs in this app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| keyword | query | Part of an end-user ID or account name, or an exact internal ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Matching identities | **application/json**: [ConversationLogIdentitySearchResponse](#conversationlogidentitysearchresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -3283,6 +3491,8 @@ Stop a running chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations
+**Return the admitted Completion app's page of conversations matching the Logs filters**
+
 Get completion conversations with pagination and filtering
 
 #### Parameters
@@ -3290,8 +3500,10 @@ Get completion conversations with pagination and filtering
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
 | keyword | query | Search keyword | No | string |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -3389,6 +3601,175 @@ Stop a running completion message generation
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/conversation-log-exports
+**Validate an admitted app's export filters and acknowledge the task after publication**
+
+Create a pending CSV export task for one conversation app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConversationLogExportCreatePayload](#conversationlogexportcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Export task accepted | **application/json**: [ConversationLogExportTaskResponse](#conversationlogexporttaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [LogExportLimitReachedError](#logexportlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/latest
+**Return only the admitted account's latest task, or null if it is missing or expired**
+
+Read the caller's latest live CSV export and its submitted filters for this app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Latest export | **application/json**: [ConversationLogExportLatestResponse](#conversationlogexportlatestresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/preview
+**Preview a conversation log export for a workspace Owner or Admin with application Logs access**
+
+Count the conversations and rows that match the application's Logs filters
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
+| annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
+| keyword | query | Search keyword | No | string |
+| sort_by | query | Sort field and direction | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export preview | **application/json**: [ConversationLogExportPreviewResponse](#conversationlogexportpreviewresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/{task_id}
+**Return the state of a live export task for an admitted app**
+
+Get the current status of the application's CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export task status | **application/json**: [ConversationLogExportStatusResponse](#conversationlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /apps/{app_id}/conversation-log-exports/{task_id}
+**Update the caller's preference for a live export in the app**
+
+Set the requester's email preference for this CSV export
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LogExportEmailNotificationPayload](#logexportemailnotificationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email notification preference | **application/json**: [LogExportEmailNotificationResponse](#logexportemailnotificationresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/conversation-log-exports/{task_id}/cancel
+**Cancel the admitted requester's queued task and return its new status**
+
+Cancel a queued conversation CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export canceled | **application/json**: [ConversationLogExportStatusResponse](#conversationlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [LogExportTaskNotCancelableError](#logexporttasknotcancelableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/{task_id}/file
+**Admit the app and ready task before redirecting or streaming the CSV**
+
+Download a completed CSV directly from object storage or from the Console API
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | CSV attachment | **text/csv**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 302 | Redirect to a pre-signed CSV download URL<br>**Headers:**<br>**Location**: Pre-signed object storage URL<br> |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportFileNotFoundError](#conversationlogexportfilenotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConversationLogExportTaskNotReadyError](#conversationlogexporttasknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-variables
@@ -4309,11 +4690,13 @@ Get workflow application execution logs
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
 | created_at__after | query | Filter logs created after this timestamp | No | dateTime |
 | created_at__before | query | Filter logs created before this timestamp | No | dateTime |
 | created_by_account | query | Filter by account | No | string |
 | created_by_end_user_session_id | query | Filter by end user session ID | No | string |
 | detail | query | Whether to return detailed logs | No | boolean |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
 | keyword | query | Search keyword for filtering logs | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
@@ -4325,6 +4708,218 @@ Get workflow application execution logs
 | ---- | ----------- | ------ |
 | 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-app-logs/identity-options
+**Search app identities under the Logs permission granted by the route**
+
+Search identities in the visible logs of a Workflow app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| keyword | query | Part of an end-user ID or account name, or an exact internal ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Matching identities | **application/json**: [WorkflowLogExportIdentitySearchResponse](#workflowlogexportidentitysearchresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflow-log-exports
+**Admit the app and caller and acknowledge the task after persisting the normalized filters**
+
+Create a pending CSV export task for published runs in a Workflow app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowLogExportCreatePayload](#workflowlogexportcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Export task accepted | **application/json**: [WorkflowLogExportTaskResponse](#workflowlogexporttaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [LogExportLimitReachedError](#logexportlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-log-exports/identity-options
+**Return up to 20 matches per identity type for the admitted Workflow app**
+
+Search end users and accounts with visible runs in the Workflow app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| keyword | query | Part of an end-user ID or account name, or an exact internal ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Matching identities | **application/json**: [WorkflowLogExportIdentitySearchResponse](#workflowlogexportidentitysearchresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-log-exports/latest
+**Return the caller's latest live export for this app, or null if it is unavailable**
+
+Read the caller's latest Workflow CSV export and its submitted filters
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Latest export | **application/json**: [WorkflowLogExportLatestResponse](#workflowlogexportlatestresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-log-exports/preview
+**Return the admitted app's unpaginated export count, with one row per published run**
+
+Count CSV rows for published Workflow runs matching the Logs filters
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
+| created_at__after | query | Inclusive lower bound on log creation time | No | dateTime |
+| created_at__before | query | Inclusive upper bound on log creation time | No | dateTime |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
+| keyword | query | Search keyword for Workflow Logs | No | string |
+| status | query | Execution status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export preview | **application/json**: [WorkflowLogExportPreviewResponse](#workflowlogexportpreviewresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-log-exports/{task_id}
+**Return the state of a live task for the admitted workspace and Workflow app**
+
+Get the current status of a Workflow CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export task status | **application/json**: [WorkflowLogExportStatusResponse](#workflowlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowLogExportTaskNotFoundError](#workflowlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /apps/{app_id}/workflow-log-exports/{task_id}
+**Update the caller's preference for a live Workflow export**
+
+Set the requester's email preference for this Workflow CSV export
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LogExportEmailNotificationPayload](#logexportemailnotificationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email notification preference | **application/json**: [LogExportEmailNotificationResponse](#logexportemailnotificationresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowLogExportTaskNotFoundError](#workflowlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflow-log-exports/{task_id}/cancel
+**Cancel the admitted requester's queued Workflow task and return its new status**
+
+Cancel a queued Workflow CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export canceled | **application/json**: [WorkflowLogExportStatusResponse](#workflowlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowLogExportTaskNotFoundError](#workflowlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [LogExportTaskNotCancelableError](#logexporttasknotcancelableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-log-exports/{task_id}/file
+**Authorize the Workflow app and ready export before opening its CSV**
+
+Download a completed Workflow CSV from object storage or the Console API
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | CSV attachment | **text/csv**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 302 | Redirect to a pre-signed CSV download URL<br>**Headers:**<br>**Location**: Pre-signed object storage URL<br> |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowLogExportFileNotFoundError](#workflowlogexportfilenotfounderror)<br>[WorkflowLogExportTaskNotFoundError](#workflowlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [WorkflowLogExportTaskNotReadyError](#workflowlogexporttasknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs
@@ -21751,6 +22346,7 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_id | string | Workspace account ID for account-initiated logs. | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | end_user_id | string |  | No |
@@ -21764,6 +22360,104 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 | updated_at | integer |  | No |
 | user_rate | number |  | No |
 
+#### AgentLogExportCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| log_count | integer |  | Yes |
+| row_count | integer |  | Yes |
+
+#### AgentLogExportCreatePayload
+
+Submit unpaginated preview filters and their display labels for the export.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Include logs from these workspace accounts | No |
+| end | string | Exclusive end time in the account timezone (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | Include logs from these end users | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| sources | [ string ] | Source IDs from the Agent Logs filters | No |
+| start | string | Inclusive start time in the account timezone (YYYY-MM-DD HH:MM) | No |
+
+#### AgentLogExportFileNotFoundError
+
+Agent log export file not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentLogExportFileNotFoundError |  | Agent log export file not found. |  |
+
+#### AgentLogExportFilters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ], <br>**Default:**  |  | No |
+| end | string |  | Yes |
+| end_user_ids | [ string ] |  | Yes |
+| sources | [ string ] |  | Yes |
+| start | string |  | Yes |
+
+#### AgentLogExportLatestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task | [AgentLogExportLatestTaskResponse](#agentlogexportlatesttaskresponse) | Null if the caller has no live export task for this Agent | Yes |
+
+#### AgentLogExportLatestTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| expires_at | string | UTC deadline for downloading the export | No |
+| filters | [AgentLogExportFilters](#agentlogexportfilters) |  | Yes |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
+| status | [LogExportStatus](#logexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### AgentLogExportPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| counts | [AgentLogExportCountsResponse](#agentlogexportcountsresponse) | Matching log and CSV row counts, null on timeout | Yes |
+
+#### AgentLogExportStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
+| status | [LogExportStatus](#logexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### AgentLogExportTaskNotFoundError
+
+Agent log export task not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentLogExportTaskNotFoundError |  | Agent log export task not found. |  |
+
+#### AgentLogExportTaskNotReadyError
+
+The Agent log export is not ready for download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentLogExportTaskNotReadyError |  | The Agent log export is not ready for download. |  |
+
+#### AgentLogExportTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| status | string |  | Yes |
+| task_id | string |  | Yes |
+
 #### AgentLogFeedbackResponse
 
 | Name | Type | Description | Required |
@@ -21771,6 +22465,20 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 | content | string |  | No |
 | from_source | string, <br>**Available values:** "admin", "user" | *Enum:* `"admin"`, `"user"` | Yes |
 | rating | string, <br>**Available values:** "dislike", "like" | *Enum:* `"dislike"`, `"like"` | Yes |
+
+#### AgentLogIdentityOptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
+#### AgentLogIdentitySearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogIdentityOptionResponse](#agentlogidentityoptionresponse) ] |  | Yes |
 
 #### AgentLogListResponse
 
@@ -21869,9 +22577,13 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 
 #### AgentLogsQuery
 
+Add identity filters to the Agent log list query.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Include logs from these workspace accounts | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | Include logs from these end users | No |
 | keyword | string | Search query, answer, or conversation name | No |
 | limit | integer, <br>**Default:** 20 | Page size | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
@@ -24754,8 +25466,10 @@ HTTP failure with only provider-supplied diagnostic identifiers.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
 | annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
@@ -24954,8 +25668,10 @@ TEAM: Team collaboration paid plan
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
 | annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
@@ -25203,6 +25919,12 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### ConsoleLogIdentitySource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConsoleLogIdentitySource | string |  |  |
+
 #### ConsoleSegmentListResponse
 
 | Name | Type | Description | Required |
@@ -25312,6 +26034,12 @@ Query params for selecting contacts in workflow editors.
 | annotation_id | string |  | Yes |
 | created_at | integer |  | No |
 
+#### ConversationAnnotationStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationAnnotationStatus | string |  |  |
+
 #### ConversationCursorNotFoundError
 
 The conversation cursor is not in the current list. Refresh the list and try again.
@@ -25369,6 +26097,122 @@ The conversation has no message from which to generate a name.
 | limit | integer, <br>**Default:** 20 |  | No |
 | pinned | boolean |  | No |
 
+#### ConversationLogExportCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| message_count | integer | CSV data rows across all matched conversations | Yes |
+
+#### ConversationLogExportCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
+| annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| keyword | string | Search keyword | No |
+| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
+
+#### ConversationLogExportFileNotFoundError
+
+Conversation log export file not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportFileNotFoundError |  | Conversation log export file not found. |  |
+
+#### ConversationLogExportFiltersResponse
+
+Submitted filters for the export, with any date bounds in UTC.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | Yes |
+| annotation_status | [ConversationAnnotationStatus](#conversationannotationstatus) |  | Yes |
+| end | string |  | Yes |
+| end_user_ids | [ string ] |  | Yes |
+| keyword | string |  | Yes |
+| sort_by | [ConversationSort](#conversationsort) |  | Yes |
+| start | string |  | Yes |
+
+#### ConversationLogExportLatestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task | [ConversationLogExportLatestTaskResponse](#conversationlogexportlatesttaskresponse) | Null if the caller has no live export task | Yes |
+
+#### ConversationLogExportLatestTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| expires_at | string | UTC deadline for downloading the export | No |
+| filters | [ConversationLogExportFiltersResponse](#conversationlogexportfiltersresponse) |  | Yes |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
+| status | [LogExportStatus](#logexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogExportPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| counts | [ConversationLogExportCountsResponse](#conversationlogexportcountsresponse) | Null if the count query timed out | Yes |
+
+#### ConversationLogExportStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
+| status | [LogExportStatus](#logexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogExportTaskNotFoundError
+
+Conversation log export task not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportTaskNotFoundError |  | Conversation log export task not found. |  |
+
+#### ConversationLogExportTaskNotReadyError
+
+The conversation log export is not ready for download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportTaskNotReadyError |  | The conversation log export is not ready for download. |  |
+
+#### ConversationLogExportTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| status | string |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogIdentityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
+#### ConversationLogIdentitySearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConversationLogIdentityResponse](#conversationlogidentityresponse) ] |  | Yes |
+
 #### ConversationMessageDetail
 
 | Name | Type | Description | Required |
@@ -25425,6 +26269,12 @@ The conversation was not found for this user and app.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
+
+#### ConversationSort
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationSort | string |  |  |
 
 #### ConversationVariableItemPayload
 
@@ -32945,6 +33795,77 @@ Paginated response body for organization candidate search.
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
 
+#### LogExportEmailNotificationPayload
+
+Set the requester's mail preference for a single export.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### LogExportEmailNotificationResponse
+
+Return the stored preference or that a mail job has been queued.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | Yes |
+
+#### LogExportEmailState
+
+The public opt-in state for a task with a live download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportEmailState | string | The public opt-in state for a task with a live download. |  |
+
+#### LogExportIdentityLabel
+
+A display label captured by the requester for an identity in the export filters.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string (uuid) |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
+#### LogExportLimitReachedError
+
+There is already an active log export for this requester and app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportLimitReachedError |  | There is already an active log export for this requester and app. |  |
+
+#### LogExportProgressResponse
+
+The last reported stage and CSV data-row count for the current attempt.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| rows_written | integer |  | Yes |
+| stage | [LogExportStage](#logexportstage) |  | Yes |
+
+#### LogExportStage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportStage | string |  |  |
+
+#### LogExportStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportStatus | string |  |  |
+
+#### LogExportTaskNotCancelableError
+
+Only queued log export tasks can be canceled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportTaskNotCancelableError |  | Only queued log export tasks can be canceled. |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
@@ -39244,6 +40165,12 @@ Retain the addressed saved field; valid only for updates and saved tests.
 | ---- | ---- | ----------- | -------- |
 | type | string |  | Yes |
 
+#### UnprocessableEntityError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnprocessableEntityError |  |  |  |
+
 #### UnsupportedAudioTypeError
 
 Audio type not allowed.
@@ -39656,11 +40583,13 @@ Data entity
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
 | created_at__after | string | Filter logs created after this timestamp | No |
 | created_at__before | string | Filter logs created before this timestamp | No |
 | created_by_account | string | Filter by account | No |
 | created_by_end_user_session_id | string | Filter by end user session ID | No |
 | detail | boolean | Whether to return detailed logs | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
 | keyword | string | Search keyword for filtering logs | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
@@ -40209,6 +41138,115 @@ tenant's default model. The underlying generator never raises — an empty
 | named_only | boolean |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 | user_id | string |  | No |
+
+#### WorkflowLogExportCreatePayload
+
+Submit unpaginated preview filters and their display labels for the export.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
+| created_at__after | string | Inclusive lower bound on log creation time | No |
+| created_at__before | string | Inclusive upper bound on log creation time | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| keyword | string | Search keyword for Workflow Logs | No |
+| status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter | No |
+
+#### WorkflowLogExportFileNotFoundError
+
+Workflow log export file not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowLogExportFileNotFoundError |  | Workflow log export file not found. |  |
+
+#### WorkflowLogExportFiltersResponse
+
+Submitted filters for the export, with log time bounds in UTC.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | Yes |
+| created_at__after | string |  | Yes |
+| created_at__before | string |  | Yes |
+| end_user_ids | [ string ] |  | Yes |
+| keyword | string |  | Yes |
+| status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
+
+#### WorkflowLogExportIdentityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
+#### WorkflowLogExportIdentitySearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowLogExportIdentityResponse](#workflowlogexportidentityresponse) ] |  | Yes |
+
+#### WorkflowLogExportLatestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task | [WorkflowLogExportLatestTaskResponse](#workflowlogexportlatesttaskresponse) | Null if the caller has no live export task for this app | Yes |
+
+#### WorkflowLogExportLatestTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| expires_at | string | UTC deadline for downloading the export | No |
+| filters | [WorkflowLogExportFiltersResponse](#workflowlogexportfiltersresponse) |  | Yes |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
+| status | [LogExportStatus](#logexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### WorkflowLogExportPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| row_count | integer | CSV rows, one per matched run. Null on count timeout. | Yes |
+
+#### WorkflowLogExportStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email_notification | [LogExportEmailState](#logexportemailstate) |  | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
+| status | [LogExportStatus](#logexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### WorkflowLogExportTaskNotFoundError
+
+Workflow log export task not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowLogExportTaskNotFoundError |  | Workflow log export task not found. |  |
+
+#### WorkflowLogExportTaskNotReadyError
+
+The Workflow log export is not ready for download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowLogExportTaskNotReadyError |  | The Workflow log export is not ready for download. |  |
+
+#### WorkflowLogExportTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| status | string |  | Yes |
+| task_id | string |  | Yes |
 
 #### WorkflowNodeJobConfig
 

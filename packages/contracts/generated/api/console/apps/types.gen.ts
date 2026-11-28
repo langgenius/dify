@@ -542,6 +542,10 @@ export type ConversationWithSummaryPagination = {
   total: number
 }
 
+export type ConversationLogIdentitySearchResponse = {
+  data: Array<ConversationLogIdentityResponse>
+}
+
 export type ConversationNotFoundError = ErrorResponse & {
   code: 'conversation_not_found'
   status: 404
@@ -612,6 +616,90 @@ export type CompletionMessagePayload = {
   query?: string
   response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
+}
+
+export type ConversationLogExportCreatePayload = {
+  account_ids?: Array<string>
+  annotation_status?: 'all' | 'annotated' | 'not_annotated'
+  end?: string | null
+  end_user_ids?: Array<string>
+  estimated_rows?: number | null
+  identity_labels?: Array<LogExportIdentityLabel>
+  keyword?: string | null
+  sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+  start?: string | null
+}
+
+export type ConversationLogExportTaskResponse = {
+  estimated_rows?: number | null
+  status: 'pending'
+  task_id: string
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type UnprocessableEntityError = ErrorResponse & {
+  code: 'unprocessable_entity'
+  status: 422
+}
+
+export type LogExportLimitReachedError = ErrorResponse & {
+  code: 'log_export_limit_reached'
+  status: 429
+}
+
+export type ConversationLogExportLatestResponse = {
+  task: ConversationLogExportLatestTaskResponse | null
+}
+
+export type ConversationLogExportPreviewResponse = {
+  counts: ConversationLogExportCountsResponse | null
+}
+
+export type ConversationLogExportStatusResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
+  status: LogExportStatus
+  task_id: string
+}
+
+export type ConversationLogExportTaskNotFoundError = ErrorResponse & {
+  code: 'conversation_log_export_task_not_found'
+  status: 404
+}
+
+export type LogExportEmailNotificationPayload = {
+  enabled: boolean
+}
+
+export type LogExportEmailNotificationResponse = {
+  email_notification: LogExportEmailState
+}
+
+export type LogExportTaskNotCancelableError = ErrorResponse & {
+  code: 'log_export_task_not_cancelable'
+  status: 409
+}
+
+export type BinaryFileResponse = Blob | File
+
+export type ConversationLogExportFileNotFoundError = ErrorResponse & {
+  code: 'conversation_log_export_file_not_found'
+  status: 404
+}
+
+export type ConversationLogExportTaskNotReadyError = ErrorResponse & {
+  code: 'conversation_log_export_task_not_ready'
+  status: 409
 }
 
 export type PaginatedConversationVariableResponse = {
@@ -795,11 +883,6 @@ export type NetworkAccessInvalidInputError = ErrorResponse & {
 export type NetworkAccessUnsupportedAccessPointsError = ErrorResponse & {
   code: 'network_access_unsupported_access_points'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNotFoundError = ErrorResponse & {
@@ -1131,6 +1214,58 @@ export type WorkflowAppLogPaginationResponse = {
   total: number
 }
 
+export type WorkflowLogExportIdentitySearchResponse = {
+  data: Array<WorkflowLogExportIdentityResponse>
+}
+
+export type WorkflowLogExportCreatePayload = {
+  account_ids?: Array<string>
+  created_at__after?: string | null
+  created_at__before?: string | null
+  end_user_ids?: Array<string>
+  estimated_rows?: number | null
+  identity_labels?: Array<LogExportIdentityLabel>
+  keyword?: string | null
+  status?: WorkflowExecutionStatus | null
+}
+
+export type WorkflowLogExportTaskResponse = {
+  estimated_rows?: number | null
+  status: 'pending'
+  task_id: string
+}
+
+export type WorkflowLogExportLatestResponse = {
+  task: WorkflowLogExportLatestTaskResponse | null
+}
+
+export type WorkflowLogExportPreviewResponse = {
+  row_count: number | null
+}
+
+export type WorkflowLogExportStatusResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
+  status: LogExportStatus
+  task_id: string
+}
+
+export type WorkflowLogExportTaskNotFoundError = ErrorResponse & {
+  code: 'workflow_log_export_task_not_found'
+  status: 404
+}
+
+export type WorkflowLogExportFileNotFoundError = ErrorResponse & {
+  code: 'workflow_log_export_file_not_found'
+  status: 404
+}
+
+export type WorkflowLogExportTaskNotReadyError = ErrorResponse & {
+  code: 'workflow_log_export_task_not_ready'
+  status: 409
+}
+
 export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
   has_more: boolean
@@ -1209,11 +1344,6 @@ export type SandboxReadResponse = {
 
 export type WorkflowCommentBasicList = {
   data: Array<WorkflowCommentBasic>
-}
-
-export type ForbiddenError = ErrorResponse & {
-  code: 'forbidden'
-  status: 403
 }
 
 export type WorkflowCommentCreatePayload = {
@@ -2021,6 +2151,12 @@ export type ConversationWithSummary = {
   user_feedback_stats?: FeedbackStat | null
 }
 
+export type ConversationLogIdentityResponse = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
 export type FeedbackStat = {
   dislike: number
   like: number
@@ -2081,6 +2217,37 @@ export type MessageDetail = {
   status: string
   workflow_run_id?: string | null
 }
+
+export type LogExportIdentityLabel = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
+export type ConversationLogExportLatestTaskResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  expires_at?: string | null
+  filters: ConversationLogExportFiltersResponse
+  identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
+  status: LogExportStatus
+  task_id: string
+}
+
+export type ConversationLogExportCountsResponse = {
+  conversation_count: number
+  message_count: number
+}
+
+export type LogExportEmailState = 'off' | 'queued' | 'waiting'
+
+export type LogExportProgressResponse = {
+  rows_written: number
+  stage: LogExportStage
+}
+
+export type LogExportStatus = 'canceled' | 'failed' | 'pending' | 'processing' | 'ready'
 
 export type ConversationVariableResponse = {
   created_at?: number | null
@@ -2461,6 +2628,32 @@ export type WorkflowAppLogPartialResponse = {
   evaluation?: Array<WorkflowAppLogEvaluationItemResponse>
   id: string
   workflow_run?: WorkflowRunForLogResponse | null
+}
+
+export type WorkflowLogExportIdentityResponse = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
+export type WorkflowExecutionStatus =
+  | 'failed'
+  | 'partial-succeeded'
+  | 'paused'
+  | 'running'
+  | 'scheduled'
+  | 'stopped'
+  | 'succeeded'
+
+export type WorkflowLogExportLatestTaskResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  expires_at?: string | null
+  filters: WorkflowLogExportFiltersResponse
+  identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
+  status: LogExportStatus
+  task_id: string
 }
 
 export type WorkflowRunForListResponse = {
@@ -2857,15 +3050,6 @@ export type ComposerValidationWarningResponse = {
   surface?: string | null
 }
 
-export type WorkflowExecutionStatus =
-  | 'failed'
-  | 'partial-succeeded'
-  | 'paused'
-  | 'running'
-  | 'scheduled'
-  | 'stopped'
-  | 'succeeded'
-
 export type NodeStatus = 'failed' | 'idle' | 'ready' | 'running'
 
 export type NodeOutputView = {
@@ -3194,6 +3378,8 @@ export type StatusCount = {
   success: number
 }
 
+export type ConsoleLogIdentitySource = 'account' | 'end-user'
+
 export type SimpleMessageDetail = {
   answer: string
   inputs: {
@@ -3202,6 +3388,18 @@ export type SimpleMessageDetail = {
   message: string
   query: string
 }
+
+export type ConversationLogExportFiltersResponse = {
+  account_ids: Array<string>
+  annotation_status: ConversationAnnotationStatus
+  end: string | null
+  end_user_ids: Array<string>
+  keyword: string | null
+  sort_by: ConversationSort
+  start: string | null
+}
+
+export type LogExportStage = 'preparing' | 'uploading' | 'writing'
 
 export type AgentToolActivity = {
   call_limit?: ToolCallLimitMetadata | null
@@ -3508,6 +3706,15 @@ export type WorkflowRunForLogResponse = {
   total_tokens?: number | null
   triggered_from?: string | null
   version?: string | null
+}
+
+export type WorkflowLogExportFiltersResponse = {
+  account_ids: Array<string>
+  created_at__after: string | null
+  created_at__before: string | null
+  end_user_ids: Array<string>
+  keyword: string | null
+  status: WorkflowExecutionStatus | null
 }
 
 export type MemberRoleSummaryResponse = {
@@ -3948,6 +4155,10 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
+
+export type ConversationAnnotationStatus = 'all' | 'annotated' | 'not_annotated'
+
+export type ConversationSort = '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 
 export type ToolCallLimitMetadata = {
   execution_status: 'executed' | 'not_executed' | 'unconfirmed'
@@ -6366,8 +6577,10 @@ export type GetAppsByAppIdChatConversationsData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -6395,6 +6608,32 @@ export type GetAppsByAppIdChatConversationsResponses = {
 
 export type GetAppsByAppIdChatConversationsResponse =
   GetAppsByAppIdChatConversationsResponses[keyof GetAppsByAppIdChatConversationsResponses]
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/apps/{app_id}/chat-conversations/identity-options'
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsError =
+  GetAppsByAppIdChatConversationsIdentityOptionsErrors[keyof GetAppsByAppIdChatConversationsIdentityOptionsErrors]
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsResponses = {
+  200: ConversationLogIdentitySearchResponse
+}
+
+export type GetAppsByAppIdChatConversationsIdentityOptionsResponse =
+  GetAppsByAppIdChatConversationsIdentityOptionsResponses[keyof GetAppsByAppIdChatConversationsIdentityOptionsResponses]
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
   body?: never
@@ -6545,8 +6784,10 @@ export type GetAppsByAppIdCompletionConversationsData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -6685,6 +6926,202 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponse =
   PostAppsByAppIdCompletionMessagesByTaskIdStopResponses[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopResponses]
+
+export type PostAppsByAppIdConversationLogExportsData = {
+  body: ConversationLogExportCreatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports'
+}
+
+export type PostAppsByAppIdConversationLogExportsErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  429: LogExportLimitReachedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsError =
+  PostAppsByAppIdConversationLogExportsErrors[keyof PostAppsByAppIdConversationLogExportsErrors]
+
+export type PostAppsByAppIdConversationLogExportsResponses = {
+  202: ConversationLogExportTaskResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsResponse =
+  PostAppsByAppIdConversationLogExportsResponses[keyof PostAppsByAppIdConversationLogExportsResponses]
+
+export type GetAppsByAppIdConversationLogExportsLatestData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/latest'
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestError =
+  GetAppsByAppIdConversationLogExportsLatestErrors[keyof GetAppsByAppIdConversationLogExportsLatestErrors]
+
+export type GetAppsByAppIdConversationLogExportsLatestResponses = {
+  200: ConversationLogExportLatestResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsLatestResponse =
+  GetAppsByAppIdConversationLogExportsLatestResponses[keyof GetAppsByAppIdConversationLogExportsLatestResponses]
+
+export type GetAppsByAppIdConversationLogExportsPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    account_ids?: Array<string>
+    annotation_status?: 'all' | 'annotated' | 'not_annotated'
+    end?: string
+    end_user_ids?: Array<string>
+    keyword?: string
+    sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+    start?: string
+  }
+  url: '/apps/{app_id}/conversation-log-exports/preview'
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewError =
+  GetAppsByAppIdConversationLogExportsPreviewErrors[keyof GetAppsByAppIdConversationLogExportsPreviewErrors]
+
+export type GetAppsByAppIdConversationLogExportsPreviewResponses = {
+  200: ConversationLogExportPreviewResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsPreviewResponse =
+  GetAppsByAppIdConversationLogExportsPreviewResponses[keyof GetAppsByAppIdConversationLogExportsPreviewResponses]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}'
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdError =
+  GetAppsByAppIdConversationLogExportsByTaskIdErrors[keyof GetAppsByAppIdConversationLogExportsByTaskIdErrors]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdResponses = {
+  200: ConversationLogExportStatusResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdResponse =
+  GetAppsByAppIdConversationLogExportsByTaskIdResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdResponses]
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdData = {
+  body: LogExportEmailNotificationPayload
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}'
+}
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdError =
+  PutAppsByAppIdConversationLogExportsByTaskIdErrors[keyof PutAppsByAppIdConversationLogExportsByTaskIdErrors]
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdResponses = {
+  200: LogExportEmailNotificationResponse
+}
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdResponse =
+  PutAppsByAppIdConversationLogExportsByTaskIdResponses[keyof PutAppsByAppIdConversationLogExportsByTaskIdResponses]
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}/cancel'
+}
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelError =
+  PostAppsByAppIdConversationLogExportsByTaskIdCancelErrors[keyof PostAppsByAppIdConversationLogExportsByTaskIdCancelErrors]
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelResponses = {
+  200: ConversationLogExportStatusResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelResponse =
+  PostAppsByAppIdConversationLogExportsByTaskIdCancelResponses[keyof PostAppsByAppIdConversationLogExportsByTaskIdCancelResponses]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}/file'
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404:
+    | AppNotFoundError
+    | ConversationLogExportFileNotFoundError
+    | ConversationLogExportTaskNotFoundError
+    | ErrorResponse
+  409: ConversationLogExportTaskNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileError =
+  GetAppsByAppIdConversationLogExportsByTaskIdFileErrors[keyof GetAppsByAppIdConversationLogExportsByTaskIdFileErrors]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdFileResponse =
+  GetAppsByAppIdConversationLogExportsByTaskIdFileResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdFileResponses]
 
 export type GetAppsByAppIdConversationVariablesData = {
   body?: never
@@ -7860,11 +8297,13 @@ export type GetAppsByAppIdWorkflowAppLogsData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     created_at__after?: string
     created_at__before?: string
     created_by_account?: string
     created_by_end_user_session_id?: string
     detail?: boolean
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -7882,6 +8321,7 @@ export type GetAppsByAppIdWorkflowAppLogsData = {
 
 export type GetAppsByAppIdWorkflowAppLogsErrors = {
   404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7894,6 +8334,263 @@ export type GetAppsByAppIdWorkflowAppLogsResponses = {
 
 export type GetAppsByAppIdWorkflowAppLogsResponse =
   GetAppsByAppIdWorkflowAppLogsResponses[keyof GetAppsByAppIdWorkflowAppLogsResponses]
+
+export type GetAppsByAppIdWorkflowAppLogsIdentityOptionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/apps/{app_id}/workflow-app-logs/identity-options'
+}
+
+export type GetAppsByAppIdWorkflowAppLogsIdentityOptionsErrors = {
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowAppLogsIdentityOptionsError =
+  GetAppsByAppIdWorkflowAppLogsIdentityOptionsErrors[keyof GetAppsByAppIdWorkflowAppLogsIdentityOptionsErrors]
+
+export type GetAppsByAppIdWorkflowAppLogsIdentityOptionsResponses = {
+  200: WorkflowLogExportIdentitySearchResponse
+}
+
+export type GetAppsByAppIdWorkflowAppLogsIdentityOptionsResponse =
+  GetAppsByAppIdWorkflowAppLogsIdentityOptionsResponses[keyof GetAppsByAppIdWorkflowAppLogsIdentityOptionsResponses]
+
+export type PostAppsByAppIdWorkflowLogExportsData = {
+  body: WorkflowLogExportCreatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports'
+}
+
+export type PostAppsByAppIdWorkflowLogExportsErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  429: LogExportLimitReachedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowLogExportsError =
+  PostAppsByAppIdWorkflowLogExportsErrors[keyof PostAppsByAppIdWorkflowLogExportsErrors]
+
+export type PostAppsByAppIdWorkflowLogExportsResponses = {
+  202: WorkflowLogExportTaskResponse
+}
+
+export type PostAppsByAppIdWorkflowLogExportsResponse =
+  PostAppsByAppIdWorkflowLogExportsResponses[keyof PostAppsByAppIdWorkflowLogExportsResponses]
+
+export type GetAppsByAppIdWorkflowLogExportsIdentityOptionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/apps/{app_id}/workflow-log-exports/identity-options'
+}
+
+export type GetAppsByAppIdWorkflowLogExportsIdentityOptionsErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsIdentityOptionsError =
+  GetAppsByAppIdWorkflowLogExportsIdentityOptionsErrors[keyof GetAppsByAppIdWorkflowLogExportsIdentityOptionsErrors]
+
+export type GetAppsByAppIdWorkflowLogExportsIdentityOptionsResponses = {
+  200: WorkflowLogExportIdentitySearchResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsIdentityOptionsResponse =
+  GetAppsByAppIdWorkflowLogExportsIdentityOptionsResponses[keyof GetAppsByAppIdWorkflowLogExportsIdentityOptionsResponses]
+
+export type GetAppsByAppIdWorkflowLogExportsLatestData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/latest'
+}
+
+export type GetAppsByAppIdWorkflowLogExportsLatestErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsLatestError =
+  GetAppsByAppIdWorkflowLogExportsLatestErrors[keyof GetAppsByAppIdWorkflowLogExportsLatestErrors]
+
+export type GetAppsByAppIdWorkflowLogExportsLatestResponses = {
+  200: WorkflowLogExportLatestResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsLatestResponse =
+  GetAppsByAppIdWorkflowLogExportsLatestResponses[keyof GetAppsByAppIdWorkflowLogExportsLatestResponses]
+
+export type GetAppsByAppIdWorkflowLogExportsPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    account_ids?: Array<string>
+    created_at__after?: string
+    created_at__before?: string
+    end_user_ids?: Array<string>
+    keyword?: string
+    status?:
+      | 'failed'
+      | 'partial-succeeded'
+      | 'paused'
+      | 'running'
+      | 'scheduled'
+      | 'stopped'
+      | 'succeeded'
+  }
+  url: '/apps/{app_id}/workflow-log-exports/preview'
+}
+
+export type GetAppsByAppIdWorkflowLogExportsPreviewErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsPreviewError =
+  GetAppsByAppIdWorkflowLogExportsPreviewErrors[keyof GetAppsByAppIdWorkflowLogExportsPreviewErrors]
+
+export type GetAppsByAppIdWorkflowLogExportsPreviewResponses = {
+  200: WorkflowLogExportPreviewResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsPreviewResponse =
+  GetAppsByAppIdWorkflowLogExportsPreviewResponses[keyof GetAppsByAppIdWorkflowLogExportsPreviewResponses]
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/{task_id}'
+}
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | WorkflowLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdError =
+  GetAppsByAppIdWorkflowLogExportsByTaskIdErrors[keyof GetAppsByAppIdWorkflowLogExportsByTaskIdErrors]
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdResponses = {
+  200: WorkflowLogExportStatusResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdResponse =
+  GetAppsByAppIdWorkflowLogExportsByTaskIdResponses[keyof GetAppsByAppIdWorkflowLogExportsByTaskIdResponses]
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdData = {
+  body: LogExportEmailNotificationPayload
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/{task_id}'
+}
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | WorkflowLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdError =
+  PutAppsByAppIdWorkflowLogExportsByTaskIdErrors[keyof PutAppsByAppIdWorkflowLogExportsByTaskIdErrors]
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdResponses = {
+  200: LogExportEmailNotificationResponse
+}
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdResponse =
+  PutAppsByAppIdWorkflowLogExportsByTaskIdResponses[keyof PutAppsByAppIdWorkflowLogExportsByTaskIdResponses]
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/{task_id}/cancel'
+}
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | WorkflowLogExportTaskNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelError =
+  PostAppsByAppIdWorkflowLogExportsByTaskIdCancelErrors[keyof PostAppsByAppIdWorkflowLogExportsByTaskIdCancelErrors]
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponses = {
+  200: WorkflowLogExportStatusResponse
+}
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponse =
+  PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponses[keyof PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponses]
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdFileData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/{task_id}/file'
+}
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdFileErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404:
+    | AppNotFoundError
+    | WorkflowLogExportFileNotFoundError
+    | WorkflowLogExportTaskNotFoundError
+    | ErrorResponse
+  409: WorkflowLogExportTaskNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdFileError =
+  GetAppsByAppIdWorkflowLogExportsByTaskIdFileErrors[keyof GetAppsByAppIdWorkflowLogExportsByTaskIdFileErrors]
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdFileResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAppsByAppIdWorkflowLogExportsByTaskIdFileResponse =
+  GetAppsByAppIdWorkflowLogExportsByTaskIdFileResponses[keyof GetAppsByAppIdWorkflowLogExportsByTaskIdFileResponses]
 
 export type GetAppsByAppIdWorkflowRunsData = {
   body?: never

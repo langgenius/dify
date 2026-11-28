@@ -1,102 +1,98 @@
 'use client'
 
-import type {
-  AppDetailWithSite,
-  GetAppsByAppIdWorkflowAppLogsData,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import type { WorkflowLogQuery } from './log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import dayjs from 'dayjs'
-import timezone from 'dayjs/plugin/timezone'
-import utc from 'dayjs/plugin/utc'
-import { omit } from 'es-toolkit/object'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { userTimezoneQueryOptions } from '@/features/account-profile/client'
+import {
+  resolveLogTimePeriod,
+  useCloudSandboxPlanStatus,
+} from '@/features/log-export/cloud-sandbox-retention'
 import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
-import {
-  resolveLogTimePeriod,
-  resolveLogTimePeriodOption,
-  useCloudSandboxPlanStatus,
-} from '../log/cloud-sandbox-retention'
+import { logDateRange, TIME_PERIOD_MAPPING } from '../log/log-filters'
 import { RetentionUpgradeNotice } from '../log/retention-upgrade-notice'
-import Filter, { TIME_PERIOD_MAPPING } from './filter'
+import Filter from './filter'
 import List from './list'
-
-dayjs.extend(utc)
-dayjs.extend(timezone)
+import {
+  getWorkflowLogIdentities,
+  toWorkflowLogFilters,
+  useWorkflowLogFilterOptions,
+} from './log-filters'
+import { WorkflowLogExportDialog } from './workflow-log-export-dialog'
 
 export type ILogsProps = {
   appDetail: AppDetailWithSite
 }
 
-type WorkflowLogStatus = NonNullable<GetAppsByAppIdWorkflowAppLogsData['query']>['status']
-
-export type QueryParam = {
-  period: string
-  status?: WorkflowLogStatus | 'all'
-  keyword?: string
-}
-
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation(['appLog', 'common'])
-  const { data: timezone } = useQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.timezone ?? undefined,
-  })
-  const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
+  const { data: timezone } = useQuery(userTimezoneQueryOptions())
+  const [queryParams, setQueryParams] = useState<WorkflowLogQuery>({ status: 'all', period: '2' })
+  const [identityOptionsBeforeFilter, setIdentityOptionsBeforeFilter] = useState<LogIdentity[]>([])
   const [currPage, setCurrPage] = React.useState<number>(0)
   const cloudSandboxPlanState = useCloudSandboxPlanStatus()
+  const filterOptions = useWorkflowLogFilterOptions(cloudSandboxPlanState)
+  const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
   const effectivePeriod = resolveLogTimePeriod(queryParams.period, cloudSandboxPlanState)
   const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
-  const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
-  const requestTimePeriod = resolveLogTimePeriodOption(
-    requestQueryParams.period,
-    TIME_PERIOD_MAPPING[requestQueryParams.period]!,
-    cloudSandboxPlanState,
-  )
+  const requestQueryParams = {
+    ...debouncedQueryParams,
+    period: resolveLogTimePeriod(debouncedQueryParams.period, cloudSandboxPlanState),
+  }
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
 
-  const query = {
-    page: currPage + 1,
-    detail: true,
-    limit,
-    ...(requestQueryParams.status !== 'all' ? { status: requestQueryParams.status } : {}),
-    ...(requestQueryParams.keyword ? { keyword: requestQueryParams.keyword } : {}),
-    ...(requestQueryParams.period !== '9'
-      ? {
-          created_at__after: dayjs()
-            .subtract(requestTimePeriod.value, 'day')
-            .startOf('day')
-            .tz(timezone)
-            .format('YYYY-MM-DDTHH:mm:ssZ'),
-          created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
-        }
-      : {}),
-    ...omit(requestQueryParams, ['period', 'status']),
-  }
+  const query = timezone
+    ? {
+        page: currPage + 1,
+        detail: true,
+        limit,
+        ...toWorkflowLogFilters(requestQueryParams, cloudSandboxPlanState, timezone),
+      }
+    : undefined
 
   const { data: workflowLogs, refetch: mutate } = useQuery(
     consoleQuery.apps.byAppId.workflowAppLogs.get.queryOptions({
-      input: { params: { app_id: appDetail.id }, query },
+      input: query ? { params: { app_id: appDetail.id }, query } : skipToken,
     }),
   )
   const total = workflowLogs?.total
+  const identityOptions =
+    queryParams.identities?.length || requestQueryParams.identities?.length
+      ? identityOptionsBeforeFilter
+      : getWorkflowLogIdentities(workflowLogs?.data ?? [])
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
-  const showArchivedLogsNotice = shouldShowArchivedLogsNotice(
-    effectiveQueryParams.period,
-    TIME_PERIOD_MAPPING,
-  )
+  const customStart =
+    effectivePeriod === 'custom' && timezone
+      ? logDateRange('custom', cloudSandboxPlanState, timezone, queryParams.customRange)?.start
+      : undefined
+  const archiveCutoff = timezone && logDateRange('4', 'unrestricted', timezone)?.start
+  const showArchivedLogsNotice =
+    customStart && archiveCutoff
+      ? customStart.isBefore(archiveCutoff, 'day')
+      : shouldShowArchivedLogsNotice(effectivePeriod, TIME_PERIOD_MAPPING)
+
+  function handleQueryParamsChange(next: WorkflowLogQuery) {
+    if (next.identities?.length && !queryParams.identities?.length)
+      setIdentityOptionsBeforeFilter(identityOptions)
+    setCurrPage(0)
+    setQueryParams(next)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -105,7 +101,29 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         description={t(($) => $.workflowSubtitle, { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
-        <Filter queryParams={effectiveQueryParams} setQueryParams={setQueryParams} />
+        <Filter
+          appId={appDetail.id}
+          queryParams={effectiveQueryParams}
+          setQueryParams={handleQueryParamsChange}
+          filterOptions={filterOptions}
+          identityOptions={identityOptions}
+          timezone={timezone}
+          actions={
+            canExportLogs &&
+            timezone && (
+              <WorkflowLogExportDialog
+                key={appDetail.id}
+                appId={appDetail.id}
+                appName={appDetail.name}
+                filterOptions={filterOptions}
+                currentQueryParams={effectiveQueryParams}
+                identityOptions={identityOptions}
+                planState={cloudSandboxPlanState}
+                timezone={timezone}
+              />
+            )
+          }
+        />
         <RetentionUpgradeNotice />
         {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {/* workflow log */}

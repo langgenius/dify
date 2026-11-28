@@ -159,6 +159,7 @@ class AgentLogConversationItemResponse(ResponseModel):
     conversation_id: str
     title: str | None = None
     end_user_id: str | None = None
+    account_id: str | None = Field(default=None, description="Workspace account ID for account-initiated logs.")
     message_count: int
     user_rate: float | None = None
     operation_rate: float | None = None
