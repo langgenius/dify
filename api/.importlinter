@@ -71,6 +71,38 @@ forbidden_modules =
     repositories.api_based_extension_repository
 allow_indirect_imports = True
 
+[importlinter:contract:api-moderation-application-boundary]
+name = API moderation uses plain records and injected capabilities
+type = forbidden
+source_modules =
+    services.api_moderation_service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:api-moderation-provider-boundary]
+name = Legacy API moderation reaches runtime capabilities through its injection boundary
+type = forbidden
+source_modules =
+    core.moderation.api.api
+forbidden_modules =
+    extensions
+    flask
+    models
+    repositories
+    services
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
 type = layers

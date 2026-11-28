@@ -5,12 +5,27 @@ from collections.abc import Callable, Mapping
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 from core.extension.extensible import Extensible, ExtensionModule
 
 if TYPE_CHECKING:
     from core.app.app_config.entities import AppConfig
+
+
+@runtime_checkable
+class ApiModerationRuntime(Protocol):
+    """Tenant-scoped API moderation capabilities injected by the application.
+
+    All lookups finish before decryption or outbound work. Missing extensions and
+    dependency failures propagate to the caller without changing legacy payloads.
+    """
+
+    def validate_extension(self, tenant_id: str, extension_id: str) -> None: ...
+
+    def request_inputs(self, tenant_id: str, extension_id: str, params: dict[str, object]) -> JsonValue: ...
+
+    def request_outputs(self, tenant_id: str, extension_id: str, params: dict[str, object]) -> JsonValue: ...
 
 
 @runtime_checkable

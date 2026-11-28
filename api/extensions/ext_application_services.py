@@ -133,6 +133,8 @@ from services.annotation_query import AnnotationQuery
 from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
+from services.api_moderation_adapters import request_inputs, request_outputs
+from services.api_moderation_service import APIModerationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app.mcp_server_service import AppMCPServerService
@@ -317,6 +319,7 @@ class AppScopedEndUserServices:
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
     moderation: ModerationService
+    api_moderation: APIModerationService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
@@ -667,6 +670,12 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        api_moderation=APIModerationService(
+            find_extension=APIBasedExtensionRepository(session_factory=database_client).find_extension,
+            decrypt_key=WorkspaceTokenCipher().decrypt,
+            request_inputs=request_inputs,
+            request_outputs=request_outputs,
+        ),
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -972,6 +981,7 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app.extensions["api_moderation"] = services.api_moderation
     app_moderation: AppModerationPort = AppModeration()
     app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)

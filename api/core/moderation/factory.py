@@ -4,12 +4,27 @@ from flask import current_app, has_app_context
 
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import (
+    ApiModerationRuntime,
     AppModeration,
     Moderation,
     ModerationInputsResult,
     ModerationOutputsResult,
 )
 from extensions.ext_code_based_extension import code_based_extension
+
+
+def get_api_moderation() -> ApiModerationRuntime:
+    """Resolve the app-bound runtime only for a selected API moderation operation.
+
+    Construction and disabled directions need no app context. Selected operations
+    require a valid registration; missing or malformed bindings fail before I/O.
+    """
+    if not has_app_context():
+        raise RuntimeError("API moderation requires an application context.")
+    moderation = current_app.extensions.get("api_moderation")
+    if not isinstance(moderation, ApiModerationRuntime):
+        raise TypeError("Invalid API moderation runtime registration.")
+    return moderation
 
 
 def get_app_moderation() -> AppModeration | None:

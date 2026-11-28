@@ -271,6 +271,7 @@ def test_init_app_registers_services_for_the_current_app(
     with app.app_context():
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
+        assert services.api_moderation is app.extensions["api_moderation"]
         assert services.init_validation.is_validated(session_validated=False) is False
         assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
         assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)

@@ -18,6 +18,10 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringSegment
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from services.api_based_extension_adapters import WorkspaceTokenCipher
+from services.api_moderation_adapters import request_inputs, request_outputs
+from services.api_moderation_service import APIModerationService
 from services.knowledge_fs import runtime as runtime_module
 from services.knowledge_fs import workflow_runtime
 from services.knowledge_fs.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
@@ -81,6 +85,7 @@ class _FakeAccounts:
 @dataclass
 class _FakeApplicationServices:
     tracing: TracingServices
+    api_moderation: APIModerationService
     accounts: _FakeAccounts = field(default_factory=_FakeAccounts)
 
 
@@ -96,7 +101,15 @@ def test_application_registers_lazy_workflow_runtime_dependencies(monkeypatch: p
     monkeypatch.setattr(
         ext_application_services,
         "build_application_services",
-        lambda **_kwargs: _FakeApplicationServices(tracing=tracing),
+        lambda **_kwargs: _FakeApplicationServices(
+            tracing=tracing,
+            api_moderation=APIModerationService(
+                find_extension=APIBasedExtensionRepository(session_factory=session_maker).find_extension,
+                decrypt_key=WorkspaceTokenCipher().decrypt,
+                request_inputs=request_inputs,
+                request_outputs=request_outputs,
+            ),
+        ),
     )
 
     ext_application_services.init_app(app)
