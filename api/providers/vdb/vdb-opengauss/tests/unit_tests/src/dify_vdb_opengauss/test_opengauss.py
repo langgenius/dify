@@ -1,7 +1,7 @@
 import importlib
 import json
 import sys
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
 from typing import TYPE_CHECKING
@@ -15,7 +15,7 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 if TYPE_CHECKING:
-    from dify_vdb_opengauss.opengauss import OpenGaussConfig
+    from dify_vdb_opengauss.opengauss import OpenGauss, OpenGaussConfig
 
 
 def _build_fake_psycopg2_modules() -> dict[str, FakeModule]:
@@ -347,6 +347,71 @@ def test_search_by_vector_and_full_text(opengauss_module: ModuleType) -> None:
     full_docs = vector.search_by_full_text("hello world", top_k=2)
     assert len(full_docs) == 1
     assert full_docs[0].page_content == "full-text"
+
+
+class _RecordingCursor:
+    """A cursor that records the statements a search runs and returns no rows."""
+
+    def __init__(self) -> None:
+        self.statements: list[tuple[str, tuple[object, ...]]] = []
+
+    def execute(self, sql: str, params: tuple[object, ...]) -> None:
+        self.statements.append((sql, params))
+
+    def __iter__(self) -> Iterator[tuple[dict[str, str], str, float]]:
+        return iter(())
+
+
+def _vector_with_recording_cursor(opengauss_module: ModuleType) -> tuple["OpenGauss", _RecordingCursor]:
+    vector = opengauss_module.OpenGauss("collection_1", _config(opengauss_module))
+    cursor = _RecordingCursor()
+
+    @contextmanager
+    def _cursor_ctx() -> Generator[_RecordingCursor]:
+        yield cursor
+
+    vector._get_cursor = _cursor_ctx
+    return vector, cursor
+
+
+def test_search_by_vector_applies_document_ids_filter(opengauss_module: ModuleType) -> None:
+    vector, cursor = _vector_with_recording_cursor(opengauss_module)
+
+    vector.search_by_vector([0.1, 0.2], top_k=3, document_ids_filter=["doc-a", "doc-b"])
+
+    [(sql, params)] = cursor.statements
+    assert "WHERE meta->>'document_id' IN %s ORDER BY distance LIMIT 3" in sql
+    assert params == (json.dumps([0.1, 0.2]), ("doc-a", "doc-b"))
+
+
+def test_search_by_vector_without_document_ids_filter_has_no_where_clause(opengauss_module: ModuleType) -> None:
+    vector, cursor = _vector_with_recording_cursor(opengauss_module)
+
+    vector.search_by_vector([0.1, 0.2], top_k=3)
+
+    [(sql, params)] = cursor.statements
+    assert "WHERE" not in sql
+    assert params == (json.dumps([0.1, 0.2]),)
+
+
+def test_search_by_full_text_applies_document_ids_filter(opengauss_module: ModuleType) -> None:
+    vector, cursor = _vector_with_recording_cursor(opengauss_module)
+
+    vector.search_by_full_text("hello world", top_k=2, document_ids_filter=["doc-a"])
+
+    [(sql, params)] = cursor.statements
+    assert "plainto_tsquery(%s) AND meta->>'document_id' IN %s" in sql
+    assert params == ("'hello world'", "'hello world'", ("doc-a",))
+
+
+def test_search_by_full_text_without_document_ids_filter(opengauss_module: ModuleType) -> None:
+    vector, cursor = _vector_with_recording_cursor(opengauss_module)
+
+    vector.search_by_full_text("hello world", top_k=2)
+
+    [(sql, params)] = cursor.statements
+    assert "document_id" not in sql
+    assert params == ("'hello world'", "'hello world'")
 
 
 def test_search_by_full_text_validates_top_k(opengauss_module: ModuleType) -> None:

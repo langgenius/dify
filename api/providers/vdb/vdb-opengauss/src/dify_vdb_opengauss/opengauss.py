@@ -190,11 +190,17 @@ class OpenGauss(BaseVector):
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
+        document_ids_filter = kwargs.get("document_ids_filter")
+        where_clause = ""
+        params: tuple[Any, ...] = (json.dumps(query_vector),)
+        if document_ids_filter:
+            where_clause = " WHERE meta->>'document_id' IN %s"
+            params += (tuple(document_ids_filter),)
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
-                f" ORDER BY distance LIMIT {top_k}",
-                (json.dumps(query_vector),),
+                f"{where_clause} ORDER BY distance LIMIT {top_k}",
+                params,
             )
             docs = []
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -211,15 +217,21 @@ class OpenGauss(BaseVector):
         top_k = kwargs.get("top_k", 5)
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
+        document_ids_filter = kwargs.get("document_ids_filter")
+        document_clause = ""
+        # f"'{query}'" is required in order to account for whitespace in query
+        params: tuple[Any, ...] = (f"'{query}'", f"'{query}'")
+        if document_ids_filter:
+            document_clause = " AND meta->>'document_id' IN %s"
+            params += (tuple(document_ids_filter),)
         with self._get_cursor() as cur:
             cur.execute(
                 f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
                 FROM {self.table_name}
-                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                WHERE to_tsvector(text) @@ plainto_tsquery(%s){document_clause}
                 ORDER BY score DESC
                 LIMIT {top_k}""",
-                # f"'{query}'" is required in order to account for whitespace in query
-                (f"'{query}'", f"'{query}'"),
+                params,
             )
 
             docs = []
