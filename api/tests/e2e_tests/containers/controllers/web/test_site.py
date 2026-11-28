@@ -12,7 +12,8 @@ from controllers.web.error import WebAppNotFoundError
 from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigResponse
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
-from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
+from models.enums import EndUserType
+from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, IconType, Site
 from services.entities.feature_entities import FeatureModel
 
 
@@ -52,7 +53,7 @@ def _end_user(tenant_id: str, app_id: str) -> EndUser:
     return EndUser(
         tenant_id=tenant_id,
         app_id=app_id,
-        type="browser",
+        type=EndUserType.BROWSER,
         session_id=f"session-{app_id}",
     )
 
@@ -61,7 +62,7 @@ def _site_model(*, app_id: str) -> Site:
     return Site(
         app_id=app_id,
         title="Site",
-        icon_type="emoji",
+        icon_type=IconType.EMOJI,
         icon="robot",
         icon_background="#fff",
         description="desc",

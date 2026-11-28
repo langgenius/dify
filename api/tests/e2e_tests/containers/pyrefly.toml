@@ -12,7 +12,6 @@ project-excludes = [
   "controllers/console/app/test_workflow_draft_variable.py",
   "controllers/openapi/test_account_sessions.py",
   "controllers/openapi/test_workspaces.py",
-  "controllers/web/test_site.py",
   "controllers/web/test_wraps.py",
   "core/rag/pipeline/test_queue_integration.py",
   "core/rag/retrieval/test_dataset_retrieval_integration.py",
@@ -87,7 +86,6 @@ project-excludes = [
   "tasks/test_remove_app_and_related_data_task.py",
   "test_workflow_pause_integration.py",
   "trigger/conftest.py",
-  "trigger/test_trigger_e2e.py",
 ]
 
 [errors]

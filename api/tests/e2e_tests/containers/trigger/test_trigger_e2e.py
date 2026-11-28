@@ -83,7 +83,7 @@ def test_publish_blocks_start_and_trigger_coexistence(
     """Publishing should fail when both start and trigger nodes coexist."""
     tenant, account = tenant_and_account
 
-    graph = {
+    graph: dict[str, list[dict[str, Any]]] = {
         "nodes": [
             {"id": "start", "data": {"type": BuiltinNodeTypes.START}},
             {"id": "trig", "data": {"type": TRIGGER_WEBHOOK_NODE_TYPE}},
