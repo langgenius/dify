@@ -12,8 +12,21 @@ from core.app.entities.task_entities import (
 )
 
 
+def _as_dict(chunk: dict[str, object] | str) -> dict[str, object]:
+    # Stream converters yield either dict chunks or the literal "ping" sentinel.
+    assert isinstance(chunk, dict)
+    return chunk
+
+
+def _as_metadata_dict(chunk: dict[str, object] | str) -> dict[str, object]:
+    # ``metadata`` is only a dict when the converter kept a mapping payload.
+    metadata = _as_dict(chunk)["metadata"]
+    assert isinstance(metadata, dict)
+    return metadata
+
+
 class TestCompletionAppGenerateResponseConverter:
-    def test_convert_blocking_full_response(self):
+    def test_convert_blocking_full_response(self) -> None:
         blocking = CompletionAppBlockingResponse(
             task_id="task",
             data=CompletionAppBlockingResponse.Data(
@@ -34,7 +47,7 @@ class TestCompletionAppGenerateResponseConverter:
         assert result["answer"] == "answer"
         assert result["metadata"] == {"k": "v"}
 
-    def test_convert_blocking_simple_response_metadata_simplified(self):
+    def test_convert_blocking_simple_response_metadata_simplified(self) -> None:
         metadata = {
             "retriever_resources": [
                 {
@@ -91,22 +104,24 @@ class TestCompletionAppGenerateResponseConverter:
         assert result["metadata"]["retriever_resources"][0]["index_node_hash"] == "abc1234"
         assert "extra" not in result["metadata"]["retriever_resources"][0]
 
-    def test_convert_blocking_simple_response_metadata_not_dict(self):
-        data = CompletionAppBlockingResponse.Data.model_construct(
+    def test_convert_blocking_simple_response_metadata_not_dict(self) -> None:
+        data = CompletionAppBlockingResponse.Data(
             id="id",
             mode="completion",
             message_id="msg",
             answer="answer",
-            metadata="bad",
+            metadata={"k": "v"},
             created_at=123,
         )
+        # ``model_copy`` skips validation, so metadata can carry a non-mapping payload.
+        data = data.model_copy(update={"metadata": "bad"})
         blocking = CompletionAppBlockingResponse.model_construct(task_id="task", data=data)
 
         result = CompletionAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
 
         assert result["metadata"] == {}
 
-    def test_convert_stream_full_response(self):
+    def test_convert_stream_full_response(self) -> None:
         def stream() -> Generator[AppStreamResponse]:
             yield CompletionAppStreamResponse(
                 stream_response=PingStreamResponse(task_id="t"),
@@ -127,11 +142,11 @@ class TestCompletionAppGenerateResponseConverter:
         result = list(CompletionAppGenerateResponseConverter.convert_stream_full_response(stream()))
 
         assert result[0] == "ping"
-        assert result[1]["event"] == "error"
-        assert result[1]["code"] == "invalid_param"
-        assert result[2]["event"] == "message"
+        assert _as_dict(result[1])["event"] == "error"
+        assert _as_dict(result[1])["code"] == "invalid_param"
+        assert _as_dict(result[2])["event"] == "message"
 
-    def test_convert_stream_simple_response(self):
+    def test_convert_stream_simple_response(self) -> None:
         def stream() -> Generator[AppStreamResponse]:
             yield CompletionAppStreamResponse(
                 stream_response=PingStreamResponse(task_id="t"),
@@ -169,7 +184,7 @@ class TestCompletionAppGenerateResponseConverter:
         result = list(CompletionAppGenerateResponseConverter.convert_stream_simple_response(stream()))
 
         assert result[0] == "ping"
-        assert result[1]["event"] == "message_end"
-        assert "annotation_reply" not in result[1]["metadata"]
-        assert "usage" not in result[1]["metadata"]
-        assert result[2]["event"] == "error"
+        assert _as_dict(result[1])["event"] == "message_end"
+        assert "annotation_reply" not in _as_metadata_dict(result[1])
+        assert "usage" not in _as_metadata_dict(result[1])
+        assert _as_dict(result[2])["event"] == "error"
