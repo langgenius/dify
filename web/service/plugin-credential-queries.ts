@@ -8,7 +8,7 @@ import type {
   CredentialTypeEnum,
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
-import { skipToken } from '@tanstack/react-query'
+import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { consoleQuery } from '@/service/console'
 import { selectCredentialFormSchema } from '@/service/console/plugin-auth-select'
@@ -40,6 +40,11 @@ export function pluginCredentialInfoQueryOptions(
             }
           : skipToken,
       select: selectPluginCredentialInfo,
+      // Keep the previous response while the credential-info query refetches
+      // for a new selection. Without this, selecting a credential drops `data`
+      // to undefined, `isAuthorized` flips false, and the Authorized popover
+      // trigger unmounts — taking keyboard focus with it.
+      placeholderData: keepPreviousData,
     },
   )
 }

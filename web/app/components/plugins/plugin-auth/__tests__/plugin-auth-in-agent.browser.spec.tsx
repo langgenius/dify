@@ -96,6 +96,7 @@ it('selects the workspace default instead of a named credential', async () => {
     .toBeVisible()
 })
 
+// https://github.com/langgenius/dify/issues/46384 — credential-info refetch unmounts the trigger.
 it('keeps focus on the agent credential trigger after selecting a named key', async () => {
   await setup()
   const trigger = page.getByRole('button', { name: 'plugin.auth.workspaceDefault', exact: true })
@@ -108,11 +109,7 @@ it('keeps focus on the agent credential trigger after selecting a named key', as
   await expect.element(popup).not.toBeInTheDocument()
   const selected = page.getByRole('button', { name: 'Team API key', exact: true })
   await expect.element(selected).toBeVisible()
-  // TODO(https://github.com/langgenius/dify/issues/46384): the credential-info refetch unmounts the
-  // trigger and drops focus to the document. Only this check asserts the known bug, so the rest of
-  // the journey and the fake API contract still fail normally; once fixed, expect
-  // `toHaveFocus()` on `selected` instead.
-  await expect.poll(() => document.activeElement).toBe(document.body)
+  await expect.element(selected).toHaveFocus()
 })
 
 it('replaces a removed credential without keeping the removed label', async () => {
