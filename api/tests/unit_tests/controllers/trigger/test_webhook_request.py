@@ -1,12 +1,15 @@
 """Real HTTP requests and value conversion retain the native webhook contract."""
 
 from collections.abc import Mapping
+from io import BytesIO
+from unittest.mock import patch
 
 import pytest
 from flask import Flask, request
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from controllers.trigger.webhook_request import WebhookRequestParser
+from controllers.trigger.webhook_request import WebhookRequestParser, WebhookRequestValidationError
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -413,8 +416,54 @@ class TestWebhookRequestParserUnit:
                     "body": [{"name": "file", "type": "file", "required": True}],
                 }
             )
+            with pytest.raises(WebhookRequestValidationError, match="Required file missing: file"):
+                parser.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+    def test_extract_and_validate_webhook_request_present_required_file(self, parser: WebhookRequestParser) -> None:
+        app = Flask(__name__)
+        file_storage = FileStorage(stream=BytesIO(b"content"), filename="a.txt", content_type="text/plain")
+        with app.test_request_context(
+            "/webhook", method="POST", data={"note": "test", "file": file_storage}, content_type="multipart/form-data"
+        ):
+            node_config = _node(
+                {
+                    "method": "post",
+                    "content_type": "multipart/form-data",
+                    "body": [{"name": "file", "type": "file", "required": True}],
+                }
+            )
+            with patch.object(parser, "_process_file_uploads", return_value={"file": {"id": "f-1"}}):
+                result = parser.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+        assert result["files"] == {"file": {"id": "f-1"}}
+
+    def test_extract_and_validate_webhook_request_missing_optional_file(self, parser: WebhookRequestParser) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook", method="POST", data={"note": "test"}, content_type="multipart/form-data"
+        ):
+            node_config = _node(
+                {
+                    "method": "post",
+                    "content_type": "multipart/form-data",
+                    "body": [{"name": "file", "type": "file", "required": False}],
+                }
+            )
             result = parser.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
         assert result["files"] == {}
+
+    def test_validate_required_files_should_raise_when_only_another_file_is_uploaded(
+        self, parser: WebhookRequestParser
+    ) -> None:
+        configs = [
+            WebhookBodyParameter(name="invoice", type=SegmentType.FILE, required=True),
+            WebhookBodyParameter(name="receipt", type=SegmentType.FILE, required=False),
+        ]
+        with pytest.raises(WebhookRequestValidationError, match="Required file missing: invoice"):
+            parser._validate_required_files({"receipt": {"id": "f-1"}}, configs, ContentType.FORM_DATA)
+
+    def test_validate_required_files_should_ignore_other_content_types(self, parser: WebhookRequestParser) -> None:
+        configs = [WebhookBodyParameter(name="raw", type=SegmentType.FILE, required=True)]
+        parser._validate_required_files({}, configs, ContentType.BINARY)
 
 
 class TestWebhookRequestParserExtractionFallbacks:
