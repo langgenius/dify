@@ -221,6 +221,101 @@ class TestAppRunnerConversationVariablesCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+    def test_rename_after_a_turn_on_the_old_code_keeps_working(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        author_id = "customer-name-var"
+        # Turn before the rename: row under uuid5("customer_name").
+        _persist_variable(sqlite_session, variable=_variable(author_id, "customer_name", "Alice"))
+        # One turn after the rename on the old code: default row inserted
+        # under uuid5("client_name") next to the stale row.
+        _persist_variable(sqlite_session, variable=_variable(author_id, "client_name", ""))
+        _bind_runner_sessions(monkeypatch, sqlite_session)
+
+        variables = _runner([_variable(author_id, "client_name", "")])._initialize_conversation_variables()
+
+        assert [variable.name for variable in variables] == ["client_name"]
+        assert variables[0].value == "Alice"
+        persisted = sqlite_session.scalars(
+            select(ConversationVariable).where(ConversationVariable.conversation_id == CONVERSATION_ID)
+        ).all()
+        assert len(persisted) == 1
+        assert persisted[0].id == ConversationVariable.storage_id(_variable(author_id, "client_name", ""))
+        assert persisted[0].to_variable().value == "Alice"
+
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+    def test_rename_after_a_turn_on_the_old_code_keeps_changed_value(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        author_id = "customer-name-var"
+        # Turn before the rename: row under uuid5("customer_name").
+        _persist_variable(sqlite_session, variable=_variable(author_id, "customer_name", "Alice"))
+        # One turn after the rename on the old code inserted a default row,
+        # which the user has since changed to a non-default value.
+        _persist_variable(sqlite_session, variable=_variable(author_id, "client_name", "Bob"))
+        _bind_runner_sessions(monkeypatch, sqlite_session)
+
+        variables = _runner([_variable(author_id, "client_name", "")])._initialize_conversation_variables()
+
+        assert [variable.name for variable in variables] == ["client_name"]
+        assert variables[0].value == "Bob"
+        persisted = sqlite_session.scalars(
+            select(ConversationVariable).where(ConversationVariable.conversation_id == CONVERSATION_ID)
+        ).all()
+        assert len(persisted) == 1
+        assert persisted[0].to_variable().value == "Bob"
+
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+    def test_removed_conversation_variable_is_left_alone(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        removed_variable = _variable(VAR_1_ID, "old_var", "kept")
+        kept_variable = _variable(VAR_2_ID, "new_var", "default2")
+        _persist_variable(sqlite_session, variable=removed_variable)
+        _bind_runner_sessions(monkeypatch, sqlite_session)
+
+        variables = _runner([kept_variable])._initialize_conversation_variables()
+
+        assert sorted(variable.name for variable in variables) == ["new_var", "old_var"]
+        persisted = sqlite_session.scalars(
+            select(ConversationVariable).where(ConversationVariable.conversation_id == CONVERSATION_ID)
+        ).all()
+        assert len(persisted) == 2
+
+    @staticmethod
+    def test_published_variable_for_row_rejects_unparsable_payload() -> None:
+        row = ConversationVariable(
+            id=VAR_1_ID,
+            app_id=APP_ID,
+            conversation_id=CONVERSATION_ID,
+            data="not json",
+        )
+        assert AdvancedChatAppRunner._published_variable_for_row(row, {}) is None
+
+    @staticmethod
+    def test_published_variable_for_row_rejects_non_string_author_id() -> None:
+        row = ConversationVariable(
+            id=VAR_1_ID,
+            app_id=APP_ID,
+            conversation_id=CONVERSATION_ID,
+            data='{"id": 7, "name": "weird", "value_type": "string", "value": "x"}',
+        )
+        assert AdvancedChatAppRunner._published_variable_for_row(row, {}) is None
+
+    @staticmethod
+    def test_holds_published_default_rejects_unparsable_payload() -> None:
+        row = ConversationVariable(
+            id=VAR_1_ID,
+            app_id=APP_ID,
+            conversation_id=CONVERSATION_ID,
+            data="not json",
+        )
+        assert AdvancedChatAppRunner._holds_published_default(row, _variable(VAR_1_ID, "x", "")) is False
+
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
     def test_non_uuid_conversation_variable_is_created_once(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:

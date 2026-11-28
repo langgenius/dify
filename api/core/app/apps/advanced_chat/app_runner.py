@@ -433,7 +433,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         This handles variables added to a workflow after conversations were
         created, and reconciles existing rows with the published definition:
         a renamed variable keeps its stored value under the new name, and a
-        variable whose type changed resets to the published default.
+        variable whose type changed resets to the published default. When a
+        row under the new storage id already exists, because a turn ran the
+        old sync after the rename and inserted a default row there, the stale
+        row is dropped instead of replaced, so no two rows share one primary
+        key; the stored value carries over when the existing row still holds
+        the published default.
 
         :param session: Database session
         :param existing_variables: List of existing conversation variables
@@ -445,6 +450,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ConversationVariable.storage_id(variable): variable for variable in self._workflow.conversation_variables
         }
         workflow_variables_by_author_id = {variable.id: variable for variable in self._workflow.conversation_variables}
+        existing_by_id = {row.id: row for row in existing_variables}
 
         synced_variables: list[ConversationVariable] = []
         for row in existing_variables:
@@ -462,16 +468,32 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             else:
                 # The storage id changed, so the old row cannot be updated in
                 # place. Replace it with a row under the new id carrying the
-                # stored value over.
-                replacement = ConversationVariable(
-                    id=ConversationVariable.storage_id(published),
-                    app_id=self.conversation.app_id,
-                    conversation_id=self.conversation.id,
-                    data=self._reconciled_conversation_variable_data(row.data, published),
-                )
-                session.delete(row)
-                session.add(replacement)
-                synced_variables.append(replacement)
+                # stored value over, unless a row under the new id already
+                # exists: a turn that ran the old sync after the rename
+                # inserted a default row there, and replacing would collide
+                # with it. Then drop the stale row instead, carrying the
+                # stored value over when the existing row still holds the
+                # published default.
+                new_id = ConversationVariable.storage_id(published)
+                existing_row = existing_by_id.get(new_id)
+                if (
+                    existing_row is not None
+                    and self._published_variable_for_row(existing_row, workflow_variables_by_author_id) is published
+                ):
+                    if self._holds_published_default(existing_row, published):
+                        existing_row.data = self._reconciled_conversation_variable_data(row.data, published)
+                    session.delete(row)
+                else:
+                    replacement = ConversationVariable(
+                        id=new_id,
+                        app_id=self.conversation.app_id,
+                        conversation_id=self.conversation.id,
+                        data=self._reconciled_conversation_variable_data(row.data, published),
+                    )
+                    session.delete(row)
+                    session.add(replacement)
+                    synced_variables.append(replacement)
+                    existing_by_id[new_id] = replacement
 
         # Find missing variable IDs
         existing_ids = {var.id for var in synced_variables}
@@ -516,6 +538,25 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if isinstance(author_id, str):
             return workflow_variables_by_author_id.get(author_id)
         return None
+
+    @staticmethod
+    def _holds_published_default(row: ConversationVariable, published: VariableBase) -> bool:
+        """
+        Whether a stored row still holds the published default value.
+
+        A row inserted by the old sync after a rename carries the published
+        default; a row the user has since changed does not. Only a default
+        row may take over the stale row's stored value.
+
+        :param row: Stored conversation variable row
+        :param published: Published variable definition
+        :return: True when the stored value equals the published default
+        """
+        try:
+            stored = variable_factory.build_conversation_variable_from_mapping(json.loads(row.data))
+        except (ValueError, TypeError, AttributeError):
+            return False
+        return stored.value_type == published.value_type and stored.value == published.value
 
     @staticmethod
     def _reconciled_conversation_variable_data(stored_data: str, published: VariableBase) -> str:
