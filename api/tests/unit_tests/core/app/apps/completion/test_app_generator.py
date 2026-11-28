@@ -1,4 +1,5 @@
 import contextlib
+import json
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -8,18 +9,24 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 import core.app.apps.completion.app_generator as module
+from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, PromptType
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 
 TABLES = (AppModelConfig, Conversation, Message)
+
+
+class _StopAfterModelResolutionError(Exception):
+    """Ends ``generate`` at model resolution, the step the connection-release tests observe."""
 
 
 class _TraceRecorder:
@@ -153,6 +160,45 @@ def _persist_message(
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 class TestCompletionAppGenerator:
+    def test_generate_releases_the_callers_connection_before_resolving_the_model(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Model resolution opens sessions of its own, so the handler session must be idle by then."""
+        app_model = _build_app_model()
+        app_model.app_model_config_id = "cfg-release"
+        app_model_config = AppModelConfig(
+            app_id=app_model.id,
+            provider="openai",
+            model_id="gpt-4",
+            model=json.dumps({"provider": "openai", "name": "gpt-4", "mode": "completion", "completion_params": {}}),
+            pre_prompt="Answer briefly.",
+            prompt_type=PromptType.SIMPLE,
+        )
+        app_model_config.id = "cfg-release"
+        sqlite_session.add_all([app_model, app_model_config])
+        sqlite_session.commit()
+        in_transaction_during_model_resolution: list[bool] = []
+
+        def resolve_model(_app_config: EasyUIBasedAppConfig) -> ModelConfigWithCredentialsEntity:
+            in_transaction_during_model_resolution.append(sqlite_session.in_transaction())
+            raise _StopAfterModelResolutionError
+
+        monkeypatch.setattr("core.app.apps.completion.app_generator.ModelConfigConverter.convert", resolve_model)
+
+        with pytest.raises(_StopAfterModelResolutionError):
+            CompletionAppGenerator().generate(
+                app_model,
+                _build_user(),
+                {"query": "hi", "inputs": {}},
+                InvokeFrom.SERVICE_API,
+                streaming=True,
+                session=sqlite_session,
+            )
+
+        assert in_transaction_during_model_resolution == [False]
+        assert not inspect(app_model).expired_attributes
+        assert not inspect(app_model_config).expired_attributes
+
     def test_generate_invalid_query_type(self, generator, sqlite_session: Session):
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(

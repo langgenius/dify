@@ -1,4 +1,5 @@
 import contextvars
+import json
 import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
@@ -9,8 +10,10 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -18,11 +21,13 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     InvokeFrom,
+    ModelConfigWithCredentialsEntity,
 )
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import get_current_file_access_scope
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
+from models.enums import PromptType
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -64,6 +69,10 @@ def _trace_scope() -> TraceScope:
             external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
         ),
     )
+
+
+class _StopAfterModelResolutionError(Exception):
+    """Ends ``generate`` at model resolution, the step the connection-release tests observe."""
 
 
 def _app() -> App:
@@ -135,6 +144,47 @@ def _raise_in_runner(monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
 
 
 class TestAgentChatAppGeneratorGenerate:
+    def test_generate_releases_the_callers_connection_before_resolving_the_model(
+        self, generator: AgentChatAppGenerator, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Model resolution opens sessions of its own, so the handler session must be idle by then."""
+        app_model = _app()
+        app_model.id = "app-release"
+        app_model.app_model_config_id = "cfg-release"
+        app_model_config = AppModelConfig(
+            app_id=app_model.id,
+            provider="openai",
+            model_id="gpt-4",
+            model=json.dumps({"provider": "openai", "name": "gpt-4", "mode": "chat", "completion_params": {}}),
+            pre_prompt="Answer briefly.",
+            prompt_type=PromptType.SIMPLE,
+            agent_mode=json.dumps({"enabled": True, "strategy": "function_call", "tools": []}),
+        )
+        app_model_config.id = "cfg-release"
+        sqlite_session.add_all([app_model, app_model_config])
+        sqlite_session.commit()
+        in_transaction_during_model_resolution: list[bool] = []
+
+        def resolve_model(_app_config: EasyUIBasedAppConfig) -> ModelConfigWithCredentialsEntity:
+            in_transaction_during_model_resolution.append(sqlite_session.in_transaction())
+            raise _StopAfterModelResolutionError
+
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert", resolve_model)
+
+        with pytest.raises(_StopAfterModelResolutionError):
+            generator.generate(
+                app_model=app_model,
+                user=_account(),
+                args={"query": "hi", "inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=True,
+                session=sqlite_session,
+            )
+
+        assert in_transaction_during_model_resolution == [False]
+        assert not inspect(app_model).expired_attributes
+        assert not inspect(app_model_config).expired_attributes
+
     def test_generate_rejects_blocking_mode(self, generator: AgentChatAppGenerator, sqlite_session: Session) -> None:
         app_model = _app()
         user = _account()

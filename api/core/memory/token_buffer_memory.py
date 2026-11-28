@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import release_session_connection
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
@@ -339,12 +340,22 @@ class TokenBufferMemory:
         self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
         session = db.session()
+        # The read below may be the statement that opens the caller's scoped session
+        # transaction. Only then, and only with nothing pending that autoflush would write
+        # into it, is that transaction this method's to end.
+        read_opens_transaction = not session.in_transaction() and not (session.new or session.dirty or session.deleted)
         history = self.load_history(
             conversation=self.conversation,
             app_record=self.conversation.app(session=session),
             session=session,
             message_limit=message_limit,
         )
+        # The history is detached from its read session, and rendering it can restore files and
+        # count tokens through the model provider. Left open, the read transaction would keep a
+        # pooled connection until the caller closes its scoped session, which for a chat run is
+        # after the model has generated the whole answer.
+        if read_opens_transaction:
+            release_session_connection(session)
         return history.get_prompt_messages(model_instance=self.model_instance, max_token_limit=max_token_limit)
 
     def get_history_prompt_text(

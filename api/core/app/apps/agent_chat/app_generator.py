@@ -21,7 +21,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
-from core.db.session_factory import session_factory
+from core.db.session_factory import release_session_connection, session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from extensions.tracing import create_trace_scope
 from factories import file_factory
@@ -186,6 +186,10 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 user_id=user.id if isinstance(user, Account) else user.session_id,
                 extras=extras,
             )
+
+            # Resolving the model configuration opens its own sessions and may call the plugin
+            # daemon. The caller's session must not keep a pooled connection across that.
+            release_session_connection(session)
 
             # init application generate entity
             application_generate_entity = AgentChatAppGenerateEntity(

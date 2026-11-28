@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock, patch
@@ -5,20 +6,25 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session
 
 import core.app.apps.chat.app_generator as generator_module
+from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, PromptType
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
+
+
+class _StopAfterModelResolutionError(Exception):
+    """Ends ``generate`` at model resolution, the step the connection-release tests observe."""
 
 
 class DummyGenerateEntity:
@@ -141,6 +147,45 @@ def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
 
 
 class TestChatAppGenerator:
+    def test_generate_releases_the_callers_connection_before_resolving_the_model(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Model resolution opens sessions of its own, so the handler session must be idle by then."""
+        app_model = _app()
+        app_model.app_model_config_id = "cfg-release"
+        app_model_config = AppModelConfig(
+            app_id=app_model.id,
+            provider="openai",
+            model_id="gpt-4",
+            model=json.dumps({"provider": "openai", "name": "gpt-4", "mode": "chat", "completion_params": {}}),
+            pre_prompt="Answer briefly.",
+            prompt_type=PromptType.SIMPLE,
+        )
+        app_model_config.id = "cfg-release"
+        sqlite_session.add_all([app_model, app_model_config])
+        sqlite_session.commit()
+        in_transaction_during_model_resolution: list[bool] = []
+
+        def resolve_model(_app_config: EasyUIBasedAppConfig) -> ModelConfigWithCredentialsEntity:
+            in_transaction_during_model_resolution.append(sqlite_session.in_transaction())
+            raise _StopAfterModelResolutionError
+
+        monkeypatch.setattr("core.app.apps.chat.app_generator.ModelConfigConverter.convert", resolve_model)
+
+        with pytest.raises(_StopAfterModelResolutionError):
+            ChatAppGenerator().generate(
+                app_model,
+                _account(),
+                {"query": "hi", "inputs": {}},
+                InvokeFrom.SERVICE_API,
+                streaming=True,
+                session=sqlite_session,
+            )
+
+        assert in_transaction_during_model_resolution == [False]
+        assert not inspect(app_model).expired_attributes
+        assert not inspect(app_model_config).expired_attributes
+
     def test_generate_requires_query(self, unbound_session: Session):
         generator = ChatAppGenerator()
         with pytest.raises(ValueError, match="query is required"):
