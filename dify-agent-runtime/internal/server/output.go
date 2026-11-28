@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"os"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -61,19 +62,16 @@ func ReadOutputWindow(path string, offset, limit int) (*OutputWindow, error) {
 		budget = 0
 	}
 
-	// Find the longest valid UTF-8 prefix within budget
-	consumed := validUTF8PrefixLen(data, budget)
-	if consumed == 0 && len(data) > 0 {
-		// At least consume one complete rune
-		consumed = firstCompleteRuneLen(data)
-	}
+	// Decode forward in a single O(N) pass: valid runes are preserved,
+	// genuinely invalid bytes become U+FFFD, and the raw offset always
+	// advances by the exact number of input bytes consumed.
+	output, consumed := sanitizeUTF8Window(data, budget, offset+len(buf) < size)
 
-	outputBytes := data[:consumed]
 	newOffset := offset + startShift + consumed
 	truncated := newOffset < size
 
 	return &OutputWindow{
-		Output:    string(outputBytes),
+		Output:    output,
 		Offset:    newOffset,
 		Truncated: truncated,
 	}, nil
@@ -118,14 +116,66 @@ func TailOutputWindow(path string, limit int) (*OutputWindow, error) {
 
 	relativeStart := advanceToUTF8Boundary(buf, start-paddedStart)
 	payload := buf[relativeStart:]
-	consumed := validUTF8PrefixLen(payload, len(payload))
-	outputBytes := payload[:consumed]
+	// The tail reaches the end of the file, so a truncated rune at the
+	// end is genuinely incomplete and is replaced, not deferred.
+	output, consumed := sanitizeUTF8Window(payload, len(payload), false)
 
 	return &OutputWindow{
-		Output:    string(outputBytes),
+		Output:    output,
 		Offset:    paddedStart + relativeStart + consumed,
 		Truncated: false,
 	}, nil
+}
+
+// sanitizeUTF8Window decodes data forward in a single O(N) pass, replacing
+// genuinely invalid UTF-8 bytes with U+FFFD while preserving valid
+// multi-byte rune boundaries. It returns the sanitized output and the
+// number of raw input bytes consumed, so callers can advance the raw file
+// offset by exactly that amount.
+//
+// A valid rune split across the budget boundary is deferred to the next
+// page; a truncated valid rune at the end of the buffer is likewise
+// deferred when more file bytes follow (hasMore), and replaced when it is
+// the end of the file. At least one rune (or one invalid byte) is always
+// consumed when data is non-empty, so the offset strictly advances.
+func sanitizeUTF8Window(data []byte, budget int, hasMore bool) (string, int) {
+	var out strings.Builder
+	out.Grow(len(data))
+	consumed := 0
+	for consumed < len(data) {
+		if consumed >= budget {
+			break
+		}
+		r, size := utf8.DecodeRune(data[consumed:])
+		if r == utf8.RuneError && size == 1 && !utf8.FullRune(data[consumed:]) {
+			// Truncated valid rune at the end of the buffer.
+			if hasMore {
+				break
+			}
+			// End of file: replace each remaining byte.
+			out.WriteRune(utf8.RuneError)
+			consumed++
+			continue
+		}
+		if consumed+size > budget {
+			break
+		}
+		out.WriteRune(r)
+		consumed += size
+	}
+	if consumed == 0 && len(data) > 0 {
+		// Guarantee forward progress: consume the first rune (or one
+		// invalid byte) even if it exceeds the budget.
+		r, size := utf8.DecodeRune(data)
+		if r != utf8.RuneError || size != 1 || utf8.FullRune(data) {
+			out.WriteRune(r)
+			consumed = size
+		} else if !hasMore {
+			out.WriteRune(utf8.RuneError)
+			consumed = 1
+		}
+	}
+	return out.String(), consumed
 }
 
 // advanceToUTF8Boundary skips continuation bytes (10xxxxxx) at position start.
@@ -139,29 +189,4 @@ func advanceToUTF8Boundary(data []byte, start int) int {
 // isUTF8Continuation returns true if byte is a UTF-8 continuation byte.
 func isUTF8Continuation(b byte) bool {
 	return (b & 0xC0) == 0x80
-}
-
-// validUTF8PrefixLen returns the length of the longest valid UTF-8 prefix up to maxLen.
-func validUTF8PrefixLen(data []byte, maxLen int) int {
-	if maxLen > len(data) {
-		maxLen = len(data)
-	}
-	end := maxLen
-	for end > 0 {
-		if utf8.Valid(data[:end]) {
-			return end
-		}
-		end--
-	}
-	return 0
-}
-
-// firstCompleteRuneLen returns the byte length of the first complete rune in data.
-func firstCompleteRuneLen(data []byte) int {
-	for end := 1; end <= len(data) && end <= 4; end++ {
-		if utf8.Valid(data[:end]) {
-			return end
-		}
-	}
-	return 0
 }
