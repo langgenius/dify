@@ -12,6 +12,7 @@ import pytest
 from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
 from celery.exceptions import Retry
+from kombu.simple import SimpleQueue
 
 from configs.feature import LoggingConfig
 from dify_app import DifyApp
@@ -139,7 +140,7 @@ def test_tracing_dispatch_and_beat_use_configured_queue(tracing_celery: Celery) 
             tracing_celery.send_task("tasks.ops_trace_task.process_trace_tasks", args=({},), queue="ops_trace")
         for name, args in calls.items():
             tracing_celery.tasks[name].apply_async(args=args)
-        with connection.SimpleQueue(queue) as inbox:
+        with SimpleQueue(connection.channel(), queue) as inbox:
             for name, args in calls.items():
                 message = inbox.get(block=False)
                 assert message.headers["task"] == name
@@ -148,7 +149,7 @@ def test_tracing_dispatch_and_beat_use_configured_queue(tracing_celery: Celery) 
             with pytest.raises(Empty):
                 inbox.get(block=False)
         if queue != "ops_trace":
-            with connection.SimpleQueue("ops_trace") as legacy:
+            with SimpleQueue(connection.channel(), "ops_trace") as legacy:
                 message = legacy.get(block=False)
                 assert message.headers["task"] == "tasks.ops_trace_task.process_trace_tasks"
                 message.ack()
@@ -169,12 +170,12 @@ def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Ce
         with pytest.raises(Retry):
             task.retry(countdown=5)
         with tracing_celery.connection_for_read() as connection:
-            with connection.SimpleQueue("ops_trace_v2") as original:
+            with SimpleQueue(connection.channel(), "ops_trace_v2") as original:
                 message = original.get(block=False)
                 assert message.headers["task"] == task.name
                 assert message.headers["retries"] == 1
                 message.ack()
-            with connection.SimpleQueue("ops_trace") as restored:
+            with SimpleQueue(connection.channel(), "ops_trace") as restored:
                 with pytest.raises(Empty):
                     restored.get(block=False)
     finally:
@@ -193,7 +194,7 @@ class TestCelerySslCases:
     class TestCelerySSLConfiguration:
         """Test suite for Celery SSL configuration."""
 
-        def test_get_celery_broker_transport_options_includes_global_keyprefix_for_redis(self):
+        def test_get_celery_broker_transport_options_includes_global_keyprefix_for_redis(self) -> None:
             mock_config = MagicMock()
             mock_config.CELERY_USE_SENTINEL = False
             mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -205,7 +206,7 @@ class TestCelerySslCases:
 
             assert result["global_keyprefix"] == "enterprise-a:"
 
-        def test_get_celery_broker_transport_options_omits_global_keyprefix_when_prefix_empty(self):
+        def test_get_celery_broker_transport_options_omits_global_keyprefix_when_prefix_empty(self) -> None:
             mock_config = MagicMock()
             mock_config.CELERY_USE_SENTINEL = False
             mock_config.REDIS_KEY_PREFIX = "   "
@@ -217,7 +218,7 @@ class TestCelerySslCases:
 
             assert "global_keyprefix" not in result
 
-        def test_get_celery_broker_transport_options_keeps_sentinel_and_adds_global_keyprefix(self):
+        def test_get_celery_broker_transport_options_keeps_sentinel_and_adds_global_keyprefix(self) -> None:
             mock_config = MagicMock()
             mock_config.CELERY_USE_SENTINEL = True
             mock_config.CELERY_SENTINEL_MASTER_NAME = "mymaster"
@@ -234,7 +235,7 @@ class TestCelerySslCases:
             assert result["sentinel_kwargs"]["password"] == "secret"
             assert result["global_keyprefix"] == "enterprise-a:"
 
-        def test_get_celery_ssl_options_when_ssl_disabled(self):
+        def test_get_celery_ssl_options_when_ssl_disabled(self) -> None:
             """Test SSL options when BROKER_USE_SSL is False."""
             from configs import DifyConfig
 
@@ -246,7 +247,7 @@ class TestCelerySslCases:
                 result = get_celery_ssl_options()
                 assert result is None
 
-        def test_get_celery_ssl_options_when_broker_not_redis(self):
+        def test_get_celery_ssl_options_when_broker_not_redis(self) -> None:
             """Test SSL options when broker is not Redis."""
             mock_config = MagicMock()
             mock_config.CELERY_BROKER_URL = "amqp://localhost:5672"
@@ -257,7 +258,7 @@ class TestCelerySslCases:
                 result = get_celery_ssl_options()
                 assert result is None
 
-        def test_get_celery_ssl_options_with_cert_none(self):
+        def test_get_celery_ssl_options_with_cert_none(self) -> None:
             """Test SSL options with CERT_NONE requirement."""
             mock_config = MagicMock()
             mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -276,7 +277,7 @@ class TestCelerySslCases:
                 assert result["ssl_certfile"] is None
                 assert result["ssl_keyfile"] is None
 
-        def test_get_celery_ssl_options_with_cert_required(self):
+        def test_get_celery_ssl_options_with_cert_required(self) -> None:
             """Test SSL options with CERT_REQUIRED and certificates."""
             mock_config = MagicMock()
             mock_config.CELERY_BROKER_URL = "rediss://localhost:6380/0"
@@ -295,7 +296,7 @@ class TestCelerySslCases:
                 assert result["ssl_certfile"] == "/path/to/client.crt"
                 assert result["ssl_keyfile"] == "/path/to/client.key"
 
-        def test_get_celery_ssl_options_with_cert_optional(self):
+        def test_get_celery_ssl_options_with_cert_optional(self) -> None:
             """Test SSL options with CERT_OPTIONAL requirement."""
             mock_config = MagicMock()
             mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -312,7 +313,7 @@ class TestCelerySslCases:
                 assert result["ssl_cert_reqs"] == ssl.CERT_OPTIONAL
                 assert result["ssl_ca_certs"] == "/path/to/ca.crt"
 
-        def test_get_celery_ssl_options_with_invalid_cert_reqs(self):
+        def test_get_celery_ssl_options_with_invalid_cert_reqs(self) -> None:
             """Test SSL options with invalid cert requirement defaults to CERT_NONE."""
             mock_config = MagicMock()
             mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -328,7 +329,7 @@ class TestCelerySslCases:
                 assert result is not None
                 assert result["ssl_cert_reqs"] == ssl.CERT_NONE  # Should default to CERT_NONE
 
-        def test_celery_init_applies_ssl_to_broker_and_backend(self):
+        def test_celery_init_applies_ssl_to_broker_and_backend(self) -> None:
             """Test that SSL options are applied to both broker and backend when using Redis."""
             mock_config = MagicMock()
             mock_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
@@ -388,7 +389,7 @@ class TestCelerySslCases:
                 assert "redis_backend_use_ssl" in celery_app.conf
                 assert celery_app.conf["redis_backend_use_ssl"] is not None
 
-        def test_celery_init_registers_required_agent_and_conversation_tasks(self):
+        def test_celery_init_registers_required_agent_and_conversation_tasks(self) -> None:
             mock_config = MagicMock()
             mock_config.BROKER_USE_SSL = False
             mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -400,7 +401,7 @@ class TestCelerySslCases:
             mock_config.LOG_FORMAT = "%(message)s"
             mock_config.LOG_TZ = "UTC"
             mock_config.LOG_FILE = None
-            mock_config.CELERY_TASK_ANNOTATIONS = {}
+            mock_config.CELERY_TASK_ANNOTATIONS = dict[str, object]()
 
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
