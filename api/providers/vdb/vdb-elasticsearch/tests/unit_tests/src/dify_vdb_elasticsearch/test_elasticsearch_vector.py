@@ -236,6 +236,34 @@ def test_crud_methods_and_get_type(elasticsearch_module):
     assert vector.get_type() == elasticsearch_module.VectorType.ELASTICSEARCH
 
 
+def test_delete_by_metadata_field_uses_term_query_and_size(elasticsearch_module):
+    vector = elasticsearch_module.ElasticSearchVector(
+        "collection_1", _regular_config(elasticsearch_module), attributes=[]
+    )
+    vector._client.search.return_value = {"hits": {"hits": [{"_id": "id-1"}]}}
+    deleted_ids: list[list[str]] = []
+    vector.delete_by_ids = deleted_ids.append
+
+    def sent_query(key: str) -> dict:
+        vector._client.search.reset_mock()
+        vector.delete_by_metadata_field(key, "value")
+        return vector._client.search.call_args.kwargs["body"]
+
+    # doc_id and document_id are mapped as keyword, so the field itself holds the exact value.
+    assert sent_query("document_id")["query"] == {"term": {"metadata.document_id": "value"}}
+    # app_id and annotation_id are dynamically mapped text; only the keyword subfield is exact.
+    assert sent_query("annotation_id")["query"] == {"term": {"metadata.annotation_id.keyword": "value"}}
+    assert sent_query("app_id")["query"] == {"term": {"metadata.app_id.keyword": "value"}}
+    # Without a size the search returns at most 10 hits.
+    assert sent_query("app_id")["size"] == 10_000
+
+    # The matched documents are deleted by their Elasticsearch _id.
+    vector._client.search.return_value = {"hits": {"hits": [{"_id": "id-1"}, {"_id": "id-2"}]}}
+    deleted_ids.clear()
+    vector.delete_by_metadata_field("annotation_id", "annotation-1")
+    assert deleted_ids == [["id-1", "id-2"]]
+
+
 @pytest.mark.parametrize("japanese", [False, True], ids=["elasticsearch", "elasticsearch-ja"])
 @pytest.mark.parametrize(
     ("status", "body", "missing_index"),
