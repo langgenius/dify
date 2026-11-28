@@ -13,7 +13,6 @@ project-excludes = [
   "controllers/console/app/test_generator.py",
   "controllers/console/app/test_workflow.py",
   "controllers/console/auth/test_activate.py",
-  "controllers/console/datasets/rag_pipeline/test_rag_pipeline_draft_variable.py",
   "controllers/console/datasets/test_datasets_document.py",
   "controllers/console/test_wraps.py",
   "controllers/console/workspace/test_endpoint.py",

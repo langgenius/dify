@@ -1,4 +1,5 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -27,10 +28,11 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables import IntegerVariable, StringVariable
+from graphon.variables import IntegerVariable, StringVariable, VariableBase
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowType
+from services.workflow_draft_variable_service import WorkflowDraftVariableList
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 from tests.helpers.unit.model_factories import make_workflow
 
@@ -48,7 +50,7 @@ def _pipeline(*, pipeline_id: str = "p1", tenant_id: str = "t1") -> Pipeline:
     return pipeline
 
 
-def _workflow(pipeline: Pipeline, environment_variables=()) -> Workflow:
+def _workflow(pipeline: Pipeline, environment_variables: Sequence[VariableBase] = ()) -> Workflow:
     return make_workflow(
         tenant_id=pipeline.tenant_id,
         app_id=pipeline.id,
@@ -93,7 +95,7 @@ def editor_user() -> Account:
 
 
 @pytest.fixture
-def restx_config(app):
+def restx_config(app: Flask) -> AbstractContextManager[Mapping[str, str]]:
     return patch.dict(app.config, {"RESTX_MASK_HEADER": "X-Fields"})
 
 
@@ -108,7 +110,9 @@ def test_rag_draft_variable_routes_require_dataset_edit_permission() -> None:
 
 
 class TestRagPipelineVariableCollectionApi:
-    def test_get_variables_success(self, app: Flask, sqlite_db, editor_user, restx_config):
+    def test_get_variables_success(
+        self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock, restx_config: MagicMock
+    ) -> None:
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -117,9 +121,7 @@ class TestRagPipelineVariableCollectionApi:
         rag_srv = MagicMock()
         rag_srv.is_workflow_exist.return_value = True
 
-        var_list = MagicMock()
-        var_list.variables = []
-        var_list.total = None
+        var_list = WorkflowDraftVariableList(variables=[], total=None)
 
         draft_srv = MagicMock()
         draft_srv.list_variables_without_values.return_value = var_list
@@ -147,7 +149,7 @@ class TestRagPipelineVariableCollectionApi:
             user_id="account-1",
         )
 
-    def test_get_variables_workflow_not_exist(self, app: Flask, sqlite_db, editor_user):
+    def test_get_variables_workflow_not_exist(self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock) -> None:
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -167,7 +169,7 @@ class TestRagPipelineVariableCollectionApi:
             with pytest.raises(DraftWorkflowNotExist):
                 method(api, PaginationQuery(), editor_user, pipeline)
 
-    def test_delete_variables_success(self, app: Flask, sqlite_db, editor_user):
+    def test_delete_variables_success(self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock) -> None:
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.delete)
 
@@ -185,14 +187,15 @@ class TestRagPipelineVariableCollectionApi:
 
 
 class TestRagPipelineNodeVariableCollectionApi:
-    def test_get_node_variables_success(self, app: Flask, sqlite_db, editor_user, restx_config):
+    def test_get_node_variables_success(
+        self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock, restx_config: MagicMock
+    ) -> None:
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
         pipeline = _pipeline()
 
-        var_list = MagicMock()
-        var_list.variables = []
+        var_list = WorkflowDraftVariableList(variables=[])
 
         srv = MagicMock()
         srv.list_node_variables.return_value = var_list
@@ -211,7 +214,7 @@ class TestRagPipelineNodeVariableCollectionApi:
         assert result == {"items": []}
         srv.list_node_variables.assert_called_once_with("p1", "node1", user_id="account-1")
 
-    def test_get_node_variables_invalid_node(self, app: Flask, sqlite_db, editor_user):
+    def test_get_node_variables_invalid_node(self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock) -> None:
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -223,7 +226,7 @@ class TestRagPipelineNodeVariableCollectionApi:
 
 
 class TestRagPipelineVariableApi:
-    def test_get_variable_not_found(self, app: Flask, sqlite_db, editor_user):
+    def test_get_variable_not_found(self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock) -> None:
         api = RagPipelineVariableApi()
         method = unwrap(api.get)
 
@@ -241,7 +244,9 @@ class TestRagPipelineVariableApi:
             with pytest.raises(NotFoundError):
                 method(api, sqlite_db.session(), editor_user, _pipeline(), "v1")
 
-    def test_patch_variable_invalid_file_payload(self, app: Flask, sqlite_db, editor_user):
+    def test_patch_variable_invalid_file_payload(
+        self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock
+    ) -> None:
         api = RagPipelineVariableApi()
         method = unwrap(api.patch)
 
@@ -272,7 +277,7 @@ class TestRagPipelineVariableApi:
                     "v1",
                 )
 
-    def test_delete_variable_success(self, app: Flask, sqlite_db, editor_user):
+    def test_delete_variable_success(self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock) -> None:
         api = RagPipelineVariableApi()
         method = unwrap(api.delete)
 
@@ -352,7 +357,7 @@ def test_direct_variable_access_rejects_different_user(
 
 
 class TestRagPipelineVariableResetApi:
-    def test_reset_variable_success(self, app: Flask, sqlite_db, editor_user):
+    def test_reset_variable_success(self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock) -> None:
         api = RagPipelineVariableResetApi()
         method = unwrap(api.put)
 
@@ -389,14 +394,15 @@ class TestRagPipelineVariableResetApi:
 
 
 class TestSystemAndEnvironmentVariablesApi:
-    def test_system_variables_success(self, app: Flask, sqlite_db, editor_user, restx_config):
+    def test_system_variables_success(
+        self, app: Flask, sqlite_db: MagicMock, editor_user: MagicMock, restx_config: MagicMock
+    ) -> None:
         api = RagPipelineSystemVariableCollectionApi()
         method = unwrap(api.get)
 
         pipeline = _pipeline()
 
-        var_list = MagicMock()
-        var_list.variables = []
+        var_list = WorkflowDraftVariableList(variables=[])
 
         srv = MagicMock()
         srv.list_system_variables.return_value = var_list
@@ -415,7 +421,7 @@ class TestSystemAndEnvironmentVariablesApi:
         assert result == {"items": []}
         srv.list_system_variables.assert_called_once_with("p1", user_id="account-1")
 
-    def test_environment_variables_success(self, app: Flask, editor_user):
+    def test_environment_variables_success(self, app: Flask, editor_user: MagicMock) -> None:
         api = RagPipelineEnvironmentVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -445,7 +451,9 @@ class TestSystemAndEnvironmentVariablesApi:
         assert len(result["items"]) == 1
         assert result["items"][0]["value_type"] == "string"
 
-    def test_environment_variables_preserve_number_subtype_and_llm_type(self, app: Flask, editor_user):
+    def test_environment_variables_preserve_number_subtype_and_llm_type(
+        self, app: Flask, editor_user: MagicMock
+    ) -> None:
         api = RagPipelineEnvironmentVariableCollectionApi()
         method = unwrap(api.get)
         number_var = IntegerVariable(
