@@ -86,6 +86,26 @@ class TestAudioInputsCases:
         assert stream.tell() == 0
 
     @staticmethod
+    @pytest.mark.parametrize("mime_type", ["audio/mpeg", "audio/x-wav", "audio/wave", "audio/vnd.wave"])
+    def test_asr_accepts_registered_mime_types_of_supported_formats(
+        monkeypatch: pytest.MonkeyPatch, mime_type: str
+    ) -> None:
+        """MP3 and WAV uploads labelled with their standard MIME types reach the provider."""
+        contents: list[bytes] = []
+
+        def transcribe(*, app: AudioAppRef, content: bytes, end_user: str | None) -> str:
+            del app, end_user
+            contents.append(content)
+            return "transcript"
+
+        monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
+        app = AudioAppRef(app_id="app", tenant_id="owner", app_mode="chat")
+        upload = AudioUpload(stream=BytesIO(b"audio"), mime_type=mime_type)
+
+        assert AudioService.invoke_speech_to_text(app, upload) == {"text": "transcript"}
+        assert contents == [b"audio"]
+
+    @staticmethod
     def test_provider_exception_propagates_without_losing_details(monkeypatch: pytest.MonkeyPatch) -> None:
         error = RuntimeError("provider transcription failed: timeout")
 
