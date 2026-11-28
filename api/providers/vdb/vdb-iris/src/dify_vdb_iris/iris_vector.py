@@ -260,15 +260,24 @@ class IrisVector(BaseVector):
         """Search similar documents using VECTOR_COSINE with HNSW index."""
         top_k = kwargs.get("top_k", 4)
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        document_ids_filter = kwargs.get("document_ids_filter")
         embedding_str = json.dumps(query_vector)
+
+        where_clause = ""
+        params = [embedding_str]
+        if document_ids_filter:
+            placeholders = ",".join("?" * len(document_ids_filter))
+            where_clause = f"WHERE JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
+            params.extend(document_ids_filter)
 
         with self._get_cursor() as cursor:
             sql = f"""
                 SELECT TOP {top_k} id, text, meta, VECTOR_COSINE(embedding, ?) as score
                 FROM {self.schema}.{self.table_name}
+                {where_clause}
                 ORDER BY score DESC
             """
-            cursor.execute(sql, (embedding_str,))
+            cursor.execute(sql, params)
 
             docs = []
             for row in cursor.fetchall():
