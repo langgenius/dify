@@ -855,13 +855,32 @@ class TestToolsTransformServiceCases:
             assert ToolTransformService.get_tool_provider_icon_url("unknown", "x", "i") == ""
 
     class TestRepackProvider:
-        def test_repacks_dict_provider_icon(self) -> None:
-            provider = {"type": "builtin", "name": "google", "icon": "old"}
-            with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/new-url") as mock_fn:
-                ToolTransformService.repack_provider("t1", provider)
+        def test_repacks_builtin_entity_icon_url(self, config_overrides: Callable[..., None]) -> None:
+            """Inputs: Provider entity and console URL fixture.
+            Preconditions: Fixture sets the expected console URL.
+            Result/effects: Repacking updates both icons to the encoded URL.
+            Failure: URL mismatches fail the assertions.
+            """
+            config_overrides(CONSOLE_API_URL="https://app.dify.ai")
+            entity = ToolProviderApiEntity(
+                id="google-plugin",
+                author="test_author",
+                name="google plugin",
+                description=I18nObject(en_US="Google"),
+                label=I18nObject(en_US="Google"),
+                type=ToolProviderType.BUILT_IN,
+                plugin_id=None,
+                icon="icon.svg",
+                icon_dark="dark.svg",
+            )
 
-            assert provider["icon"] == "/new-url"
-            mock_fn.assert_called_once_with(provider_type="builtin", provider_name="google", icon="old")
+            ToolTransformService.repack_provider("t1", entity)
+
+            expected_icon_url = (
+                "https://app.dify.ai/console/api/workspaces/current/tool-provider/builtin/google%20plugin/icon"
+            )
+            assert entity.icon == expected_icon_url
+            assert entity.icon_dark == expected_icon_url
 
         def test_repacks_tool_provider_api_entity_without_plugin(self) -> None:
             entity = ToolProviderApiEntity(
