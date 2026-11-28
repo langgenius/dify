@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { KnowledgeSettingsSnapshot } from '../draft'
 import type { SettingsMigrationProgress, SettingsSaveStep } from '../save-workflow'
+import { notifyManager } from '@tanstack/query-core'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
@@ -249,6 +250,8 @@ export const saveKnowledgeSettingsAtom = atom(
         })
         checkpoint({ ...session.baseline, externalAccess }, ['external'])
       }
+      // Flush queued observer updates before releasing the submitted draft.
+      await new Promise<void>(resolve => notifyManager.schedule(resolve))
       set(knowledgeSettingsEditSessionAtom, undefined)
       return { status: 'saved' }
     } catch (error) {

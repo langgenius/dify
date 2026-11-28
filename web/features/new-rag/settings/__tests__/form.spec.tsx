@@ -1,3 +1,4 @@
+import { notifyManager } from '@tanstack/query-core'
 import type {
   KnowledgeFsExternalAccessPayload,
   KnowledgeFsExternalAccessResponse,
@@ -520,6 +521,24 @@ describe('KnowledgeSettingsPage workflows', () => {
         return saved
       },
     )
+  })
+
+  it.each([0, 20, 300])('keeps the saved name after notification delay %ims', async (delay) => {
+    const user = userEvent.setup()
+    await renderForm()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(name)
+    await user.type(name, 'Saved camera specs')
+    notifyManager.setScheduler(cb => setTimeout(cb, delay))
+    try {
+      await saveChanges(user)
+      await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
+      await act(async () => {})
+      expect(name).toHaveValue('Saved camera specs')
+    }
+    finally {
+      notifyManager.setScheduler(cb => setTimeout(cb, 0))
+    }
   })
 
   it('keeps save disabled and shows an inline error when the name is empty', async () => {
