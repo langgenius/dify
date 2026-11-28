@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.entities import RetrievalSourceMetadata
@@ -15,7 +16,6 @@ from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
 from repositories.knowledge.segment_read_adapter import sign_segment_content
@@ -160,25 +160,34 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         all_documents: list,
         hit_callbacks: list[DatasetIndexToolCallbackHandler],
     ):
+        """Load dataset metadata in a short-lived session before running retrieval.
+
+        Pre: Runs in a worker thread with ``flask_app`` providing application context.
+        Post: Closes the database session before calling ``RetrievalService.retrieve``.
+        """
         with flask_app.app_context():
-            stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.scalar(stmt)
+            with session_factory.create_session() as session:
+                stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id)
+                dataset = session.scalar(stmt)
 
-            if not dataset:
-                return []
+                if not dataset:
+                    return []
 
-            for hit_callback in hit_callbacks:
-                hit_callback.on_query(query, dataset.id, db.session())
+                for hit_callback in hit_callbacks:
+                    hit_callback.on_query(query, dataset.id, session)
 
-            # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model or default_retrieval_model
+                resolved_dataset_id = dataset.id
+                indexing_technique = dataset.indexing_technique
+                # get retrieval model , if the model is not setting , using default
+                retrieval_model = dataset.retrieval_model or default_retrieval_model
+
             dataset_top_k = retrieval_model.get("top_k")
 
-            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
+            if indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
                 documents = RetrievalService.retrieve(
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
-                    dataset_id=dataset.id,
+                    dataset_id=resolved_dataset_id,
                     query=query,
                     # top_k=0 is a legal explicit value; only None falls back to 4.
                     top_k=dataset_top_k if dataset_top_k is not None else 4,
@@ -190,7 +199,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     # retrieval source
                     documents = RetrievalService.retrieve(
                         retrieval_method=retrieval_model["search_method"],
-                        dataset_id=dataset.id,
+                        dataset_id=resolved_dataset_id,
                         query=query,
                         # top_k=0 is a legal explicit value; only None falls back to 4.
                         top_k=dataset_top_k if dataset_top_k is not None else 4,
