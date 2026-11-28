@@ -38,6 +38,7 @@ from repositories.agent.agent_workspace_repository import (
     validate_binding_generation,
     workflow_tool_workspace_owned_by_app,
 )
+from repositories.agent_build_collection_repository import AgentBuildCollectionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +260,14 @@ class AgentWorkspaceService:
 
     @classmethod
     def collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
+        """Physically collect a retired binding before deleting its ledger row.
+
+        A missing binding is an idempotent success. Successful cleanup settles
+        only the Build claim observed before backend I/O. Backend or database
+        failures retain the affected records for a later retry.
+        """
         with session_factory.create_session() as session:
+            attempts = AgentBuildCollectionRepository(session_factory.get_session_maker())
             binding = session.scalar(
                 select(AgentWorkspaceBinding).where(
                     AgentWorkspaceBinding.id == binding_id,
@@ -267,7 +275,15 @@ class AgentWorkspaceService:
                     AgentWorkspaceBinding.status == AgentWorkingResourceStatus.RETIRED,
                 )
             )
+            expected_attempt = attempts.current_attempt(session=session, tenant_id=tenant_id, binding_id=binding_id)
             if binding is None:
+                attempts.complete(
+                    session=session,
+                    tenant_id=tenant_id,
+                    binding_id=binding_id,
+                    expected_attempt=expected_attempt,
+                )
+                session.commit()
                 return
             backend_binding_ref = binding.backend_binding_ref
             workspace = session.scalar(
@@ -300,10 +316,23 @@ class AgentWorkspaceService:
             )
             if binding is not None:
                 session.delete(binding)
-                session.commit()
+            AgentBuildCollectionRepository(session_factory.get_session_maker()).complete(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+                expected_attempt=expected_attempt,
+            )
+            session.commit()
 
     @classmethod
     def collect_retired_workspace(cls, *, tenant_id: str, workspace_id: str) -> None:
+        """Destroy every retired binding before deleting workspace ledger rows.
+
+        The workspace must be retired and have at least one retired binding.
+        All backend targets must succeed before any ledger row is deleted. Each
+        Build intent is settled only at the generation captured before I/O;
+        failures preserve all affected ledger and intent rows for retry.
+        """
         with session_factory.create_session() as session:
             workspace = session.scalar(
                 select(AgentWorkspace).where(
@@ -329,6 +358,11 @@ class AgentWorkspaceService:
                 )
             anchor = bindings[0]
             remaining = [(binding.id, binding.backend_binding_ref) for binding in bindings[1:]]
+            attempts = AgentBuildCollectionRepository(session_factory.get_session_maker())
+            expected_attempts = {
+                binding.id: attempts.current_attempt(session=session, tenant_id=tenant_id, binding_id=binding.id)
+                for binding in bindings
+            }
             workspace_ref = workspace.backend_workspace_ref
             binding_ref = anchor.backend_binding_ref
             anchor_id = anchor.id
@@ -378,6 +412,14 @@ class AgentWorkspaceService:
                     AgentWorkspaceBinding.status == AgentWorkingResourceStatus.RETIRED,
                 )
             )
+            attempts = AgentBuildCollectionRepository(session_factory.get_session_maker())
+            for resource_id, expected_attempt in expected_attempts.items():
+                attempts.complete(
+                    session=session,
+                    tenant_id=tenant_id,
+                    binding_id=resource_id,
+                    expected_attempt=expected_attempt,
+                )
             session.execute(
                 delete(AgentWorkspace).where(
                     AgentWorkspace.id == workspace_id,

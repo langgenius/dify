@@ -13,6 +13,12 @@ from collections.abc import Iterable
 
 from celery import shared_task
 
+from core.db.session_factory import session_factory
+from repositories.agent_build_collection_repository import (
+    AgentBuildCollectionIntent,
+    AgentBuildCollectionRepository,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,6 +86,94 @@ def collect_agent_resources(
     AgentDeletionService.purge_archived_agents(tenant_id=tenant_id, agent_ids=purge_agent_ids or ())
 
 
+def _publish_collection(
+    *,
+    tenant_id: str,
+    payload: dict[str, list[str]],
+    build_intents: Iterable[AgentBuildCollectionIntent],
+) -> None:
+    """Publish one batch while retaining every claimed Build intent on failure.
+
+    Publication failure stores its exception type on each matching claim
+    generation and re-raises. Successful publication does not acknowledge
+    physical cleanup.
+    """
+    intents = tuple(build_intents)
+    try:
+        collect_agent_resources.delay(tenant_id=tenant_id, **payload)
+    except Exception as exc:
+        message = "Failed to enqueue retired Agent resource collection"
+        extra: dict[str, object] = {"tenant_id": tenant_id, **payload}
+        if intents:
+            attempts = AgentBuildCollectionRepository(session_factory.get_session_maker())
+            for intent in intents:
+                attempts.record_error(intent=intent, error_type=type(exc).__name__)
+            message = "Failed to publish Build collection attempt"
+            extra["build_attempt_counts"] = [intent.attempt_count for intent in intents]
+        logger.exception(message, extra=extra)
+        raise
+
+
+@shared_task(queue="retention", time_limit=60, soft_time_limit=55, ignore_result=True)
+def reconcile_agent_build_collections(
+    *,
+    batch_size: int = 20,
+    retry_interval_seconds: float = 300.0,
+    max_attempts: int = 100,
+) -> dict[str, int]:
+    """Retry bounded Build dispatch claims while retaining exhausted rows.
+
+    A batch claims each binding at most once, even with a zero retry interval.
+    Repeated publication is possible; neither exactly-once delivery nor
+    physical cleanup is guaranteed. The exhausted count covers only the bounded
+    operator-review sample, not a full table count. Invalid batch or retry
+    bounds raise ValueError.
+    """
+    if not 1 <= batch_size <= 100:
+        raise ValueError("collection batch size must be between 1 and 100")
+    repository = AgentBuildCollectionRepository(session_factory.get_session_maker())
+    outcome = {"published": 0, "failed": 0, "exhausted": 0}
+    claimed_binding_ids: set[str] = set()
+    while (
+        len(claimed_binding_ids) < batch_size
+        and (
+            intent := repository.claim_next(
+                excluded_binding_ids=claimed_binding_ids,
+                retry_interval_seconds=retry_interval_seconds,
+                max_attempts=max_attempts,
+            )
+        )
+        is not None
+    ):
+        claimed_binding_ids.add(intent.binding_id)
+        try:
+            _publish_collection(
+                tenant_id=intent.tenant_id,
+                payload={
+                    "binding_ids": [intent.binding_id],
+                    "workspace_ids": [],
+                    "home_snapshot_ids": [],
+                    "purge_agent_ids": [],
+                },
+                build_intents=(intent,),
+            )
+        except Exception:
+            outcome["failed"] += 1
+        else:
+            outcome["published"] += 1
+    exhausted = repository.exhausted(max_attempts=max_attempts)
+    outcome["exhausted"] = len(exhausted)
+    if exhausted:
+        logger.error(
+            "Build collection attempts exhausted; retained for operator review",
+            extra={
+                "binding_ids": [item.binding_id for item in exhausted],
+                "last_error_types": sorted({item.last_error or "unknown" for item in exhausted}),
+            },
+        )
+    return outcome
+
+
 def enqueue_agent_resource_collection(
     *,
     tenant_id: str,
@@ -88,7 +182,13 @@ def enqueue_agent_resource_collection(
     home_snapshot_ids: Iterable[str] = (),
     purge_agent_ids: Iterable[str] = (),
 ) -> None:
-    """Enqueue physical collection after retirement has committed."""
+    """Publish retired resources after the caller's database commit.
+
+    Build bindings use durable dispatch claims outside aggregate purge. A purge
+    batch must retain all of its explicit prerequisites, even bindings with
+    exhausted claims. Broker errors propagate; publication does not settle an
+    intent or guarantee cleanup.
+    """
 
     payload = {
         "binding_ids": sorted({resource_id for resource_id in binding_ids if resource_id}),
@@ -98,14 +198,33 @@ def enqueue_agent_resource_collection(
     }
     if not any(payload.values()):
         return
-    try:
-        collect_agent_resources.delay(tenant_id=tenant_id, **payload)
-    except Exception:
-        logger.exception(
-            "Failed to enqueue retired Agent resource collection",
-            extra={"tenant_id": tenant_id, **payload},
+    if payload["purge_agent_ids"] or not payload["binding_ids"]:
+        _publish_collection(tenant_id=tenant_id, payload=payload, build_intents=())
+        return
+    repository = AgentBuildCollectionRepository(session_factory.get_session_maker())
+    pending = repository.pending_binding_ids(tenant_id=tenant_id, binding_ids=set(payload["binding_ids"]))
+    claimed: list[AgentBuildCollectionIntent] = []
+    for binding_id in sorted(pending):
+        intent = repository.claim_next(
+            tenant_id=tenant_id,
+            binding_id=binding_id,
+            retry_interval_seconds=0.0,
         )
-        raise
+        if intent is not None:
+            claimed.append(intent)
+    claimed_binding_ids = {intent.binding_id for intent in claimed}
+    payload["binding_ids"] = [
+        binding_id
+        for binding_id in payload["binding_ids"]
+        if binding_id not in pending or binding_id in claimed_binding_ids
+    ]
+    if not any(payload.values()):
+        return
+    _publish_collection(tenant_id=tenant_id, payload=payload, build_intents=claimed)
 
 
-__all__ = ["collect_agent_resources", "enqueue_agent_resource_collection"]
+__all__ = [
+    "collect_agent_resources",
+    "enqueue_agent_resource_collection",
+    "reconcile_agent_build_collections",
+]

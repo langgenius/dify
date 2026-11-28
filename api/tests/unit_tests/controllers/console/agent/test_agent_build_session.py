@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from celery import Celery, current_app
 from celery.signals import before_task_publish
+from dify_agent.protocol import DestroyExecutionBindingRequest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, object_session
 from werkzeug.test import TestResponse
@@ -19,6 +20,7 @@ from werkzeug.test import TestResponse
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
+    AgentBuildCollectionRequest,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigRevision,
@@ -37,7 +39,8 @@ from models.agent_config_entities import AgentSoulConfig
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import Conversation
 from repositories.agent.agent_debug_conversations import get_or_create_agent_debug_conversation
-from tasks.collect_agent_resources_task import collect_agent_resources
+from services.agent.workspace_service import AgentWorkspaceService
+from tasks.collect_agent_resources_task import collect_agent_resources, reconcile_agent_build_collections
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
@@ -139,6 +142,22 @@ def observe_collection_publication(listener: Callable[..., None]) -> Generator[N
         yield
     finally:
         before_task_publish.disconnect(listener, sender=sender)  # type: ignore[attr-defined]  # Missing from celery-types.
+
+
+class _RecordingBackendClient:
+    """Record destroy requests while keeping backend behavior explicit in the test."""
+
+    def __init__(self) -> None:
+        self.requests: list[DestroyExecutionBindingRequest] = []
+        self.error: Exception | None = None
+        self.on_destroy: Callable[[DestroyExecutionBindingRequest], None] | None = None
+
+    def destroy_execution_binding_sync(self, request: DestroyExecutionBindingRequest) -> None:
+        self.requests.append(request)
+        if self.on_destroy is not None:
+            self.on_destroy(request)
+        if self.error is not None:
+            raise self.error
 
 
 def test_get_build_draft_returns_only_current_accounts_draft(harness: Harness, build_state: BuildState) -> None:
@@ -311,6 +330,131 @@ def test_build_mutation_commits_before_enqueuing_binding_collection(
 
 
 @pytest.mark.usefixtures("memory_broker")
+@pytest.mark.parametrize(("method", "endpoint"), [("POST", "debug-conversation/refresh"), ("DELETE", "build-draft")])
+def test_build_collection_failure_is_requeued_and_collected(
+    harness: Harness, build_state: BuildState, method: str, endpoint: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed publish must leave a discoverable request after the draft is gone."""
+
+    def broker_unavailable(**_kwargs: object) -> None:
+        raise RuntimeError("test broker unavailable")
+
+    with monkeypatch.context() as mocked:
+        mocked.setattr(collect_agent_resources, "delay", broker_unavailable)
+        response = build_state.request(harness, method, endpoint)
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    with harness.sessions() as session:
+        binding = session.get_one(AgentWorkspaceBinding, build_state.binding_id)
+        assert binding.status == AgentWorkingResourceStatus.RETIRED
+        pending = session.scalar(
+            select(AgentBuildCollectionRequest).where(
+                AgentBuildCollectionRequest.tenant_id == harness.tenant_id,
+                AgentBuildCollectionRequest.binding_id == build_state.binding_id,
+            )
+        )
+        assert pending is not None
+        assert pending.attempt_count == 1
+        assert pending.last_error == "RuntimeError"
+
+    # The source pointer is gone. The persisted request, not the draft, is the recovery key.
+    published: list[dict[str, object]] = []
+
+    def on_publish(body: tuple[object, dict[str, object], object], **_kwargs: object) -> None:
+        published.append(body[1])
+
+    client = _RecordingBackendClient()
+    with (
+        monkeypatch.context() as mocked,
+        observe_collection_publication(on_publish),
+    ):
+        mocked.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+        repeated = build_state.request(harness, method, endpoint)
+        assert repeated.status_code == HTTPStatus.OK
+        assert published == []
+        with harness.sessions() as session:
+            assert session.get_one(AgentBuildCollectionRequest, pending.id).attempt_count == 1
+        outcome = reconcile_agent_build_collections(retry_interval_seconds=0.0)
+        assert outcome == {"published": 1, "failed": 0, "exhausted": 0}
+        collect_agent_resources(
+            tenant_id=harness.tenant_id,
+            binding_ids=[build_state.binding_id],
+            workspace_ids=[],
+            home_snapshot_ids=[],
+        )
+
+    assert published == [
+        {
+            "tenant_id": harness.tenant_id,
+            "binding_ids": [build_state.binding_id],
+            "workspace_ids": [],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": [],
+        }
+    ]
+    assert len(client.requests) == 1
+    assert client.requests[0].destroy_workspace is True
+    with harness.sessions() as session:
+        assert session.get(AgentWorkspaceBinding, build_state.binding_id) is None
+        assert session.get(AgentWorkspace, build_state.workspace_id) is None
+        assert session.get(AgentBuildCollectionRequest, pending.id) is None
+
+
+@pytest.mark.usefixtures("memory_broker")
+def test_apply_collection_failure_is_requeued_and_collected(
+    harness: Harness, build_state: BuildState, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep the retired Build binding recoverable after Apply deletes its draft."""
+
+    def checkpoint(_path: str, _body: dict[str, object]) -> tuple[HTTPStatus, dict[str, object]]:
+        return HTTPStatus.CREATED, {"snapshot_ref": None}
+
+    def broker_unavailable(**_kwargs: object) -> None:
+        raise RuntimeError("test broker unavailable")
+
+    with (
+        checkpoint_backend(checkpoint) as base_url,
+        config_overrides_context(AGENT_BACKEND_BASE_URL=base_url),
+        monkeypatch.context() as mocked,
+    ):
+        mocked.setattr(collect_agent_resources, "delay", broker_unavailable)
+        response = build_state.request(harness, "POST", "build-draft/apply")
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    with harness.sessions() as session:
+        assert session.get(AgentConfigDraft, build_state.draft_id) is None
+        binding = session.get_one(AgentWorkspaceBinding, build_state.binding_id)
+        assert binding.status == AgentWorkingResourceStatus.RETIRED
+        pending = session.scalar(
+            select(AgentBuildCollectionRequest).where(
+                AgentBuildCollectionRequest.tenant_id == harness.tenant_id,
+                AgentBuildCollectionRequest.binding_id == build_state.binding_id,
+            )
+        )
+        assert pending is not None
+        assert pending.attempt_count == 1
+        assert pending.last_error == "RuntimeError"
+
+    client = _RecordingBackendClient()
+    with monkeypatch.context() as mocked:
+        mocked.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+        outcome = reconcile_agent_build_collections(retry_interval_seconds=0.0)
+        assert outcome == {"published": 1, "failed": 0, "exhausted": 0}
+        collect_agent_resources(
+            tenant_id=harness.tenant_id,
+            binding_ids=[build_state.binding_id],
+            workspace_ids=[],
+            home_snapshot_ids=[],
+        )
+
+    assert len(client.requests) == 1
+    assert client.requests[0].destroy_workspace is True
+    with harness.sessions() as session:
+        assert session.get(AgentWorkspaceBinding, build_state.binding_id) is None
+        assert session.get(AgentWorkspace, build_state.workspace_id) is None
+        assert session.get(AgentBuildCollectionRequest, pending.id) is None
+
+
+@pytest.mark.usefixtures("memory_broker")
 def test_discard_rejects_a_binding_from_an_older_generation(harness: Harness, build_state: BuildState) -> None:
     """Return the sandbox error and leave the draft and binding intact when the Home generation differs."""
     with harness.sessions.begin() as session:
@@ -393,6 +537,7 @@ def test_build_mutation_rolls_back_after_a_database_write_fails(
             session.get_one(AgentWorkspaceBinding, build_state.binding_id).status == AgentWorkingResourceStatus.ACTIVE
         )
         assert session.scalar(select(Conversation.id)) is None
+        assert session.scalar(select(AgentBuildCollectionRequest.id)) is None
 
 
 @pytest.mark.parametrize(

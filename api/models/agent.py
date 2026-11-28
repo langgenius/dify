@@ -598,3 +598,29 @@ class AgentWorkspaceBinding(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     pending_tool_call_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+
+
+class AgentBuildCollectionRequest(AgentDefaultFieldsDCMixin, TypeBase, kw_only=True):
+    """Persist one dispatch intent per tenant and retired Build binding.
+
+    An attempt is a durable dispatch claim, not a completion acknowledgement.
+    Only successful, idempotent physical cleanup settles the request.
+    """
+
+    __tablename__ = "agent_build_collection_requests"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_build_collection_request_pkey"),
+        Index(
+            "agent_build_collection_tenant_binding_unique",
+            "tenant_id",
+            "binding_id",
+            unique=True,
+        ),
+        Index("agent_build_collection_retry_idx", "last_attempt_at", "attempt_count"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    last_error: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
