@@ -1413,8 +1413,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         )
 
     def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
-        """Read Console tokens for an admitted run's form IDs without changing recipients."""
-        return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.CONSOLE)
+        """Read management tokens for an admitted run's form IDs without changing recipients.
+
+        Pause details is the management entry: it hands out the Backstage token
+        only, with no fallback to the Console token, so the management entry
+        never shares a token with ordinary Console interaction (#46236).
+        """
+        return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.BACKSTAGE)
 
     def stop_paused_workflow_task(
         self,

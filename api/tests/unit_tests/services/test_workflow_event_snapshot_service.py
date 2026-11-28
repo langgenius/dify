@@ -1355,7 +1355,7 @@ def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
     [
         (HumanInputSurface.WEB_APP, True, "web-app-token", ["console", "email"]),
         (HumanInputSurface.WEB_APP, False, None, ["console", "email"]),
-        (HumanInputSurface.CONSOLE, True, "backstage-token", ["email", "web_app"]),
+        (HumanInputSurface.CONSOLE, True, None, ["console", "email", "web_app"]),
     ],
 )
 def test_reconnect_uses_current_surface_for_web_app_run(
