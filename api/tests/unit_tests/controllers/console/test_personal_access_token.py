@@ -539,13 +539,11 @@ def test_app_scope_filters_discovery_and_workspace_scope_cannot_bypass_it(
 @pytest.mark.parametrize(
     ("method", "path"),
     [
-        ("GET", "/workspaces/{id}"),
         ("POST", "/workspaces/{id}:switch"),
         ("GET", "/workspaces/{id}/members"),
         ("POST", "/workspaces/{id}/members"),
         ("PATCH", "/workspaces/{id}/members/{id}"),
         ("DELETE", "/workspaces/{id}/members/{id}"),
-        ("GET", "/workspaces/{id}/knowledge-bases"),
     ],
 )
 def test_pat_rejects_management_outside_phase_one(

@@ -100,7 +100,7 @@ workspace filter. This handler is read-only and does not change membership.
 | mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query | Filter by a name substring; an app id returns that one app and ignores `mode` | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| workspace_id | query |  | Yes | string (uuid) |
+| workspace_id | query | Only the apps of this workspace; leave it out to list the apps of every workspace | No | string (uuid) |
 
 #### Responses
 
@@ -1356,6 +1356,30 @@ the service's errors are raised as HTTP errors and nothing is audited.
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ServiceApiDisabledError](#serviceapidisablederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /mcp
+**Serve one MCP JSON-RPC message**
+
+Precondition: a POST to the openapi blueprint. Postcondition: 404, as for an unknown path, before
+anything else when ``OPENAPI_MCP_ENABLED`` is false. Otherwise 200 with a JSON-RPC reply
+(result, or error for an unsupported protocol version or tool name); 202 with no body for
+a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
+any other unparsable message; 413 with a JSON-RPC error when the body is above
+``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and
+before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
+cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
+read, when an ``Origin`` header is present and is neither this server's own nor in
+``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged). ``initialize`` and ``tools/list``
+answer as any request on this surface does, with its error body and headers: 401 for a missing
+or invalid bearer, 429 with Retry-After above the per-token limit, 403 for a broken licence, 503
+when bearer login is off. ``ping``, notifications and ``dify_find`` have no login check.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /node-types
@@ -3536,7 +3560,7 @@ mode is a closed enum of listable app types.
 | mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string | Filter by a name substring; an app id returns that one app and ignores `mode` | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| workspace_id | string (uuid) |  | Yes |
+| workspace_id | string | Only the apps of this workspace; leave it out to list the apps of every workspace | No |
 
 #### AppListResponse
 
@@ -3555,7 +3579,7 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
 | id | string |  | Yes |
-| mode | [AppMode](#appmode) |  | Yes |
+| mode | [AppMode](#appmode) | The app's mode, such as workflow, advanced-chat, chat, agent-chat or completion; it decides which operations run or test the app | Yes |
 | name | string |  | Yes |
 | updated_at | string |  | No |
 | workspace_id | string |  | No |

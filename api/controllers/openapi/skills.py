@@ -16,6 +16,7 @@ from flask_restx import Resource
 
 from configs import dify_config
 from constants import BYTES_PER_MIB
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
@@ -245,6 +246,7 @@ class SkillListApi(Resource):
     @endpoint(
         context="workspace",
         op="get.skill",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="Skills in the workspace, newest edit first",
         examples=(
@@ -277,6 +279,7 @@ class SkillDescribeApi(Resource):
     @endpoint(
         context="workspace",
         op="describe.skill",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="One skill with its draft hash and latest published version",
         examples=(Example(title="Describe a skill", input={"skill_id": "<skill_id>"}),),
@@ -304,6 +307,7 @@ class SkillVersionListApi(Resource):
     @endpoint(
         context="workspace",
         op="get.skill.version",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="Published versions of a skill, newest first",
         examples=(Example(title="List versions of a skill", input={"skill_id": "<skill_id>"}),),
@@ -324,6 +328,7 @@ class SkillExportApi(Resource):
     @endpoint(
         context="workspace",
         op="export.skill",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.FILE,
         summary="Download a skill as a zip: its draft, or one published version",
         examples=(
@@ -354,6 +359,7 @@ class SkillPublishApi(Resource):
     @endpoint(
         context="workspace",
         op="publish.skill",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Publish the draft as a new version",
         examples=(
@@ -384,6 +390,7 @@ class SkillImportApi(Resource):
     @endpoint(
         context="workspace",
         op="import.skill",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Create a skill from a folder, or overwrite a skill's draft with one",

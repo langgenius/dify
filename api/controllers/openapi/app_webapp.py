@@ -31,6 +31,8 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     ADMIN_ROLES,
     EDITOR_ROLES,
+    SET_AGENT_WEBAPP_ACCESS_OP,
+    SET_WEBAPP_ACCESS_OP,
     CheckWebAppAuthEnterprise,
     account_settings_guards,
 )
@@ -278,7 +280,7 @@ class AgentWebAppAccessApi(Resource):
         return settings.webapp_access(ctx)
 
     @endpoint(
-        op="set.webapp_access.agent",
+        op=SET_AGENT_WEBAPP_ACCESS_OP,
         pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Set who may open an agent app's web app (Enterprise)",
@@ -332,7 +334,7 @@ class WebAppAccessApi(Resource):
         return settings.webapp_access(ctx)
 
     @endpoint(
-        op="set.webapp_access",
+        op=SET_WEBAPP_ACCESS_OP,
         pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Set who may open an app's web app (Enterprise; agent apps: set.webapp_access.agent)",

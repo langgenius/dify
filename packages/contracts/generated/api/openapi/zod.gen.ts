@@ -2039,6 +2039,7 @@ export const zOpenApiErrorCode = z.enum([
   'plugin_install_forbidden',
   'plugin_not_installed',
   'plugin_service_unavailable',
+  'private_app_access_denied',
   'provider_not_found',
   'provider_not_initialize',
   'provider_quota_exceeded',
@@ -2669,7 +2670,7 @@ export const zAppListQuery = z.object({
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.uuid(),
+  workspace_id: z.uuid().nullish(),
 })
 
 /**
@@ -3522,7 +3523,7 @@ export const zGetAppsQuery = z.object({
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.uuid(),
+  workspace_id: z.uuid().optional(),
 })
 
 /**
@@ -4236,6 +4237,11 @@ export const zPostAppsByAppIdPublishPath = z.object({
  * Published
  */
 export const zPostAppsByAppIdPublishResponse = zPublishResponse
+
+/**
+ * Success
+ */
+export const zPostMcpResponse = z.record(z.string(), z.unknown())
 
 /**
  * Node types

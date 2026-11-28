@@ -171,9 +171,14 @@ def test_apps_list_returns_pagination_envelope(
     assert any(d["id"] == app_in_workspace.id for d in body["data"])
 
 
-def test_apps_list_requires_workspace_id(test_client: FlaskClient, auth_headers: dict[str, str]):
+def test_apps_list_without_workspace_id_lists_the_accounts_apps(
+    test_client: FlaskClient,
+    app_in_workspace: App,
+    auth_headers: dict[str, str],
+):
     res = test_client.get("/openapi/v1/apps", headers=auth_headers)
-    assert res.status_code == 400
+    assert res.status_code == 200
+    assert any(d["id"] == app_in_workspace.id for d in res.json["data"])
 
 
 def test_apps_list_tag_no_match_returns_empty_data_not_400(

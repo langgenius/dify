@@ -105,6 +105,7 @@ class WorkspacesApi(Resource):
 class WorkspaceByIdApi(Resource):
     @endpoint(
         op="describe.workspace",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Workspace detail",
         examples=(

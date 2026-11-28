@@ -39,6 +39,7 @@ from controllers.openapi._contract import CapRequestBody, op_of
 from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
+    PrivateAppAccessDenied,
     ServiceApiDisabled,
     SkillsDisabled,
     WebAppAccessRequiresEE,
@@ -48,6 +49,8 @@ from controllers.openapi.app_info import AgentServiceApiApi, ServiceApiApi
 from controllers.openapi.auth import subjects
 from controllers.openapi.auth.context import RouteContractError
 from controllers.openapi.auth.requirements import (
+    SET_AGENT_WEBAPP_ACCESS_OP,
+    SET_WEBAPP_ACCESS_OP,
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckAppMode,
@@ -338,6 +341,26 @@ class TestRequirementsCases:
                     with pytest.raises(Forbidden, match="cannot resolve user for private app check"):
                         CheckAppAccess().run(subject, ctx, sqlite_session)
 
+        def test_refuses_a_private_app_with_a_typed_error_whose_hint_names_both_access_ops(
+            self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            persist(sqlite_session, make_app())
+            subject = account_subject()
+            ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+            monkeypatch.setattr(FEATURES, lambda: system_features(webapp_auth=False))
+            monkeypatch.setattr(ACCESS_MODE, lambda **_: webapp_settings(_requirements_WebAppAccessMode.PRIVATE.value))
+            monkeypatch.setattr(f"{WEBAPP_AUTH}.is_user_allowed_to_access_webapp", lambda **_: False)
+
+            with pytest.raises(PrivateAppAccessDenied) as refused:
+                CheckAppAccess().run(subject, ctx, sqlite_session)
+
+            assert refused.value.code == 403
+            assert refused.value.error_code == OpenApiErrorCode.PRIVATE_APP_ACCESS_DENIED
+            assert refused.value.hint is not None
+            assert SET_WEBAPP_ACCESS_OP in refused.value.hint
+            assert SET_AGENT_WEBAPP_ACCESS_OP in refused.value.hint
+            assert refused.value.hints is None
+
 
 """The /openapi/v1 allow/deny matrix, and a snapshot of the generated document.
 
@@ -503,7 +526,7 @@ DENY_API_DISABLED = Expect(403, ServiceApiDisabled.description)
 DENY_UNKNOWN_APP = Expect(404, "app not found")
 DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
 DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
-DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
+DENY_PRIVATE_APP = Expect(403, PrivateAppAccessDenied.description)
 DENY_EDITION = Expect(404, note="endpoint-level edition gate, raised before the bearer is read")
 DENY_LICENSE = Expect(403, "license_invalid")
 DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_checks")
@@ -614,6 +637,7 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
+    Route("apps.list.everywhere", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.switch", "POST", "/workspaces/{workspace_id}:switch", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -1600,7 +1624,18 @@ exception is the router's own answer: an external-SSO bearer is refused outside 
 MATRIX: dict[str, dict[Case, Expect]] = {
     "describe.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "apps.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "apps.list": {
+        **_ACCOUNT_MEMBER_NO_ROLE,
+        # The one app list admits external SSO logins; outside enterprise their pipeline refuses them.
+        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
+    },
+    # No workspace named: no membership check, so a non-member is admitted and lists only its own workspaces' apps.
+    "apps.list.everywhere": {
+        **_ACCOUNT_MEMBER_NO_ROLE,
+        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
+        Case.NON_MEMBER: ADMIT,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_SCOPE,
+    },
     "workspaces.switch": dict(_ACCOUNT_MEMBER_NO_ROLE),
     # invite/remove check WORKSPACE_MEMBER_MANAGE; update_role checks WORKSPACE_ROLE_MANAGE
     # (matches check_member_permission's own add/remove vs update split)
@@ -1961,6 +1996,13 @@ _RESOURCE_JOB = (
 )
 _RESOURCE_RUN = (*_RESOURCE_JOB, CheckAppAccess())
 
+# apps.list and apps.list.everywhere are one handler: a workspace is optional.
+_REQ_APPS_LIST: tuple[Requirement, ...] = (
+    CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
+    CheckScope(Scope.APPS_READ),
+    CheckWorkspaceMember(),
+)
+
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "knowledge_fs.tree": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -2014,7 +2056,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         ),
         CheckWorkspaceRole(_OWNER_ADMIN),
     ),
-    "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
+    "apps.list": _REQ_APPS_LIST,
+    "apps.list.everywhere": _REQ_APPS_LIST,
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
         *_REQ_ACCOUNT_WORKSPACE_READ[1:],
@@ -2713,6 +2756,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("put", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "422", "default"}),
     ("delete", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
+    ("post", "/mcp"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
     ("get", "/account/sessions"): frozenset({"200", "422", "default"}),
@@ -3124,6 +3168,14 @@ class TestAuthMatrixCases:
             "webapp_access.set",
             "webapp_access.describe.agent",
             "webapp_access.set.agent",
+            "workspaces.describe",
+            "skills.list",
+            "skills.describe",
+            "skills.versions",
+            "skills.export",
+            "skills.publish",
+            "skills.import",
+            "knowledge_bases.list",
         }
 
     @staticmethod
@@ -3152,7 +3204,7 @@ class TestAuthMatrixCases:
         # The remainder is the device-flow, documentation and catalog surface. Its size is
         # pinned rather than enumerated: a list of exemptions rots silently — the one this
         # replaced still named `swagger.json`, a route that is not registered at all.
-        assert len(unguarded) == 14
+        assert len(unguarded) == 15
 
     @staticmethod
     @pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])

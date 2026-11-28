@@ -12,6 +12,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models.account import (
     Account,
+    AccountStatus,
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
@@ -73,6 +74,25 @@ class WorkspaceRepository(
         with self._session_factory() as session:
             rows = session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids)))
             return dict(rows.tuples().all())
+
+    @override
+    def member_workspace_ids(self, account_id: str) -> list[str]:
+        """The workspaces where the membership check admits the account: it is active, it has a role there and the
+        workspace is not archived. Oldest first, the order the workspace list uses; the id breaks a tie."""
+        with self._session_factory() as session:
+            return list(
+                session.scalars(
+                    select(Tenant.id)
+                    .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                    .join(Account, Account.id == TenantAccountJoin.account_id)
+                    .where(
+                        TenantAccountJoin.account_id == account_id,
+                        Account.status == AccountStatus.ACTIVE,
+                        Tenant.status != TenantStatus.ARCHIVE,
+                    )
+                    .order_by(Tenant.created_at.asc(), Tenant.id.asc())
+                )
+            )
 
     def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
         """Read the current membership role without loading or mutating an Account."""

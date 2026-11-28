@@ -26,8 +26,8 @@ def redis_client() -> _RateLimiterRedisClient:
     return cast(_RateLimiterRedisClient, Redis())
 
 
-def test_limit_bearer_per_token_uses_60_per_minute_default() -> None:
-    assert LIMIT_BEARER_PER_TOKEN.limit == 60
+def test_limit_bearer_per_token_uses_500_per_minute_default() -> None:
+    assert LIMIT_BEARER_PER_TOKEN.limit == 500
     assert LIMIT_BEARER_PER_TOKEN.window == timedelta(minutes=1)
 
 

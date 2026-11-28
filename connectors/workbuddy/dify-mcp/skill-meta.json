@@ -1,0 +1,21 @@
+{
+  "skill": "difyctl",
+  "name": "dify-mcp",
+  "fields": {
+    "display_name": "dify-mcp",
+    "display_name_en": "dify-mcp",
+    "description_zh": "查找并运行你的 Dify 应用，管理插件、模型供应商和工具凭据。连接你自己的 Dify 服务器，连接时填写它的地址和个人访问令牌。",
+    "description_en": "Find and run your Dify apps, and manage plugins, model providers and tool credentials. Connects to your own Dify server: enter its host and a personal access token.",
+    "author": "LangGenius",
+    "examples_zh": [
+      "列出我在 Dify 上的应用",
+      "运行 Dify 里的客服工作流，问题是……",
+      "看看我的 Dify 工作区装了哪些插件和模型"
+    ],
+    "examples_en": [
+      "List my apps on Dify",
+      "Run the customer support workflow in Dify. The question is...",
+      "Show which plugins and models my Dify workspace has"
+    ]
+  }
+}

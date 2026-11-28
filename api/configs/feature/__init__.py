@@ -737,6 +737,7 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
+    @property
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return [o for o in self.inner_openapi_cors_allow_origins.split(",") if o]
 
@@ -1205,7 +1206,7 @@ class AuthConfig(BaseSettings):
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
         "Bucket keyed on sha256(token), shared across api replicas via Redis. "
         "Set to 0 to disable the per-token limit entirely.",
-        default=60,
+        default=500,
     )
 
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
@@ -1453,7 +1454,12 @@ class DataSetConfig(BaseSettings):
 
 
 class OpenApiAgentConfig(BaseSettings):
-    """Settings for agents that work through /openapi/v1: run jobs."""
+    """Settings for agents that work through /openapi/v1: the MCP endpoint and run jobs."""
+
+    OPENAPI_MCP_ENABLED: bool = Field(
+        description="Serve the MCP endpoint, POST /openapi/v1/mcp. When false the endpoint answers 404.",
+        default=True,
+    )
 
     RUN_JOB_MAX_BACKGROUND_RUNS: PositiveInt = Field(
         description="Max app runs that one API process reads in the background for run jobs.",
@@ -1472,6 +1478,16 @@ class OpenApiAgentConfig(BaseSettings):
         description="How long a run job's state is kept after its last change, in seconds. Waiting on or stopping a "
         "job after that answers job_not_found.",
         default=24 * 60 * 60,
+    )
+
+    OPENAPI_MCP_FIND_PAGE_SIZE: PositiveInt = Field(
+        description="Operations one dify_find search answers over MCP; the agent reads on with next_offset.",
+        default=20,
+    )
+
+    OPENAPI_MCP_RESULT_MAX_CHARS: PositiveInt = Field(
+        description="Characters of one MCP tool result. A longer result is cut there, with a note that says so.",
+        default=40_000,
     )
 
 

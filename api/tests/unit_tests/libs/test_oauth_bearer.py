@@ -49,7 +49,9 @@ def test_a_row_matches_its_subject_only_when_its_account_binding_agrees(token_ty
 def test_scope_sets_are_pinned_exactly() -> None:
     """`dfoa_` relies on the `Scope.FULL` umbrella; the explicit scopes are reserved for `dfoe_`."""
     assert SubjectType.ACCOUNT.scopes == frozenset({Scope.FULL})
-    assert SubjectType.EXTERNAL_SSO.scopes == frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL})
+    assert SubjectType.EXTERNAL_SSO.scopes == frozenset(
+        {Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL, Scope.APPS_READ}
+    )
 
 
 @pytest.mark.parametrize(

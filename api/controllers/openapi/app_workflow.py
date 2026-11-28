@@ -110,6 +110,7 @@ def _require_run(ctx: Context, run_id: str) -> WorkflowRun:
 class AppRunListApi(Resource):
     @endpoint(
         op="get.run",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="List runs of a workflow or advanced-chat app, newest first",
         examples=(
@@ -152,6 +153,7 @@ class AppRunListApi(Resource):
 class AppRunDescribeApi(Resource):
     @endpoint(
         op="describe.run",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="One run: inputs, outputs, error, tokens and timing",
         examples=(Example(title="Read one run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
@@ -167,6 +169,7 @@ class AppRunDescribeApi(Resource):
 class AppRunNodeListApi(Resource):
     @endpoint(
         op="get.run.node",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Each node step of a run, to find the one that failed",
         examples=(Example(title="Node steps of one run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
@@ -447,6 +450,7 @@ def run_draft_node(
 class WorkflowDraftNodeRunApi(Resource):
     @endpoint(
         op="test.node.workflow",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Test one node of a workflow draft, reusing what the last draft run saved",
         examples=(
@@ -468,6 +472,7 @@ class WorkflowDraftNodeRunApi(Resource):
 class AdvancedChatDraftNodeRunApi(Resource):
     @endpoint(
         op="test.node.advanced_chat",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Test one node of an advanced-chat draft, reusing what the last draft run saved",
         examples=(Example(title="Test a node", input={"app_id": "<app_id>", "node_id": "<node_id>", "query": "Hi"}),),

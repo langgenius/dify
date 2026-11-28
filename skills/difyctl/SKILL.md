@@ -1,9 +1,16 @@
 ---
 name: difyctl
-description: 'Operate a Dify server through difyctl: find and run any operation, and build, test, publish and change Workflow and Chatflow apps. Use when the task involves difyctl, a Dify server, or Dify apps.'
+description: 'Operate a Dify server, through the dify_* MCP tools when they are available and through difyctl otherwise: find and run any operation, and build, test, publish and change Workflow and Chatflow apps. Use when the task involves Dify apps, a Dify server, the dify_find / dify_read / dify_write tools, or difyctl.'
 ---
 
 # difyctl
+
+## Pick one way in
+
+1. When you have tools named `dify_find`, `dify_read` and `dify_write`, read [`references/mcp.md`](references/mcp.md) first. To build or change a Workflow or Chatflow app, then read [`references/build-workflow.md`](references/build-workflow.md). Skip the rest of this file.
+2. Otherwise use difyctl and read on.
+3. With both available, use difyctl: it reaches every operation and handles files on this machine.
+4. Stay on one way for the whole task. Logins and job ids do not carry across.
 
 difyctl talks to a Dify server. Business commands are not built in: the server publishes a catalog of operations, and each one is a command you discover at run time.
 

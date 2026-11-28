@@ -21,8 +21,46 @@ from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
 from core.logging.context import get_trace_id
 from enums import DeploymentEdition
-from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
+from libs.oauth_bearer import (
+    AuthContext,
+    InvalidBearerError,
+    assert_bearer_feature_enabled,
+    extract_bearer,
+    get_authenticator,
+)
 from services.auth.resource_access_token_contracts import is_resource_access_token
+
+
+def admit_bearer() -> AuthContext:
+    """Run the deployment checks and authenticate the request's bearer, as every operation does first.
+
+    The order is the contract: an enterprise deployment's licence answers 403 before the missing-bearer 401. The
+    licence is a fact about the deployment, not the route or the caller, so this is the one place it is checked.
+    The bearer feature flag is the same kind of fact and answers 503 next.
+
+    Precondition: inside a Flask request. Postcondition: the authenticated bearer, counted against its per-token rate
+    limit (429 above it); raises Unauthorized for a missing or invalid bearer.
+    """
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+        assert_license_valid()
+    assert_bearer_feature_enabled()
+
+    token = extract_bearer(request)
+    is_resource_token = bool(token and is_resource_access_token(token))
+    if not token:
+        raise Unauthorized("bearer required")
+
+    try:
+        if token.startswith(TokenType.PERSONAL_ACCESS.prefix):
+            return authenticate_personal_token(token)
+        if is_resource_token:
+            return authenticate_resource_token(token)
+        return get_authenticator().authenticate(token)
+    except InvalidBearerError as caught_error:
+        # One answer for every rejection reason - unknown prefix, no live row,
+        # expired - so a caller cannot probe which one it hit. Same reasoning as
+        # the 404-not-403 elsewhere on this surface.
+        raise Unauthorized("invalid bearer") from caught_error
 
 
 class AuthRouter:
@@ -38,35 +76,12 @@ class AuthRouter:
 
     def _execute(self, spec: EndpointSpec, call: Callable[..., Any]) -> Any:
         """The order is the contract. An endpoint the edition does not expose
-        answers 404 before anything reveals whether the bearer was valid, and
-        an enterprise deployment's licence answers 403 before the missing-bearer
-        401. The licence is a fact about the deployment, not the route or the
-        caller, so this is the one place it is checked. The bearer feature flag
-        is the same kind of fact and answers 503 next.
+        answers 404 before anything reveals whether the bearer was valid; then
+        admit_bearer runs.
         """
         if not spec.allows(dify_config.DEPLOYMENT_EDITION):
             raise NotFound()
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-            assert_license_valid()
-        assert_bearer_feature_enabled()
-
-        token = extract_bearer(request)
-        is_resource_token = bool(token and is_resource_access_token(token))
-        if not token:
-            raise Unauthorized("bearer required")
-
-        try:
-            if token.startswith(TokenType.PERSONAL_ACCESS.prefix):
-                auth = authenticate_personal_token(token)
-            elif is_resource_token:
-                auth = authenticate_resource_token(token)
-            else:
-                auth = get_authenticator().authenticate(token)
-        except InvalidBearerError as caught_error:
-            # One answer for every rejection reason - unknown prefix, no live row,
-            # expired - so a caller cannot probe which one it hit. Same reasoning as
-            # the 404-not-403 elsewhere on this surface.
-            raise Unauthorized("invalid bearer") from caught_error
+        auth = admit_bearer()
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 

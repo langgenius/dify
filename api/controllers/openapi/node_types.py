@@ -9,6 +9,7 @@ from typing import Any
 from flask_restx import Resource
 from pydantic import BaseModel
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import NodeTypeNotFound
@@ -30,6 +31,7 @@ def _complete_default_config(model: type[BaseModel], default_config: Mapping[str
 class NodeTypeListApi(Resource):
     @endpoint(
         op="get.node_type",
+        pat_policy=PersonalAccessTokenPolicy.IDENTITY_DISCOVERY,
         kind=Kind.OBJECT,
         summary="Every node type this server can run; import decides which a mode allows",
         examples=(Example(title="List node types", input={}),),
@@ -48,6 +50,7 @@ class NodeTypeListApi(Resource):
 class NodeTypeDetailApi(Resource):
     @endpoint(
         op="describe.node_type",
+        pat_policy=PersonalAccessTokenPolicy.IDENTITY_DISCOVERY,
         kind=Kind.OBJECT,
         summary="The JSON schema of a node type's data and its default config",
         examples=(Example(title="Describe the LLM node", input={"node_type": "llm"}),),

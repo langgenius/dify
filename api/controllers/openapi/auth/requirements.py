@@ -15,7 +15,7 @@ from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, ServiceUnavailable
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable
 
 from configs import dify_config
 from constants.oauth_bearer import Scope, TokenType
@@ -33,14 +33,22 @@ from controllers.openapi._errors import (
     MemberLicenseExceeded,
     MemberLimitExceeded,
     PluginInstallForbidden,
+    PrivateAppAccessDenied,
     ServiceApiDisabled,
     SkillsDisabled,
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import Hint
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
-from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
+from controllers.openapi.auth.loaders import (
+    load_app,
+    load_caller,
+    load_workspace,
+    load_workspace_role,
+    route_has_app,
+    route_has_workspace,
+)
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from models import AppMode
@@ -74,12 +82,21 @@ class Requirement(ABC):
     @abstractmethod
     def run(self, subject: Subject, ctx: Context, session: Session) -> None: ...
 
+    def admits(self, token_type: TokenType) -> bool:
+        """Whether a token of this kind can ever pass, before any request: true unless the requirement refuses the
+        kind itself."""
+        return True
+
 
 class CheckSubject(Requirement):
     rank = Rank.FIRST
 
     def __init__(self, *, allowed: Sequence[type[Subject]]) -> None:
         self.allowed = tuple(allowed)
+
+    @override
+    def admits(self, token_type: TokenType) -> bool:
+        return any(subject.subject_type == token_type.subject for subject in self.allowed)
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -103,6 +120,13 @@ def assert_license_valid() -> None:
 # The routes live in `app_info`, which imports this module, so the op ids are spelled out; a test pins them.
 SET_SERVICE_API_OP: Final = "set.service_api"
 SET_AGENT_SERVICE_API_OP: Final = "set.service_api.agent"
+# The web-access routes live in `app_webapp`, which imports this module, so their op ids are defined here.
+SET_WEBAPP_ACCESS_OP: Final = "set.webapp_access"
+SET_AGENT_WEBAPP_ACCESS_OP: Final = "set.webapp_access.agent"
+PRIVATE_APP_ACCESS_HINT: Final = (
+    f"An editor of the app can let this login in with {SET_WEBAPP_ACCESS_OP}, "
+    f"or {SET_AGENT_WEBAPP_ACCESS_OP} for an agent app."
+)
 
 
 class CheckAppApiEnabled(Requirement):
@@ -122,15 +146,20 @@ class CheckWorkspaceMember(Requirement):
 
     Which workspace that is follows from the route — the app's on an app-scoped
     one, the path or query parameter otherwise — so this one requirement serves
-    both. It cannot be inferred and left implicit: `GET /apps` takes its
-    workspace from the query string, and `GET /workspaces/<workspace_id>` has
-    the path parameter but gets no membership check.
+    both. A request that addresses no workspace (`get.console_app` without
+    `workspace_id`) is not checked. An external SSO login belongs to no
+    workspace, so a workspace it names is refused as a non-member's is.
     """
 
     rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not route_has_workspace(ctx):
+            return
+        if isinstance(subject, ExternalSsoSubject):
+            if not route_has_app(ctx):
+                raise NotFound("workspace not found")
         if subject.caller_role is not CreatorUserRole.ACCOUNT:
             return
         load_workspace_role(ctx)
@@ -139,6 +168,11 @@ class CheckWorkspaceMember(Requirement):
 class CheckScope(Requirement):
     def __init__(self, scope: Scope) -> None:
         self.scope = scope
+
+    @override
+    def admits(self, token_type: TokenType) -> bool:
+        scopes = token_type.subject.scopes
+        return Scope.FULL in scopes or self.scope in scopes
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -374,7 +408,7 @@ class CheckAppAccess(Requirement):
             raise Forbidden("cannot resolve user for private app check")
         app_id = load_app(ctx).id
         if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=app_id):
-            raise Forbidden("user_not_allowed_for_private_app")
+            raise PrivateAppAccessDenied(hint=PRIVATE_APP_ACCESS_HINT)
 
 
 class ResolveCaller(Requirement):

@@ -105,7 +105,10 @@ class AppListRow(BaseModel):
     id: str
     name: str
     description: str | None = None
-    mode: AppMode
+    mode: AppMode = Field(
+        description="The app's mode, such as workflow, advanced-chat, chat, agent-chat or completion; it decides "
+        "which operations run or test the app"
+    )
     updated_at: str | None = None
     workspace_id: str | None = None
     workspace_name: str | None = None
@@ -331,7 +334,9 @@ class AppDescribeQuery(BaseModel):
 class AppListQuery(PageQuery):
     """mode is a closed enum of listable app types."""
 
-    workspace_id: UUIDStr
+    workspace_id: UUIDStr | None = Field(
+        None, description="Only the apps of this workspace; leave it out to list the apps of every workspace"
+    )
     mode: SupportedAppType | None = None
     name: str | None = Field(
         None,

@@ -1,0 +1,31 @@
+{
+  "title": "Connect Dify",
+  "title_en": "Connect Dify",
+  "description": "Enter your Dify host and a personal access token. They are stored only on this computer, in WorkBuddy.",
+  "description_en": "Enter your Dify host and a personal access token. They are stored only on this computer, in WorkBuddy.",
+  "docUrl": "https://docs.dify.ai",
+  "docLabel": "Dify documentation",
+  "docLabel_en": "Dify documentation",
+  "fields": [
+    {
+      "key": "DIFY_HOST",
+      "label": "Dify host",
+      "label_en": "Dify host",
+      "type": "text",
+      "required": true,
+      "placeholder": "dify.example.com",
+      "description": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443. Your Dify admin must turn on the Open API.",
+      "description_en": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443. Your Dify admin must turn on the Open API."
+    },
+    {
+      "key": "DIFY_TOKEN",
+      "label": "Personal access token",
+      "label_en": "Personal access token",
+      "type": "password",
+      "required": true,
+      "placeholder": "dpat_...",
+      "description": "A personal access token is recommended. Its app access decides which apps the agent can find and run; it needs workspace access to manage plugins, model providers or tool credentials. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run.",
+      "description_en": "A personal access token is recommended. Its app access decides which apps the agent can find and run; it needs workspace access to manage plugins, model providers or tool credentials. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run."
+    }
+  ]
+}
