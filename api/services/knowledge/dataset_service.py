@@ -2348,7 +2348,14 @@ class DocumentService:
         documents: list[Document] = []
         jobs = DocumentIndexingJobs(DatasetRef(dataset.tenant_id, dataset.id))
         if knowledge_config.original_document_id:
-            document = DocumentService.update_prepared_document(dataset, knowledge_config, account, session=session)
+            document = DocumentService.update_prepared_document(
+                dataset,
+                knowledge_config,
+                account,
+                dataset_process_rule=dataset_process_rule,
+                created_from=created_from,
+                session=session,
+            )
             documents.append(document)
             batch = document.batch
             jobs = replace(jobs, updated=document.id)

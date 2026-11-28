@@ -804,3 +804,37 @@ class TestDocumentCreationCases:
             assert document.data_source_info_dict["upload_file_id"] == "file"
             assert session.get(UploadFile, "file") is not None
         assert external_calls == []
+
+    @staticmethod
+    def test_updating_existing_document_preserves_created_from(
+        operations: SQLAlchemyDocumentOperations,
+        external_calls: list[tuple[str, tuple[str, ...]]],
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        created = operations.create_documents(
+            CONTEXT,
+            _DOCUMENT_CREATION_REF,
+            settings(),
+            created_from=DocumentCreatedFrom.API,
+        )
+        document_id = created["documents"][0]["id"]
+        with sqlite_session_factory.begin() as session:
+            document = session.get(Document, document_id)
+            assert document is not None
+            document.indexing_status = IndexingStatus.COMPLETED
+            document.completed_at = datetime(2026, 1, 1)
+
+        updated = operations.create_documents(
+            CONTEXT,
+            _DOCUMENT_CREATION_REF,
+            settings(original_document_id=document_id, name="Updated"),
+            created_from=DocumentCreatedFrom.API,
+        )
+
+        assert updated["documents"][0]["id"] == document_id
+        assert updated["documents"][0]["created_from"] == DocumentCreatedFrom.API
+        assert external_calls[-1] == ("update", (document_id,))
+        with sqlite_session_factory() as session:
+            persisted = session.get(Document, document_id)
+            assert persisted is not None
+            assert persisted.created_from == DocumentCreatedFrom.API
