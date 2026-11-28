@@ -514,6 +514,7 @@ EXPECTED_ENTERPRISE_OPERATION_IDS = {
     "enterprise_app_dsl_import",
     "enterprise_app_list",
     "enterprise_mint_file_grant",
+    "enterprise_reset_account_password",
     "enterprise_runtime_credentials_resolve",
     "join_enterprise_workspace_member",
     "send_enterprise_mail",
