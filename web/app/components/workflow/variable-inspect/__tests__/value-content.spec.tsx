@@ -150,6 +150,35 @@ describe('ValueContent', () => {
     expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-2', { foo: 2 })
   })
 
+  it('drops a save left pending when a valid JSON draft turns invalid', async () => {
+    const user = setupDebounceTest()
+    const handleValueChange = vi.fn()
+    renderValueContent(
+      createVar({
+        id: 'var-3',
+        name: 'draft',
+        value_type: VarType.object,
+        value: { foo: 1 },
+      }),
+      handleValueChange,
+    )
+    const editor = screen.getByRole('textbox', { name: 'JSON value' })
+
+    await user.clear(editor)
+    await user.paste('{"foo":2}')
+    await user.type(editor, 'x')
+    expect(screen.getByText(/json/i)).toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).not.toHaveBeenCalled()
+
+    await user.clear(editor)
+    await user.paste('{"foo":3}')
+    expect(screen.queryByText(/json/i)).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-3', { foo: 3 })
+  })
+
   it('cancels a pending numeric value while the draft is invalid, then saves recovery', async () => {
     const user = setupDebounceTest()
     const handleValueChange = vi.fn()
