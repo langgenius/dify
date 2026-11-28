@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Bitte beenden Sie die Bearbeitung des aktuellen Feldes, bevor Sie das Schema speichern.",
   "nodes.llm.model": "Modell",
   "nodes.llm.notSetContextInPromptTip": "Um die Kontextfunktion zu aktivieren, füllen Sie die Kontextvariable im PROMPT aus.",
+  "nodes.llm.outputVars.finish_reason": "Grund, warum das Modell die Generierung beendet hat",
   "nodes.llm.outputVars.output": "Generierter Inhalt",
   "nodes.llm.outputVars.reasoning_content": "Reasoning-Inhalt",
   "nodes.llm.outputVars.usage": "Nutzungsinformationen des Modells",

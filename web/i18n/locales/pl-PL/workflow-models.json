@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Proszę ukończyć edytowanie bieżącego pola przed zapisaniem schematu.",
   "nodes.llm.model": "model",
   "nodes.llm.notSetContextInPromptTip": "Aby włączyć funkcję kontekstu, wypełnij zmienną kontekstu w PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Powód zakończenia generowania przez model",
   "nodes.llm.outputVars.output": "Generowana treść",
   "nodes.llm.outputVars.reasoning_content": "Treść rozumowania",
   "nodes.llm.outputVars.usage": "Informacje o użyciu modelu",

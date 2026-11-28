@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "ກະລຸນາແກ້ໄຂຟິວປັດຈຸບັນໃຫ້ສຳເລັດກ່ອນບັນທຶກ Schema",
   "nodes.llm.model": "ຕົວແບບ",
   "nodes.llm.notSetContextInPromptTip": "ເພື່ອເປີດໃຊ້ຟີເຈີບໍລິບົດ, ກະລຸນາຕື່ມຕົວປ່ຽນບໍລິບົດໃນ PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "ເຫດຜົນທີ່ໂມເດວຢຸດການສ້າງຜົນລັບ",
   "nodes.llm.outputVars.output": "ເນື້ອໃນທີ່ສ້າງຂຶ້ນ",
   "nodes.llm.outputVars.reasoning_content": "ເນື້ອໃນການໃຫ້ເຫດຜົນ (Reasoning Content)",
   "nodes.llm.outputVars.usage": "ຂໍ້ມູນການໃຊ້ຕົວແບບ",

@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "編集中のフィールドを確定してから保存してください。",
   "nodes.llm.model": "AI モデル",
   "nodes.llm.notSetContextInPromptTip": "コンテキスト利用時はプロンプトに変数を明記してください",
+  "nodes.llm.outputVars.finish_reason": "モデルが生成を終了した理由",
   "nodes.llm.outputVars.output": "生成内容",
   "nodes.llm.outputVars.reasoning_content": "推論内容",
   "nodes.llm.outputVars.usage": "モデル使用量",

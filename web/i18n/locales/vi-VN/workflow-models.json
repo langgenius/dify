@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Vui lòng hoàn thành việc chỉnh sửa trường hiện tại trước khi lưu sơ đồ.",
   "nodes.llm.model": "mô hình",
   "nodes.llm.notSetContextInPromptTip": "Để kích hoạt tính năng ngữ cảnh, vui lòng điền biến ngữ cảnh vào PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Lý do mô hình ngừng tạo nội dung",
   "nodes.llm.outputVars.output": "Nội dung được tạo",
   "nodes.llm.outputVars.reasoning_content": "Nội dung lập luận",
   "nodes.llm.outputVars.usage": "Thông tin sử dụng mô hình",

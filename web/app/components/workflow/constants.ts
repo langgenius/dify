@@ -154,6 +154,10 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
     variable: 'usage',
     type: VarType.object,
   },
+  {
+    variable: 'finish_reason',
+    type: VarType.string,
+  },
 ]
 
 export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [
