@@ -133,8 +133,15 @@ def test_delete_methods_and_text_exists(chroma_module: ModuleType) -> None:
 
     vector._client.collection.get.return_value = {"ids": ["id-1"]}
     assert vector.text_exists("id-1") is True
-    vector._client.collection.get.return_value = dict[str, list[str]]()
+    vector._client.collection.get.return_value = {"ids": []}
     assert vector.text_exists("id-2") is False
+    vector._client.collection.get.return_value = {
+        "ids": [],
+        "embeddings": None,
+        "documents": [],
+        "metadatas": [],
+    }
+    assert vector.text_exists("id-3") is False
 
     vector.delete()
     vector._client.delete_collection.assert_called_once_with("collection_1")

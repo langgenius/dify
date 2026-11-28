@@ -109,7 +109,7 @@ class ChromaVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         collection = self._client.get_or_create_collection(self._collection_name)
         response = collection.get(ids=[id])
-        return len(response) > 0
+        return bool(response and response.get("ids"))
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
