@@ -543,6 +543,65 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
         )
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_update_configs_persists_enabled_flag_for_new_credential_entry(
+    service: ServiceFixture,
+    sqlite_session: Session,
+    enabled: bool,
+) -> None:
+    svc, _, _ = service
+    credential = ProviderCredential(
+        tenant_id="tenant-1",
+        provider_name="openai",
+        credential_name="Secondary",
+        encrypted_config=LoadBalancingCredentials({"api_key": "enc"}).model_dump_json(),
+    )
+    sqlite_session.add(credential)
+    sqlite_session.commit()
+
+    svc.update_load_balancing_configs(
+        "tenant-1",
+        "openai",
+        "gpt-4o-mini",
+        ModelType.LLM,
+        [{"credential_id": credential.id, "enabled": enabled}],
+        "predefined-model",
+        sqlite_session,
+    )
+    sqlite_session.expire_all()
+    created = sqlite_session.scalar(select(LoadBalancingModelConfig))
+    assert created is not None
+    assert created.credential_id == credential.id
+    assert created.enabled is enabled
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_update_configs_persists_enabled_flag_for_new_inline_credentials(
+    service: ServiceFixture,
+    sqlite_session: Session,
+    enabled: bool,
+) -> None:
+    svc, _, _ = service
+    cipher: LoadBalancingTokenCipher = PrefixTokenCipher()
+
+    svc.update_load_balancing_configs(
+        "tenant-1",
+        "openai",
+        "gpt-4o-mini",
+        ModelType.LLM,
+        [{"name": "inline-entry", "enabled": enabled, "credentials": {"api_key": "fresh"}}],
+        "custom-model",
+        sqlite_session,
+        token_cipher=cipher,
+    )
+    sqlite_session.expire_all()
+    created = sqlite_session.scalar(
+        select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "inline-entry")
+    )
+    assert created is not None
+    assert created.enabled is enabled
+
+
 def test_validate_credentials_uses_real_config_lookup(
     service: ServiceFixture,
     sqlite_session: Session,
