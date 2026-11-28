@@ -52,7 +52,8 @@ def _use_http(monkeypatch: pytest.MonkeyPatch, module: ModuleType, *responses: h
 def test_scan_never_raises_and_reports_unexpected_failures_as_unavailable() -> None:
     class Broken(CloudmersiveScanner):
         @override
-        def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+        def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
+            del wait_for_result
             raise RuntimeError(f"boom {target.file_name} {external_id}")
 
     verdict = Broken({"api_key": "k"}, {}).scan(_target())
@@ -298,6 +299,54 @@ def test_metadefender_reports_pending_with_the_data_id_and_resumes_without_uploa
     resumed = scanner.scan(_target(), external_id="d1")
     assert resumed.status is ScanStatus.CLEAN
     assert [call[0] for call in http.calls] == ["GET"]
+
+
+def test_metadefender_single_attempt_submits_once_and_returns_pending_promptly_then_resumes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scanner, http = _metadefender(monkeypatch, httpx.Response(200, json={"data_id": "d1"}))
+
+    pending = scanner.scan(_target(), wait_for_result=False)
+
+    assert (pending.status, pending.problem, pending.external_id) == (
+        ScanStatus.UNAVAILABLE,
+        ScanProblem.PENDING,
+        "d1",
+    )
+    assert pending.retryable
+    assert len(http.calls) == 1
+    assert http.calls[0][:2] == ("POST", "https://api.metadefender.com/v4/file")
+
+    # Resuming while the scan is still running makes a single GET and reports pending again.
+    scanner, http = _metadefender(monkeypatch, _result(255))
+    still_pending = scanner.scan(_target(), external_id="d1", wait_for_result=False)
+    assert (still_pending.status, still_pending.problem, still_pending.external_id) == (
+        ScanStatus.UNAVAILABLE,
+        ScanProblem.PENDING,
+        "d1",
+    )
+    assert len(http.calls) == 1
+    assert http.calls[0][:2] == ("GET", "https://api.metadefender.com/v4/file/d1")
+
+    # Resuming once complete returns the verdict with a single GET.
+    scanner, http = _metadefender(monkeypatch, _result(0))
+    resumed = scanner.scan(_target(), external_id="d1", wait_for_result=False)
+    assert resumed.status is ScanStatus.CLEAN
+    assert len(http.calls) == 1
+    assert http.calls[0][:2] == ("GET", "https://api.metadefender.com/v4/file/d1")
+
+
+def test_metadefender_polling_caps_request_timeout_to_remaining_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scanner, http = _metadefender(
+        monkeypatch, httpx.Response(200, json={"data_id": "d1"}), _result(255), _result(255), wait=3.0
+    )
+
+    pending = scanner.scan(_target())
+    assert pending.problem is ScanProblem.PENDING
+    assert http.calls[1][2]["timeout"] == 3.0
+    assert http.calls[2][2]["timeout"] == 1.0
 
 
 @pytest.mark.parametrize(

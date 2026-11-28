@@ -40,7 +40,7 @@ class ScaniiScanner(FileScanner):
         return (self.credentials["api_key"], self.credentials["api_secret"])
 
     @override
-    def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+    def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
         response = http_request(
             "POST",
             f"{self._base_url()}/files",

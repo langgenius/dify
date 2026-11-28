@@ -62,6 +62,7 @@ class _Scanner(FileScanner):
         super().__init__({}, {})
         self.verdicts = list(verdicts)
         self.external_ids: list[str | None] = []
+        self.wait_for_results: list[bool] = []
 
     @classmethod
     @override
@@ -69,8 +70,9 @@ class _Scanner(FileScanner):
         del credentials, config
 
     @override
-    def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+    def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
         self.external_ids.append(external_id)
+        self.wait_for_results.append(wait_for_result)
         target.load()
         return self.verdicts.pop(0) if len(self.verdicts) > 1 else self.verdicts[0]
 
@@ -253,8 +255,8 @@ def test_one_bad_file_does_not_change_the_outcome_of_the_others(
 
     class ByName(_Scanner):
         @override
-        def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
-            del external_id
+        def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
+            del external_id, wait_for_result
             return verdicts[target.file_name]
 
     monkeypatch.setattr(service_module, "build_scanner", lambda _tenant_id, _provider: ByName())
@@ -443,10 +445,12 @@ def test_single_attempt_reports_a_running_scan_as_pending_and_the_next_call_resu
     pending = _scan(service, upload_file_id, wait_for_result=False)
     assert (pending.allowed, pending.code, pending.retryable) == (False, ScanErrorCode.PENDING, True)
     assert scanner.external_ids == [None]
+    assert scanner.wait_for_results == [False]
 
     resumed = _scan(service, upload_file_id, wait_for_result=False)
     assert resumed.allowed
     assert scanner.external_ids == [None, "data-1"]
+    assert scanner.wait_for_results == [False, False]
     assert sleeps == []
 
 

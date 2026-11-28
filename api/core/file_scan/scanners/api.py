@@ -51,7 +51,7 @@ class CustomEndpointScanner(FileScanner):
             raise ScannerConfigError("api_key is required")
 
     @override
-    def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+    def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
         response = http_request(
             "POST",
             str(self.config["endpoint"]),
