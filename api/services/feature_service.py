@@ -61,6 +61,10 @@ class ProviderCatalogBilling:
 
 class FeatureService:
     @staticmethod
+    def is_mcp_identity_forwarding_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
+    @staticmethod
     def is_im_centrally_managed() -> bool:
         """Enterprise centrally manages IM channels and default bindings."""
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE

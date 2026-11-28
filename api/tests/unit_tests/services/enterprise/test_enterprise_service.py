@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import datetime
 from unittest.mock import patch
 
+import httpx
 import pytest
 
 from enums import DeploymentEdition
@@ -561,6 +562,54 @@ class TestIssueMCPToken:
             req.send_request.return_value = {"token": "t", "expires_at": True}
             with pytest.raises(MCPTokenError, match="non-numeric expires_at"):
                 self._call()
+
+
+class TestVerifyMCPIdentityToken:
+    def test_returns_verified_email(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"email": "alice@example.com"}
+            email = EnterpriseService.verify_mcp_identity_token("id.token.jwt", "app-uuid")
+
+        assert email == "alice@example.com"
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/mcp/verify-token",
+            json={"token": "id.token.jwt", "app_id": "app-uuid"},
+        )
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            EnterpriseAPIUnauthorizedError("forwarded identity token is invalid or expired"),
+            EnterpriseAPIError("workspace OIDC SSO is not configured", status_code=503),
+        ],
+    )
+    def test_enterprise_rejection_maps_to_token_error_with_reason(self, error: EnterpriseServiceError) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = error
+            with pytest.raises(MCPTokenError, match=str(error)):
+                EnterpriseService.verify_mcp_identity_token("id.token.jwt", "app-uuid")
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            httpx.ConnectError("connection refused"),
+            httpx.ReadTimeout("timed out"),
+            ValueError("Expecting value: line 1 column 1 (char 0)"),
+        ],
+    )
+    def test_unreachable_or_non_json_enterprise_maps_to_token_error(self, error: Exception) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = error
+            with pytest.raises(MCPTokenError, match=type(error).__name__):
+                EnterpriseService.verify_mcp_identity_token("id.token.jwt", "app-uuid")
+
+    @pytest.mark.parametrize("response", ["not-a-dict", {}, {"email": ""}])
+    def test_malformed_response_raises_token_error(self, response: object) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = response
+            with pytest.raises(MCPTokenError, match="invalid response shape"):
+                EnterpriseService.verify_mcp_identity_token("id.token.jwt", "app-uuid")
 
 
 class TestWebAppAccessModeInheritance:

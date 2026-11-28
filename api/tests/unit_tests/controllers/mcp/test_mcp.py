@@ -1021,6 +1021,118 @@ class TestMcpRequestErrorsCases:
             }
         ]
 
+    @staticmethod
+    @pytest.fixture
+    def identity_forwarding_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(module.FeatureService, "is_mcp_identity_forwarding_enabled", lambda: True)
+
+    @staticmethod
+    @pytest.mark.usefixtures("identity_forwarding_enabled")
+    def test_forwarded_identity_runs_tool_as_verified_user(
+        client: FlaskClient, published_server: AppMCPServer, sqlite_session: Session
+    ) -> None:
+        run_as: list[str] = []
+
+        def generate(**kwargs):
+            run_as.append(kwargs["user"].session_id)
+            return {"answer": "ok"}
+
+        with (
+            patch.object(
+                module.EnterpriseService, "verify_mcp_identity_token", return_value="alice@example.com"
+            ) as verify,
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate", side_effect=generate),
+        ):
+            for _ in range(2):
+                response = client.post(
+                    _URL, json=_TOOL_CALL, headers={module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+                )
+                assert response.status_code == 200
+                assert response.get_json()["result"]["content"][0]["text"] == "ok"
+
+        verify.assert_called_with("id.token.jwt", published_server.app_id)
+        assert run_as == ["alice@example.com", "alice@example.com"]
+        end_users = sqlite_session.scalars(select(EndUser).where(EndUser.session_id == "alice@example.com")).all()
+        assert len(end_users) == 1
+        assert end_users[0].type == EndUserType.MCP
+        assert end_users[0].app_id == published_server.app_id
+        assert end_users[0].tenant_id == published_server.tenant_id
+        assert end_users[0].name == "alice@example.com"
+
+    @staticmethod
+    @pytest.mark.usefixtures("identity_forwarding_enabled")
+    def test_rejected_forwarded_identity_does_not_run_tool(client: FlaskClient, sqlite_session: Session) -> None:
+        with (
+            patch.object(
+                module.EnterpriseService,
+                "verify_mcp_identity_token",
+                side_effect=module.MCPTokenError("forwarded identity token is invalid or expired"),
+            ),
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate") as generate,
+        ):
+            response = client.post(_URL, json=_TOOL_CALL, headers={module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"})
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body["id"] == "call-1"
+        assert body["error"]["code"] == module.mcp_types.INVALID_REQUEST
+        assert "forwarded identity token is invalid or expired" in body["error"]["message"]
+        generate.assert_not_called()
+        assert sqlite_session.scalars(select(EndUser)).all() == []
+
+    @staticmethod
+    @pytest.mark.usefixtures("identity_forwarding_enabled")
+    def test_forwarded_identity_is_only_verified_for_tool_calls(client: FlaskClient) -> None:
+        headers = {module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+        with patch.object(module.EnterpriseService, "verify_mcp_identity_token") as verify:
+            initialized = client.post(_URL, json=_INITIALIZE, headers=headers)
+            listed = client.post(_URL, json={"jsonrpc": "2.0", "id": "list-1", "method": "tools/list"}, headers=headers)
+
+        assert "result" in initialized.get_json()
+        assert "result" in listed.get_json()
+        verify.assert_not_called()
+
+    @staticmethod
+    def test_forwarded_identity_is_ignored_when_forwarding_is_disabled(
+        client: FlaskClient, published_server: AppMCPServer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(module.FeatureService, "is_mcp_identity_forwarding_enabled", lambda: False)
+        run_as: list[str] = []
+
+        def generate(**kwargs):
+            run_as.append(kwargs["user"].session_id)
+            return {"answer": "ok"}
+
+        headers = {module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+        with (
+            patch.object(module.EnterpriseService, "verify_mcp_identity_token") as verify,
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate", side_effect=generate),
+        ):
+            client.post(_URL, json=_INITIALIZE, headers=headers)
+            response = client.post(_URL, json=_TOOL_CALL, headers=headers)
+
+        assert response.get_json()["result"]["content"][0]["text"] == "ok"
+        verify.assert_not_called()
+        assert run_as == [published_server.id]
+
+
+_INITIALIZE = {
+    "jsonrpc": "2.0",
+    "id": 0,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {},
+        "clientInfo": {"name": "client", "version": "1.0"},
+    },
+}
+_TOOL_CALL = {
+    "jsonrpc": "2.0",
+    "id": "call-1",
+    "method": "tools/call",
+    "params": {"name": "test_app", "arguments": {"query": "hi"}},
+}
+
 
 """SQLite-backed unit tests for MCP app controller database helpers."""
 
