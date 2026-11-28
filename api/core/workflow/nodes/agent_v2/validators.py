@@ -11,7 +11,7 @@ from core.agent.workflow_references import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
-from core.workflow.graph_topology import WorkflowGraphTopology
+from core.workflow.graph_topology import WorkflowGraphTopology, parse_workflow_graph
 from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import (
@@ -102,7 +102,7 @@ class WorkflowAgentNodeValidator:
         require_agent_model: bool,
         validate_previous_node_topology: bool,
     ) -> None:
-        graph = workflow.graph_dict
+        graph = parse_workflow_graph(workflow.graph_dict)
         topology = _WorkflowGraphTopology.from_graph(graph) if validate_previous_node_topology else None
         for node_id, node_data in cls.iter_agent_v2_nodes(graph):
             cls._validate_node_schema(node_id=node_id, node_data=node_data)

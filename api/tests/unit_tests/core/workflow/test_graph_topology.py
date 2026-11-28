@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-from core.workflow.graph_topology import WorkflowGraphTopology
+from core.workflow.graph_topology import (
+    WorkflowGraph,
+    WorkflowGraphTopology,
+    parse_workflow_graph,
+)
 
-_GRAPH = {
+_GRAPH: WorkflowGraph = {
     "nodes": [
-        {"id": "start"},
-        {"id": "llm-1"},
-        {"id": "llm-2"},
-        {"id": "agent"},
-        {"id": "end"},
+        {"id": "start", "data": {}},
+        {"id": "llm-1", "data": {}},
+        {"id": "llm-2", "data": {}},
+        {"id": "agent", "data": {}},
+        {"id": "end", "data": {}},
     ],
     "edges": [
         {"source": "start", "target": "llm-1"},
@@ -43,9 +47,41 @@ def test_is_upstream_kept_for_publish_validation() -> None:
 
 
 def test_cycle_safe() -> None:
-    graph = {
-        "nodes": [{"id": "a"}, {"id": "b"}],
+    graph: WorkflowGraph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
         "edges": [{"source": "a", "target": "b"}, {"source": "b", "target": "a"}],
     }
     topology = WorkflowGraphTopology.from_graph(graph)
     assert topology.upstream_node_ids("a") == {"b"}
+
+
+def test_parse_workflow_graph_drops_entries_that_are_not_nodes_or_edges() -> None:
+    graph = parse_workflow_graph(
+        {
+            "nodes": [
+                {"id": "start", "data": {"type": "start"}, "legacy": True},
+                {"id": "empty-data"},
+                {"id": "non-mapping-data", "data": None},
+                {"data": {"type": "llm"}},
+                "not-a-node",
+            ],
+            "edges": [
+                {"source": "start", "target": "end", "legacy": True},
+                {"source": "start"},
+                {"source": 1, "target": "end"},
+                "not-an-edge",
+            ],
+        }
+    )
+
+    assert graph["nodes"] == [
+        {"id": "start", "data": {"type": "start"}},
+        {"id": "empty-data", "data": {}},
+        {"id": "non-mapping-data", "data": {}},
+    ]
+    assert graph["edges"] == [{"source": "start", "target": "end"}]
+
+
+def test_parse_workflow_graph_tolerates_missing_sections() -> None:
+    assert parse_workflow_graph({}) == {"nodes": [], "edges": []}
+    assert parse_workflow_graph({"nodes": None, "edges": {}}) == {"nodes": [], "edges": []}
